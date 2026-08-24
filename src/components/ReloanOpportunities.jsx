@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileSpreadsheet, RefreshCw, ChevronRight, ChevronDown, PhoneCall } from 'lucide-react';
+import { exportToCsv } from '../utils/exportCsv';
 
 export default function ReloanOpportunities() {
   const [showCalculation, setShowCalculation] = useState(false);
@@ -20,8 +21,12 @@ export default function ReloanOpportunities() {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => alert("Exporting Re-loan opportunities to Excel...")}
-            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"
+            onClick={() => {
+              const headers = ['Month', 'Maturing Loans', 'Eligible for Re-loan', 'Avg Amount', 'Status'];
+              exportToCsv(`paisa-crm-reloan-opportunities-${new Date().toISOString().slice(0, 10)}.csv`, headers, []);
+            }}
+            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
+            title="Export Re-loan opportunities to Excel"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>Excel</span>

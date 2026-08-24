@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { FileSpreadsheet, RefreshCw, Landmark, Search, Calendar } from 'lucide-react';
+import { FileSpreadsheet, RefreshCw, Landmark, Search, Calendar, Inbox } from 'lucide-react';
+import { exportToCsv } from '../utils/exportCsv';
 
 export default function DisbursalView({ leads, type }) {
   const isDisbursed = type === 'disbursed';
@@ -26,7 +27,15 @@ export default function DisbursalView({ leads, type }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition">
+            <button 
+              onClick={() => {
+                const headers = ['Loan No', 'Applicant', 'Mobile', 'Amount', 'Disbursed On', 'Bank Name', 'Status'];
+                const rows = (list || []).map(l => [l.loanNo || l.id, l.name, l.mobile, l.loanAmount || l.applied || 0, l.created || l.date || '', 'HDFC Bank', l.status]);
+                exportToCsv(`paisa-crm-disbursed-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+              }}
+              className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
+              title="Export Disbursed Loans to Excel"
+            >
               <FileSpreadsheet className="w-3.5 h-3.5" />
               <span>Excel</span>
             </button>
@@ -196,11 +205,21 @@ export default function DisbursalView({ leads, type }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition">
+          <button 
+            onClick={() => alert("Bank Disbursal NACH/NEFT Batch File exported.")}
+            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
+          >
             <Landmark className="w-3.5 h-3.5" />
             <span>Bank file</span>
           </button>
-          <button className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition">
+          <button 
+            onClick={() => {
+              const headers = ['Loan No', 'Applicant', 'Mobile', 'Approved Principal', 'Disbursal Amount', 'Terms', 'Repay Date', 'Bank Name', 'Status'];
+              exportToCsv(`paisa-crm-disbursal-queue-${new Date().toISOString().slice(0, 10)}.csv`, headers, []);
+            }}
+            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
+            title="Export Disbursal Queue to Excel"
+          >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>Excel</span>
           </button>
@@ -236,7 +255,8 @@ export default function DisbursalView({ leads, type }) {
             <tbody className="divide-y divide-slate-100 text-slate-700">
               <tr>
                 <td colSpan="9" className="p-16 text-center text-slate-400 text-xs font-medium">
-                  Nothing ready to disburse. 💸
+                  <Inbox className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <span>Nothing ready to disburse</span>
                 </td>
               </tr>
             </tbody>

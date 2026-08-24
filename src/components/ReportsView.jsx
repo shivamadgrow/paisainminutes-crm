@@ -1,11 +1,88 @@
 import React, { useState } from 'react';
-import { Calendar, Play, FileText, Download } from 'lucide-react';
+import { Calendar, Play, FileText, Download, IndianRupee, ClipboardList, BarChart3 } from 'lucide-react';
 
 export default function ReportsView({ stats }) {
-  const [selectedPeriod, setSelectedPeriod] = useState('Custom');
+  const formatYMD = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatDMY = (ymd) => {
+    if (!ymd) return '';
+    const parts = ymd.split('-');
+    if (parts.length !== 3) return ymd;
+    const [year, month, day] = parts;
+    return `${day}/${month}/${year}`;
+  };
+
+  const getDateRangeForPeriod = (period, refDate = new Date()) => {
+    const now = new Date(refDate);
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const day = now.getDate();
+
+    let from, to;
+
+    switch (period) {
+      case 'Weekly': {
+        const dayOfWeek = now.getDay(); // 0 is Sun, 1 is Mon
+        const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+        const diffToSun = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+        from = new Date(year, month, day + diffToMon);
+        to = new Date(year, month, day + diffToSun);
+        break;
+      }
+      case 'Half-month': {
+        if (day <= 15) {
+          from = new Date(year, month, 1);
+          to = new Date(year, month, 15);
+        } else {
+          from = new Date(year, month, 16);
+          to = new Date(year, month + 1, 0); // last day of month
+        }
+        break;
+      }
+      case 'Monthly': {
+        from = new Date(year, month, 1);
+        to = new Date(year, month + 1, 0);
+        break;
+      }
+      case 'Quarterly': {
+        const qStartMonth = Math.floor(month / 3) * 3;
+        from = new Date(year, qStartMonth, 1);
+        to = new Date(year, qStartMonth + 3, 0);
+        break;
+      }
+      case 'Custom':
+      default: {
+        from = new Date(year, month, 1);
+        to = now;
+        break;
+      }
+    }
+
+    return {
+      fromDate: formatYMD(from),
+      toDate: formatYMD(to),
+    };
+  };
+
+  const initialRange = getDateRangeForPeriod('Quarterly');
+  const [selectedPeriod, setSelectedPeriod] = useState('Quarterly');
   const [activeTab, setActiveTab] = useState('Overview');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState(initialRange.fromDate);
+  const [toDate, setToDate] = useState(initialRange.toDate);
+
+  const handlePeriodChange = (period) => {
+    setSelectedPeriod(period);
+    if (period !== 'Custom') {
+      const range = getDateRangeForPeriod(period);
+      setFromDate(range.fromDate);
+      setToDate(range.toDate);
+    }
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -23,61 +100,71 @@ export default function ReportsView({ stats }) {
       </div>
 
       {/* Filter Bar */}
-      <div className="crm-card p-4 bg-white space-y-4">
+      <div className="crm-card p-3.5 bg-white space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           
-          {/* Period Selector Pills */}
-          <div className="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold text-slate-600">
-            {['Weekly', 'Half month', 'Monthly', 'Quarterly', 'Custom'].map((period) => (
-              <button
-                key={period}
-                onClick={() => setSelectedPeriod(period)}
-                className={`px-3 py-1.5 rounded-lg transition ${
-                  selectedPeriod === period 
-                    ? 'bg-[#0A3977] text-white shadow-2xs' 
-                    : 'hover:bg-slate-200 text-slate-600'
-                }`}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Period Selector Pills */}
+            <div className="flex flex-wrap items-center gap-1 bg-slate-100/90 p-1 rounded-xl text-xs font-medium text-slate-600">
+              {['Weekly', 'Half-month', 'Monthly', 'Quarterly', 'Custom'].map((period) => {
+                const isActive = selectedPeriod === period;
+                return (
+                  <button
+                    key={period}
+                    onClick={() => handlePeriodChange(period)}
+                    className={`px-3 py-1.5 rounded-lg transition text-xs font-semibold cursor-pointer ${
+                      isActive 
+                        ? 'bg-white text-indigo-600 font-bold shadow-xs' 
+                        : 'hover:bg-slate-200/70 text-slate-600'
+                    }`}
+                  >
+                    {period}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Date Picker Range Inputs & Run Button */}
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-[10px] uppercase font-bold text-slate-400">FROM</span>
+              <div className="flex items-center gap-2 bg-slate-50/70 border border-slate-200 px-3 py-1.5 rounded-lg focus-within:ring-2 focus-within:ring-indigo-500 focus-within:bg-white">
+                <input 
+                  type="date" 
+                  value={fromDate}
+                  onChange={(e) => {
+                    setFromDate(e.target.value);
+                    setSelectedPeriod('Custom');
+                  }}
+                  className="bg-transparent text-slate-700 focus:outline-none text-xs cursor-pointer font-medium" 
+                />
+              </div>
+
+              <span className="text-slate-400 font-bold text-[11px]">— TO</span>
+
+              <div className="flex items-center gap-2 bg-slate-50/70 border border-slate-200 px-3 py-1.5 rounded-lg focus-within:ring-2 focus-within:ring-indigo-500 focus-within:bg-white">
+                <input 
+                  type="date" 
+                  value={toDate}
+                  onChange={(e) => {
+                    setToDate(e.target.value);
+                    setSelectedPeriod('Custom');
+                  }}
+                  className="bg-transparent text-slate-700 focus:outline-none text-xs cursor-pointer font-medium" 
+                />
+              </div>
+
+              <button 
+                onClick={() => alert(`Running report for ${selectedPeriod} (${formatDMY(fromDate)} to ${formatDMY(toDate)})`)}
+                className="px-5 py-1.5 bg-[#4F46E5] hover:bg-[#4338CA] text-white rounded-lg font-semibold text-xs flex items-center gap-1.5 shadow-xs transition cursor-pointer active:scale-95"
               >
-                {period}
+                <span>Run</span>
               </button>
-            ))}
+            </div>
           </div>
 
-          {/* Date Picker Range Inputs & Run Button */}
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
-              <span className="text-[10px] uppercase font-bold text-slate-400">FROM</span>
-              <input 
-                type="date" 
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="bg-transparent text-slate-700 focus:outline-none text-xs" 
-              />
-            </div>
-
-            <span className="text-slate-400 font-bold">— TO</span>
-
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg">
-              <input 
-                type="date" 
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="bg-transparent text-slate-700 focus:outline-none text-xs" 
-              />
-            </div>
-
-            <button 
-              onClick={() => alert(`Running report for period: ${selectedPeriod}`)}
-              className="px-4 py-1.5 bg-[#0A3977] hover:bg-blue-900 text-white rounded-lg font-semibold flex items-center gap-1.5 shadow-2xs transition"
-            >
-              <span>Run</span>
-            </button>
-
-            <select className="ml-auto px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium focus:outline-none">
-              <option value="all">All time</option>
-              <option value="this-month">This month</option>
-              <option value="last-month">Last month</option>
-            </select>
+          {/* Right Date Range Display Badge */}
+          <div className="ml-auto px-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 font-medium text-xs shadow-2xs whitespace-nowrap">
+            {formatDMY(fromDate)} – {formatDMY(toDate)}
           </div>
 
         </div>
@@ -111,7 +198,7 @@ export default function ReportsView({ stats }) {
         
         {/* Card 1: LOANS DISBURSED */}
         <div className="crm-card p-4 bg-white flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#0A3977] flex items-center justify-center font-bold">
+          <div className="w-10 h-10 rounded-lg bg-blue-50 text-[#0A3977] flex items-center justify-center">
             <FileText className="w-5 h-5" />
           </div>
           <div>
@@ -129,8 +216,8 @@ export default function ReportsView({ stats }) {
 
         {/* Card 2: COLLECTED */}
         <div className="crm-card p-4 bg-white flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
-            ₹
+          <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+            <IndianRupee className="w-5 h-5" />
           </div>
           <div>
             <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase block">
@@ -147,8 +234,8 @@ export default function ReportsView({ stats }) {
 
         {/* Card 3: ASSESSMENTS */}
         <div className="crm-card p-4 bg-white flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-            📋
+          <div className="w-10 h-10 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+            <ClipboardList className="w-5 h-5" />
           </div>
           <div>
             <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase block">
@@ -162,8 +249,8 @@ export default function ReportsView({ stats }) {
 
         {/* Card 4: BUREAU ROWS */}
         <div className="crm-card p-4 bg-white flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
-            📊
+          <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <BarChart3 className="w-5 h-5" />
           </div>
           <div>
             <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase block">

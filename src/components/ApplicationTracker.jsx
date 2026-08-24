@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FileSpreadsheet, RefreshCw, Search } from 'lucide-react';
+import { exportToCsv } from '../utils/exportCsv';
 
 const INITIAL_APPLICANTS = [];
 
@@ -49,8 +50,13 @@ export default function ApplicationTracker() {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => alert("Exporting Application Tracker to Excel...")}
-            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"
+            onClick={() => {
+              const headers = ['Applicant Name', 'Mobile', 'Stage', 'OTP Status', 'Loan Amount', 'City', 'Created'];
+              const rows = (filteredApplicants || []).map(a => [a.name, a.mobile, a.stage, a.otp, a.amount, a.city, a.created]);
+              exportToCsv(`paisa-crm-application-tracker-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+            }}
+            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
+            title="Export Application Tracker to Excel"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>Excel</span>

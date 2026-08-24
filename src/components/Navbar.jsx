@@ -1,7 +1,11 @@
-import React from 'react';
-import { Search, Bell, LogOut, Menu } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Bell, LogOut, Menu, UserCheck, ChevronDown, Shield } from 'lucide-react';
+import { INITIAL_STAFF_MEMBERS } from '../data/staffData';
 
-export default function Navbar({ searchQuery, setSearchQuery, setIsMobileOpen, setActiveTab }) {
+export default function Navbar({ searchQuery, setSearchQuery, setIsMobileOpen, setActiveTab, currentUser, onOpenLogin, onSwitchUser }) {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const activeUser = currentUser || INITIAL_STAFF_MEMBERS[1]; // default to shivam
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 md:px-6 bg-white border-b border-slate-200 shadow-xs">
@@ -10,15 +14,15 @@ export default function Navbar({ searchQuery, setSearchQuery, setIsMobileOpen, s
       <div className="flex items-center gap-3 flex-1 max-w-xl">
         <button 
           onClick={() => setIsMobileOpen(prev => !prev)}
-          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden"
+          className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 lg:hidden cursor-pointer"
         >
           <Menu className="w-5 h-5" />
         </button>
 
         {/* Global Search Bar */}
         <div className="relative w-full">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-4 w-4 text-slate-400" />
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+            <Search className="h-4 w-4" />
           </div>
           <input
             type="text"
@@ -35,34 +39,115 @@ export default function Navbar({ searchQuery, setSearchQuery, setIsMobileOpen, s
         </div>
       </div>
 
-      {/* Right: Notifications, User Profile & Logout */}
-      <div className="flex items-center gap-3">
+      {/* Right: Notifications, User Profile / Creator Switcher & Logout */}
+      <div className="flex items-center gap-2 sm:gap-3 relative">
+        
         {/* Notification Bell */}
-        <button className="relative p-2 text-slate-500 hover:text-[#0A3977] hover:bg-slate-100 rounded-full transition">
+        <button 
+          onClick={() => setActiveTab && setActiveTab('notifications-send')}
+          className="relative p-2 text-slate-500 hover:text-[#0A3977] hover:bg-slate-100 rounded-full transition cursor-pointer"
+          title="Notifications"
+        >
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full ring-2 ring-white"></span>
         </button>
 
-        {/* User Badge */}
-        <button 
-          onClick={() => setActiveTab && setActiveTab('profile')}
-          className="flex items-center gap-2 pl-2 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
-        >
-          <div className="w-8 h-8 rounded-full bg-[#0A3977] text-white flex items-center justify-center font-bold text-xs shadow-xs">
-            S
-          </div>
-          <span className="hidden md:inline-block text-xs font-semibold text-slate-700">
-            shivam
-          </span>
-        </button>
+        {/* Creator Switcher Dropdown */}
+        <div className="relative">
+          <button 
+            onClick={() => setIsDropdownOpen(prev => !prev)}
+            className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-xl hover:bg-slate-100 border border-transparent hover:border-slate-200 transition cursor-pointer"
+            title="Click to switch role / user"
+          >
+            <div className={`w-8 h-8 rounded-full ${activeUser.avatarBg || 'bg-[#0A3977]'} text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0`}>
+              {activeUser.initials || 'SH'}
+            </div>
+            <div className="hidden md:block text-left">
+              <div className="text-xs font-bold text-slate-800 leading-tight flex items-center gap-1">
+                <span>{activeUser.name}</span>
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              </div>
+              <div className="text-[10px] font-semibold text-slate-500">
+                {activeUser.role}
+              </div>
+            </div>
+          </button>
 
+          {/* Switcher Menu */}
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-fade-in">
+              <div className="p-2 border-b border-slate-100 mb-1">
+                <div className="text-[10px] uppercase font-bold text-slate-400">Signed In As</div>
+                <div className="text-xs font-bold text-slate-900">{activeUser.name}</div>
+                <div className="text-[11px] text-slate-500 font-mono">{activeUser.email}</div>
+                <span className="mt-1 inline-block px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 text-[#0A3977]">
+                  {activeUser.role}
+                </span>
+              </div>
 
-        {/* Logout Button */}
+              <div className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1">
+                Quick Switch Creator / Role
+              </div>
+
+              <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                {INITIAL_STAFF_MEMBERS.map(staff => (
+                  <button
+                    key={staff.id}
+                    onClick={() => {
+                      onSwitchUser(staff);
+                      setIsDropdownOpen(false);
+                    }}
+                    className={`w-full p-1.5 rounded-lg text-left flex items-center justify-between text-xs transition cursor-pointer ${
+                      activeUser.name === staff.name 
+                        ? 'bg-blue-50 text-[#0A3977] font-bold' 
+                        : 'hover:bg-slate-50 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <div className={`w-5 h-5 rounded-full ${staff.avatarBg || 'bg-[#0A3977]'} text-white text-[9px] font-bold flex items-center justify-center shrink-0`}>
+                        {staff.initials}
+                      </div>
+                      <span className="truncate">{staff.name}</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 shrink-0">{staff.role}</span>
+                  </button>
+                ))}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 mt-2 space-y-1">
+                <button
+                  onClick={() => {
+                    setActiveTab && setActiveTab('profile');
+                    setIsDropdownOpen(false);
+                  }}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-slate-400" />
+                  <span>My Profile</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    onOpenLogin();
+                    setIsDropdownOpen(false);
+                  }}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Switch Account / Logout</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Direct Logout Button */}
         <button 
-          onClick={() => alert("Logging out of Paisa in Minutes CRM...")}
-          className="ml-2 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-[#0A3977] transition shadow-2xs"
+          onClick={onOpenLogin}
+          className="ml-1 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-[#0A3977] transition shadow-2xs cursor-pointer active:scale-95"
+          title="Logout & Switch Account"
         >
-          <LogOut className="w-3.5 h-3.5" />
+          <LogOut className="w-3.5 h-3.5 text-slate-500" />
           <span className="hidden sm:inline">Logout</span>
         </button>
       </div>

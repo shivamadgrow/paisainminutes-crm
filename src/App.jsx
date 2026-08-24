@@ -2,46 +2,108 @@ import React, { useState, useMemo } from 'react';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import ExecutiveDashboard from './components/ExecutiveDashboard';
-import SalesDashboard from './components/SalesDashboard';
-import CollectionDashboard from './components/CollectionDashboard';
+import PartnerHubView from './components/PartnerHubView';
+import CompanyLeadsView from './components/CompanyLeadsView';
+import ApiIntegrationView from './components/ApiIntegrationView';
 import LeadsView from './components/LeadsView';
 import ApplicationTracker from './components/ApplicationTracker';
 import PipelineView from './components/PipelineView';
-import DisbursalView from './components/DisbursalView';
-
 import KPISummary from './components/KPISummary';
-import ReloanOpportunities from './components/ReloanOpportunities';
-import ReportsView from './components/ReportsView';
-import LoansView from './components/LoansView';
-import CollectionsView from './components/CollectionsView';
-import NotificationsView from './components/NotificationsView';
 import StaffView from './components/StaffView';
 import AuditLogView from './components/AuditLogView';
 import MyProfileView from './components/MyProfileView';
+import LoginModal from './components/LoginModal';
+import { INITIAL_STAFF_MEMBERS } from './data/staffData';
+import { isOffHours, isUserExempt, logSecurityIncident } from './utils/shiftSecurity';
+import { getLiveSecurityDetails } from './utils/geoService';
 
-
-
-
-
-// Clean slate initial leads array (Zero state for go-live)
+// Initial clean slate leads array
 const INITIAL_LEADS = [];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('executive');
-  const [activeFilter, setActiveFilter] = useState('all-leads');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('August 2026');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [leads, setLeads] = useState(INITIAL_LEADS);
+
+  // Current logged in user / creator session state
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('paisa_crm_user');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return INITIAL_STAFF_MEMBERS[1]; // default to shivam (Admin)
+  });
+
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  const handleSwitchUser = (user) => {
+    setCurrentUser(user);
+    try {
+      localStorage.setItem('paisa_crm_user', JSON.stringify(user));
+    } catch (e) {}
+  };
+
+  // Automated Night Shift Security Heartbeat
+  React.useEffect(() => {
+    const checkShiftSecurity = async () => {
+      if (currentUser && !isUserExempt(currentUser.name)) {
+        if (isOffHours()) {
+          const geo = await getLiveSecurityDetails();
+          logSecurityIncident(currentUser, geo);
+          setCurrentUser(null);
+          try {
+            localStorage.removeItem('paisa_crm_user');
+          } catch (e) {}
+          setIsLoginModalOpen(true);
+        }
+      }
+    };
+
+    checkShiftSecurity();
+    const timer = setInterval(checkShiftSecurity, 5000);
+    return () => clearInterval(timer);
+  }, [currentUser]);
+
+  // Real-time API Sync: Fetch incoming leads every 3 seconds
+  React.useEffect(() => {
+    let isMounted = true;
+    const fetchLeadsFromApi = async () => {
+      try {
+        let response = await fetch('/admin/api/get-leads');
+        if (!response.ok) {
+          response = await fetch('/api/get-leads');
+        }
+        if (!response.ok) {
+          response = await fetch('api/get_leads.php');
+        }
+        if (response.ok) {
+          const data = await response.json();
+          if (isMounted && data.success && Array.isArray(data.leads)) {
+            setLeads(data.leads);
+          }
+        }
+      } catch (e) {
+        // Ignore fetch errors during restarts
+      }
+    };
+
+    fetchLeadsFromApi();
+    const timer = setInterval(fetchLeadsFromApi, 3000);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, []);
 
   // Compute live counts and stats dynamically from leads array
   const leadCounts = useMemo(() => {
     const fresh = leads.filter(l => l.status === 'Fresh').length;
     const callback = leads.filter(l => l.status === 'Callback').length;
     const docsReceived = leads.filter(l => l.status === 'Docs received').length;
-    const approved = leads.filter(l => l.status === 'Approved').length;
+    const approved = leads.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length;
     const rejected = leads.filter(l => l.status === 'Rejected').length;
-    const disbursed = leads.filter(l => l.status === 'Disbursed').length;
 
     return {
       total: leads.length,
@@ -49,20 +111,30 @@ export default function App() {
       callback,
       docsReceived,
       approved,
-      rejected,
-      disbursed
+      rejected
     };
+  }, [leads]);
+
+  // Compute partner-wise counts
+  const partnerCounts = useMemo(() => {
+    const normalize = (name) => (name || '').toLowerCase().replace(/[\s\-_]/g, '');
+    const rupay91 = leads.filter(l => normalize(l.assignedCompany) === 'rupay91').length;
+    const adgrow = leads.filter(l => normalize(l.assignedCompany) === 'adgrow').length;
+    const agdm = leads.filter(l => normalize(l.assignedCompany) === 'agdm').length;
+    const rupaysure = leads.filter(l => normalize(l.assignedCompany) === 'rupaysure').length;
+
+    return { rupay91, adgrow, agdm, rupaysure };
   }, [leads]);
 
   // Dashboard Stats calculation
   const stats = useMemo(() => {
-    const disbursedList = leads.filter(l => l.status === 'Disbursed');
-    const approvedList = leads.filter(l => l.status === 'Approved');
+    const approvedList = leads.filter(l => l.status === 'Approved' || l.status === 'Disbursed');
     const freshList = leads.filter(l => l.status === 'Fresh');
     const callbackList = leads.filter(l => l.status === 'Callback');
     const docsList = leads.filter(l => l.status === 'Docs received');
 
-    const disbursedAmount = disbursedList.reduce((sum, item) => sum + item.loanAmount, 0);
+    const totalApplied = leads.reduce((sum, item) => sum + (Number(item.loanAmount || item.applied) || 0), 0);
+    const approvedAmount = approvedList.reduce((sum, item) => sum + (Number(item.loanAmount || item.applied) || 0), 0);
 
     return {
       totalLeads: leads.length,
@@ -70,18 +142,10 @@ export default function App() {
       callbackCount: callbackList.length,
       docsCount: docsList.length,
       approvedCount: approvedList.length,
-      disbursedCount: disbursedList.length,
-      repayingCount: 0,
-      disbursedAmount,
-      collectedAmount: 0,
-      outstandingAmount: 0,
-      dueTodayAmount: 0,
-      overdueAmount: 0,
-      overdueCount: 0,
-      conversionRate: leads.length > 0 ? ((disbursedList.length / leads.length) * 100).toFixed(0) : 0,
-      activeLoans: disbursedList.length,
-      closedLoans: 0,
-      portalLeads: leads.filter(l => l.source === 'portal').length
+      disbursedCount: approvedList.length,
+      disbursedAmount: approvedAmount,
+      totalVolume: totalApplied,
+      conversionRate: leads.length > 0 ? ((approvedList.length / leads.length) * 100).toFixed(0) : 0
     };
   }, [leads]);
 
@@ -92,37 +156,64 @@ export default function App() {
         return (
           <ExecutiveDashboard 
             stats={stats} 
-            selectedMonth={selectedMonth} 
-            setSelectedMonth={setSelectedMonth} 
+            leads={leads}
+            onSelectCompany={(companyId) => setActiveTab(`company-${companyId}`)}
+            onOpenPartnerHub={() => setActiveTab('partner-hub')}
           />
         );
-      case 'sales':
+
+      case 'partner-hub':
         return (
-          <SalesDashboard 
-            stats={stats} 
+          <PartnerHubView 
+            leads={leads} 
+            onSelectCompany={(companyId) => setActiveTab(`company-${companyId}`)}
+            onOpenTestModal={() => setActiveTab('all-leads')}
           />
         );
-      case 'collections':
+
+      case 'company-rupay91':
         return (
-          <CollectionDashboard 
-            stats={stats} 
+          <CompanyLeadsView 
+            companyId="rupay91" 
+            leads={leads} 
+            setLeads={setLeads} 
+            onBackToHub={() => setActiveTab('partner-hub')} 
           />
         );
-      case 'kpi':
+
+      case 'company-adgrow':
         return (
-          <KPISummary 
-            stats={stats} 
+          <CompanyLeadsView 
+            companyId="adgrow" 
+            leads={leads} 
+            setLeads={setLeads} 
+            onBackToHub={() => setActiveTab('partner-hub')} 
           />
         );
-      case 'reloan':
+
+      case 'company-agdm':
         return (
-          <ReloanOpportunities />
-        );
-      case 'reports':
-        return (
-          <ReportsView 
-            stats={stats} 
+          <CompanyLeadsView 
+            companyId="agdm" 
+            leads={leads} 
+            setLeads={setLeads} 
+            onBackToHub={() => setActiveTab('partner-hub')} 
           />
+        );
+
+      case 'company-rupaysure':
+        return (
+          <CompanyLeadsView 
+            companyId="rupaysure" 
+            leads={leads} 
+            setLeads={setLeads} 
+            onBackToHub={() => setActiveTab('partner-hub')} 
+          />
+        );
+
+      case 'api-integration':
+        return (
+          <ApiIntegrationView onOpenTestModal={() => setActiveTab('all-leads')} />
         );
 
       case 'all-leads':
@@ -132,12 +223,12 @@ export default function App() {
       case 'interested':
       case 'not-interested':
       case 'docs-received':
-      case 'incomplete-docs':
       case 'approved':
-      case 'ready-to-disburse':
-      case 'lead-disbursed':
       case 'rejected':
-      case 'dead-leads':
+      case 'rupay91':
+      case 'adgrow':
+      case 'agdm':
+      case 'rupaysure':
         return (
           <LeadsView 
             leads={leads} 
@@ -146,6 +237,7 @@ export default function App() {
             setActiveFilterTab={setActiveTab} 
             searchQuery={searchQuery} 
             setSearchQuery={setSearchQuery} 
+            currentUser={currentUser}
           />
         );
 
@@ -155,67 +247,46 @@ export default function App() {
             leads={leads} 
           />
         );
+
       case 'pipeline':
         return (
           <PipelineView onSwitchToList={() => setActiveTab('all-leads')} />
         );
 
-      case 'ready-disburse':
+      case 'kpi':
         return (
-          <DisbursalView 
-            leads={leads} 
-            type="ready" 
+          <KPISummary 
+            stats={stats} 
           />
         );
-      case 'disbursed':
-        return (
-          <DisbursalView 
-            leads={leads} 
-            type="disbursed" 
-          />
-        );
-      case 'loans-active':
-      case 'loans-overdue':
-      case 'loans-part':
-      case 'loans-settlement':
-      case 'loans-closed':
-      case 'loans-preclosed':
-      case 'loans-all':
-        return (
-          <LoansView type={activeTab} />
-        );
-      case 'collections-workspace':
-      case 'collections-followups':
-      case 'collections-queue':
-        return (
-          <CollectionsView type={activeTab} />
-        );
-      case 'notifications-send':
-        return (
-          <NotificationsView />
-        );
+
       case 'admin-staff':
         return (
-          <StaffView />
+          <StaffView 
+            onSwitchUser={handleSwitchUser} 
+            currentUser={currentUser} 
+          />
         );
+
       case 'admin-audit':
         return (
           <AuditLogView />
         );
+
       case 'profile':
         return (
-          <MyProfileView />
+          <MyProfileView 
+            currentUser={currentUser} 
+          />
         );
-
-
-
 
       default:
         return (
           <ExecutiveDashboard 
             stats={stats} 
-            selectedMonth={selectedMonth} 
-            setSelectedMonth={setSelectedMonth} 
+            leads={leads}
+            onSelectCompany={(companyId) => setActiveTab(`company-${companyId}`)}
+            onOpenPartnerHub={() => setActiveTab('partner-hub')}
           />
         );
     }
@@ -229,6 +300,7 @@ export default function App() {
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         leadCounts={leadCounts} 
+        partnerCounts={partnerCounts}
         isMobileOpen={isMobileOpen} 
         setIsMobileOpen={setIsMobileOpen} 
       />
@@ -245,18 +317,27 @@ export default function App() {
           }} 
           setIsMobileOpen={setIsMobileOpen} 
           setActiveTab={setActiveTab}
+          currentUser={currentUser}
+          onOpenLogin={() => setIsLoginModalOpen(true)}
+          onSwitchUser={handleSwitchUser}
         />
 
-
-        {/* Page Content View - Full Width Layout */}
+        {/* Page Content View */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="w-full">
             {renderMainContent()}
           </div>
         </main>
 
-
       </div>
+
+      {/* Login & Creator Switcher Modal */}
+      <LoginModal 
+        isOpen={isLoginModalOpen} 
+        onClose={() => setIsLoginModalOpen(false)} 
+        onLogin={handleSwitchUser}
+        currentUser={currentUser}
+      />
 
     </div>
   );

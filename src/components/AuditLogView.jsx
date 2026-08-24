@@ -1,15 +1,24 @@
 import React, { useState } from 'react';
 import { FileSpreadsheet, Search } from 'lucide-react';
+import { exportToCsv } from '../utils/exportCsv';
 
 const AUDIT_LOGS = [];
 
 export default function AuditLogView() {
+  const getTodayDateString = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [employeeFilter, setEmployeeFilter] = useState('All employees');
   const [actorFilter, setActorFilter] = useState('Everyone');
   const [moduleFilter, setModuleFilter] = useState('All modules');
   const [searchQuery, setSearchQuery] = useState('');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
+  const [fromDate, setFromDate] = useState(getTodayDateString);
+  const [toDate, setToDate] = useState(getTodayDateString);
 
   const filteredLogs = AUDIT_LOGS.filter(item => {
     const matchesSearch = 
@@ -36,8 +45,13 @@ export default function AuditLogView() {
         </div>
 
         <button 
-          onClick={() => alert("Exporting Audit log to Excel...")}
-          className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"
+          onClick={() => {
+            const headers = ['Time', 'Who', 'Role', 'IP Address', 'Module', 'Action / Activity', 'Details'];
+            const rows = filteredLogs.map(l => [l.time, l.who, l.role, l.ip, l.module, l.activity, l.details]);
+            exportToCsv(`paisa-crm-audit-log-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+          }}
+          className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
+          title="Export Audit Log to Excel"
         >
           <FileSpreadsheet className="w-3.5 h-3.5" />
           <span>Excel</span>

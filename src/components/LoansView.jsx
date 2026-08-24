@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { FileSpreadsheet, RefreshCw, Search, Calendar } from 'lucide-react';
+import { FileSpreadsheet, RefreshCw, Search, Calendar, Inbox } from 'lucide-react';
+import { exportToCsv } from '../utils/exportCsv';
 
 export default function LoansView({ type }) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -11,49 +12,49 @@ export default function LoansView({ type }) {
         return {
           title: 'Active loans',
           subtitle: '0 loan(s), newest first.',
-          emptyText: 'No active loans.',
+          emptyText: 'No active loans',
           isOverdue: false
         };
       case 'loans-overdue':
         return {
           title: 'Overdue loans',
           subtitle: '0 loan(s), most overdue first.',
-          emptyText: 'Nothing overdue. 💸',
+          emptyText: 'Nothing overdue',
           isOverdue: true
         };
       case 'loans-part':
         return {
           title: 'Part-payment loans',
           subtitle: '0 loan(s), newest first.',
-          emptyText: 'No part-payment loans.',
+          emptyText: 'No part-payment loans',
           isOverdue: false
         };
       case 'loans-settlement':
         return {
           title: 'Settlement loans',
           subtitle: '0 loan(s), newest first.',
-          emptyText: 'No settlement loans.',
+          emptyText: 'No settlement loans',
           isOverdue: false
         };
       case 'loans-closed':
         return {
           title: 'Closed loans',
           subtitle: '0 loan(s), newest first.',
-          emptyText: 'No closed loans.',
+          emptyText: 'No closed loans',
           isOverdue: false
         };
       case 'loans-preclosed':
         return {
           title: 'Pre-closed loans',
           subtitle: '0 loan(s), newest first.',
-          emptyText: 'No pre-closed loans.',
+          emptyText: 'No pre-closed loans',
           isOverdue: false
         };
       default:
         return {
           title: 'All loans',
           subtitle: '0 loan(s), newest first.',
-          emptyText: 'No loan records found.',
+          emptyText: 'No loan records found',
           isOverdue: false
         };
     }
@@ -77,8 +78,12 @@ export default function LoansView({ type }) {
 
         <div className="flex items-center gap-2">
           <button 
-            onClick={() => alert(`Exporting ${config.title} to Excel...`)}
-            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"
+            onClick={() => {
+              const headers = ['Loan No', 'Applicant', 'Mobile', 'Principal', 'Disbursed Amount', 'Interest', 'Outstanding', 'Collected', 'Status'];
+              exportToCsv(`paisa-crm-${type}-${new Date().toISOString().slice(0, 10)}.csv`, headers, []);
+            }}
+            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
+            title="Export loans to CSV"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>Excel</span>
@@ -155,7 +160,8 @@ export default function LoansView({ type }) {
             <tbody className="divide-y divide-slate-100 text-slate-700">
               <tr>
                 <td colSpan={config.isOverdue ? 13 : 10} className="p-16 text-center text-slate-400 text-xs font-medium">
-                  {config.emptyText}
+                  <Inbox className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <span>{config.emptyText}</span>
                 </td>
               </tr>
             </tbody>

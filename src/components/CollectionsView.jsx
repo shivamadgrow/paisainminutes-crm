@@ -1,10 +1,17 @@
 import React, { useState } from 'react';
-import { FileSpreadsheet, RefreshCw, Search } from 'lucide-react';
+import { FileSpreadsheet, RefreshCw, Search, CheckCircle2, Inbox } from 'lucide-react';
+import { exportToCsv } from '../utils/exportCsv';
 
 export default function CollectionsView({ type }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeDateFilter, setActiveDateFilter] = useState('All dates');
   const [activeBucketFilter, setActiveBucketFilter] = useState('All');
+
+  const handleExportCollections = (title = 'collection-data') => {
+    const headers = ['Loan No', 'Applicant', 'Mobile', 'Collection Manager', 'City', 'Outstanding', 'Amount Due', 'DPD', 'Status', 'Penalty', 'Repay Date'];
+    const rows = [];
+    exportToCsv(`${title}-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  };
 
   if (type === 'collections-queue') {
     return (
@@ -22,15 +29,15 @@ export default function CollectionsView({ type }) {
         {/* Excel Button */}
         <div>
           <button 
-            onClick={() => alert("Exporting Collection queue to Excel...")}
-            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"
+            onClick={() => handleExportCollections('paisa-crm-collections-queue')}
+            className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>Excel</span>
           </button>
         </div>
 
-        {/* Queue Table */}
+        {/* Table Box */}
         <div className="crm-card bg-white overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
@@ -46,7 +53,8 @@ export default function CollectionsView({ type }) {
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 <tr>
                   <td colSpan="5" className="p-16 text-center text-slate-400 text-xs font-medium">
-                    Nothing overdue. 💸
+                    <Inbox className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <span>Nothing overdue</span>
                   </td>
                 </tr>
               </tbody>
@@ -60,71 +68,50 @@ export default function CollectionsView({ type }) {
   if (type === 'collections-followups') {
     return (
       <div className="space-y-6 animate-fade-in">
-        {/* Follow-ups Header & Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-[#0A3977]">
-              Follow-ups
-            </h1>
-            <p className="text-xs text-slate-500 mt-1">
-              0 account(s) with a promise-to-pay or callback due.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition">
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Excel</span>
-            </button>
-            <button className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition">
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Refresh</span>
-            </button>
-          </div>
+        {/* Follow-ups Header */}
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-[#0A3977]">
+            Follow-ups
+          </h1>
+          <p className="text-xs text-slate-500 mt-1">
+            0 follow-up(s) scheduled for today or earlier
+          </p>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative w-72">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="w-3.5 h-3.5 text-slate-400" />
-          </div>
-          <input
-            type="text"
-            placeholder="Search name, mobile, loan no"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#0A3977] placeholder-slate-400"
-          />
+        {/* Filter Pills */}
+        <div className="flex items-center gap-2">
+          {['Due & overdue', 'Scheduled today', 'All pending', 'Completed'].map((pill, i) => (
+            <button
+              key={pill}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                i === 0 ? 'bg-[#0A3977] text-white shadow-2xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {pill}
+            </button>
+          ))}
         </div>
 
-        {/* Follow-ups Table */}
+        {/* Table Box */}
         <div className="crm-card bg-white overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-50/70 text-slate-400 font-bold tracking-wider text-[10px] uppercase border-b border-slate-200">
-                  <th className="p-3.5 w-8">
-                    <input type="checkbox" className="rounded border-slate-300" />
-                  </th>
                   <th className="p-3.5">APPLICANT</th>
+                  <th className="p-3.5">MOBILE</th>
                   <th className="p-3.5">COLLECTION MGR</th>
                   <th className="p-3.5">LOAN NO.</th>
                   <th className="p-3.5">CITY</th>
                   <th className="p-3.5">OUTSTANDING</th>
                   <th className="p-3.5">AMOUNT DUE</th>
-                  <th className="p-3.5">DPD</th>
-                  <th className="p-3.5">STATUS</th>
-                  <th className="p-3.5">PENALTY</th>
-                  <th className="p-3.5">REPAY DATE</th>
-                  <th className="p-3.5">LAST FOLLOW-UP</th>
-                  <th className="p-3.5">PTP</th>
-                  <th className="p-3.5">ACTION</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
                 <tr>
                   <td colSpan="14" className="p-16 text-center text-slate-400 text-xs font-medium">
-                    No follow-ups due. 💸
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                    <span>No follow-ups due</span>
                   </td>
                 </tr>
               </tbody>
@@ -163,7 +150,10 @@ export default function CollectionsView({ type }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition">
+          <button 
+            onClick={() => handleExportCollections('paisa-crm-collection-workspace')}
+            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
+          >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>Excel</span>
           </button>
@@ -260,7 +250,8 @@ export default function CollectionsView({ type }) {
             <tbody className="divide-y divide-slate-100 text-slate-700">
               <tr>
                 <td colSpan="14" className="p-16 text-center text-slate-400 text-xs font-medium">
-                  Nothing pending. 💸
+                  <Inbox className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <span>Nothing pending</span>
                 </td>
               </tr>
             </tbody>

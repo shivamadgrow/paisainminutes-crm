@@ -1,305 +1,306 @@
 import React from 'react';
-import { ChevronLeft, ChevronRight, IndianRupee, Layers, Coins, Equal, TrendingUp } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
+import { 
+  Building2, 
+  IndianRupee, 
+  Users, 
+  TrendingUp, 
+  Sparkles, 
+  Layers, 
+  ShieldCheck, 
+  ArrowUpRight,
+  Globe,
+  Clock,
+  ArrowRight
+} from 'lucide-react';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
+import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 
-export default function ExecutiveDashboard({ stats, selectedMonth, setSelectedMonth }) {
-  // Mock monthly disbursal trend data
-  const trendData = [
-    { month: 'Sep 25', amount: 0 },
-    { month: 'Nov 25', amount: 0 },
-    { month: 'Jan 26', amount: 0 },
-    { month: 'Mar 26', amount: 0 },
-    { month: 'May 26', amount: 0 },
-    { month: 'Jul 26', amount: 0 },
-    { month: 'Aug 26', amount: stats?.disbursedAmount || 0 },
-  ];
+export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany, onOpenPartnerHub }) {
+  // Aggregate partner metrics
+  const partnerBreakdown = AFFILIATE_PARTNERS.map(partner => {
+    const count = leads.filter(l => {
+      const c = (l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
+      return c === partner.id || c === partner.name.toLowerCase().replace(/[\s\-_]/g, '');
+    }).length;
 
-  // Portfolio pie data
-  const portfolioData = [
-    { name: 'Active', value: stats?.activeLoans || 0, color: '#0A3977' },
-    { name: 'Closed', value: stats?.closedLoans || 0, color: '#0084FF' },
-  ];
-  if (stats?.activeLoans === 0 && stats?.closedLoans === 0) {
-    portfolioData[0].value = 1; // placeholder for empty donut chart visually
-    portfolioData[0].color = '#E2E8F0';
+    const volume = leads
+      .filter(l => {
+        const c = (l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
+        return c === partner.id || c === partner.name.toLowerCase().replace(/[\s\-_]/g, '');
+      })
+      .reduce((sum, l) => sum + (Number(l.loanAmount || l.applied) || 0), 0);
+
+    return {
+      ...partner,
+      count,
+      volume
+    };
+  });
+
+  const totalVolume = leads.reduce((sum, l) => sum + (Number(l.loanAmount || l.applied) || 0), 0);
+  const eligibilityLeads = leads.filter(l => (l.source || '').toLowerCase().includes('eligibility')).length;
+  const applyNowLeads = leads.filter(l => (l.source || '').toLowerCase().includes('apply')).length;
+
+  const barData = partnerBreakdown.map(p => ({
+    name: p.name,
+    leads: p.count,
+    color: p.accentColor
+  }));
+
+  const pieData = partnerBreakdown.map(p => ({
+    name: p.name,
+    value: p.count,
+    color: p.accentColor
+  }));
+
+  if (leads.length === 0) {
+    pieData.push({ name: 'Awaiting Leads', value: 1, color: '#E2E8F0' });
   }
 
+  const recentLeads = leads.slice(0, 5);
+
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-12">
       
-      {/* Dashboard Title & Month Selector */}
+      {/* Dashboard Title & Overview */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-[#0A3977]">
-            Executive dashboard
+          <h1 className="text-xl md:text-2xl font-black text-[#0A3977]">
+            Executive Overview & Partner Distribution
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            {selectedMonth} - compared with July 2026
+            Real-time affiliate traffic analytics for <span className="font-semibold text-slate-800">paisainminutes.com</span>
           </p>
         </div>
 
-        {/* Month Navigator */}
-        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
-          <button className="p-1 hover:bg-slate-100 rounded text-slate-500 transition">
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <span className="text-xs font-semibold text-slate-700 px-2">
-            {selectedMonth}
-          </span>
-          <button className="p-1 hover:bg-slate-100 rounded text-slate-500 transition">
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
+        <button
+          onClick={onOpenPartnerHub}
+          className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-[#0A3977] border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+        >
+          <Building2 className="w-4 h-4 text-[#0A3977]" />
+          <span>Open Partner Hub</span>
+        </button>
       </div>
 
       {/* Top 4 KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        {/* Card 1: DISBURSED */}
-        <div className="crm-card p-5 relative overflow-hidden bg-white">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 text-[#0A3977] flex items-center justify-center font-bold text-xs">
-              ₹
-            </div>
+        {/* Card 1: TOTAL LEADS INGESTED */}
+        <div className="crm-card p-5 bg-white rounded-2xl shadow-sm border border-slate-200/80">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-              DISBURSED
+              TOTAL WEBSITE LEADS
             </span>
+            <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#0A3977] flex items-center justify-center">
+              <Users className="w-4 h-4" />
+            </div>
           </div>
-
-          <div className="text-2xl font-bold text-slate-900 mb-1">
-            ₹{stats?.disbursedAmount?.toLocaleString('en-IN') || 0}
+          <div className="text-2xl sm:text-3xl font-black text-slate-900">
+            {leads.length}
           </div>
-          <div className="text-xs text-slate-400 mb-3">
-            {stats?.disbursedCount || 0} Loans - {selectedMonth}
+          <div className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+            <span className="text-blue-700 font-semibold">{stats?.freshCount || 0} Fresh</span>
+            <span>·</span>
+            <span className="text-emerald-600 font-semibold">{stats?.approvedCount || 0} Approved</span>
           </div>
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-600">
-            No change
-          </span>
         </div>
 
-        {/* Card 2: COLLECTED */}
-        <div className="crm-card p-5 relative overflow-hidden bg-white">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs">
-              1
-            </div>
+        {/* Card 2: TOTAL APPLIED VALUE */}
+        <div className="crm-card p-5 bg-white rounded-2xl shadow-sm border border-slate-200/80">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-              COLLECTED
+              APPLIED VOLUME
             </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <IndianRupee className="w-4 h-4" />
+            </div>
           </div>
-
-          <div className="text-2xl font-bold text-slate-900 mb-1">
-            ₹{stats?.collectedAmount?.toLocaleString('en-IN') || 0}
+          <div className="text-2xl sm:text-3xl font-black text-slate-900">
+            ₹{totalVolume.toLocaleString('en-IN')}
           </div>
-          <div className="text-xs text-slate-400 mb-3">
-            {selectedMonth}
+          <div className="text-xs text-slate-400 mt-1">
+            Customer requested loan volume
           </div>
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-600">
-            No change
-          </span>
         </div>
 
-        {/* Card 3: OUTSTANDING */}
-        <div className="crm-card p-5 relative overflow-hidden bg-white">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-xs">
-              CD
-            </div>
+        {/* Card 3: ACTIVE PARTNERS */}
+        <div className="crm-card p-5 bg-white rounded-2xl shadow-sm border border-slate-200/80">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-              OUTSTANDING
+              AFFILIATE PARTNERS
             </span>
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center">
+              <Layers className="w-4 h-4" />
+            </div>
           </div>
-
-          <div className="text-2xl font-bold text-slate-900 mb-1">
-            ₹{stats?.outstandingAmount?.toLocaleString('en-IN') || 0}
+          <div className="text-2xl sm:text-3xl font-black text-slate-900">
+            {AFFILIATE_PARTNERS.length}
           </div>
-          <div className="text-xs text-slate-400 mb-3">
-            0 active - +0 opened
+          <div className="text-xs text-indigo-700 font-semibold mt-1">
+            Rupay91, Adgrow, AGDM, Rupaysure
           </div>
-          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-600">
-            No movement in {selectedMonth}
-          </span>
         </div>
 
-        {/* Card 4: LEADS */}
-        <div className="crm-card p-5 relative overflow-hidden bg-white">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-7 h-7 rounded-lg bg-blue-100 text-[#0A3977] flex items-center justify-center font-bold text-xs">
-              =
-            </div>
+        {/* Card 4: ELIGIBILITY ROUTING RATE */}
+        <div className="crm-card p-5 bg-white rounded-2xl shadow-sm border border-slate-200/80">
+          <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
-              LEADS
+              MATCH & ROUTING RATE
             </span>
+            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
           </div>
-
-          <div className="text-2xl font-bold text-slate-900 mb-1">
-            {stats?.totalLeads ?? 0}
+          <div className="text-2xl sm:text-3xl font-black text-slate-900">
+            100%
           </div>
-          <div className="text-xs text-slate-400 mb-3">
-            {stats?.conversionRate || 0}% converted - {selectedMonth}
+          <div className="text-xs text-emerald-600 font-semibold mt-1">
+            Automated instant matching
           </div>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700">
-            ▲ {stats?.totalLeads ?? 0}
-          </span>
         </div>
 
       </div>
 
-      {/* Middle Section: Disbursal Trend & Portfolio Donut */}
+      {/* 4 Partner Company Sections Quick Cards */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-bold text-[#0A3977] uppercase tracking-wider">
+            Partner Company Allocation
+          </h2>
+          <span className="text-xs text-slate-400">Click any partner to open section</span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {partnerBreakdown.map(p => (
+            <div
+              key={p.id}
+              onClick={() => onSelectCompany && onSelectCompany(p.id)}
+              className="crm-card bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md transition cursor-pointer group hover:border-[#0A3977]"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className={`px-2 py-0.5 rounded-lg text-xs font-black uppercase tracking-wider ${p.badgeClass}`}>
+                  {p.name}
+                </span>
+                <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-[#0A3977] transition" />
+              </div>
+              <div className="text-xl font-black text-slate-900 mt-2">
+                {p.count} <span className="text-xs font-medium text-slate-400">Leads</span>
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1">
+                Volume: <span className="font-bold text-slate-800">₹{p.volume.toLocaleString('en-IN')}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Analytics Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Disbursal Trend Chart (2 cols) */}
-        <div className="lg:col-span-2 crm-card p-5 bg-white flex flex-col justify-between">
+        {/* Lead Allocation Chart */}
+        <div className="lg:col-span-2 crm-card bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-800">
-              Disbursal trend
-            </h3>
-            <span className="text-xs text-slate-400">
-              last 12 months
-            </span>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                Partner Lead Distribution
+              </h3>
+              <p className="text-xs text-slate-400">Applications routed per lending company</p>
+            </div>
           </div>
 
-          <div className="h-56 w-full pt-4">
+          <div className="h-60">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendData}>
-                <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
+              <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} tickLine={false} />
+                <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} allowDecimals={false} />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: '#0A3977', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
-                  formatter={(value) => [`₹${value}`, 'Disbursed']}
+                  contentStyle={{ backgroundColor: '#1E293B', borderRadius: '8px', color: '#FFF', fontSize: '11px' }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="amount" 
-                  stroke="#4F46E5" 
-                  strokeWidth={3} 
-                  dot={{ r: 4, fill: '#4F46E5' }} 
-                  activeDot={{ r: 6 }} 
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Portfolio Donut Chart (1 col) */}
-        <div className="crm-card p-5 bg-white flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-slate-800">
-              Portfolio
-            </h3>
-            <span className="text-xs text-slate-400">
-              live
-            </span>
-          </div>
-
-          <div className="relative h-44 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={portfolioData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={70}
-                  paddingAngle={2}
-                  dataKey="value"
-                >
-                  {portfolioData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                <Bar dataKey="leads" radius={[6, 6, 0, 0]}>
+                  {barData.map((entry, index) => (
+                    <Cell key={`bar-${index}`} fill={entry.color} />
                   ))}
-                </Pie>
-              </PieChart>
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Affiliate Allocation Share Donut */}
+        <div className="crm-card bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900 mb-1">
+              Affiliate Share Split
+            </h3>
+            <p className="text-xs text-slate-400 mb-2">Traffic allocation</p>
             
-            {/* Center Label */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-              <span className="text-xl font-bold text-slate-900">
-                {stats?.activeLoans || 0}
-              </span>
-              <span className="text-[10px] font-bold text-slate-400 tracking-wider">
-                LOANS
-              </span>
+            <div className="h-44 flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={70}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-pie-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#1E293B', borderRadius: '8px', color: '#FFF', fontSize: '11px' }} />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Legend */}
-          <div className="flex items-center justify-center gap-6 text-xs text-slate-600 border-t border-slate-100 pt-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#0A3977]"></span>
-              <span>Active <strong className="text-slate-800">{stats?.activeLoans || 0}</strong></span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#0084FF]"></span>
-              <span>Closed <strong className="text-slate-800">{stats?.closedLoans || 0}</strong></span>
-            </div>
+          <div className="space-y-1 pt-2 border-t border-slate-100 text-xs">
+            {partnerBreakdown.map(p => (
+              <div key={p.id} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.accentColor }}></span>
+                  <span className="font-medium text-slate-700">{p.name}</span>
+                </div>
+                <span className="font-bold text-slate-900">{p.count}</span>
+              </div>
+            ))}
           </div>
         </div>
 
       </div>
 
-      {/* Bottom Section: Conversion Funnel */}
-      <div className="crm-card p-5 bg-white">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-sm font-semibold text-slate-800">
-            Conversion funnel
+      {/* Recent Lead Inflow Feed */}
+      {recentLeads.length > 0 && (
+        <div className="crm-card bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+          <h3 className="text-sm font-bold text-slate-900 mb-3">
+            Recent Ingested Leads
           </h3>
-          <span className="text-xs text-slate-400">
-            {selectedMonth}
-          </span>
+          <div className="divide-y divide-slate-100">
+            {recentLeads.map((l, idx) => (
+              <div key={l.id || idx} className="py-2.5 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[10px]">
+                    {l.initials || 'AP'}
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-900">{l.name || 'Applicant'}</span>
+                    <span className="text-slate-400 font-mono ml-2">{l.mobile}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                    {l.assignedCompany || 'Unassigned'}
+                  </span>
+                  <span className="font-bold text-slate-800">₹{(Number(l.applied || l.loanAmount) || 0).toLocaleString('en-IN')}</span>
+                  <span className="text-slate-400 text-[10px]">{l.created || 'Today'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-
-        <div className="space-y-4">
-          
-          {/* Funnel Row: Leads */}
-          <div className="flex items-center gap-4 text-xs">
-            <span className="w-24 font-medium text-slate-600">Leads</span>
-            <div className="flex-1 bg-slate-100 h-6 rounded-full overflow-hidden p-0.5">
-              <div 
-                className="bg-[#4F46E5] h-full rounded-full transition-all duration-500"
-                style={{ width: `${(stats?.totalLeads ?? 0) > 0 ? 100 : 0}%` }}
-              ></div>
-            </div>
-            <span className="w-8 text-right font-bold text-slate-800">{stats?.totalLeads ?? 0}</span>
-          </div>
-
-          {/* Funnel Row: Approved */}
-          <div className="flex items-center gap-4 text-xs">
-            <span className="w-24 font-medium text-slate-600">Approved</span>
-            <div className="flex-1 bg-slate-100 h-6 rounded-full overflow-hidden p-0.5">
-              <div 
-                className="bg-[#4F46E5] h-full rounded-full transition-all duration-500"
-                style={{ width: `${(stats?.totalLeads ?? 0) > 0 ? ((stats?.approvedCount ?? 0) / stats.totalLeads) * 100 : 0}%` }}
-              ></div>
-            </div>
-            <span className="w-8 text-right font-bold text-slate-800">{stats?.approvedCount ?? 0}</span>
-          </div>
-
-          {/* Funnel Row: Disbursed */}
-          <div className="flex items-center gap-4 text-xs">
-            <span className="w-24 font-medium text-slate-600">Disbursed</span>
-            <div className="flex-1 bg-slate-100 h-6 rounded-full overflow-hidden p-0.5">
-              <div 
-                className="bg-[#4F46E5] h-full rounded-full transition-all duration-500"
-                style={{ width: `${(stats?.totalLeads ?? 0) > 0 ? ((stats?.disbursedCount ?? 0) / stats.totalLeads) * 100 : 0}%` }}
-              ></div>
-            </div>
-            <span className="w-8 text-right font-bold text-slate-800">{stats?.disbursedCount ?? 0}</span>
-          </div>
-
-          {/* Funnel Row: Repaying */}
-          <div className="flex items-center gap-4 text-xs">
-            <span className="w-24 font-medium text-slate-600">Repaying</span>
-            <div className="flex-1 bg-slate-100 h-6 rounded-full overflow-hidden p-0.5">
-              <div 
-                className="bg-[#4F46E5] h-full rounded-full transition-all duration-500"
-                style={{ width: `${(stats?.totalLeads ?? 0) > 0 ? ((stats?.repayingCount ?? 0) / stats.totalLeads) * 100 : 0}%` }}
-              ></div>
-            </div>
-            <span className="w-8 text-right font-bold text-slate-800">{stats?.repayingCount ?? 0}</span>
-          </div>
-
-        </div>
-      </div>
+      )}
 
     </div>
   );
