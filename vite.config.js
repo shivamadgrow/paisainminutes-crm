@@ -75,6 +75,12 @@ function crmApiPlugin() {
 
         const url = req.url ? req.url.split('?')[0] : ''
 
+        if (url === '/' || url === '') {
+          res.writeHead(302, { Location: '/admin/' })
+          res.end()
+          return
+        }
+
         // 1. GET ALL LEADS
         if (url.endsWith('/api/get-leads')) {
           const leads = getStoredLeads()
@@ -298,6 +304,8 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    host: true,
+    port: 5173,
     allowedHosts: true,
   },
 })
