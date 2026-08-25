@@ -108,11 +108,14 @@ export function getPartnerMeta(partnerNameOrId) {
   };
 }
 
+import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers';
+
 // Smart Auto-assignment rule engine based on eligibility factors
 export function recommendPartner(lead) {
+  if (!lead) return { partner: 'AGDM', eligibilityStatus: 'Eligible' };
   const cibilStr = String(lead.cibil || '').toLowerCase();
-  const salary = Number(lead.salary || 0);
-  const amount = Number(lead.loanAmount || lead.applied || 0);
+  const salary = cleanSalary(lead.salary || lead.monthlySalary || lead.monthly_salary, lead.sal_val, lead.salary_range);
+  const amount = cleanLoanAmount(lead.loanAmount || lead.applied || lead.loan_amount || lead.amount);
 
   // Extract numeric CIBIL score if present
   let cibilNum = 0;

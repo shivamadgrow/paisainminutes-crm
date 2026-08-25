@@ -41,15 +41,77 @@ if (empty($email)) {
 
 // Helper to parse loan amount numeric value
 function parseLoanAmount($val) {
-    if (empty($val)) return 50000;
-    if (is_numeric($val)) return floatval($val);
-    $clean = str_replace(',', '', strval($val));
-    preg_match_all('/\d+/', $clean, $matches);
-    if (!empty($matches[0])) {
-        $nums = array_map('floatval', $matches[0]);
-        return max($nums);
+    if (empty($val) && $val !== 0 && $val !== '0') return 50000;
+    if (is_string($val)) {
+        $parts = preg_split('/[-–—]|to/i', str_replace(',', '', $val));
+        if (count($parts) >= 2) {
+            $n1 = floatval(preg_replace('/\D/', '', $parts[0]));
+            $n2 = floatval(preg_replace('/\D/', '', $parts[1]));
+            if ($n2 > 0) return $n2;
+            if ($n1 > 0) return $n1;
+        }
     }
-    return 50000;
+    $clean = preg_replace('/[^\d.]/', '', strval($val));
+    $num = floatval($clean);
+    if ($num <= 0) return 50000;
+    if ($num > 500000) {
+        $s = strval(floor($num));
+        $len = strlen($s);
+        for ($i = 3; $i <= 6; $i++) {
+            if ($i < $len) {
+                $p1 = floatval(substr($s, 0, $i));
+                $p2 = floatval(substr($s, $i));
+                if ($p1 >= 1000 && $p1 <= 500000 && $p2 >= 1000 && $p2 <= 1000000 && $p2 >= $p1) {
+                    return $p2;
+                }
+            }
+        }
+        if ($num > 1000000) return 50000;
+    }
+    return $num;
+}
+
+// Helper to parse monthly salary numeric value
+function parseSalary($val, $salVal = null, $salRange = '') {
+    if (!empty($salVal)) {
+        $sv = floatval($salVal);
+        if ($sv >= 5000 && $sv <= 500000) return $sv;
+    }
+    $textToCheck = strval(!empty($salRange) ? $salRange : $val);
+    if (preg_match('/[-–—]|to/i', $textToCheck)) {
+        $parts = preg_split('/[-–—]|to/i', str_replace(',', '', $textToCheck));
+        if (count($parts) >= 2) {
+            $n1 = floatval(preg_replace('/\D/', '', $parts[0]));
+            $n2 = floatval(preg_replace('/\D/', '', $parts[1]));
+            if ($n1 > 0 && $n2 > 0) return round(($n1 + $n2) / 2);
+            if ($n1 > 0) return $n1;
+        }
+    }
+    $clean = preg_replace('/[^\d.]/', '', strval($val));
+    $num = floatval($clean);
+    if ($num <= 0) return 30000;
+    if ($num > 500000) {
+        $s = strval(floor($num));
+        $len = strlen($s);
+        if ($len === 10) {
+            $p1 = floatval(substr($s, 0, 5));
+            $p2 = floatval(substr($s, 5));
+            if ($p1 >= 10000 && $p1 <= 300000 && $p2 >= 10000 && $p2 <= 300000) {
+                return round(($p1 + $p2) / 2);
+            }
+        }
+        for ($i = 4; $i <= 6; $i++) {
+            if ($i < $len) {
+                $p1 = floatval(substr($s, 0, $i));
+                $p2 = floatval(substr($s, $i));
+                if ($p1 >= 10000 && $p1 <= 300000 && $p2 >= 10000 && $p2 <= 300000) {
+                    return round(($p1 + $p2) / 2);
+                }
+            }
+        }
+        return 35000;
+    }
+    return $num;
 }
 
 // Helper to determine partner company
@@ -86,7 +148,10 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
 $rawLoan = $data['loanAmount'] ?? $data['loan_amount'] ?? $data['amount'] ?? $data['applied'] ?? $data['applied_amount'] ?? $data['loan_range'] ?? $data['required_loan_amount'] ?? 50000;
 $applied = parseLoanAmount($rawLoan);
 
-$salary = floatval($data['salary'] ?? $data['monthly_salary'] ?? $data['income'] ?? 30000);
+$rawSalary = $data['salary'] ?? $data['monthly_salary'] ?? $data['income'] ?? $data['monthlySalary'] ?? 30000;
+$salVal = $data['sal_val'] ?? null;
+$salRange = $data['salary_range'] ?? '';
+$salary = parseSalary($rawSalary, $salVal, $salRange);
 $city = trim($data['city'] ?? 'Online Apply');
 $state = trim($data['state'] ?? 'India');
 $pincode = trim($data['pincode'] ?? $data['pin_code'] ?? $data['pin'] ?? $data['zipcode'] ?? '110001');

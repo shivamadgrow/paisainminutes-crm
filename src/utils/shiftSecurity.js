@@ -27,17 +27,28 @@ export function isOffHours(testDate = null) {
   return currentMinutes < startMinutes || currentMinutes >= endMinutes;
 }
 
-export function isUserExempt(userName) {
-  if (!userName) return false;
-  const clean = userName.toLowerCase().trim();
+export function isUserExempt(userOrName) {
+  if (!userOrName) return false;
+  const nameStr = typeof userOrName === 'string'
+    ? userOrName
+    : (userOrName.name || userOrName.username || userOrName.role || userOrName.email || '');
+  const clean = String(nameStr).toLowerCase().trim();
+  if (
+    clean.includes('director') ||
+    clean.includes('admin') ||
+    clean.includes('shivam') ||
+    clean.includes('super')
+  ) {
+    return true;
+  }
   return SHIFT_POLICY.EXEMPT_USERS.some(u => clean.includes(u));
 }
 
 export function checkLoginAllowed(user, forceTestOffHours = false) {
   if (!user) return { allowed: false, reason: 'Invalid user' };
 
-  // Exemption check for director_admin
-  if (isUserExempt(user.name)) {
+  // Exemption check for director_admin / Super Admin
+  if (isUserExempt(user)) {
     return {
       allowed: true,
       exempt: true,

@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
 import { AFFILIATE_PARTNERS, getPartnerMeta } from '../data/affiliatePartners';
+import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers';
 
 const INITIAL_FULL_LEADS = [];
 
@@ -190,8 +191,8 @@ export default function LeadsView({
       l.name || 'Applicant',
       l.mobile || '',
       l.email || '',
-      l.loanAmount || l.applied || 0,
-      l.salary || 0,
+      cleanLoanAmount(l.loanAmount || l.applied),
+      cleanSalary(l.salary, l.sal_val, l.salary_range),
       l.cibil || '—',
       l.employmentType || 'Salaried',
       l.city || '',
@@ -721,13 +722,13 @@ export default function LeadsView({
 
                       {/* APPLIED */}
                       <td className="p-3.5 font-bold text-slate-900">
-                        ₹{(Number(item.applied || item.loanAmount) || 0).toLocaleString('en-IN')}
+                        ₹{cleanLoanAmount(item.applied || item.loanAmount).toLocaleString('en-IN')}
                       </td>
 
                       {/* SALARY / CITY */}
                       <td className="p-3.5">
                         <div className="font-semibold text-slate-800">
-                          ₹{(Number(item.salary) || 0).toLocaleString('en-IN')}/mo
+                          ₹{cleanSalary(item.salary, item.sal_val, item.salary_range).toLocaleString('en-IN')}/mo
                         </div>
                         <div className="text-[10px] text-slate-400">
                           {item.city || 'Online'} · {item.pincode || '110001'}

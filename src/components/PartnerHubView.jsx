@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
+import { cleanLoanAmount } from '../utils/amountHelpers';
 
 export default function PartnerHubView({ leads = [], onSelectCompany, onOpenTestModal }) {
   const [selectedTimeRange, setSelectedTimeRange] = useState('all');
@@ -29,7 +30,7 @@ export default function PartnerHubView({ leads = [], onSelectCompany, onOpenTest
     });
 
     const totalCount = partnerLeads.length;
-    const totalVolume = partnerLeads.reduce((sum, l) => sum + (Number(l.loanAmount || l.applied) || 0), 0);
+    const totalVolume = partnerLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied), 0);
     const freshCount = partnerLeads.filter(l => l.status === 'Fresh').length;
     const approvedCount = partnerLeads.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length;
     const avgTicket = totalCount > 0 ? Math.round(totalVolume / totalCount) : 0;
@@ -49,7 +50,7 @@ export default function PartnerHubView({ leads = [], onSelectCompany, onOpenTest
 
   const totalAssigned = partnerStats.reduce((sum, p) => sum + p.totalCount, 0);
   const unassignedCount = leads.filter(l => !l.assignedCompany || l.assignedCompany === '—' || l.assignedCompany === 'Unassigned').length;
-  const totalVolumeAll = leads.reduce((sum, l) => sum + (Number(l.loanAmount || l.applied) || 0), 0);
+  const totalVolumeAll = leads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied), 0);
 
   // Chart data
   const chartData = partnerStats.map(p => ({

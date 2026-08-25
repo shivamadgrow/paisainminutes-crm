@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
+import { cleanLoanAmount } from '../utils/amountHelpers';
 
 export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany, onOpenPartnerHub }) {
   // Aggregate partner metrics
@@ -28,7 +29,7 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
         const c = (l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
         return c === partner.id || c === partner.name.toLowerCase().replace(/[\s\-_]/g, '');
       })
-      .reduce((sum, l) => sum + (Number(l.loanAmount || l.applied) || 0), 0);
+      .reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied), 0);
 
     return {
       ...partner,
@@ -37,7 +38,7 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
     };
   });
 
-  const totalVolume = leads.reduce((sum, l) => sum + (Number(l.loanAmount || l.applied) || 0), 0);
+  const totalVolume = leads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied), 0);
   const eligibilityLeads = leads.filter(l => (l.source || '').toLowerCase().includes('eligibility')).length;
   const applyNowLeads = leads.filter(l => (l.source || '').toLowerCase().includes('apply')).length;
 
@@ -293,7 +294,7 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
                   <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                     {l.assignedCompany || 'Unassigned'}
                   </span>
-                  <span className="font-bold text-slate-800">₹{(Number(l.applied || l.loanAmount) || 0).toLocaleString('en-IN')}</span>
+                  <span className="font-bold text-slate-800">₹{cleanLoanAmount(l.applied || l.loanAmount).toLocaleString('en-IN')}</span>
                   <span className="text-slate-400 text-[10px]">{l.created || 'Today'}</span>
                 </div>
               </div>

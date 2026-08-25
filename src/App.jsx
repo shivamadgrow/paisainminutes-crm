@@ -16,12 +16,27 @@ import LoginModal from './components/LoginModal';
 import { INITIAL_STAFF_MEMBERS } from './data/staffData';
 import { isOffHours, isUserExempt, logSecurityIncident } from './utils/shiftSecurity';
 import { getLiveSecurityDetails } from './utils/geoService';
+import { sanitizeLead } from './utils/amountHelpers';
 
 // Initial clean slate leads array
 const INITIAL_LEADS = [];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('executive');
+  const [activeTab, setActiveTabState] = useState(() => {
+    try {
+      const saved = localStorage.getItem('paisa_crm_active_tab');
+      if (saved) return saved;
+    } catch (e) {}
+    return 'executive';
+  });
+
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab);
+    try {
+      localStorage.setItem('paisa_crm_active_tab', tab);
+    } catch (e) {}
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMonth, setSelectedMonth] = useState('August 2026');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
@@ -33,10 +48,41 @@ export default function App() {
       const saved = localStorage.getItem('paisa_crm_user');
       if (saved) return JSON.parse(saved);
     } catch (e) {}
-    return INITIAL_STAFF_MEMBERS[1]; // default to shivam (Admin)
+    return {
+      name: 'Shivam',
+      role: 'Super Admin',
+      email: 'shivam@adgrowmedia.com',
+      avatar: 'SH',
+      avatarBg: 'bg-[#0A3977]'
+    };
   });
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isSecurityRestricted, setIsSecurityRestricted] = useState(false);
+
+  // Shift & Timing Security Check (9:27 AM - 6:35 PM IST for non-exempt staff)
+  React.useEffect(() => {
+    const checkSecurity = async () => {
+      if (!currentUser) return;
+      const exempt = isUserExempt(currentUser);
+      if (exempt) {
+        setIsSecurityRestricted(false);
+        return;
+      }
+
+      if (isOffHours()) {
+        setIsSecurityRestricted(true);
+        const geo = await getLiveSecurityDetails();
+        logSecurityIncident(currentUser, geo);
+      } else {
+        setIsSecurityRestricted(false);
+      }
+    };
+
+    checkSecurity();
+    const timer = setInterval(checkSecurity, 30000);
+    return () => clearInterval(timer);
+  }, [currentUser]);
 
   const handleSwitchUser = (user) => {
     setCurrentUser(user);
@@ -45,47 +91,30 @@ export default function App() {
     } catch (e) {}
   };
 
-  // Automated Night Shift Security Heartbeat
-  React.useEffect(() => {
-    const checkShiftSecurity = async () => {
-      if (currentUser && !isUserExempt(currentUser.name)) {
-        if (isOffHours()) {
-          const geo = await getLiveSecurityDetails();
-          logSecurityIncident(currentUser, geo);
-          setCurrentUser(null);
-          try {
-            localStorage.removeItem('paisa_crm_user');
-          } catch (e) {}
-          setIsLoginModalOpen(true);
-        }
-      }
-    };
-
-    checkShiftSecurity();
-    const timer = setInterval(checkShiftSecurity, 5000);
-    return () => clearInterval(timer);
-  }, [currentUser]);
-
   // Real-time API Sync: Fetch incoming leads every 3 seconds
   React.useEffect(() => {
     let isMounted = true;
     const fetchLeadsFromApi = async () => {
       try {
-        let response = await fetch('/admin/api/get-leads');
-        if (!response.ok) {
-          response = await fetch('/api/get-leads');
+        let response = null;
+        try {
+          response = await fetch('/admin/api/get-leads');
+        } catch (e) {}
+
+        if (!response || !response.ok) {
+          try {
+            response = await fetch('/api/get-leads');
+          } catch (e) {}
         }
-        if (!response.ok) {
-          response = await fetch('api/get_leads.php');
-        }
-        if (response.ok) {
+        if (response && response.ok) {
           const data = await response.json();
           if (isMounted && data.success && Array.isArray(data.leads)) {
-            setLeads(data.leads);
+            const cleanLeads = data.leads.map(sanitizeLead);
+            setLeads(cleanLeads);
           }
         }
       } catch (e) {
-        // Ignore fetch errors during restarts
+        // Ignore fetch errors during network switch
       }
     };
 

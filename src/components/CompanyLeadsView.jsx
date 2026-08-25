@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { getPartnerMeta, AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
+import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers';
 
 export default function CompanyLeadsView({ 
   companyId, 
@@ -73,7 +74,7 @@ export default function CompanyLeadsView({
     const fresh = companyLeads.filter(l => l.status === 'Fresh').length;
     const approved = companyLeads.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length;
     const rejected = companyLeads.filter(l => l.status === 'Rejected').length;
-    const volume = companyLeads.reduce((sum, l) => sum + (Number(l.loanAmount || l.applied) || 0), 0);
+    const volume = companyLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied), 0);
     const avgTicket = total > 0 ? Math.round(volume / total) : 0;
 
     return { total, fresh, approved, rejected, volume, avgTicket };
@@ -110,8 +111,8 @@ export default function CompanyLeadsView({
       l.name || 'Applicant',
       l.mobile || '',
       l.email || '',
-      l.loanAmount || l.applied || 0,
-      l.salary || 0,
+      cleanLoanAmount(l.loanAmount || l.applied),
+      cleanSalary(l.salary, l.sal_val, l.salary_range),
       l.cibil || '—',
       l.employmentType || 'Salaried',
       l.city || '',
@@ -351,13 +352,13 @@ export default function CompanyLeadsView({
 
                       {/* Applied Amount */}
                       <td className="p-3.5 font-bold text-slate-900">
-                        ₹{(Number(item.applied || item.loanAmount) || 0).toLocaleString('en-IN')}
+                        ₹{cleanLoanAmount(item.applied || item.loanAmount).toLocaleString('en-IN')}
                       </td>
 
                       {/* Salary / City */}
                       <td className="p-3.5">
                         <div className="font-semibold text-slate-800">
-                          ₹{(Number(item.salary) || 0).toLocaleString('en-IN')}/mo
+                          ₹{cleanSalary(item.salary, item.sal_val, item.salary_range).toLocaleString('en-IN')}/mo
                         </div>
                         <div className="text-[10px] text-slate-400">
                           {item.city || 'Online'} · {item.pincode || '110001'}
