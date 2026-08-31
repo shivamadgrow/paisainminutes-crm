@@ -498,10 +498,10 @@ function crmApiPlugin() {
 }
 
 export default defineConfig({
-  base: '/admin/',
+  base: './',
   plugins: [react(), tailwindcss(), crmApiPlugin()],
   build: {
-    outDir: path.resolve(__dirname, '../Shivam Data/paisainminutes/admin'),
+    outDir: 'dist',
     emptyOutDir: true,
   },
   server: {

@@ -21,6 +21,7 @@ import {
 import { getPartnerMeta, AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
 import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers';
+import { fetchApi } from '../utils/apiConfig';
 
 export default function CompanyLeadsView({ 
   companyId, 
@@ -138,9 +139,8 @@ export default function CompanyLeadsView({
         }));
       }
 
-      await fetch('/admin/api/update-lead', {
+      await fetchApi('/admin/api/update-lead', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: leadId,
           updates: { assignedCompany: newCompany }
@@ -164,9 +164,8 @@ export default function CompanyLeadsView({
         }));
       }
 
-      await fetch('/admin/api/update-lead', {
+      await fetchApi('/admin/api/update-lead', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: leadId,
           updates: { status: newStatus }

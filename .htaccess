@@ -1,0 +1,33 @@
+# Paisa in Minutes CRM Subdomain Configuration (.htaccess)
+RewriteEngine On
+RewriteBase /
+
+# 1. Enable CORS for all API calls
+<IfModule mod_headers.c>
+    Header always set Access-Control-Allow-Origin "*"
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Origin, Accept"
+</IfModule>
+
+# 2. Handle OPTIONS preflight requests
+RewriteCond %{REQUEST_METHOD} OPTIONS
+RewriteRule ^(.*)$ $1 [R=200,L]
+
+# 3. Rewrite extensionless API calls to .php if file exists
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^([^\.]+)$ $1.php [NC,L]
+
+# 4. Fallback for subfolder API requests
+RewriteRule ^api/get-leads$ api/get-leads.php [NC,L]
+RewriteRule ^api/update-lead$ api/update-lead.php [NC,L]
+RewriteRule ^api/delete-lead$ api/delete-lead.php [NC,L]
+RewriteRule ^api/submit-lead$ api/submit-lead.php [NC,L]
+RewriteRule ^admin/api/get-leads$ api/get-leads.php [NC,L]
+RewriteRule ^admin/api/get-leads.php$ api/get-leads.php [NC,L]
+RewriteRule ^admin/api/update-lead$ api/update-lead.php [NC,L]
+RewriteRule ^admin/api/update-lead.php$ api/update-lead.php [NC,L]
+RewriteRule ^admin/api/delete-lead$ api/delete-lead.php [NC,L]
+RewriteRule ^admin/api/delete-lead.php$ api/delete-lead.php [NC,L]
+RewriteRule ^admin/api/submit-lead$ api/submit-lead.php [NC,L]
+RewriteRule ^admin/api/submit-lead.php$ api/submit-lead.php [NC,L]

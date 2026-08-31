@@ -17,6 +17,7 @@ import { INITIAL_STAFF_MEMBERS } from './data/staffData';
 import { isOffHours, isUserExempt, logSecurityIncident } from './utils/shiftSecurity';
 import { getLiveSecurityDetails } from './utils/geoService';
 import { sanitizeLead } from './utils/amountHelpers';
+import { getLeadsFromBackend } from './utils/apiConfig';
 
 // Initial clean slate leads array
 const INITIAL_LEADS = [];
@@ -96,22 +97,10 @@ export default function App() {
     let isMounted = true;
     const fetchLeadsFromApi = async () => {
       try {
-        let response = null;
-        try {
-          response = await fetch('/admin/api/get-leads');
-        } catch (e) {}
-
-        if (!response || !response.ok) {
-          try {
-            response = await fetch('/api/get-leads');
-          } catch (e) {}
-        }
-        if (response && response.ok) {
-          const data = await response.json();
-          if (isMounted && data.success && Array.isArray(data.leads)) {
-            const cleanLeads = data.leads.map(sanitizeLead);
-            setLeads(cleanLeads);
-          }
+        const result = await getLeadsFromBackend();
+        if (isMounted && result.success && Array.isArray(result.leads)) {
+          const cleanLeads = result.leads.map(sanitizeLead);
+          setLeads(cleanLeads);
         }
       } catch (e) {
         // Ignore fetch errors during network switch

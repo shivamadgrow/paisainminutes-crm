@@ -8,7 +8,20 @@ import { getSecurityIncidents } from '../utils/shiftSecurity';
 export default function StaffView({ onSwitchUser, currentUser }) {
   const [activeTab, setActiveTab] = useState('Users');
   const [searchQuery, setSearchQuery] = useState('');
-  const [staffList, setStaffList] = useState(INITIAL_STAFF_MEMBERS);
+  const [staffList, setStaffList] = useState(() => {
+    try {
+      const version = localStorage.getItem('paisa_crm_staff_v');
+      if (version === 'v2') {
+        const saved = localStorage.getItem('paisa_crm_staff_list');
+        if (saved) return JSON.parse(saved);
+      } else {
+        localStorage.setItem('paisa_crm_staff_v', 'v2');
+        localStorage.setItem('paisa_crm_staff_list', JSON.stringify(INITIAL_STAFF_MEMBERS));
+        return INITIAL_STAFF_MEMBERS;
+      }
+    } catch (e) {}
+    return INITIAL_STAFF_MEMBERS;
+  });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Live Location / Geo-Security state
@@ -237,6 +250,19 @@ export default function StaffView({ onSwitchUser, currentUser }) {
     setResettingUser(null);
   };
 
+  const handleDeleteUser = (userToDelete) => {
+    if (confirm(`Are you sure you want to permanently delete user "${userToDelete.name}"?`)) {
+      setStaffList(prev => {
+        const updated = prev.filter(u => u.id !== userToDelete.id && u.name !== userToDelete.name);
+        try {
+          localStorage.setItem('paisa_crm_staff_list', JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+      showToast(`🗑️ User "${userToDelete.name}" deleted successfully!`);
+    }
+  };
+
   const handleCopyPassword = () => {
     navigator.clipboard.writeText(newPassword);
     setIsCopied(true);
@@ -458,10 +484,17 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                           <button 
                             onClick={() => handleToggleDisable(user)} 
                             className={`font-semibold hover:underline cursor-pointer px-1 py-0.5 ${
-                              isDisabled ? 'text-emerald-600 hover:text-emerald-800' : 'text-rose-600 hover:text-rose-800'
+                              isDisabled ? 'text-emerald-600 hover:text-emerald-800' : 'text-amber-600 hover:text-amber-800'
                             }`}
                           >
                             {isDisabled ? 'Enable' : 'Disable'}
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteUser(user)} 
+                            className="text-rose-600 hover:text-rose-800 font-semibold hover:underline cursor-pointer px-1 py-0.5"
+                            title="Delete user"
+                          >
+                            Delete
                           </button>
                         </td>
                       </tr>

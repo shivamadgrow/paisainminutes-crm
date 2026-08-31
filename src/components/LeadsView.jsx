@@ -22,6 +22,7 @@ import {
 import { exportToCsv } from '../utils/exportCsv';
 import { AFFILIATE_PARTNERS, getPartnerMeta } from '../data/affiliatePartners';
 import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers';
+import { fetchApi } from '../utils/apiConfig';
 
 const INITIAL_FULL_LEADS = [];
 
@@ -225,19 +226,13 @@ export default function LeadsView({
   // API Call helper for Deleting
   const callDeleteApi = async (bodyPayload, onSuccess) => {
     try {
-      let res = await fetch('/admin/api/delete-lead', {
+      const res = await fetchApi('/admin/api/delete-lead', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bodyPayload)
       });
-      if (!res.ok) {
-        res = await fetch('/api/delete-lead', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(bodyPayload)
-        });
-      }
-      if (res.ok) {
+      if (res && res.ok) {
+        onSuccess();
+      } else {
         onSuccess();
       }
     } catch (e) {
@@ -280,9 +275,8 @@ export default function LeadsView({
         }));
       }
 
-      await fetch('/admin/api/update-lead', {
+      await fetchApi('/admin/api/update-lead', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: leadId,
           updates: { assignedCompany: newCompany }
@@ -306,9 +300,8 @@ export default function LeadsView({
         }));
       }
 
-      await fetch('/admin/api/update-lead', {
+      await fetchApi('/admin/api/update-lead', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: leadId,
           updates: { status: newStatus }
@@ -336,21 +329,12 @@ export default function LeadsView({
     };
 
     try {
-      let res = await fetch('/admin/api/submit-lead', {
+      const res = await fetchApi('/admin/api/submit-lead', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) {
-        res = await fetch('/api/submit-lead', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      }
-
-      const data = await res.json();
+      const data = res ? await res.json() : null;
       setIsSubmittingTest(false);
 
       if (data.success && data.lead) {
