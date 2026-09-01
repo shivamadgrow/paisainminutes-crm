@@ -15,7 +15,6 @@ import {
   XCircle, 
   ChevronDown,
   Building2,
-  Code2,
   Layers,
   ShieldCheck,
   Zap
@@ -34,7 +33,6 @@ export default function Sidebar({
     dashboards: false,
     partners: false,
     leads: false,
-    integration: false,
     administration: false
   });
 
@@ -304,32 +302,7 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* 4. Section: WEBSITE INTEGRATION & TOOLS */}
-        <div>
-          <button
-            type="button"
-            onClick={() => toggleSection('integration')}
-            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-slate-100/80 transition text-[11px] font-extrabold tracking-wider text-blue-950 uppercase cursor-pointer"
-          >
-            <span>INTEGRATION & TOOLS</span>
-            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
-              collapsedSections.integration ? '-rotate-90' : 'rotate-0'
-            }`} />
-          </button>
-          
-          {!collapsedSections.integration && (
-            <div className="space-y-0.5 mt-1 animate-fade-in">
-              <button onClick={() => handleNavClick('api-integration')} className={getNavItemClass('api-integration')}>
-                <div className="flex items-center gap-2.5">
-                  <Code2 className="w-4 h-4 text-emerald-600" />
-                  <span className="font-semibold text-slate-800">Website API & Form Code</span>
-                </div>
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* 5. Section: ADMINISTRATION */}
+        {/* 4. Section: ADMINISTRATION */}
         <div>
           <button
             type="button"

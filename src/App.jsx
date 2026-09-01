@@ -4,7 +4,6 @@ import Navbar from './components/Navbar';
 import ExecutiveDashboard from './components/ExecutiveDashboard';
 import PartnerHubView from './components/PartnerHubView';
 import CompanyLeadsView from './components/CompanyLeadsView';
-import ApiIntegrationView from './components/ApiIntegrationView';
 import LeadsView from './components/LeadsView';
 import ApplicationTracker from './components/ApplicationTracker';
 import PipelineView from './components/PipelineView';
@@ -236,11 +235,6 @@ export default function App() {
             setLeads={setLeads} 
             onBackToHub={() => setActiveTab('partner-hub')} 
           />
-        );
-
-      case 'api-integration':
-        return (
-          <ApiIntegrationView onOpenTestModal={() => setActiveTab('all-leads')} />
         );
 
       case 'all-leads':
