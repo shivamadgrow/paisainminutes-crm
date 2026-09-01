@@ -1,16 +1,14 @@
 <?php
 /**
- * Paisa in Minutes - Direct Self-Contained CRM Lead Retrieval Endpoint
- * Endpoint: /crm/api/get-leads.php or /api/get-leads.php on subdomain
+ * Paisa in Minutes - Unified Lead Retrieval API Endpoint
+ * Endpoint: /admin/api/get-leads, /admin/api/get-leads.php, /api/get-leads
  */
-
-date_default_timezone_set('Asia/Kolkata');
 
 // Enable CORS
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Origin, Accept');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -23,6 +21,7 @@ function cleanLoanAmount($raw) {
     if (is_numeric($raw) && $raw > 0 && $raw <= 500000) return (int)$raw;
 
     $str = (string)$raw;
+    // Check range strings e.g. "₹25,000 - ₹50,000"
     if (preg_match('/[-–—]|to/i', $str)) {
         $parts = preg_split('/[-–—]|to/i', str_replace(',', '', $str));
         if (count($parts) >= 2) {
@@ -36,6 +35,7 @@ function cleanLoanAmount($raw) {
     $clean = (int)preg_replace('/\D/', '', $str);
     if ($clean <= 0) return 50000;
 
+    // Detect concatenated numeric ranges e.g. 2500050000 -> 50000
     if ($clean > 500000) {
         $s = (string)$clean;
         $len = strlen($s);
@@ -74,6 +74,7 @@ function cleanSalary($raw, $salVal = null, $salRange = '') {
     $clean = (int)preg_replace('/\D/', '', (string)$raw);
     if ($clean <= 0) return 30000;
 
+    // Detect concatenated salary strings e.g. 7000079999 -> 75000
     if ($clean > 500000) {
         $s = (string)$clean;
         $len = strlen($s);
@@ -101,26 +102,24 @@ function cleanSalary($raw, $salVal = null, $salRange = '') {
 // 3. Helper to determine partner company
 function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
     if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO') {
-        $clean = strtolower(trim((string)$explicitCompany));
+        $clean = strtolower(trim($explicitCompany));
         if (strpos($clean, 'rupay91') !== false || strpos($clean, 'rupay 91') !== false) return 'Rupay91';
         if (strpos($clean, 'adgrow') !== false) return 'Adgrow';
         if (strpos($clean, 'agdm') !== false) return 'AGDM';
         if (strpos($clean, 'rupaysure') !== false || strpos($clean, 'rupay sure') !== false) return 'Rupaysure';
-        if (!preg_match('/^\d+$/', $clean) && in_array(ucfirst($clean), ['Rupay91', 'Adgrow', 'Agdm', 'Rupaysure'])) {
-            return ucfirst($clean);
-        }
+        return trim($explicitCompany);
     }
 
     $cibilNum = 0;
     if (!empty($cibilStr)) {
-        preg_match('/\d{3}/', (string)$cibilStr, $matches);
+        preg_match('/\d{3}/', $cibilStr, $matches);
         if (!empty($matches[0])) {
             $cibilNum = (int)$matches[0];
-        } elseif (strpos(strtolower((string)$cibilStr), '750') !== false || strpos(strtolower((string)$cibilStr), 'excellent') !== false) {
+        } elseif (strpos(strtolower($cibilStr), '750') !== false || strpos(strtolower($cibilStr), 'excellent') !== false) {
             $cibilNum = 780;
-        } elseif (strpos(strtolower((string)$cibilStr), '700') !== false || strpos(strtolower((string)$cibilStr), 'good') !== false) {
+        } elseif (strpos(strtolower($cibilStr), '700') !== false || strpos(strtolower($cibilStr), 'good') !== false) {
             $cibilNum = 720;
-        } elseif (strpos(strtolower((string)$cibilStr), '650') !== false || strpos(strtolower((string)$cibilStr), 'average') !== false) {
+        } elseif (strpos(strtolower($cibilStr), '650') !== false || strpos(strtolower($cibilStr), 'average') !== false) {
             $cibilNum = 660;
         }
     }
@@ -131,83 +130,153 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
     return 'AGDM';
 }
 
-// 4. Look for all possible lead files
-$possibleFiles = [
-    __DIR__ . '/../leads_store.json',
-    __DIR__ . '/../../data/leads.json',
-    __DIR__ . '/../../crm/leads_store.json',
-    __DIR__ . '/leads_store.json',
-    dirname(__DIR__, 2) . '/data/leads.json',
-    dirname(__DIR__, 2) . '/crm/leads_store.json'
-];
+// 4. Load from Primary Data File: public_html/data/leads.json
+$rootPath = dirname(__DIR__, 2);
+$leadsFile = $rootPath . '/data/leads.json';
+$leadsStoreFile = $rootPath . '/crm/leads_store.json';
+$leadsLogCsv = $rootPath . '/leads_log.csv';
 
-$rawList = [];
-
-foreach ($possibleFiles as $file) {
-    if (file_exists($file)) {
-        $content = file_get_contents($file);
-        $arr = json_decode($content, true);
-        if (is_array($arr)) {
-            foreach ($arr as $row) {
-                if (is_array($row)) {
-                    $rawList[] = $row;
-                }
+// Load deleted leads blacklist
+$deletedMap = [];
+$deletedStoreCandidates = array_unique([
+    $rootPath . '/crm/deleted_leads.json',
+    $rootPath . '/data/deleted_leads.json',
+    __DIR__ . '/../../crm/deleted_leads.json',
+    __DIR__ . '/../deleted_leads.json',
+    __DIR__ . '/deleted_leads.json'
+]);
+foreach ($deletedStoreCandidates as $df) {
+    if (file_exists($df)) {
+        $rawD = file_get_contents($df);
+        $dArr = json_decode($rawD, true);
+        if (is_array($dArr)) {
+            foreach ($dArr as $dItem) {
+                $cleanD = trim(strtolower((string)$dItem));
+                if ($cleanD !== '') $deletedMap[$cleanD] = true;
             }
         }
     }
 }
 
-// 5. Intelligent Deduplication Map (By Phone, or By Stable ID)
-$dedupedMap = [];
+$allLeads = [];
+$seenIds = [];
 
-foreach ($rawList as $row) {
-    $phone = preg_replace('/\D/', '', (string)($row['phone'] ?? $row['mobile'] ?? ''));
-    if (strlen($phone) === 12 && strpos($phone, '91') === 0) {
-        $phone = substr($phone, 2);
-    }
-    
-    $rowId = trim((string)($row['id'] ?? $row['lead_id'] ?? $row['loanNo'] ?? ''));
-    $key = ($phone && strlen($phone) === 10) ? ('phone_' . $phone) : ('id_' . ($rowId ?: rand(100000, 999999)));
+// Load from data/leads.json
+if (file_exists($leadsFile)) {
+    $content = file_get_contents($leadsFile);
+    $arr = json_decode($content, true);
+    if (is_array($arr)) {
+        foreach ($arr as $row) {
+            if (!is_array($row)) continue;
+            $leadId = trim((string)($row['id'] ?? $row['lead_id'] ?? $row['loanNo'] ?? ''));
+            $lIdLower = strtolower($leadId);
+            $lPhone = preg_replace('/\D/', '', (string)($row['phone'] ?? $row['mobile'] ?? ''));
+            
+            if ($lIdLower && !empty($deletedMap[$lIdLower])) continue;
+            if ($lPhone && !empty($deletedMap[$lPhone])) continue;
 
-    if (!isset($dedupedMap[$key])) {
-        $dedupedMap[$key] = $row;
-    } else {
-        // Merge into existing: Keep the more complete data
-        $existing = $dedupedMap[$key];
-        $existingName = trim((string)($existing['name'] ?? $existing['fullName'] ?? ''));
-        $newName = trim((string)($row['name'] ?? $row['fullName'] ?? ''));
-
-        // If new has real name and existing is Applicant/empty, replace
-        if ($newName && $newName !== 'Applicant' && ($existingName === 'Applicant' || empty($existingName))) {
-            $dedupedMap[$key] = array_merge($existing, $row);
-        } else {
-            $dedupedMap[$key] = array_merge($row, $existing);
+            if (empty($leadId)) {
+                $leadId = 'PIM-' . rand(100000, 999999);
+            }
+            $row['id'] = $leadId;
+            $row['loanNo'] = $leadId;
+            $row['lead_id'] = $leadId;
+            $allLeads[] = $row;
+            $seenIds[$leadId] = true;
         }
     }
 }
 
-// 6. Format and Normalize Leads for Display
+// Load secondary from crm/leads_store.json if not duplicate
+if (file_exists($leadsStoreFile)) {
+    $content = file_get_contents($leadsStoreFile);
+    $arr = json_decode($content, true);
+    if (is_array($arr)) {
+        foreach ($arr as $row) {
+            if (!is_array($row)) continue;
+            $leadId = trim((string)($row['id'] ?? $row['lead_id'] ?? $row['loanNo'] ?? ''));
+            $lIdLower = strtolower($leadId);
+            $lPhone = preg_replace('/\D/', '', (string)($row['phone'] ?? $row['mobile'] ?? ''));
+            if ($lIdLower && !empty($deletedMap[$lIdLower])) continue;
+            if ($lPhone && !empty($deletedMap[$lPhone])) continue;
+            if ($leadId && !empty($seenIds[$leadId])) continue;
+            if (empty($leadId)) {
+                $leadId = 'PIM-' . rand(100000, 999999);
+            }
+            $row['id'] = $leadId;
+            $row['loanNo'] = $leadId;
+            $row['lead_id'] = $leadId;
+            $allLeads[] = $row;
+            if ($leadId) $seenIds[$leadId] = true;
+        }
+    }
+}
+
+// Also load from leads_log.csv and merge any records not already in list
+if (file_exists($leadsLogCsv)) {
+    $csvData = array_map('str_getcsv', file($leadsLogCsv));
+    if (count($csvData) > 1) {
+        $headers = array_shift($csvData);
+        foreach ($csvData as $row) {
+            if (count($row) >= 4) {
+                // Support both format with leadId in row[0] or timestamp in row[0]
+                $isIdFirst = (strpos((string)$row[0], 'PIM-') === 0);
+                $rowId = trim((string)($isIdFirst ? $row[0] : ('PIM-' . rand(100000, 999999))));
+                $rowTimestamp = $isIdFirst ? ($row[1] ?? '') : ($row[0] ?? '');
+                $rowName = $isIdFirst ? ($row[2] ?? 'Applicant') : ($row[1] ?? 'Applicant');
+                $rowPhone = $isIdFirst ? ($row[4] ?? '') : ($row[3] ?? '');
+                $rowAmount = $isIdFirst ? ($row[7] ?? 50000) : ($row[4] ?? 50000);
+                $rowPartner = $isIdFirst ? ($row[6] ?? '') : ($row[5] ?? '');
+                $rowStatus = $row[count($row) - 1] ?? 'Fresh';
+
+                $cleanPhone = preg_replace('/\D/', '', (string)$rowPhone);
+                $rIdLower = strtolower($rowId);
+                if ($rIdLower && !empty($deletedMap[$rIdLower])) continue;
+                if ($cleanPhone && !empty($deletedMap[$cleanPhone])) continue;
+                if (!empty($rowId) && !empty($seenIds[$rowId])) continue;
+                if (!empty($cleanPhone) && !empty($seenIds[$cleanPhone])) continue;
+
+                $allLeads[] = [
+                    'id'              => $rowId,
+                    'loanNo'          => $rowId,
+                    'lead_id'         => $rowId,
+                    'name'            => $rowName ?: 'Applicant',
+                    'mobile'          => $cleanPhone ? ('+91 ' . $cleanPhone) : '',
+                    'phone'           => $cleanPhone,
+                    'loanAmount'      => $rowAmount ?: 50000,
+                    'salary'          => 35000,
+                    'cibil'           => '750+',
+                    'assignedCompany' => $rowPartner ?: 'Rupay91',
+                    'created'         => $rowTimestamp ?: date('d M Y, h:i A'),
+                    'created_at'      => $rowTimestamp ?: date('Y-m-d H:i:s'),
+                    'status'          => $rowStatus ?: 'Fresh',
+                    'source'          => 'Website Application'
+                ];
+                if (!empty($rowId)) $seenIds[$rowId] = true;
+                if (!empty($cleanPhone)) $seenIds[$cleanPhone] = true;
+            }
+        }
+    }
+}
+
+// Normalize and format each lead
 $formattedLeads = [];
 $avatarColors = ['bg-blue-600', 'bg-indigo-600', 'bg-emerald-600', 'bg-amber-600', 'bg-purple-600', 'bg-rose-600'];
-$index = 0;
 
-foreach ($dedupedMap as $lead) {
-    $index++;
-    $phone = preg_replace('/\D/', '', (string)($lead['phone'] ?? $lead['mobile'] ?? ''));
-    if (strlen($phone) === 12 && strpos($phone, '91') === 0) {
-        $phone = substr($phone, 2);
-    }
-    $mobileFormatted = $phone ? ('+91 ' . $phone) : '—';
-
-    $leadId = trim((string)($lead['id'] ?? $lead['lead_id'] ?? $lead['loanNo'] ?? ''));
-    if (empty($leadId) || strpos($leadId, 'undefined') !== false) {
-        $leadId = 'PIM-' . ($phone ? substr($phone, -6) : (100000 + $index));
-    }
-
-    $name = trim((string)($lead['name'] ?? $lead['fullName'] ?? $lead['full_name'] ?? 'Applicant'));
+foreach ($allLeads as $index => $lead) {
+    $leadId = $lead['id'] ?? $lead['lead_id'] ?? $lead['loanNo'] ?? ('PIM-' . str_pad($index + 1, 6, '0', STR_PAD_LEFT));
+    $name = trim($lead['name'] ?? $lead['fullName'] ?? $lead['full_name'] ?? 'Applicant');
     if ($name === '') $name = 'Applicant';
 
-    $email = trim((string)($lead['email'] ?? $lead['emailAddress'] ?? $lead['email_address'] ?? ''));
+    $phone = preg_replace('/\D/', '', (string)($lead['phone'] ?? $lead['mobile'] ?? $lead['mobile_number'] ?? ''));
+    $mobileFormatted = $phone;
+    if (strlen($phone) === 10) {
+        $mobileFormatted = '+91 ' . $phone;
+    } elseif (strlen($phone) === 12 && strpos($phone, '91') === 0) {
+        $mobileFormatted = '+91 ' . substr($phone, 2);
+    }
+
+    $email = trim($lead['email'] ?? $lead['emailAddress'] ?? $lead['email_address'] ?? '');
     if (empty($email) || $email === '—') {
         $email = $phone ? ($phone . '@paisainminutes.com') : '—';
     }
@@ -220,9 +289,7 @@ foreach ($dedupedMap as $lead) {
     $salRange = $lead['salary_range'] ?? '';
     $cleanedSalary = cleanSalary($rawSalary, $salVal, $salRange);
 
-    $cibil = trim((string)($lead['cibil'] ?? $lead['cibilScore'] ?? $lead['cibil_score'] ?? $lead['cibil_range'] ?? '750+'));
-    if (empty($cibil)) $cibil = '750+';
-
+    $cibil = trim($lead['cibil'] ?? $lead['cibilScore'] ?? $lead['cibil_score'] ?? $lead['cibil_range'] ?? '—');
     $explicitCompany = $lead['assignedCompany'] ?? $lead['company'] ?? $lead['partner'] ?? $lead['partner_name'] ?? '';
     $assignedCompany = determineCompany($cibil, $cleanedSalary, $cleanedLoan, $explicitCompany);
 
@@ -234,10 +301,8 @@ foreach ($dedupedMap as $lead) {
         $initials = strtoupper(substr($name, 0, min(2, strlen($name))));
     }
 
-    // Correct IST Date/Time
     $createdAt = $lead['created_at'] ?? $lead['created'] ?? $lead['date'] ?? $lead['timestamp'] ?? date('Y-m-d H:i:s');
     $timestamp = strtotime($createdAt) ?: time();
-
     $formattedDate = date('d M Y, h:i A', $timestamp);
     $isoDate = date('Y-m-d', $timestamp);
     $today = date('Y-m-d');
@@ -247,10 +312,10 @@ foreach ($dedupedMap as $lead) {
         continue;
     }
 
-    $status = trim((string)($lead['status'] ?? 'Fresh'));
+    $status = trim($lead['status'] ?? 'Fresh');
     if (empty($status)) $status = 'Fresh';
 
-    $eligibilityStatus = trim((string)($lead['eligibilityStatus'] ?? $lead['eligibility_status'] ?? $lead['eligibility'] ?? 'Eligible'));
+    $eligibilityStatus = trim($lead['eligibilityStatus'] ?? $lead['eligibility_status'] ?? $lead['eligibility'] ?? 'Eligible');
 
     $formattedLeads[] = [
         'id'                => $leadId,
@@ -265,7 +330,7 @@ foreach ($dedupedMap as $lead) {
         'email'             => $email,
         'emailAddress'      => $email,
         'creditManager'     => $lead['creditManager'] ?? $lead['credit_manager'] ?? 'Unassigned',
-        'pan'               => strtoupper(trim((string)($lead['pan'] ?? '—'))),
+        'pan'               => strtoupper(trim($lead['pan'] ?? '—')),
         'cibil'             => $cibil,
         'cibilScore'        => $cibil,
         'applied'           => $cleanedLoan,
@@ -280,7 +345,7 @@ foreach ($dedupedMap as $lead) {
         'employmentType'    => $lead['employmentType'] ?? $lead['employment_type'] ?? 'Salaried',
         'assignedCompany'   => $assignedCompany,
         'eligibilityStatus' => $eligibilityStatus,
-        'source'            => $lead['source'] ?? $lead['page_source'] ?? 'Website Application',
+        'source'            => $lead['source'] ?? $lead['page_source'] ?? 'Website Form',
         'purpose'           => $lead['purpose'] ?? 'Personal Loan',
         'status'            => $status,
         'created'           => $formattedDate,

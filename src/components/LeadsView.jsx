@@ -22,7 +22,7 @@ import {
 import { exportToCsv } from '../utils/exportCsv';
 import { AFFILIATE_PARTNERS, getPartnerMeta } from '../data/affiliatePartners';
 import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers';
-import { fetchApi } from '../utils/apiConfig';
+import { fetchApi, deleteLeadsApi } from '../utils/apiConfig';
 
 const INITIAL_FULL_LEADS = [];
 

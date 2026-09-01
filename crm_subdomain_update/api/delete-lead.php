@@ -1,12 +1,12 @@
 <?php
 /**
- * Paisa in Minutes - Delete Lead API Endpoint (Hostinger & Subdomain Safe)
- * Endpoint: /admin/api/delete-lead, /admin/api/delete-lead.php, /api/delete-lead, /crm/api/delete-lead.php
+ * Paisa in Minutes - Bulletproof Delete Lead API Endpoint
+ * Handles Hostinger Subdomain, Main Domain, CSV Logs, JSON Stores & Blacklist Tracking
  */
 
 date_default_timezone_set('Asia/Kolkata');
 
-// Enable Full CORS for Subdomains & Cross-Origin Hostinger Environments
+// Enable Full CORS
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
@@ -20,7 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $rawInput = file_get_contents('php://input');
 $data = json_decode($rawInput, true) ?: $_POST;
 
-$isClearAll = !empty($data['clear_all']) || !empty($data['all']) || (!empty($data['ids']) && in_array('*', $data['ids'])) || (!empty($data['action']) && $data['action'] === 'reset_all');
+$isClearAll = !empty($data['clear_all']) || 
+              !empty($data['all']) || 
+              (!empty($data['ids']) && in_array('*', $data['ids'])) || 
+              (!empty($data['action']) && in_array($data['action'], ['reset_all', 'clear_all']));
 
 $idsToDelete = [];
 if (!empty($data['ids']) && is_array($data['ids'])) {
@@ -33,11 +36,13 @@ if (!empty($data['ids']) && is_array($data['ids'])) {
     $idsToDelete = [$data['lead_id']];
 }
 
-if (!$isClearAll && empty($idsToDelete)) {
+$phoneParam = !empty($data['phone']) ? $data['phone'] : (!empty($data['mobile']) ? $data['mobile'] : '');
+
+if (!$isClearAll && empty($idsToDelete) && empty($phoneParam)) {
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'error'   => 'No Lead ID(s) provided for deletion',
+        'error'   => 'No Lead ID or Phone provided for deletion',
         'received_payload' => $data
     ]);
     exit;
@@ -45,6 +50,12 @@ if (!$isClearAll && empty($idsToDelete)) {
 
 $idsMap = [];
 $cleanPhones = [];
+
+if ($phoneParam) {
+    $cleanP = preg_replace('/\D/', '', (string)$phoneParam);
+    if (strlen($cleanP) >= 6) $cleanPhones[$cleanP] = true;
+}
+
 foreach ($idsToDelete as $id) {
     $cleanId = trim(strtolower((string)$id));
     if ($cleanId !== '') {
@@ -56,7 +67,6 @@ foreach ($idsToDelete as $id) {
     }
 }
 
-// Check all possible file paths across Hostinger subdomains and root domain
 $rootPath = dirname(__DIR__, 2);
 $candidateFiles = array_unique([
     $rootPath . '/data/leads.json',
@@ -129,44 +139,91 @@ foreach ($candidateFiles as $filePath) {
 
                 if ($fileChanged) {
                     file_put_contents($filePath, json_encode(array_values($filteredLeads), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-                    $modifiedFiles[] = $filePath . " (DELETED {$deletedCount} MATCHES)";
+                    $modifiedFiles[] = $filePath . " (DELETED MATCHES)";
                 }
             }
         }
     } elseif ($isClearAll) {
-        // Ensure data dir exists and write empty json
         $dir = dirname($filePath);
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0777, true);
-        }
+        if (!is_dir($dir)) @mkdir($dir, 0777, true);
         @file_put_contents($filePath, "[]\n");
     }
 }
 
-// If clear all, also reset CSV log and deleted archive
-$csvCandidates = [
+// 2. CSV LOG DELETION
+$csvCandidates = array_unique([
     $rootPath . '/leads_log.csv',
     __DIR__ . '/../../leads_log.csv',
-    dirname(__DIR__, 2) . '/leads_log.csv'
-];
+    dirname(__DIR__, 2) . '/leads_log.csv',
+    __DIR__ . '/../leads_log.csv'
+]);
 
-if ($isClearAll) {
-    foreach ($csvCandidates as $csv) {
-        if (file_exists($csv) || is_dir(dirname($csv))) {
-            @file_put_contents($csv, "lead_id,timestamp,name,email,phone,affiliate_id,source,loan_amount,tenure_months,monthly_income,ip_address,status\n");
-            $modifiedFiles[] = $csv . ' (RESET HEADER)';
+foreach ($csvCandidates as $csv) {
+    if (file_exists($csv)) {
+        if ($isClearAll) {
+            file_put_contents($csv, "lead_id,timestamp,name,email,phone,affiliate_id,source,loan_amount,tenure_months,monthly_income,ip_address,status\n");
+            $modifiedFiles[] = $csv . ' (RESET CSV)';
+        } else {
+            $lines = file($csv);
+            if (!empty($lines)) {
+                $newLines = [];
+                $header = array_shift($lines);
+                $newLines[] = $header;
+                $csvChanged = false;
+
+                foreach ($lines as $line) {
+                    $row = str_getcsv($line);
+                    $rowId = strtolower(trim((string)($row[0] ?? '')));
+                    $rowPhone = preg_replace('/\D/', '', (string)($row[4] ?? ($row[3] ?? '')));
+
+                    $match = false;
+                    if (!empty($idsMap[$rowId])) $match = true;
+                    if ($rowPhone && !empty($cleanPhones[$rowPhone])) $match = true;
+
+                    if ($match) {
+                        $csvChanged = true;
+                    } else {
+                        $newLines[] = $line;
+                    }
+                }
+
+                if ($csvChanged) {
+                    file_put_contents($csv, implode('', $newLines));
+                    $modifiedFiles[] = $csv . ' (REMOVED CSV ROW)';
+                }
+            }
         }
     }
+}
 
-    $deletedStoreCandidates = [
-        $rootPath . '/crm/deleted_leads.json',
-        __DIR__ . '/../../crm/deleted_leads.json'
-    ];
-    foreach ($deletedStoreCandidates as $df) {
-        if (file_exists($df) || is_dir(dirname($df))) {
-            @file_put_contents($df, "[]\n");
-            $modifiedFiles[] = $df . ' (RESET)';
+// 3. PERSIST DELETED IDS TO BLACKLIST FILE (deleted_leads.json)
+$deletedStores = array_unique([
+    $rootPath . '/crm/deleted_leads.json',
+    $rootPath . '/data/deleted_leads.json',
+    __DIR__ . '/../../crm/deleted_leads.json',
+    __DIR__ . '/../deleted_leads.json',
+    __DIR__ . '/deleted_leads.json'
+]);
+
+$newDeletedEntries = array_keys($idsMap);
+foreach (array_keys($cleanPhones) as $p) {
+    $newDeletedEntries[] = $p;
+}
+
+foreach ($deletedStores as $df) {
+    $dir = dirname($df);
+    if (!is_dir($dir)) @mkdir($dir, 0777, true);
+
+    if ($isClearAll) {
+        @file_put_contents($df, "[]\n");
+    } else {
+        $existing = [];
+        if (file_exists($df)) {
+            $raw = file_get_contents($df);
+            $existing = json_decode($raw, true) ?: [];
         }
+        $merged = array_unique(array_merge($existing, $newDeletedEntries));
+        @file_put_contents($df, json_encode(array_values($merged), JSON_PRETTY_PRINT));
     }
 }
 
