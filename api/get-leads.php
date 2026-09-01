@@ -238,13 +238,14 @@ foreach ($dedupedMap as $lead) {
     $createdAt = $lead['created_at'] ?? $lead['created'] ?? $lead['date'] ?? $lead['timestamp'] ?? date('Y-m-d H:i:s');
     $timestamp = strtotime($createdAt) ?: time();
 
-    // If timestamp is unreasonably in past (e.g. 20 Aug 2026), bump to today
-    if (date('Y-m-d', $timestamp) === '2026-08-20') {
-        $timestamp = strtotime('today ' . date('H:i:s', $timestamp));
-    }
-
     $formattedDate = date('d M Y, h:i A', $timestamp);
     $isoDate = date('Y-m-d', $timestamp);
+    $today = date('Y-m-d');
+
+    // STRICTLY TODAY ONLY: Filter out any leads from past dates
+    if ($isoDate < $today) {
+        continue;
+    }
 
     $status = trim((string)($lead['status'] ?? 'Fresh'));
     if (empty($status)) $status = 'Fresh';

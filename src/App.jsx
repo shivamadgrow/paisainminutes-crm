@@ -100,10 +100,19 @@ export default function App() {
         const result = await getLeadsFromBackend();
         if (isMounted && result.success && Array.isArray(result.leads)) {
           const cleanLeads = result.leads.map(sanitizeLead);
+          console.log(
+            `%c[CRM LIVE STATE SYNC] 📊 Synced %c${cleanLeads.length}%c leads | Endpoint: %c${result.sourceUrl || 'API'}`,
+            'color: #0284c7; font-weight: bold;',
+            'color: #dc2626; font-weight: bold;',
+            'color: #0284c7; font-weight: bold;',
+            'color: #059669; font-weight: bold;'
+          );
           setLeads(cleanLeads);
+        } else if (isMounted && !result.success) {
+          console.log('%c[CRM LIVE STATE SYNC] ℹ️ Backend responded with 0 leads or empty array [].', 'color: #64748b;');
         }
       } catch (e) {
-        // Ignore fetch errors during network switch
+        console.warn('[CRM LIVE STATE SYNC] ⚠️ Fetch error during polling:', e);
       }
     };
 

@@ -225,26 +225,34 @@ export default function LeadsView({
 
   // API Call helper for Deleting
   const callDeleteApi = async (bodyPayload, onSuccess) => {
+    console.log('%c[CRM DELETE] 🗑️ Initiating delete operation...', 'color: #dc2626; font-weight: bold;', bodyPayload);
     try {
-      const res = await fetchApi('/admin/api/delete-lead', {
-        method: 'POST',
-        body: JSON.stringify(bodyPayload)
-      });
-      if (res && res.ok) {
-        onSuccess();
+      const res = await deleteLeadsApi(bodyPayload);
+      console.log('%c[CRM DELETE] 📥 Server deletion result:', 'color: #059669; font-weight: bold;', res);
+      if (res && res.success) {
+        onSuccess(res);
       } else {
-        onSuccess();
+        console.warn('[CRM DELETE] ⚠️ Server deletion returned unsuccessful status, executing local state cleanup anyway.');
+        onSuccess(res);
       }
     } catch (e) {
-      onSuccess();
+      console.error('[CRM DELETE] ❌ Delete API call exception:', e);
+      onSuccess(null);
     }
   };
 
   const handleDeleteSingle = (item, idx) => {
     const itemId = getLeadId(item, idx);
+    console.log(`%c[CRM DELETE SINGLE] 🗑️ User requested deletion of lead: ${item.name || itemId} (ID: ${itemId})`, 'color: #e11d48; font-weight: bold;');
     if (confirm(`Are you sure you want to delete lead ${item.name || itemId}?`)) {
-      callDeleteApi({ action: 'single', id: itemId }, () => {
-        if (setLeads) setLeads(prev => prev.filter((l, i) => getLeadId(l, i) !== itemId));
+      callDeleteApi({ action: 'single', id: itemId, leadId: itemId, phone: item.phone || item.mobile }, (serverRes) => {
+        if (setLeads) {
+          setLeads(prev => {
+            const updated = prev.filter((l, i) => getLeadId(l, i) !== itemId);
+            console.log(`[CRM STATE] 🧹 Lead ${itemId} removed from state. Remaining leads: ${updated.length}`);
+            return updated;
+          });
+        }
       });
       setSelectedLeadIds(prev => prev.filter(id => id !== itemId));
     }
@@ -252,19 +260,44 @@ export default function LeadsView({
 
   const handleDeleteSelected = () => {
     if (selectedLeadIds.length === 0) return;
+    console.log(`%c[CRM BULK DELETE] 🗑️ User requested deletion of ${selectedLeadIds.length} selected leads:`, 'color: #e11d48; font-weight: bold;', selectedLeadIds);
     if (confirm(`Delete ${selectedLeadIds.length} selected lead(s)?`)) {
-      callDeleteApi({ action: 'selected', ids: selectedLeadIds }, () => {
+      callDeleteApi({ action: 'selected', ids: selectedLeadIds }, (serverRes) => {
         if (setLeads) {
           const toDelete = new Set(selectedLeadIds);
-          setLeads(prev => prev.filter((l, i) => !toDelete.has(getLeadId(l, i))));
+          setLeads(prev => {
+            const updated = prev.filter((l, i) => !toDelete.has(getLeadId(l, i)));
+            console.log(`[CRM STATE] 🧹 Bulk delete applied. Remaining leads: ${updated.length}`);
+            return updated;
+          });
         }
       });
       setSelectedLeadIds([]);
     }
   };
 
+  const handleClearAllLeads = () => {
+    if (leads.length === 0) {
+      alert('No leads to delete! The list is already empty.');
+      return;
+    }
+    console.log(`%c[CRM CLEAR ALL] 🚨 User triggered "DELETE ALL LEADS" for ${leads.length} leads!`, 'color: #dc2626; font-weight: bold;');
+    if (confirm(`⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE ALL ${leads.length} LEADS? This cannot be undone.`)) {
+      callDeleteApi({ clear_all: true, action: 'reset_all', all: true, ids: ['*'] }, (serverRes) => {
+        if (setLeads) {
+          setLeads([]);
+          console.log('[CRM STATE] 🧹 All leads cleared from React state (Total: 0).');
+        }
+        setSelectedLeadIds([]);
+      });
+      if (setLeads) setLeads([]);
+      setSelectedLeadIds([]);
+    }
+  };
+
   // Re-assign Partner Company
   const handleReassignCompany = async (leadId, newCompany) => {
+    console.log(`%c[CRM REASSIGN] 🔀 Reassigning lead ${leadId} -> ${newCompany}`, 'color: #7c3aed; font-weight: bold;');
     try {
       if (setLeads) {
         setLeads(prev => prev.map((l, i) => {
@@ -275,21 +308,24 @@ export default function LeadsView({
         }));
       }
 
-      await fetchApi('/admin/api/update-lead', {
+      const res = await fetchApi('/admin/api/update-lead', {
         method: 'POST',
         body: JSON.stringify({
           id: leadId,
           updates: { assignedCompany: newCompany }
         })
       });
+      console.log('[CRM REASSIGN] 📥 Server response:', res?.data);
       setReassigningLeadId(null);
     } catch (e) {
+      console.error('[CRM REASSIGN] ❌ Error:', e);
       setReassigningLeadId(null);
     }
   };
 
   // Quick Status Change
   const handleStatusChange = async (leadId, newStatus) => {
+    console.log(`%c[CRM STATUS CHANGE] 🔄 Changing lead ${leadId} status -> ${newStatus}`, 'color: #2563eb; font-weight: bold;');
     try {
       if (setLeads) {
         setLeads(prev => prev.map((l, i) => {
@@ -300,14 +336,17 @@ export default function LeadsView({
         }));
       }
 
-      await fetchApi('/admin/api/update-lead', {
+      const res = await fetchApi('/admin/api/update-lead', {
         method: 'POST',
         body: JSON.stringify({
           id: leadId,
           updates: { status: newStatus }
         })
       });
-    } catch (e) {}
+      console.log('[CRM STATUS CHANGE] 📥 Server response:', res?.data);
+    } catch (e) {
+      console.error('[CRM STATUS CHANGE] ❌ Error:', e);
+    }
   };
 
   // Test Website Lead Submit Handler
@@ -328,16 +367,20 @@ export default function LeadsView({
       eligibilityStatus: 'Eligible - Test Submission'
     };
 
+    console.log('%c[CRM TEST SUBMIT] 🚀 Submitting Test Lead with payload:', 'color: #0284c7; font-weight: bold;', payload);
+
     try {
       const res = await fetchApi('/admin/api/submit-lead', {
         method: 'POST',
         body: JSON.stringify(payload)
       });
 
-      const data = res ? await res.json() : null;
+      const data = res?.data || (res ? await res.json() : null);
       setIsSubmittingTest(false);
 
-      if (data.success && data.lead) {
+      console.log('[CRM TEST SUBMIT] 📥 Server submission response:', data);
+
+      if (data && data.success && data.lead) {
         if (setLeads) {
           setLeads(prev => [data.lead, ...prev.filter(l => l.id !== data.lead.id)]);
         }
@@ -354,10 +397,11 @@ export default function LeadsView({
       } else {
         setTestFeedback({
           type: 'error',
-          message: data.error || 'Submission failed'
+          message: (data && data.error) || 'Submission failed'
         });
       }
     } catch (err) {
+      console.error('[CRM TEST SUBMIT] ❌ Error:', err);
       setIsSubmittingTest(false);
       setTestFeedback({
         type: 'error',
@@ -382,19 +426,21 @@ export default function LeadsView({
       eligibilityStatus: 'Pre-Approved'
     };
 
+    console.log('%c[CRM MANUAL SUBMIT] 📝 Creating Manual Lead with payload:', 'color: #0d9488; font-weight: bold;', payload);
+
     try {
-      let res = await fetch('/admin/api/submit-lead', {
+      const res = await fetchApi('/admin/api/submit-lead', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.lead && setLeads) {
-          setLeads(prev => [data.lead, ...prev]);
-        }
+      const data = res?.data || (res ? await res.json() : null);
+      console.log('[CRM MANUAL SUBMIT] 📥 Server response:', data);
+      if (data && data.success && data.lead && setLeads) {
+        setLeads(prev => [data.lead, ...prev]);
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('[CRM MANUAL SUBMIT] ❌ Error:', e);
+    }
 
     setIsAddModalOpen(false);
     setNewMobile('');
@@ -466,6 +512,15 @@ export default function LeadsView({
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>Export CSV</span>
+          </button>
+
+          <button 
+            onClick={handleClearAllLeads}
+            className="px-3 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 rounded-xl text-xs font-bold shadow-2xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+            title="Permanently delete all leads"
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+            <span>Delete All Leads</span>
           </button>
 
           <button

@@ -135,7 +135,7 @@ function cleanSalary(raw, salVal, salRange) {
 }
 
 let lastLiveFetch = 0;
-const MIN_DATE = '2026-08-25'; // STRICTLY ONLY LEADS FROM TODAY ONWARDS
+const MIN_DATE = '2026-09-01'; // STRICTLY ONLY LEADS FROM TODAY ONWARDS
 
 async function getOrSyncLeads() {
   const deletedSet = getDeletedIds();

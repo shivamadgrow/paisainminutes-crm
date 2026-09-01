@@ -8,19 +8,23 @@ import { getSecurityIncidents } from '../utils/shiftSecurity';
 export default function StaffView({ onSwitchUser, currentUser }) {
   const [activeTab, setActiveTab] = useState('Users');
   const [searchQuery, setSearchQuery] = useState('');
+  const DUMMY_USER_NAMES = [
+    'shivam', 'accounts_team', 'director_admin', 'collection_lead', 
+    'credit_evaluator', 'telecaller_riya', 'ops_supervisor', 'telecaller_rahul'
+  ];
+
   const [staffList, setStaffList] = useState(() => {
     try {
-      const version = localStorage.getItem('paisa_crm_staff_v');
-      if (version === 'v2') {
-        const saved = localStorage.getItem('paisa_crm_staff_list');
-        if (saved) return JSON.parse(saved);
-      } else {
-        localStorage.setItem('paisa_crm_staff_v', 'v2');
-        localStorage.setItem('paisa_crm_staff_list', JSON.stringify(INITIAL_STAFF_MEMBERS));
-        return INITIAL_STAFF_MEMBERS;
+      const saved = localStorage.getItem('paisa_crm_staff_list');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const cleaned = parsed.filter(u => u && u.name && !DUMMY_USER_NAMES.includes(u.name.toLowerCase().trim()));
+          if (cleaned.length > 0) return cleaned;
+        }
       }
     } catch (e) {}
-    return INITIAL_STAFF_MEMBERS;
+    return INITIAL_STAFF_MEMBERS.filter(u => u && u.name && !DUMMY_USER_NAMES.includes(u.name.toLowerCase().trim()));
   });
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
@@ -113,6 +117,8 @@ export default function StaffView({ onSwitchUser, currentUser }) {
   }));
 
   const filteredStaff = staffList.filter(u => {
+    if (!u || !u.name) return false;
+    if (DUMMY_USER_NAMES.includes(u.name.toLowerCase().trim())) return false;
     const q = searchQuery.toLowerCase();
     return !q || 
       u.name.toLowerCase().includes(q) || 
