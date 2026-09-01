@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node -e \"const fs=require('fs'),path=require('path');fs.copyFileSync('dist/index.html','index.html');fs.cpSync('dist/assets','assets',{recursive:true});\"",
+    "build": "vite build && node -e \"const fs=require('fs'),path=require('path');if(fs.existsSync('assets'))fs.rmSync('assets',{recursive:true,force:true});fs.mkdirSync('assets');fs.copyFileSync('dist/index.html','index.html');fs.cpSync('dist/assets','assets',{recursive:true});\"",
     "lint": "oxlint",
     "preview": "vite preview"
   },

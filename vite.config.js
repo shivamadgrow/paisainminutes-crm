@@ -503,6 +503,21 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/index.js',
+        chunkFileNames: 'assets/index.js',
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name && assetInfo.name.endsWith('.css')) {
+            return 'assets/index.css';
+          }
+          if (assetInfo.name && assetInfo.name.includes('logo')) {
+            return 'assets/paisa-logo.png';
+          }
+          return 'assets/[name].[ext]';
+        }
+      }
+    }
   },
   server: {
     host: true,
