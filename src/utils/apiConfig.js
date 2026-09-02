@@ -144,9 +144,15 @@ export async function getLeadsFromBackend() {
 
   function mergeOrAddLead(l) {
     if (!l) return;
-    const rawPhone = String(l.phone || l.mobile || l.phoneNumber || '').replace(/\D/g, '').slice(-10);
+    const rawPhone = String(l.phone || l.mobile || l.phoneNumber || (l.user && l.user.phone) || '').replace(/\D/g, '').slice(-10);
     const id = String(l.id || l.lead_id || l.loanNo || '');
     const phoneKey = (rawPhone && rawPhone.length === 10) ? rawPhone : null;
+
+    if (phoneKey) {
+      l.phone = phoneKey;
+      l.phoneNumber = phoneKey;
+      l.mobile = `+91 ${phoneKey}`;
+    }
 
     if (phoneKey && leadsByPhone.has(phoneKey)) {
       const existing = leadsByPhone.get(phoneKey);
@@ -156,20 +162,36 @@ export async function getLeadsFromBackend() {
         existing.fullName = l.fullName || l.name;
         existing.initials = l.initials || existing.initials;
       }
-      if ((existing.source === 'Website Application' || existing.source === 'Apply Now Website') && l.source === 'Check Eligibility Website') {
+      if ((existing.source === 'Website Application' || existing.source === 'Apply Now (Phone Only)') && l.source === 'Check Eligibility Website') {
         existing.source = l.source;
       }
       if ((!existing.cibil || existing.cibil === '—') && l.cibil && l.cibil !== '—') {
         existing.cibil = l.cibil;
         existing.cibilScore = l.cibilScore || l.cibil;
       }
-      if (Number(existing.loanAmount) === 50000 && Number(l.loanAmount) && Number(l.loanAmount) !== 50000) {
+      if ((!existing.loanAmount || existing.loanAmount === 0) && Number(l.loanAmount) > 0) {
         existing.loanAmount = Number(l.loanAmount);
         existing.applied = Number(l.loanAmount);
+      }
+      if ((!existing.salary || existing.salary === 0) && Number(l.salary) > 0) {
+        existing.salary = Number(l.salary);
+        existing.monthlySalary = Number(l.salary);
       }
       if (l.email && l.email !== '—' && (!existing.email || existing.email === '—')) {
         existing.email = l.email;
         existing.emailAddress = l.email;
+      }
+      if (l.pincode && l.pincode !== '—' && (!existing.pincode || existing.pincode === '—')) {
+        existing.pincode = l.pincode;
+      }
+      if (l.city && l.city !== '—' && (!existing.city || existing.city === '—')) {
+        existing.city = l.city;
+      }
+      if (l.eligibilityStatus && l.eligibilityStatus !== 'Incomplete / Phone Only') {
+        existing.eligibilityStatus = l.eligibilityStatus;
+      }
+      if (l.assignedCompany && l.assignedCompany !== 'Pending Details') {
+        existing.assignedCompany = l.assignedCompany;
       }
       return;
     }

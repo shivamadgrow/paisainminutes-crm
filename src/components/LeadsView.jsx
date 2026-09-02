@@ -699,10 +699,18 @@ export default function LeadsView({
                           <div>
                             <div className="font-bold text-slate-900 text-xs">{item.name || 'Applicant'}</div>
                             <div className="text-[10px] text-slate-400 font-mono">{item.loanNo || itemId}</div>
-                            <div className="text-[11px] text-blue-900 font-mono font-semibold mt-0.5">
-                              {item.mobile || '—'}
+                            <div className="text-[11px] text-blue-900 font-mono font-bold mt-0.5">
+                              {(() => {
+                                const cleanDigits = String(item.mobile || item.phone || item.phoneNumber || (item.user && item.user.phone) || '').replace(/\D/g, '');
+                                if (cleanDigits.length >= 10) {
+                                  return `+91 ${cleanDigits.slice(-10)}`;
+                                }
+                                return item.mobile || item.phone || '—';
+                              })()}
                             </div>
-                            {item.email && <div className="text-[10px] text-slate-400">{item.email}</div>}
+                            {item.email && item.email !== '—' && !item.email.includes('@paisainminutes.com') && (
+                              <div className="text-[10px] text-slate-400">{item.email}</div>
+                            )}
                           </div>
                         </div>
                       </td>
