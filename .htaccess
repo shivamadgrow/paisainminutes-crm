@@ -2,11 +2,17 @@
 RewriteEngine On
 RewriteBase /
 
-# 1. Enable CORS for all API calls
+# 1. Enable CORS & Disable Aggressive Caching for CRM assets
 <IfModule mod_headers.c>
     Header always set Access-Control-Allow-Origin "*"
     Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Origin, Accept"
+    
+    <FilesMatch "\.(html|htm|js|css|json)$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+    </FilesMatch>
 </IfModule>
 
 # 2. Handle OPTIONS preflight requests
