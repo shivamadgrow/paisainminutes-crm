@@ -15,9 +15,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// 1. Helper to clean and parse Loan Amount
+// 1. Helper to clean and parse Loan Amount (returns 0 if not provided)
 function cleanLoanAmount($raw) {
-    if ($raw === null || $raw === '' || $raw === false) return 50000;
+    if ($raw === null || $raw === '' || $raw === false || $raw === 0 || $raw === '0') return 0;
+    if (is_numeric($raw) && (int)$raw === 0) return 0;
     if (is_numeric($raw) && $raw > 0 && $raw <= 500000) return (int)$raw;
 
     $str = (string)$raw;
@@ -33,7 +34,7 @@ function cleanLoanAmount($raw) {
     }
 
     $clean = (int)preg_replace('/\D/', '', $str);
-    if ($clean <= 0) return 50000;
+    if ($clean <= 0) return 0;
 
     // Detect concatenated numeric ranges e.g. 2500050000 -> 50000
     if ($clean > 500000) {
@@ -48,14 +49,17 @@ function cleanLoanAmount($raw) {
                 }
             }
         }
-        if ($clean > 1000000) return 50000;
+        if ($clean > 1000000) return 0;
     }
     return $clean;
 }
 
-// 2. Helper to clean and parse Monthly Salary
+// 2. Helper to clean and parse Monthly Salary (returns 0 if not provided)
 function cleanSalary($raw, $salVal = null, $salRange = '') {
-    if (!empty($salVal) && is_numeric($salVal)) {
+    if ($raw === null || $raw === '' || $raw === false || $raw === 0 || $raw === '0') {
+        if (empty($salVal) && empty($salRange)) return 0;
+    }
+    if (!empty($salVal) && is_numeric($salVal) && (int)$salVal > 0) {
         $sv = (int)$salVal;
         if ($sv >= 5000 && $sv <= 500000) return $sv;
     }
@@ -72,7 +76,7 @@ function cleanSalary($raw, $salVal = null, $salRange = '') {
     }
 
     $clean = (int)preg_replace('/\D/', '', (string)$raw);
-    if ($clean <= 0) return 30000;
+    if ($clean <= 0) return 0;
 
     // Detect concatenated salary strings e.g. 7000079999 -> 75000
     if ($clean > 500000) {
@@ -94,14 +98,14 @@ function cleanSalary($raw, $salVal = null, $salRange = '') {
                 }
             }
         }
-        return 35000;
+        return 0;
     }
     return $clean;
 }
 
 // 3. Helper to determine partner company
 function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
-    if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO') {
+    if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO' && $explicitCompany !== 'Pending Details') {
         $clean = strtolower(trim($explicitCompany));
         if (strpos($clean, 'rupay91') !== false || strpos($clean, 'rupay 91') !== false) return 'Rupay91';
         if (strpos($clean, 'adgrow') !== false) return 'Adgrow';
@@ -109,6 +113,14 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
         if (strpos($clean, 'rupaysure') !== false || strpos($clean, 'rupay sure') !== false) return 'Rupaysure';
         return trim($explicitCompany);
     }
+    if ($salaryNum === 0 && $amountNum === 0) {
+        return 'Pending Details';
+    }
+    if ($salaryNum >= 30000) return 'Rupay91';
+    if ($amountNum >= 150000 || $salaryNum >= 25000) return 'Adgrow';
+    if ($salaryNum >= 20000) return 'Rupaysure';
+    return 'AGDM';
+}
 
     $cibilNum = 0;
     if (!empty($cibilStr)) {
@@ -276,17 +288,26 @@ foreach ($allLeads as $index => $lead) {
     $name = trim($lead['name'] ?? $lead['fullName'] ?? $lead['full_name'] ?? 'Applicant');
     if ($name === '') $name = 'Applicant';
 
-    $rawLoan = $lead['loanAmount'] ?? $lead['applied'] ?? $lead['loan_amount'] ?? $lead['amount'] ?? 50000;
+    $rawLoan = $lead['loanAmount'] ?? $lead['applied'] ?? $lead['loan_amount'] ?? $lead['amount'] ?? 0;
     $cleanedLoan = cleanLoanAmount($rawLoan);
 
-    $rawSalary = $lead['salary'] ?? $lead['monthlySalary'] ?? $lead['monthly_salary'] ?? $lead['income'] ?? 35000;
+    $rawSalary = $lead['salary'] ?? $lead['monthlySalary'] ?? $lead['monthly_salary'] ?? $lead['income'] ?? 0;
     $salVal = $lead['sal_val'] ?? null;
     $salRange = $lead['salary_range'] ?? '';
     $cleanedSalary = cleanSalary($rawSalary, $salVal, $salRange);
 
     $cibil = trim($lead['cibil'] ?? $lead['cibilScore'] ?? $lead['cibil_score'] ?? $lead['cibil_range'] ?? '—');
     $explicitCompany = $lead['assignedCompany'] ?? $lead['company'] ?? $lead['partner'] ?? $lead['partner_name'] ?? '';
-    $assignedCompany = determineCompany($cibil, $cleanedSalary, $cleanedLoan, $explicitCompany);
+
+    $isPhoneOnly = ($name === 'Applicant' || empty($lead['name'])) && ($cleanedLoan === 0) && ($cleanedSalary === 0) && ($cibil === '—');
+    
+    if ($isPhoneOnly) {
+        $assignedCompany = (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO') ? $explicitCompany : 'Pending Details';
+        $eligibilityStatus = 'Incomplete / Phone Only';
+    } else {
+        $assignedCompany = determineCompany($cibil, $cleanedSalary, $cleanedLoan, $explicitCompany);
+        $eligibilityStatus = trim($lead['eligibilityStatus'] ?? $lead['eligibility_status'] ?? $lead['eligibility'] ?? 'Eligible');
+    }
 
     $createdAt = $lead['created_at'] ?? $lead['created'] ?? $lead['date'] ?? $lead['timestamp'] ?? date('Y-m-d H:i:s');
     $timestamp = strtotime($createdAt) ?: time();
@@ -302,7 +323,10 @@ foreach ($allLeads as $index => $lead) {
     $status = trim($lead['status'] ?? 'Fresh');
     if (empty($status)) $status = 'Fresh';
 
-    $eligibilityStatus = trim($lead['eligibilityStatus'] ?? $lead['eligibility_status'] ?? $lead['eligibility'] ?? 'Eligible');
+    $leadEmail = trim((string)($lead['email'] ?? $lead['emailAddress'] ?? '—'));
+    if (strpos($leadEmail, '@paisainminutes.com') !== false || empty($leadEmail)) {
+        $leadEmail = '—';
+    }
 
     $item = [
         'id'                => $leadId,
@@ -312,8 +336,8 @@ foreach ($allLeads as $index => $lead) {
         'fullName'          => $name,
         'phone'             => $phone,
         'mobile'            => $phone ? ('+91 ' . $phone) : '',
-        'email'             => !empty($lead['email']) && $lead['email'] !== '—' ? $lead['email'] : ($phone ? ($phone . '@paisainminutes.com') : '—'),
-        'emailAddress'      => !empty($lead['email']) && $lead['email'] !== '—' ? $lead['email'] : ($phone ? ($phone . '@paisainminutes.com') : '—'),
+        'email'             => $leadEmail,
+        'emailAddress'      => $leadEmail,
         'creditManager'     => $lead['creditManager'] ?? $lead['credit_manager'] ?? 'Unassigned',
         'pan'               => strtoupper(trim($lead['pan'] ?? '—')),
         'cibil'             => $cibil,
@@ -324,13 +348,13 @@ foreach ($allLeads as $index => $lead) {
         'monthlySalary'     => $cleanedSalary,
         'sal_val'           => $salVal ?: $cleanedSalary,
         'salary_range'      => $salRange,
-        'city'              => $lead['city'] ?? 'Delhi NCR',
-        'state'             => $lead['state'] ?? 'India',
-        'pincode'           => $lead['pincode'] ?? $lead['pin_code'] ?? '110001',
+        'city'              => !empty($lead['city']) && $lead['city'] !== 'Delhi NCR' ? $lead['city'] : '—',
+        'state'             => !empty($lead['state']) && $lead['state'] !== 'India' ? $lead['state'] : '—',
+        'pincode'           => !empty($lead['pincode']) && $lead['pincode'] !== '110001' ? $lead['pincode'] : '—',
         'employmentType'    => $lead['employmentType'] ?? $lead['employment_type'] ?? 'Salaried',
         'assignedCompany'   => $assignedCompany,
         'eligibilityStatus' => $eligibilityStatus,
-        'source'            => $lead['source'] ?? $lead['page_source'] ?? 'Website Form',
+        'source'            => $lead['source'] ?? $lead['page_source'] ?? ($isPhoneOnly ? 'Apply Now (Phone Only)' : 'Check Eligibility Website'),
         'purpose'           => $lead['purpose'] ?? 'Personal Loan',
         'status'            => $status,
         'created'           => $formattedDate,

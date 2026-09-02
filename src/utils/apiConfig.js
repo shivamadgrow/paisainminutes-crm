@@ -23,6 +23,10 @@ function mapRenderLead(item, index) {
   const initials = rawName.split(' ').filter(Boolean).map(n => n[0].toUpperCase()).join('').slice(0, 2) || 'AP';
   const leadId = item.id || item._id || item.loanNo || `PIM-${item.id || (index + 1001)}`;
 
+  const cleanLoan = Number(item.amount || item.loanAmount) || 0;
+  const cleanSalary = Number(item.monthlyIncome || item.salary) || 0;
+  const isPhoneOnly = (rawName === 'Applicant' || !rawName) && cleanLoan === 0 && cleanSalary === 0;
+
   return {
     id: String(leadId),
     loanNo: String(leadId),
@@ -34,23 +38,23 @@ function mapRenderLead(item, index) {
     mobile: formattedMobile,
     phone: rawPhone || formattedMobile,
     phoneNumber: rawPhone,
-    email: item.email || (rawPhone ? `${rawPhone}@paisainminutes.com` : '—'),
-    emailAddress: item.email || (rawPhone ? `${rawPhone}@paisainminutes.com` : '—'),
+    email: item.email && !item.email.includes('@paisainminutes.com') ? item.email : '—',
+    emailAddress: item.email && !item.email.includes('@paisainminutes.com') ? item.email : '—',
     creditManager: item.creditManager || 'Unassigned',
     pan: (item.pan || (item.user && item.user.pan) || '—').toUpperCase(),
-    cibil: item.cibil || '750+',
-    cibilScore: item.cibil || '750+',
-    applied: Number(item.amount || item.loanAmount) || 50000,
-    loanAmount: Number(item.amount || item.loanAmount) || 50000,
-    salary: Number(item.monthlyIncome || item.salary) || 35000,
-    monthlySalary: Number(item.monthlyIncome || item.salary) || 35000,
-    city: item.city || 'Delhi NCR',
-    state: item.state || 'India',
-    pincode: item.pincode || '110001',
+    cibil: item.cibil || '—',
+    cibilScore: item.cibil || '—',
+    applied: cleanLoan,
+    loanAmount: cleanLoan,
+    salary: cleanSalary,
+    monthlySalary: cleanSalary,
+    city: item.city || '—',
+    state: item.state || '—',
+    pincode: item.pincode || '—',
     employmentType: item.employmentType || 'Salaried',
-    assignedCompany: item.assignedCompany || (Number(item.monthlyIncome || item.salary) >= 30000 ? 'Rupay91' : 'Rupaysure'),
-    eligibilityStatus: item.eligibilityStatus || 'Eligible',
-    source: item.source || 'Render API / Apply Now',
+    assignedCompany: item.assignedCompany || (isPhoneOnly ? 'Pending Details' : (cleanSalary >= 30000 ? 'Rupay91' : 'Rupaysure')),
+    eligibilityStatus: isPhoneOnly ? 'Incomplete / Phone Only' : (item.eligibilityStatus || 'Eligible'),
+    source: item.source || (isPhoneOnly ? 'Apply Now (Phone Only)' : 'Render API / Apply Now'),
     purpose: item.purpose || 'Personal Loan',
     status: item.status || 'Fresh',
     created: item.createdAt ? new Date(item.createdAt).toLocaleString('en-IN') : new Date().toLocaleString('en-IN'),

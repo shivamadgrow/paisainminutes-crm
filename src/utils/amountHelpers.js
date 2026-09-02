@@ -4,7 +4,7 @@
  */
 
 export function cleanLoanAmount(raw) {
-  if (raw === null || raw === undefined || raw === '') return 50000;
+  if (raw === null || raw === undefined || raw === '' || raw === 0 || raw === '0') return 0;
   
   // 1. If it's a string with range separators like '-', '–', '—', 'to'
   if (typeof raw === 'string') {
@@ -19,7 +19,7 @@ export function cleanLoanAmount(raw) {
 
   // 2. Numeric cleanup
   let num = Number(String(raw).replace(/[^\d.]/g, ''));
-  if (isNaN(num) || num <= 0) return 50000;
+  if (isNaN(num) || num <= 0) return 0;
 
   // 3. Detect and decode concatenated ranges (e.g. 2500050000 -> 25000 + 50000, 500010000 -> 5000 + 10000)
   if (num > 500000) {
@@ -35,7 +35,7 @@ export function cleanLoanAmount(raw) {
       }
     }
     // Fallback if still abnormally huge
-    if (num > 1000000) return 50000;
+    if (num > 1000000) return 0;
   }
 
   return num;
@@ -71,7 +71,7 @@ export function cleanSalary(raw, salVal, salRange) {
 
   // 3. Numeric cleanup
   let num = Number(String(raw || '').replace(/[^\d.]/g, ''));
-  if (isNaN(num) || num <= 0) return 30000;
+  if (isNaN(num) || num <= 0) return 0;
 
   // 4. Detect concatenated salary range (e.g. 7000079999 -> 70000 + 79999 = 75000)
   if (num > 500000) {
@@ -92,7 +92,7 @@ export function cleanSalary(raw, salVal, salRange) {
         }
       }
     }
-    if (num > 500000) return 35000;
+    if (num > 500000) return 0;
   }
 
   return num;

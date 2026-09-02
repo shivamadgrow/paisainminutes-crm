@@ -748,29 +748,47 @@ export default function LeadsView({
                       {/* ELIGIBILITY & CIBIL */}
                       <td className="p-3.5">
                         <div>
-                          <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 inline-block">
-                            {item.eligibilityStatus || 'Eligible'}
-                          </span>
+                          {item.eligibilityStatus === 'Incomplete / Phone Only' ? (
+                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 inline-block">
+                              Phone Verified Only
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 inline-block">
+                              {item.eligibilityStatus || 'Eligible'}
+                            </span>
+                          )}
                         </div>
-                        {item.cibil && item.cibil !== '—' && (
+                        {item.cibil && item.cibil !== '—' ? (
                           <div className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200 mt-1 inline-block">
                             CIBIL: {item.cibil}
+                          </div>
+                        ) : (
+                          <div className="text-[10px] text-slate-400 font-medium mt-1">
+                            CIBIL: —
                           </div>
                         )}
                       </td>
 
                       {/* APPLIED */}
                       <td className="p-3.5 font-bold text-slate-900">
-                        ₹{cleanLoanAmount(item.applied || item.loanAmount).toLocaleString('en-IN')}
+                        {cleanLoanAmount(item.applied || item.loanAmount) > 0 ? (
+                          `₹${cleanLoanAmount(item.applied || item.loanAmount).toLocaleString('en-IN')}`
+                        ) : (
+                          <span className="text-slate-400 font-medium text-xs">—</span>
+                        )}
                       </td>
 
                       {/* SALARY / CITY */}
                       <td className="p-3.5">
                         <div className="font-semibold text-slate-800">
-                          ₹{cleanSalary(item.salary, item.sal_val, item.salary_range).toLocaleString('en-IN')}/mo
+                          {cleanSalary(item.salary, item.sal_val, item.salary_range) > 0 ? (
+                            `₹${cleanSalary(item.salary, item.sal_val, item.salary_range).toLocaleString('en-IN')}/mo`
+                          ) : (
+                            <span className="text-slate-400 font-medium text-xs">—</span>
+                          )}
                         </div>
                         <div className="text-[10px] text-slate-400">
-                          {item.city || 'Online'} · {item.pincode || '110001'}
+                          {item.city && item.city !== '—' ? item.city : 'Online'}{item.pincode && item.pincode !== '—' ? ` · ${item.pincode}` : ''}
                         </div>
                       </td>
 
