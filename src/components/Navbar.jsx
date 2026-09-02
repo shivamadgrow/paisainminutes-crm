@@ -1,11 +1,44 @@
-import React, { useState } from 'react';
-import { Search, Bell, LogOut, Menu, UserCheck, ChevronDown, Shield } from 'lucide-react';
-import { INITIAL_STAFF_MEMBERS } from '../data/staffData';
+import React, { useState, useEffect } from 'react';
+import { Search, Bell, LogOut, Menu, UserCheck, ChevronDown, Shield, Users } from 'lucide-react';
+import { getStaffList } from '../utils/authService';
 
-export default function Navbar({ searchQuery, setSearchQuery, setIsMobileOpen, setActiveTab, currentUser, onOpenLogin, onSwitchUser }) {
+export default function Navbar({ 
+  searchQuery, 
+  setSearchQuery, 
+  setIsMobileOpen, 
+  setActiveTab, 
+  currentUser, 
+  onOpenLogin, 
+  onSwitchUser,
+  onLogout 
+}) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [staffList, setStaffList] = useState(() => getStaffList());
 
-  const activeUser = currentUser || INITIAL_STAFF_MEMBERS[1]; // default to shivam
+  useEffect(() => {
+    const handleStaffUpdated = (e) => {
+      setStaffList(e.detail || getStaffList());
+    };
+    window.addEventListener('paisa_staff_updated', handleStaffUpdated);
+    return () => window.removeEventListener('paisa_staff_updated', handleStaffUpdated);
+  }, []);
+
+  const activeUser = currentUser || {
+    name: 'Admin',
+    role: 'Super Admin',
+    email: 'admin@paisainminutes.com',
+    initials: 'AD',
+    avatarBg: 'bg-[#0A3977]'
+  };
+
+  const handleLogoutClick = () => {
+    setIsDropdownOpen(false);
+    if (onLogout) {
+      onLogout();
+    } else if (onOpenLogin) {
+      onOpenLogin();
+    }
+  };
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between h-16 px-4 md:px-6 bg-white border-b border-slate-200 shadow-xs">
@@ -57,10 +90,10 @@ export default function Navbar({ searchQuery, setSearchQuery, setIsMobileOpen, s
           <button 
             onClick={() => setIsDropdownOpen(prev => !prev)}
             className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-xl hover:bg-slate-100 border border-transparent hover:border-slate-200 transition cursor-pointer"
-            title="Click to switch role / user"
+            title="User Account details"
           >
             <div className={`w-8 h-8 rounded-full ${activeUser.avatarBg || 'bg-[#0A3977]'} text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0`}>
-              {activeUser.initials || 'SH'}
+              {activeUser.initials || 'AD'}
             </div>
             <div className="hidden md:block text-left">
               <div className="text-xs font-bold text-slate-800 leading-tight flex items-center gap-1">
@@ -75,7 +108,7 @@ export default function Navbar({ searchQuery, setSearchQuery, setIsMobileOpen, s
 
           {/* Switcher Menu */}
           {isDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-fade-in">
+            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-xl border border-slate-200 p-2 z-50 animate-fade-in text-slate-800">
               <div className="p-2 border-b border-slate-100 mb-1">
                 <div className="text-[10px] uppercase font-bold text-slate-400">Signed In As</div>
                 <div className="text-xs font-bold text-slate-900">{activeUser.name}</div>
@@ -85,12 +118,14 @@ export default function Navbar({ searchQuery, setSearchQuery, setIsMobileOpen, s
                 </span>
               </div>
 
-              <div className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1">
-                Quick Switch Creator / Role
+              {/* Quick Profile list */}
+              <div className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1 flex items-center justify-between">
+                <span>Switch Staff Account</span>
+                <span className="text-slate-400 font-normal">{staffList.length} staff</span>
               </div>
 
-              <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
-                {INITIAL_STAFF_MEMBERS.map(staff => (
+              <div className="max-h-44 overflow-y-auto space-y-1 pr-1">
+                {staffList.map(staff => (
                   <button
                     key={staff.id}
                     onClick={() => {
@@ -98,14 +133,14 @@ export default function Navbar({ searchQuery, setSearchQuery, setIsMobileOpen, s
                       setIsDropdownOpen(false);
                     }}
                     className={`w-full p-1.5 rounded-lg text-left flex items-center justify-between text-xs transition cursor-pointer ${
-                      activeUser.name === staff.name 
+                      activeUser.name === staff.name || activeUser.username === staff.username
                         ? 'bg-blue-50 text-[#0A3977] font-bold' 
                         : 'hover:bg-slate-50 text-slate-700'
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate">
                       <div className={`w-5 h-5 rounded-full ${staff.avatarBg || 'bg-[#0A3977]'} text-white text-[9px] font-bold flex items-center justify-center shrink-0`}>
-                        {staff.initials}
+                        {staff.initials || 'ST'}
                       </div>
                       <span className="truncate">{staff.name}</span>
                     </div>
@@ -127,14 +162,11 @@ export default function Navbar({ searchQuery, setSearchQuery, setIsMobileOpen, s
                 </button>
 
                 <button
-                  onClick={() => {
-                    onOpenLogin();
-                    setIsDropdownOpen(false);
-                  }}
-                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
+                  onClick={handleLogoutClick}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-bold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
                 >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Switch Account / Logout</span>
+                  <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Logout / Lock Screen</span>
                 </button>
               </div>
             </div>
@@ -143,11 +175,11 @@ export default function Navbar({ searchQuery, setSearchQuery, setIsMobileOpen, s
 
         {/* Direct Logout Button */}
         <button 
-          onClick={onOpenLogin}
-          className="ml-1 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-[#0A3977] transition shadow-2xs cursor-pointer active:scale-95"
-          title="Logout & Switch Account"
+          onClick={handleLogoutClick}
+          className="ml-1 flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition shadow-2xs cursor-pointer active:scale-95"
+          title="Logout and Lock CRM"
         >
-          <LogOut className="w-3.5 h-3.5 text-slate-500" />
+          <LogOut className="w-3.5 h-3.5 text-slate-500 group-hover:text-rose-600" />
           <span className="hidden sm:inline">Logout</span>
         </button>
       </div>

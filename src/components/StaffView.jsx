@@ -1,31 +1,64 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileSpreadsheet, Search, Shield, User, LogIn, CheckCircle2, X, Users, Lock, KeyRound, AlertTriangle, RefreshCw, Copy, Check, MapPin, Navigation, Globe, ShieldCheck, ShieldAlert, Wifi, ExternalLink } from 'lucide-react';
+import { 
+  Plus, 
+  FileSpreadsheet, 
+  Search, 
+  Shield, 
+  User, 
+  LogIn, 
+  CheckCircle2, 
+  X, 
+  Users, 
+  Lock, 
+  KeyRound, 
+  AlertTriangle, 
+  RefreshCw, 
+  Copy, 
+  Check, 
+  MapPin, 
+  Navigation, 
+  Globe, 
+  ShieldCheck, 
+  ShieldAlert, 
+  Wifi, 
+  ExternalLink,
+  Eye,
+  EyeOff
+} from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
-import { INITIAL_ROLES, INITIAL_STAFF_MEMBERS } from '../data/staffData';
+import { INITIAL_ROLES } from '../data/staffData';
 import { getLiveSecurityDetails } from '../utils/geoService';
 import { getSecurityIncidents } from '../utils/shiftSecurity';
+import { 
+  getStaffList, 
+  addStaffUser, 
+  updateStaffUser, 
+  resetStaffPassword, 
+  deleteStaffUser, 
+  toggleUserStatus,
+  setCurrentUserSession 
+} from '../utils/authService';
 
 export default function StaffView({ onSwitchUser, currentUser }) {
   const [activeTab, setActiveTab] = useState('Users');
   const [searchQuery, setSearchQuery] = useState('');
-  const DUMMY_USER_NAMES = [
-    'shivam', 'accounts_team', 'director_admin', 'collection_lead', 
-    'credit_evaluator', 'telecaller_riya', 'ops_supervisor', 'telecaller_rahul'
-  ];
 
-  const [staffList, setStaffList] = useState(() => {
-    try {
-      const saved = localStorage.getItem('paisa_crm_staff_list');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          const cleaned = parsed.filter(u => u && u.name && !DUMMY_USER_NAMES.includes(u.name.toLowerCase().trim()));
-          if (cleaned.length > 0) return cleaned;
-        }
+  // Live dynamic staff list from authService / localStorage
+  const [staffList, setStaffList] = useState(() => getStaffList());
+
+  // Listen to cross-app staff list updates
+  useEffect(() => {
+    const handleStaffUpdated = (e) => {
+      if (e.detail) {
+        setStaffList(e.detail);
+      } else {
+        setStaffList(getStaffList());
       }
-    } catch (e) {}
-    return INITIAL_STAFF_MEMBERS.filter(u => u && u.name && !DUMMY_USER_NAMES.includes(u.name.toLowerCase().trim()));
-  });
+    };
+    window.addEventListener('paisa_staff_updated', handleStaffUpdated);
+    return () => window.removeEventListener('paisa_staff_updated', handleStaffUpdated);
+  }, []);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Live Location / Geo-Security state
@@ -89,20 +122,25 @@ export default function StaffView({ onSwitchUser, currentUser }) {
   // New user form state
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
+  const [newMobile, setNewMobile] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [showNewPass, setShowNewPass] = useState(true);
   const [newRole, setNewRole] = useState('Admin');
-  const [newBranch, setNewBranch] = useState('Delhi');
+  const [newRoles, setNewRoles] = useState(['Admin']);
+  const [newBranch, setNewBranch] = useState('Delhi Head Office');
+  const [addError, setAddError] = useState('');
 
-  // Edit user form state (Pixel-perfect matching modal design)
+  // Edit user form state
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editMobile, setEditMobile] = useState('');
   const [editRoles, setEditRoles] = useState(['Admin']);
-  const [editBranch, setEditBranch] = useState('Delhi');
+  const [editBranch, setEditBranch] = useState('Delhi Head Office');
   const [editStatus, setEditStatus] = useState('Active');
 
   const showToast = (msg) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+    setTimeout(() => setToastMessage(null), 4000);
   };
 
   // Compute live role counts
@@ -117,68 +155,99 @@ export default function StaffView({ onSwitchUser, currentUser }) {
   }));
 
   const filteredStaff = staffList.filter(u => {
-    if (!u || !u.name) return false;
-    if (DUMMY_USER_NAMES.includes(u.name.toLowerCase().trim())) return false;
+    if (!u || (!u.name && !u.username)) return false;
     const q = searchQuery.toLowerCase();
     return !q || 
-      u.name.toLowerCase().includes(q) || 
-      u.email.toLowerCase().includes(q) || 
+      (u.name && u.name.toLowerCase().includes(q)) || 
+      (u.username && u.username.toLowerCase().includes(q)) || 
+      (u.email && u.email.toLowerCase().includes(q)) || 
       (u.mobile && u.mobile.includes(q)) ||
       (u.role && u.role.toLowerCase().includes(q)) || 
       (u.branch && u.branch.toLowerCase().includes(q));
   });
 
-  const handleAddUserSubmit = (e) => {
-    e.preventDefault();
-    if (!newName.trim()) return;
+  const generateRandomPassword = () => {
+    return `Paisa@${Math.floor(1000 + Math.random() * 9000)}`;
+  };
 
-    const initials = newName
-      .split(' ')
-      .filter(Boolean)
-      .map(n => n[0].toUpperCase())
-      .join('')
-      .slice(0, 2) || 'US';
-
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-    const newUser = {
-      id: String(staffList.length + 1),
-      name: newName.trim(),
-      email: newEmail.trim() || `${newName.trim().toLowerCase()}@paisainminutes.com`,
-      mobile: '7982967240',
-      initials,
-      role: newRole,
-      roles: [newRole],
-      branch: newBranch,
-      status: 'Active',
-      lastLogin: 'Never',
-      created: dateStr,
-      avatarBg: 'bg-[#0A3977]'
-    };
-
-    setStaffList(prev => [...prev, newUser]);
-    setIsAddModalOpen(false);
+  const handleOpenAddModal = () => {
     setNewName('');
     setNewEmail('');
-    showToast(`Staff user "${newUser.name}" created successfully!`);
+    setNewMobile('7982967240');
+    setNewPass(generateRandomPassword());
+    setShowNewPass(true);
+    setNewRole('Admin');
+    setNewRoles(['Admin']);
+    setNewBranch('Delhi Head Office');
+    setAddError('');
+    setIsAddModalOpen(true);
+  };
+
+  const toggleNewRole = (roleName) => {
+    setNewRoles(prev => {
+      if (prev.includes(roleName)) {
+        if (prev.length === 1) return prev;
+        return prev.filter(r => r !== roleName);
+      } else {
+        return [...prev, roleName];
+      }
+    });
+    setNewRole(roleName);
+  };
+
+  const handleAddUserSubmit = (e) => {
+    e.preventDefault();
+    setAddError('');
+
+    if (!newName.trim()) {
+      setAddError('Please enter username or full name');
+      return;
+    }
+    if (!newPass.trim()) {
+      setAddError('Please specify a password for this user');
+      return;
+    }
+
+    const email = newEmail.trim() || `${newName.trim().toLowerCase().replace(/\s+/g, '_')}@paisainminutes.com`;
+
+    const result = addStaffUser({
+      name: newName.trim(),
+      username: newName.trim().toLowerCase().replace(/\s+/g, '_'),
+      email: email,
+      mobile: newMobile.trim() || '7982967240',
+      password: newPass.trim(),
+      role: newRoles[0] || newRole || 'Admin',
+      roles: newRoles,
+      branch: newBranch || 'Delhi Head Office',
+      status: 'Active'
+    });
+
+    if (!result.success) {
+      setAddError(result.error);
+      return;
+    }
+
+    // Refresh state
+    setStaffList(getStaffList());
+    setIsAddModalOpen(false);
+    showToast(`✅ Profile "${result.user.name}" created! User ID: ${result.user.username} | Pass: ${result.user.password}`);
   };
 
   // Open Edit Modal
   const handleOpenEdit = (user) => {
     setEditingUser(user);
-    setEditName(user.name || '');
+    setEditName(user.name || user.username || '');
     setEditEmail(user.email || '');
     setEditMobile(user.mobile || '7982967240');
     setEditStatus(user.status === 'Disabled' ? 'Inactive' : (user.status || 'Active'));
     setEditRoles(user.roles && user.roles.length > 0 ? user.roles : [user.role || 'Admin']);
-    setEditBranch(user.branch === '—' ? 'Delhi' : (user.branch || 'Delhi'));
+    setEditBranch(user.branch || 'Delhi Head Office');
   };
 
   const toggleEditRole = (roleName) => {
     setEditRoles(prev => {
       if (prev.includes(roleName)) {
-        if (prev.length === 1) return prev; // maintain at least 1 role
+        if (prev.length === 1) return prev;
         return prev.filter(r => r !== roleName);
       } else {
         return [...prev, roleName];
@@ -191,80 +260,62 @@ export default function StaffView({ onSwitchUser, currentUser }) {
     e.preventDefault();
     if (!editingUser) return;
 
-    const updatedInitials = editName
-      .split(' ')
-      .filter(Boolean)
-      .map(n => n[0].toUpperCase())
-      .join('')
-      .slice(0, 2) || 'US';
-
     const primaryRole = editRoles[0] || 'Admin';
 
-    setStaffList(prev => prev.map(u => {
-      if (u.id === editingUser.id) {
-        const updated = {
-          ...u,
-          name: editName.trim(),
-          email: editEmail.trim(),
-          mobile: editMobile.trim(),
-          role: primaryRole,
-          roles: editRoles,
-          branch: editBranch,
-          status: editStatus === 'Inactive' ? 'Disabled' : 'Active',
-          initials: updatedInitials
-        };
-        // Update current session if editing self
-        if (currentUser?.id === u.id && onSwitchUser) {
-          onSwitchUser(updated);
-        }
-        return updated;
-      }
-      return u;
-    }));
+    const result = updateStaffUser(editingUser.id, {
+      name: editName.trim(),
+      username: editName.trim().toLowerCase().replace(/\s+/g, '_'),
+      email: editEmail.trim(),
+      mobile: editMobile.trim(),
+      role: primaryRole,
+      roles: editRoles,
+      branch: editBranch,
+      status: editStatus === 'Inactive' ? 'Disabled' : 'Active'
+    });
 
-    showToast(`User "${editName}" updated successfully!`);
-    setEditingUser(null);
+    if (result.success) {
+      setStaffList(getStaffList());
+      if (currentUser?.id === editingUser.id && onSwitchUser) {
+        onSwitchUser(result.user);
+      }
+      showToast(`User "${editName}" updated successfully!`);
+      setEditingUser(null);
+    }
   };
 
   // Toggle Disable / Enable
   const handleToggleDisable = (user) => {
-    const nextStatus = user.status === 'Active' ? 'Disabled' : 'Active';
-    setStaffList(prev => prev.map(u => {
-      if (u.id === user.id) {
-        const updated = { ...u, status: nextStatus };
-        if (currentUser?.id === u.id && onSwitchUser) {
-          onSwitchUser(updated);
-        }
-        return updated;
-      }
-      return u;
-    }));
-    showToast(`User "${user.name}" is now ${nextStatus}!`);
+    const result = toggleUserStatus(user.id);
+    if (result.success) {
+      setStaffList(getStaffList());
+      showToast(`User "${user.name}" is now ${result.status}!`);
+    }
   };
 
   // Open Reset Password Modal
   const handleOpenReset = (user) => {
     setResettingUser(user);
-    setNewPassword(`Paisa@${Math.floor(1000 + Math.random() * 9000)}`);
+    setNewPassword(generateRandomPassword());
     setIsCopied(false);
   };
 
   // Submit Password Reset
   const handleSaveResetPassword = (e) => {
     e.preventDefault();
-    showToast(`Password for ${resettingUser.name} has been reset successfully!`);
-    setResettingUser(null);
+    if (!resettingUser || !newPassword.trim()) return;
+
+    const result = resetStaffPassword(resettingUser.id, newPassword.trim());
+    if (result.success) {
+      setStaffList(getStaffList());
+      showToast(`🔑 Password for ${resettingUser.name} reset to: ${newPassword}`);
+      setResettingUser(null);
+    }
   };
 
   const handleDeleteUser = (userToDelete) => {
     if (confirm(`Are you sure you want to permanently delete user "${userToDelete.name}"?`)) {
-      setStaffList(prev => {
-        const updated = prev.filter(u => u.id !== userToDelete.id && u.name !== userToDelete.name);
-        try {
-          localStorage.setItem('paisa_crm_staff_list', JSON.stringify(updated));
-        } catch (e) {}
-        return updated;
-      });
+      deleteStaffUser(userToDelete.id);
+      setStaffList(getStaffList());
       showToast(`🗑️ User "${userToDelete.name}" deleted successfully!`);
     }
   };
@@ -275,7 +326,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  const allBranchOptions = ['Delhi', 'Noida', 'Gurugram'];
+  const allBranchOptions = ['Delhi Head Office', 'Noida Hub', 'Gurugram Central', 'Mumbai Branch', 'Bengaluru Branch'];
 
   // City helper for staff login simulation
   const getUserLocation = (user, idx) => {
@@ -302,7 +353,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
       
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-[#0A3977] text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 text-xs font-semibold animate-bounce">
+        <div className="fixed top-20 right-6 z-50 bg-[#0A3977] text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-xs font-semibold animate-bounce border border-blue-400">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toastMessage}</span>
         </div>
@@ -320,11 +371,11 @@ export default function StaffView({ onSwitchUser, currentUser }) {
         </div>
 
         <button
-          onClick={() => setIsAddModalOpen(true)}
+          onClick={handleOpenAddModal}
           className="px-4 py-2 bg-[#0A3977] hover:bg-blue-900 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
         >
           <Plus className="w-4 h-4" />
-          <span>Add user</span>
+          <span>+ Add user</span>
         </button>
       </div>
 
@@ -394,115 +445,136 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {filteredStaff.map((user) => {
-                    const isLogged = currentUser?.name === user.name;
+                    const isLogged = currentUser?.name === user.name || currentUser?.username === user.username;
                     const isDisabled = user.status === 'Disabled' || user.status === 'Inactive';
                     return (
                       <tr key={user.id} className={`hover:bg-slate-50/80 transition ${isLogged ? 'bg-blue-50/40' : ''}`}>
-                        {/* USER */}
+                        
+                        {/* User info */}
                         <td className="p-3.5">
                           <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full ${user.avatarBg || 'bg-[#0A3977]'} text-white flex items-center justify-center font-bold text-xs shadow-2xs shrink-0`}>
-                              {user.initials}
+                            <div className={`w-8 h-8 rounded-full ${user.avatarBg || 'bg-[#0A3977]'} text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs`}>
+                              {user.initials || 'US'}
                             </div>
                             <div>
-                              <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                                <span className={isDisabled ? 'line-through text-slate-400' : ''}>{user.name}</span>
+                              <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                <span>{user.name}</span>
                                 {isLogged && (
                                   <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[9px] font-extrabold rounded-full">
                                     Current
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[11px] text-slate-500 font-mono">{user.email}</div>
+                              <div className="text-[11px] text-slate-400 font-mono">
+                                {user.email}
+                              </div>
                             </div>
                           </div>
                         </td>
 
-                        {/* ROLES */}
+                        {/* Roles Pill */}
                         <td className="p-3.5">
                           <div className="flex flex-wrap gap-1">
-                            {(user.roles && user.roles.length > 0 ? user.roles : [user.role || 'Admin']).map((r, i) => (
-                              <span key={i} className={`px-2.5 py-0.5 text-[10px] font-semibold rounded-full ${
-                                r === 'Admin' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
-                                r === 'Credit Manager' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                                r === 'Collection Manager' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                                r === 'Telecaller' ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' :
-                                'bg-blue-50 text-blue-700 border border-blue-200'
-                              }`}>
+                            {(user.roles || [user.role || 'Admin']).map((r, idx) => (
+                              <span 
+                                key={idx}
+                                className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-[#0A3977] border border-blue-100"
+                              >
                                 {r}
                               </span>
                             ))}
                           </div>
                         </td>
 
-                        {/* BRANCH */}
-                        <td className="p-3.5 text-slate-600 font-medium">
-                          {user.branch}
+                        {/* Branch */}
+                        <td className="p-3.5 font-medium text-slate-700">
+                          {user.branch || 'Delhi Head Office'}
                         </td>
 
-                        {/* STATUS */}
+                        {/* Status */}
                         <td className="p-3.5">
-                          <span className={`px-2.5 py-0.5 text-[10px] font-semibold rounded-full ${
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             isDisabled 
-                              ? 'bg-rose-100 text-rose-800 border border-rose-200' 
+                              ? 'bg-rose-100 text-rose-700 border border-rose-200' 
                               : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                           }`}>
-                            {user.status || 'Active'}
+                            {isDisabled ? 'Disabled' : 'Active'}
                           </span>
                         </td>
 
-                        {/* LAST LOGIN */}
-                        <td className="p-3.5 text-xs text-slate-500 font-mono">
-                          {user.lastLogin}
+                        {/* Last Login */}
+                        <td className="p-3.5 text-slate-500 font-mono text-[11px]">
+                          {user.lastLogin || 'Never'}
                         </td>
 
-                        {/* CREATED */}
-                        <td className="p-3.5 text-xs text-slate-500 font-mono">
-                          {user.created}
+                        {/* Created Date */}
+                        <td className="p-3.5 text-slate-500 font-mono text-[11px]">
+                          {user.created || '20/08/2026'}
                         </td>
 
-                        {/* ACTION BUTTONS (Login, Edit, Reset, Disable/Enable) */}
-                        <td className="p-3.5 text-right space-x-2 font-medium text-[11px] whitespace-nowrap">
-                          {onSwitchUser && !isLogged && (
-                            <button 
+                        {/* Action Buttons */}
+                        <td className="p-3.5 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            
+                            {/* Login / Switch session */}
+                            <button
                               onClick={() => {
                                 onSwitchUser(user);
-                                showToast(`Switched session to ${user.name} (${user.role})!`);
+                                showToast(`Switched active session to "${user.name}"`);
                               }}
-                              className="px-2.5 py-1 rounded-md bg-blue-50 text-[#0A3977] hover:bg-[#0A3977] hover:text-white transition font-bold border border-blue-200/80 cursor-pointer shadow-2xs"
-                              title="Login with this creator session"
+                              className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition cursor-pointer ${
+                                isLogged 
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 pointer-events-none' 
+                                  : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
+                              }`}
+                              title="Sign in as this user"
                             >
-                              Login
+                              {isLogged ? 'Active' : 'Login'}
                             </button>
-                          )}
-                          <button 
-                            onClick={() => handleOpenEdit(user)} 
-                            className="text-blue-600 hover:text-blue-800 font-semibold hover:underline cursor-pointer px-1 py-0.5"
-                          >
-                            Edit
-                          </button>
-                          <button 
-                            onClick={() => handleOpenReset(user)} 
-                            className="text-blue-600 hover:text-blue-800 font-semibold hover:underline cursor-pointer px-1 py-0.5"
-                          >
-                            Reset
-                          </button>
-                          <button 
-                            onClick={() => handleToggleDisable(user)} 
-                            className={`font-semibold hover:underline cursor-pointer px-1 py-0.5 ${
-                              isDisabled ? 'text-emerald-600 hover:text-emerald-800' : 'text-amber-600 hover:text-amber-800'
-                            }`}
-                          >
-                            {isDisabled ? 'Enable' : 'Disable'}
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteUser(user)} 
-                            className="text-rose-600 hover:text-rose-800 font-semibold hover:underline cursor-pointer px-1 py-0.5"
-                            title="Delete user"
-                          >
-                            Delete
-                          </button>
+
+                            {/* Edit */}
+                            <button
+                              onClick={() => handleOpenEdit(user)}
+                              className="px-2 py-1 text-xs font-semibold text-slate-600 hover:text-blue-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                              title="Edit user details"
+                            >
+                              Edit
+                            </button>
+
+                            {/* Reset Password */}
+                            <button
+                              onClick={() => handleOpenReset(user)}
+                              className="px-2 py-1 text-xs font-semibold text-slate-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                              title="Reset Password"
+                            >
+                              Reset
+                            </button>
+
+                            {/* Disable / Enable */}
+                            <button
+                              onClick={() => handleToggleDisable(user)}
+                              className={`px-2 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                                isDisabled 
+                                  ? 'text-emerald-700 hover:bg-emerald-50' 
+                                  : 'text-amber-700 hover:bg-amber-50'
+                              }`}
+                              title={isDisabled ? 'Enable user' : 'Disable user'}
+                            >
+                              {isDisabled ? 'Enable' : 'Disable'}
+                            </button>
+
+                            {/* Delete */}
+                            <button
+                              onClick={() => handleDeleteUser(user)}
+                              className="px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                              title="Delete user"
+                            >
+                              Delete
+                            </button>
+
+                          </div>
                         </td>
+
                       </tr>
                     );
                   })}
@@ -513,40 +585,36 @@ export default function StaffView({ onSwitchUser, currentUser }) {
         </div>
       )}
 
-      {/* TAB 2: ROLES CARDS (Matching Screenshot 1) */}
+      {/* TAB 2: ROLES VIEW */}
       {activeTab === 'Roles' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
-            {roleCounts.map((role) => (
-              <div 
-                key={role.id}
-                className="crm-card p-3.5 bg-white flex items-center gap-3.5 border border-slate-200/80 rounded-2xl shadow-2xs hover:shadow-md transition"
-              >
-                {/* Role Code Badge (AC, AD, CA, CO, CR, DI, MI, PD, RE, TE) */}
-                <div className={`w-10 h-10 rounded-xl ${role.color || 'bg-blue-600'} text-white flex items-center justify-center font-extrabold text-xs shadow-xs shrink-0 tracking-wider`}>
-                  {role.code}
-                </div>
-                <div>
-                  <div className="font-bold text-slate-900 text-xs">
-                    {role.name}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {roleCounts.map((role) => (
+            <div key={role.id} className="crm-card bg-white p-5 rounded-2xl border border-slate-200/80 space-y-3 hover:shadow-md transition">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-9 h-9 rounded-xl ${role.color || 'bg-blue-600'} text-white flex items-center justify-center font-extrabold text-xs shadow-xs`}>
+                    {role.code}
                   </div>
-                  <div className="text-[11px] text-slate-400 font-medium mt-0.5">
-                    {role.userCount} {role.userCount === 1 ? 'user' : 'users'}
+                  <div>
+                    <h3 className="font-bold text-slate-900 text-sm">{role.name}</h3>
+                    <span className="text-[10px] text-slate-400 uppercase font-mono tracking-wider">Role Code: {role.code}</span>
                   </div>
                 </div>
+                <span className="px-2.5 py-1 rounded-full bg-blue-50 text-[#0A3977] text-xs font-extrabold">
+                  {role.userCount} users
+                </span>
               </div>
-            ))}
-          </div>
-
-          <p className="text-[11px] text-slate-400 pt-2">
-            Roles and their permissions are provisioned by the platform. Assign roles to users from the Users tab.
-          </p>
+              <p className="text-xs text-slate-500 leading-relaxed min-h-[36px]">
+                {role.desc}
+              </p>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* TAB 3: LOGIN HISTORY (With Live Location & GPS Tracking) */}
+      {/* TAB 3: LOGIN HISTORY & GEO SECURITY */}
       {activeTab === 'Login History' && (
-        <div className="space-y-4">
+        <div className="space-y-5 animate-fade-in">
           
           {/* Live Geolocation Security Banner */}
           <div className="bg-gradient-to-r from-blue-950 via-[#0A3977] to-indigo-900 text-white p-4 rounded-2xl flex flex-wrap items-center justify-between gap-4 shadow-md border border-blue-800">
@@ -607,10 +675,9 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                     const isLogged = currentUser?.name === user.name;
                     return (
                       <tr key={user.id} className={`hover:bg-slate-50/80 transition ${isLogged ? 'bg-blue-50/30' : ''}`}>
-                        {/* User */}
                         <td className="p-3.5 font-sans font-bold text-slate-900 flex items-center gap-2">
                           <div className={`w-6 h-6 rounded-full ${user.avatarBg || 'bg-[#0A3977]'} text-white text-[10px] flex items-center justify-center font-bold shrink-0`}>
-                            {user.initials}
+                            {user.initials || 'US'}
                           </div>
                           <span>{user.name}</span>
                           {isLogged && (
@@ -620,14 +687,12 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                           )}
                         </td>
 
-                        {/* Role */}
                         <td className="p-3.5 font-sans">
                           <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-semibold">
                             {user.role}
                           </span>
                         </td>
 
-                        {/* LIVE LOCATION */}
                         <td className="p-3.5 font-sans">
                           <div className="flex items-center gap-1.5">
                             <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
@@ -657,22 +722,18 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                           </div>
                         </td>
 
-                        {/* IP Address */}
                         <td className="p-3.5 text-slate-600 font-mono">
                           {loc.ip}
                         </td>
 
-                        {/* Browser / OS */}
                         <td className="p-3.5 text-slate-600 font-sans">
                           {liveGeo.browser} · {liveGeo.os}
                         </td>
 
-                        {/* Timestamp */}
                         <td className="p-3.5 text-slate-500 font-mono">
-                          {user.lastLogin && user.lastLogin !== 'Never' ? user.lastLogin : '22/08/2026, 16:30'}
+                          {user.lastLogin && user.lastLogin !== 'Never' ? user.lastLogin : 'Active'}
                         </td>
 
-                        {/* Status */}
                         <td className="p-3.5">
                           <span className="px-2.5 py-0.5 text-[9px] font-bold rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1 w-fit font-sans">
                             <ShieldCheck className="w-3 h-3 text-emerald-600" />
@@ -686,86 +747,195 @@ export default function StaffView({ onSwitchUser, currentUser }) {
               </table>
             </div>
           </div>
-
-          {/* Recorded Off-Hours Security Incidents / Alerts */}
-          <div className="crm-card bg-white p-4.5 rounded-2xl border border-rose-200/80 space-y-3">
-            <div className="flex items-center justify-between border-b border-rose-100 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center font-bold shrink-0">
-                  <ShieldAlert className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                    <span>Shift Security Alerts & Off-Hours Lockout Log</span>
-                    <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">Policy: 06:35 PM – 09:27 AM IST</span>
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Any login attempt made outside working hours (except by director_admin) is blocked immediately and logged with GPS & role details.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {getSecurityIncidents().length === 0 ? (
-              <div className="py-6 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-1">
-                <ShieldCheck className="w-6 h-6 text-emerald-500" />
-                <span className="font-semibold text-slate-700">No unauthorized off-hours attempts detected.</span>
-                <span className="text-[11px]">System is secure. All staff sessions automatically locked during night hours.</span>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse font-mono text-[11px]">
-                  <thead>
-                    <tr className="bg-rose-50/50 text-rose-800 font-bold uppercase text-[9px] border-b border-rose-100">
-                      <th className="p-2.5">INCIDENT ID</th>
-                      <th className="p-2.5">ATTEMPTED USER</th>
-                      <th className="p-2.5">ROLE</th>
-                      <th className="p-2.5">LOCATION & GPS</th>
-                      <th className="p-2.5">IP ADDRESS</th>
-                      <th className="p-2.5">TIMESTAMP</th>
-                      <th className="p-2.5">ACTION</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {getSecurityIncidents().map((inc) => (
-                      <tr key={inc.id} className="hover:bg-rose-50/30 transition">
-                        <td className="p-2.5 font-bold text-rose-700">{inc.id}</td>
-                        <td className="p-2.5 font-sans font-bold text-slate-900">{inc.user}</td>
-                        <td className="p-2.5 font-sans text-indigo-700">{inc.role}</td>
-                        <td className="p-2.5 font-sans">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3 text-rose-500 shrink-0" />
-                            <span>{inc.location}</span>
-                          </div>
-                        </td>
-                        <td className="p-2.5 text-slate-600">{inc.ip}</td>
-                        <td className="p-2.5 text-slate-600">{inc.timestamp} IST</td>
-                        <td className="p-2.5">
-                          <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[9px] font-bold font-sans">
-                            BLOCKED & LOGGED
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
         </div>
       )}
 
-      {/* 1. EXACT EDIT USER MODAL (Matching User Screenshot 100%) */}
+      {/* 1. ADD USER MODAL */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 md:p-8 shadow-2xl border border-slate-100 relative my-6 animate-fade-in text-slate-800">
+            <button 
+              onClick={() => setIsAddModalOpen(false)}
+              className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="mb-5 pb-3 border-b border-slate-100">
+              <h3 className="font-extrabold text-slate-900 text-lg">Add New Staff / Creator Profile</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Set credentials and permissions for new team member
+              </p>
+            </div>
+
+            {addError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-semibold border border-rose-200 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>{addError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleAddUserSubmit} className="space-y-4 text-xs">
+              {/* Row 1: Username & Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Username / Full Name *
+                  </label>
+                  <input 
+                    type="text"
+                    required
+                    placeholder="e.g. rohit_credit or priya_telecaller"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-medium"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Used as sign-in ID</p>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Official Email
+                  </label>
+                  <input 
+                    type="email"
+                    placeholder="user@paisainminutes.com"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-medium"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Optional secondary sign-in</p>
+                </div>
+              </div>
+
+              {/* Row 2: Mobile & Password */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Mobile Number
+                  </label>
+                  <input 
+                    type="text"
+                    placeholder="7982967240"
+                    value={newMobile}
+                    onChange={(e) => setNewMobile(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">
+                      Login Password *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setNewPass(generateRandomPassword())}
+                      className="text-[10px] text-[#0A3977] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Auto Generate</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input 
+                      type={showNewPass ? 'text' : 'password'}
+                      required
+                      value={newPass}
+                      onChange={(e) => setNewPass(e.target.value)}
+                      placeholder="e.g. Paisa@4921"
+                      className="w-full pl-3 pr-8 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-mono font-bold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPass(prev => !prev)}
+                      className="absolute inset-y-0 right-2 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 3: Role Selection */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1.5">
+                  Select Role(s) *
+                </label>
+                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-slate-50 rounded-xl border border-slate-200">
+                  {INITIAL_ROLES.map(r => {
+                    const isSelected = newRoles.includes(r.name);
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => toggleNewRole(r.name)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#0A3977] text-white border-[#0A3977] shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                        }`}
+                      >
+                        {r.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Row 4: Branch */}
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Assigned Branch *
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {allBranchOptions.map(b => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setNewBranch(b)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                        newBranch === b
+                          ? 'border-[#0A3977] bg-blue-50 text-[#0A3977] font-bold ring-1 ring-[#0A3977]'
+                          : 'border-slate-300 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {b}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="pt-4 flex items-center justify-end gap-2.5 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 border border-slate-300 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-[#0A3977] hover:bg-blue-900 text-white font-bold rounded-xl shadow cursor-pointer active:scale-95"
+                >
+                  Create Profile & Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 2. EDIT USER MODAL */}
       {editingUser && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 md:p-8 shadow-2xl border border-slate-100 relative my-6 animate-fade-in text-slate-800">
-            
-            {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
-              <h2 className="text-xl font-bold text-slate-900">
-                Edit user
-              </h2>
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Edit user profile</h2>
+                <p className="text-xs text-slate-400">Update staff details and access levels</p>
+              </div>
               <button 
                 onClick={() => setEditingUser(null)}
                 className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition cursor-pointer"
@@ -774,64 +944,51 @@ export default function StaffView({ onSwitchUser, currentUser }) {
               </button>
             </div>
 
-            <form onSubmit={handleSaveEdit} className="space-y-5 text-xs">
-              
-              {/* Row 1: Username & Email */}
+            <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1.5">Username *</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Username *</label>
                   <input 
                     type="text"
                     required
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-medium text-xs shadow-2xs"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-medium"
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Always usable to sign in — renaming changes how they sign in
-                  </p>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1.5">Email *</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Email *</label>
                   <input 
                     type="email"
                     required
                     value={editEmail}
                     onChange={(e) => setEditEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-medium text-xs shadow-2xs"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-medium"
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Sign-in identifier — keep it current
-                  </p>
                 </div>
               </div>
 
-              {/* Row 2: Mobile & Status */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1.5">Mobile</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Mobile</label>
                   <input 
                     type="text"
                     value={editMobile}
                     onChange={(e) => setEditMobile(e.target.value)}
-                    placeholder="7982967240"
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 font-medium text-xs shadow-2xs"
+                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-medium"
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Sign-in identifier when mobile login is enabled
-                  </p>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1.5">Status</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Status</label>
                   <div className="flex items-center gap-2 pt-0.5">
                     <button 
                       type="button"
                       onClick={() => setEditStatus('Active')}
-                      className={`px-5 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                      className={`px-4 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                         editStatus === 'Active' 
-                          ? 'border-[#4F46E5] bg-indigo-50/70 text-[#4F46E5] font-bold ring-1 ring-[#4F46E5]' 
+                          ? 'border-[#0A3977] bg-blue-50 text-[#0A3977] font-bold ring-1 ring-[#0A3977]' 
                           : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
@@ -840,24 +997,21 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                     <button 
                       type="button"
                       onClick={() => setEditStatus('Inactive')}
-                      className={`px-5 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                      className={`px-4 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                         editStatus === 'Inactive' || editStatus === 'Disabled' 
-                          ? 'border-[#4F46E5] bg-indigo-50/70 text-[#4F46E5] font-bold ring-1 ring-[#4F46E5]' 
+                          ? 'border-rose-500 bg-rose-50 text-rose-700 font-bold ring-1 ring-rose-500' 
                           : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
-                      Inactive
+                      Disabled
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* Row 3: Roles * (select one or more) */}
               <div>
-                <label className="block font-semibold text-slate-700 mb-2">
-                  Roles * (select one or more)
-                </label>
-                <div className="flex flex-wrap gap-2">
+                <label className="block font-semibold text-slate-700 mb-1.5">Roles *</label>
+                <div className="flex flex-wrap gap-1.5">
                   {INITIAL_ROLES.map((r) => {
                     const isSelected = editRoles.includes(r.name);
                     return (
@@ -865,9 +1019,9 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                         key={r.id}
                         type="button"
                         onClick={() => toggleEditRole(r.name)}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                           isSelected 
-                            ? 'border-[#4F46E5] bg-indigo-50/70 text-[#4F46E5] font-bold ring-1 ring-[#4F46E5] shadow-2xs' 
+                            ? 'border-[#0A3977] bg-blue-50 text-[#0A3977] font-bold ring-1 ring-[#0A3977]' 
                             : 'border-slate-200 text-slate-700 hover:bg-slate-50'
                         }`}
                       >
@@ -878,77 +1032,64 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                 </div>
               </div>
 
-              {/* Row 4: Branch * */}
               <div>
-                <label className="block font-semibold text-slate-700 mb-2">
-                  Branch *
-                </label>
+                <label className="block font-semibold text-slate-700 mb-1.5">Branch *</label>
                 <div className="flex flex-wrap gap-2">
-                  {allBranchOptions.map((b) => {
-                    const isSelected = editBranch === b;
-                    return (
-                      <button
-                        key={b}
-                        type="button"
-                        onClick={() => setEditBranch(b)}
-                        className={`px-4 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                          isSelected 
-                            ? 'border-[#4F46E5] bg-indigo-50/70 text-[#4F46E5] font-bold ring-1 ring-[#4F46E5] shadow-2xs' 
-                            : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        {b}
-                      </button>
-                    );
-                  })}
+                  {allBranchOptions.map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setEditBranch(b)}
+                      className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                        editBranch === b 
+                          ? 'border-[#0A3977] bg-blue-50 text-[#0A3977] font-bold ring-1 ring-[#0A3977]' 
+                          : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {b}
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              {/* Row 5: Password Box */}
-              <div className="p-4 rounded-2xl border border-slate-200/80 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
                 <div>
-                  <div className="font-bold text-slate-800 text-xs">Password</div>
-                  <div className="text-[11px] text-slate-400 mt-0.5">
-                    Forgot it? Set a new one — active sessions are signed out.
-                  </div>
+                  <div className="font-bold text-slate-800 text-xs">Password Management</div>
+                  <div className="text-[11px] text-slate-500">Reset or set a new password for this user</div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => {
-                    handleOpenReset(editingUser);
-                  }}
-                  className="px-4 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition shadow-2xs cursor-pointer whitespace-nowrap"
+                  onClick={() => handleOpenReset(editingUser)}
+                  className="px-3.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition cursor-pointer whitespace-nowrap"
                 >
                   Reset password
                 </button>
               </div>
 
-              {/* Footer Actions */}
-              <div className="pt-4 flex items-center justify-between gap-3 border-t border-slate-100">
+              <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="px-5 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition cursor-pointer text-xs"
+                  className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-[#4F46E5] hover:bg-[#4338CA] text-white font-bold rounded-xl shadow-md transition cursor-pointer text-xs active:scale-95"
+                  className="px-6 py-2 bg-[#0A3977] hover:bg-blue-900 text-white font-bold rounded-xl shadow cursor-pointer active:scale-95"
                 >
                   Save changes
                 </button>
               </div>
-
             </form>
           </div>
         </div>
       )}
 
-      {/* 2. RESET PASSWORD MODAL */}
+      {/* 3. RESET PASSWORD MODAL */}
       {resettingUser && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-fade-in text-slate-800">
             <button 
               onClick={() => setResettingUser(null)}
               className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 cursor-pointer"
@@ -960,7 +1101,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
               <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
                 <KeyRound className="w-6 h-6" />
               </div>
-              <h3 className="font-extrabold text-slate-900 text-base">Reset Password</h3>
+              <h3 className="font-extrabold text-slate-900 text-base">Reset User Password</h3>
               <p className="text-xs text-slate-500">
                 Reset password for <strong className="text-slate-800">{resettingUser.name}</strong> ({resettingUser.email})
               </p>
@@ -968,7 +1109,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
 
             <form onSubmit={handleSaveResetPassword} className="space-y-4 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">New Temporary Password</label>
+                <label className="block font-bold text-slate-700 mb-1">New Password</label>
                 <div className="relative">
                   <input 
                     type="text"
@@ -980,9 +1121,9 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                   <div className="absolute inset-y-0 right-1 flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() => setNewPassword(`Paisa@${Math.floor(1000 + Math.random() * 9000)}`)}
+                      onClick={() => setNewPassword(generateRandomPassword())}
                       className="p-1.5 text-slate-400 hover:text-[#0A3977] hover:bg-slate-100 rounded-lg transition"
-                      title="Generate new password"
+                      title="Generate new random password"
                     >
                       <RefreshCw className="w-4 h-4" />
                     </button>
@@ -1000,7 +1141,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
 
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[11px] space-y-1">
                 <p className="font-semibold">Security Note:</p>
-                <p>An automated notification with the new temporary credentials will be delivered to the staff member.</p>
+                <p>The user can sign in immediately using this new password with their User ID <strong>{resettingUser.username || resettingUser.name}</strong>.</p>
               </div>
 
               <div className="pt-2 flex justify-end gap-2">
@@ -1015,88 +1156,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                   type="submit"
                   className="px-5 py-2 bg-[#0A3977] hover:bg-blue-900 text-white font-bold rounded-xl shadow cursor-pointer active:scale-95"
                 >
-                  Confirm & Reset
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* 3. ADD USER MODAL */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-fade-in">
-            <button 
-              onClick={() => setIsAddModalOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="font-extrabold text-slate-900 text-base mb-4">Add New Staff / Creator</h3>
-
-            <form onSubmit={handleAddUserSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Full Name / Username *</label>
-                <input 
-                  type="text"
-                  required
-                  placeholder="e.g. credit_manager_2"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Official Email</label>
-                <input 
-                  type="email"
-                  placeholder="user@paisainminutes.com"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977]"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Assigned Role</label>
-                <select 
-                  value={newRole} 
-                  onChange={(e) => setNewRole(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977]"
-                >
-                  {INITIAL_ROLES.map(r => (
-                    <option key={r.id} value={r.name}>{r.name} ({r.code})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Branch</label>
-                <input 
-                  type="text"
-                  placeholder="Delhi"
-                  value={newBranch}
-                  onChange={(e) => setNewBranch(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977]"
-                />
-              </div>
-
-              <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-[#0A3977] hover:bg-blue-900 text-white font-bold rounded-xl shadow cursor-pointer active:scale-95"
-                >
-                  Create User
+                  Confirm & Save Password
                 </button>
               </div>
             </form>

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import ExecutiveDashboard from './components/ExecutiveDashboard';
@@ -12,11 +12,15 @@ import StaffView from './components/StaffView';
 import AuditLogView from './components/AuditLogView';
 import MyProfileView from './components/MyProfileView';
 import LoginModal from './components/LoginModal';
-import { INITIAL_STAFF_MEMBERS } from './data/staffData';
 import { isOffHours, isUserExempt, logSecurityIncident } from './utils/shiftSecurity';
 import { getLiveSecurityDetails } from './utils/geoService';
 import { sanitizeLead } from './utils/amountHelpers';
 import { getLeadsFromBackend } from './utils/apiConfig';
+import { 
+  getCurrentUser, 
+  setCurrentUserSession, 
+  clearCurrentUserSession 
+} from './utils/authService';
 
 // Initial clean slate leads array
 const INITIAL_LEADS = [];
@@ -38,30 +42,26 @@ export default function App() {
   };
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedMonth, setSelectedMonth] = useState('August 2026');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [leads, setLeads] = useState(INITIAL_LEADS);
 
-  // Current logged in user / creator session state
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('paisa_crm_user');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return {
-      name: 'Shivam',
-      role: 'Super Admin',
-      email: 'shivam@adgrowmedia.com',
-      avatar: 'SH',
-      avatarBg: 'bg-[#0A3977]'
-    };
-  });
+  // Authenticated user session (null when locked/logged out)
+  const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isSecurityRestricted, setIsSecurityRestricted] = useState(false);
 
+  // Listen to session changes
+  useEffect(() => {
+    const handleSessionChange = (e) => {
+      setCurrentUser(e.detail || getCurrentUser());
+    };
+    window.addEventListener('paisa_session_changed', handleSessionChange);
+    return () => window.removeEventListener('paisa_session_changed', handleSessionChange);
+  }, []);
+
   // Shift & Timing Security Check (9:27 AM - 6:35 PM IST for non-exempt staff)
-  React.useEffect(() => {
+  useEffect(() => {
     const checkSecurity = async () => {
       if (!currentUser) return;
       const exempt = isUserExempt(currentUser);
@@ -84,31 +84,33 @@ export default function App() {
     return () => clearInterval(timer);
   }, [currentUser]);
 
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+    setCurrentUserSession(user);
+    setIsLoginModalOpen(false);
+  };
+
   const handleSwitchUser = (user) => {
     setCurrentUser(user);
-    try {
-      localStorage.setItem('paisa_crm_user', JSON.stringify(user));
-    } catch (e) {}
+    setCurrentUserSession(user);
+  };
+
+  const handleLogout = () => {
+    clearCurrentUserSession();
+    setCurrentUser(null);
+    setIsLoginModalOpen(false);
   };
 
   // Real-time API Sync: Fetch incoming leads every 3 seconds
-  React.useEffect(() => {
+  useEffect(() => {
+    if (!currentUser) return; // Don't fetch if locked
     let isMounted = true;
     const fetchLeadsFromApi = async () => {
       try {
         const result = await getLeadsFromBackend();
         if (isMounted && result.success && Array.isArray(result.leads)) {
           const cleanLeads = result.leads.map(sanitizeLead);
-          console.log(
-            `%c[CRM LIVE STATE SYNC] 📊 Synced %c${cleanLeads.length}%c leads | Endpoint: %c${result.sourceUrl || 'API'}`,
-            'color: #0284c7; font-weight: bold;',
-            'color: #dc2626; font-weight: bold;',
-            'color: #0284c7; font-weight: bold;',
-            'color: #059669; font-weight: bold;'
-          );
           setLeads(cleanLeads);
-        } else if (isMounted && !result.success) {
-          console.log('%c[CRM LIVE STATE SYNC] ℹ️ Backend responded with 0 leads or empty array [].', 'color: #64748b;');
         }
       } catch (e) {
         console.warn('[CRM LIVE STATE SYNC] ⚠️ Fetch error during polling:', e);
@@ -121,7 +123,7 @@ export default function App() {
       isMounted = false;
       clearInterval(timer);
     };
-  }, []);
+  }, [currentUser]);
 
   // Compute live counts and stats dynamically from leads array
   const leadCounts = useMemo(() => {
@@ -174,6 +176,18 @@ export default function App() {
       conversionRate: leads.length > 0 ? ((approvedList.length / leads.length) * 100).toFixed(0) : 0
     };
   }, [leads]);
+
+  // 🔒 IF NOT LOGGED IN: SHOW FULL-SCREEN LOGIN LOCK SCREEN
+  if (!currentUser) {
+    return (
+      <LoginModal 
+        isFullScreen={true}
+        isOpen={true}
+        onLogin={handleLoginSuccess}
+        currentUser={null}
+      />
+    );
+  }
 
   // Render main content area according to activeTab
   const renderMainContent = () => {
@@ -341,6 +355,7 @@ export default function App() {
           currentUser={currentUser}
           onOpenLogin={() => setIsLoginModalOpen(true)}
           onSwitchUser={handleSwitchUser}
+          onLogout={handleLogout}
         />
 
         {/* Page Content View */}
@@ -352,11 +367,12 @@ export default function App() {
 
       </div>
 
-      {/* Login & Creator Switcher Modal */}
+      {/* Switch User Modal (when opened from dropdown) */}
       <LoginModal 
+        isFullScreen={false}
         isOpen={isLoginModalOpen} 
         onClose={() => setIsLoginModalOpen(false)} 
-        onLogin={handleSwitchUser}
+        onLogin={handleLoginSuccess}
         currentUser={currentUser}
       />
 
