@@ -364,7 +364,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
             Staff
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            <span className="font-bold text-slate-800">{staffList.length} users</span> · <span className="font-bold text-slate-800">10 roles</span>
+            <span className="font-bold text-slate-800">{staffList.length} users</span> · <span className="font-bold text-slate-800">{INITIAL_ROLES.length} roles</span>
           </p>
         </div>
 
@@ -373,7 +373,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
           className="px-4 py-2 bg-[#0A3977] hover:bg-blue-900 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
         >
           <Plus className="w-4 h-4" />
-          <span>+ Add user</span>
+          <span>Add user</span>
         </button>
       </div>
 
