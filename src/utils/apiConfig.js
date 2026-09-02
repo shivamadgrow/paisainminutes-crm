@@ -18,7 +18,16 @@ const API_BASES = [
 function mapRenderLead(item, index) {
   if (!item) return null;
   const rawPhone = String(item.phone || item.phoneNumber || item.mobile || (item.user && item.user.phone) || '').replace(/\D/g, '').slice(-10);
-  const formattedMobile = rawPhone ? (rawPhone.length === 10 ? `+91 ${rawPhone}` : rawPhone) : '—';
+  if (!rawPhone || rawPhone.length < 10) return null;
+
+  const todayIso = new Date().toISOString().split('T')[0];
+  const itemDate = item.createdAt ? item.createdAt.split('T')[0] : todayIso;
+  // STRICTLY TODAY ONLY: Filter out historical leads from previous days
+  if (itemDate < todayIso) {
+    return null;
+  }
+
+  const formattedMobile = `+91 ${rawPhone}`;
   const rawName = (item.name || item.fullName || (item.user && item.user.name) || 'Applicant').trim();
   const initials = rawName.split(' ').filter(Boolean).map(n => n[0].toUpperCase()).join('').slice(0, 2) || 'AP';
   const leadId = item.id || item._id || item.loanNo || `PIM-${item.id || (index + 1001)}`;
@@ -36,7 +45,7 @@ function mapRenderLead(item, index) {
     initials: initials,
     avatarBg: 'bg-blue-600',
     mobile: formattedMobile,
-    phone: rawPhone || formattedMobile,
+    phone: rawPhone,
     phoneNumber: rawPhone,
     email: item.email && !item.email.includes('@paisainminutes.com') ? item.email : '—',
     emailAddress: item.email && !item.email.includes('@paisainminutes.com') ? item.email : '—',
@@ -59,7 +68,7 @@ function mapRenderLead(item, index) {
     status: item.status || 'Fresh',
     created: item.createdAt ? new Date(item.createdAt).toLocaleString('en-IN') : new Date().toLocaleString('en-IN'),
     created_at: item.createdAt || new Date().toISOString(),
-    date: item.createdAt ? item.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]
+    date: itemDate
   };
 }
 
