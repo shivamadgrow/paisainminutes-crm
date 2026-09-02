@@ -312,20 +312,86 @@ export async function getLeadsFromBackend() {
 }
 
 /**
- * Delete Leads API
+ * GET /api/loan-applications/phone/{phone}
+ * Fetch specific loan application details by 10-digit phone number from Render backend
+ */
+export async function fetchLoanApplicationByPhone(phone) {
+  if (!phone) return { success: false, error: 'Phone number is required' };
+  const cleanPhone = String(phone).replace(/\D/g, '').slice(-10);
+  if (cleanPhone.length !== 10) return { success: false, error: 'Valid 10-digit phone number is required' };
+
+  try {
+    const token = localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token');
+    const renderHeaders = {
+      'Accept': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+
+    const res = await fetch(`${RENDER_BASE}/api/loan-applications/phone/${encodeURIComponent(cleanPhone)}`, {
+      method: 'GET',
+      headers: renderHeaders
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return { success: true, data };
+    } else {
+      const errorText = await res.text().catch(() => '');
+      return { success: false, status: res.status, error: errorText || 'Failed to fetch application' };
+    }
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * DELETE /api/loan-applications/{id}
+ * Delete a loan application by ID from Render backend
+ */
+export async function deleteLoanApplicationOnRender(id) {
+  if (!id) return { success: false, error: 'Application ID is required' };
+  const cleanId = String(id).trim();
+
+  try {
+    const token = localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token');
+    const renderHeaders = {
+      'Accept': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+
+    const res = await fetch(`${RENDER_BASE}/api/loan-applications/${encodeURIComponent(cleanId)}`, {
+      method: 'DELETE',
+      headers: renderHeaders
+    });
+
+    if (res.ok) {
+      const data = await res.json().catch(() => ({ success: true }));
+      return { success: true, data };
+    } else {
+      return { success: false, status: res.status };
+    }
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Delete Leads API (Synchronized with local stores, blacklist, and Render DELETE endpoint)
  */
 export async function deleteLeadsApi(payload) {
   const isClearAll = payload.clear_all || payload.all || (payload.ids && payload.ids.includes('*')) || payload.action === 'reset_all' || payload.action === 'clear_all';
 
+  const targetIds = [];
+  if (payload.id) targetIds.push(String(payload.id));
+  if (payload.leadId) targetIds.push(String(payload.leadId));
+  if (payload.ids && Array.isArray(payload.ids)) {
+    payload.ids.forEach(i => { if (i && i !== '*') targetIds.push(String(i)); });
+  }
+
   if (isClearAll) {
     localStorage.setItem('pim_deleted_leads', JSON.stringify(['*']));
   } else {
-    const toAdd = [];
-    if (payload.id) toAdd.push(String(payload.id).toLowerCase());
-    if (payload.leadId) toAdd.push(String(payload.leadId).toLowerCase());
-    if (payload.ids && Array.isArray(payload.ids)) {
-      payload.ids.forEach(i => toAdd.push(String(i).toLowerCase()));
-    }
+    const toAdd = targetIds.map(i => i.toLowerCase());
     if (payload.phone) {
       const p = String(payload.phone).replace(/\D/g, '').slice(-10);
       if (p) toAdd.push(p);
@@ -337,6 +403,7 @@ export async function deleteLeadsApi(payload) {
     addToDeletedLeadBlacklist(toAdd);
   }
 
+  // 1. Local PHP endpoints
   const deleteEndpoints = [
     '/admin/api/delete-lead.php',
     '/admin/api/delete-lead',
@@ -356,18 +423,12 @@ export async function deleteLeadsApi(payload) {
     }
   }
 
-  // Also notify Render API of deletion
-  try {
-    const token = localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token');
-    const renderHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
-    const targetId = payload.id || payload.leadId;
-    if (targetId && !isClearAll) {
-      fetch(`${RENDER_BASE}/api/loan-applications/${targetId}`, {
-        method: 'DELETE',
-        headers: renderHeaders
-      }).catch(() => {});
+  // 2. Render DELETE endpoint: DELETE /api/loan-applications/{id}
+  if (targetIds.length > 0 && !isClearAll) {
+    for (const tid of targetIds) {
+      deleteLoanApplicationOnRender(tid).catch(() => {});
     }
-  } catch (err) {}
+  }
 
   return { success: true, is_clear_all: isClearAll };
 }
