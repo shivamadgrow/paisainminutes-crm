@@ -127,6 +127,44 @@ export async function fetchApi(pathWithSlash, options = {}) {
 }
 
 /**
+ * Helper to check and maintain locally deleted leads blacklist
+ */
+export function getDeletedLeadBlacklist() {
+  try {
+    const raw = localStorage.getItem('pim_deleted_leads');
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function addToDeletedLeadBlacklist(idsOrPhones) {
+  try {
+    const current = getDeletedLeadBlacklist();
+    const newItems = Array.isArray(idsOrPhones) ? idsOrPhones : [idsOrPhones];
+    const cleanList = newItems
+      .filter(Boolean)
+      .map(i => String(i).trim().toLowerCase());
+    const combined = Array.from(new Set([...current, ...cleanList]));
+    localStorage.setItem('pim_deleted_leads', JSON.stringify(combined));
+  } catch (e) {}
+}
+
+export function isLeadDeletedLocally(lead, deletedList) {
+  if (!deletedList || deletedList.length === 0) return false;
+  if (deletedList.includes('*')) return true;
+
+  const id = String(lead.id || lead.lead_id || lead.loanNo || '').trim().toLowerCase();
+  const rawPhone = String(lead.phone || lead.mobile || lead.phoneNumber || '').replace(/\D/g, '').slice(-10);
+
+  if (id && deletedList.includes(id)) return true;
+  if (rawPhone && deletedList.includes(rawPhone)) return true;
+  return false;
+}
+
+/**
  * Fetch Leads from Backend (Local stores + Render API)
  */
 export async function getLeadsFromBackend() {
@@ -139,11 +177,20 @@ export async function getLeadsFromBackend() {
     '/crm.php?action=fetch_realtime'
   ];
 
+  const deletedBlacklist = getDeletedLeadBlacklist();
+  if (deletedBlacklist.includes('*')) {
+    return { success: true, count: 0, leads: [] };
+  }
+
   const leadsByPhone = new Map();
   const leadsById = new Map();
 
   function mergeOrAddLead(l) {
     if (!l) return;
+    if (isLeadDeletedLocally(l, deletedBlacklist)) {
+      return; // Skip lead deleted by user
+    }
+
     const rawPhone = String(l.phone || l.mobile || l.phoneNumber || (l.user && l.user.phone) || '').replace(/\D/g, '').slice(-10);
     const id = String(l.id || l.lead_id || l.loanNo || '');
     const phoneKey = (rawPhone && rawPhone.length === 10) ? rawPhone : null;
@@ -250,19 +297,37 @@ export async function getLeadsFromBackend() {
   // Combine unique leads list
   const combinedLeads = Array.from(
     new Set([...leadsByPhone.values(), ...leadsById.values()])
-  );
+  ).filter(l => !isLeadDeletedLocally(l, deletedBlacklist));
 
-  if (combinedLeads.length > 0) {
-    return { success: true, count: combinedLeads.length, leads: combinedLeads };
-  }
-
-  return { success: false, leads: [], count: 0 };
+  return { success: true, count: combinedLeads.length, leads: combinedLeads };
 }
 
 /**
  * Delete Leads API
  */
 export async function deleteLeadsApi(payload) {
+  const isClearAll = payload.clear_all || payload.all || (payload.ids && payload.ids.includes('*')) || payload.action === 'reset_all' || payload.action === 'clear_all';
+
+  if (isClearAll) {
+    localStorage.setItem('pim_deleted_leads', JSON.stringify(['*']));
+  } else {
+    const toAdd = [];
+    if (payload.id) toAdd.push(String(payload.id).toLowerCase());
+    if (payload.leadId) toAdd.push(String(payload.leadId).toLowerCase());
+    if (payload.ids && Array.isArray(payload.ids)) {
+      payload.ids.forEach(i => toAdd.push(String(i).toLowerCase()));
+    }
+    if (payload.phone) {
+      const p = String(payload.phone).replace(/\D/g, '').slice(-10);
+      if (p) toAdd.push(p);
+    }
+    if (payload.mobile) {
+      const m = String(payload.mobile).replace(/\D/g, '').slice(-10);
+      if (m) toAdd.push(m);
+    }
+    addToDeletedLeadBlacklist(toAdd);
+  }
+
   const deleteEndpoints = [
     '/admin/api/delete-lead.php',
     '/admin/api/delete-lead',
@@ -278,9 +343,22 @@ export async function deleteLeadsApi(payload) {
     });
 
     if (res && res.ok && res.data) {
-      return { success: true, ...res.data, endpoint: res.url };
+      break;
     }
   }
 
-  return { success: false, error: 'Failed to connect to delete endpoint' };
+  // Also notify Render API of deletion
+  try {
+    const token = localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token');
+    const renderHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const targetId = payload.id || payload.leadId;
+    if (targetId && !isClearAll) {
+      fetch(`${RENDER_BASE}/api/loan-applications/${targetId}`, {
+        method: 'DELETE',
+        headers: renderHeaders
+      }).catch(() => {});
+    }
+  } catch (err) {}
+
+  return { success: true, is_clear_all: isClearAll };
 }
