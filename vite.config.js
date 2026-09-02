@@ -228,15 +228,25 @@ async function getOrSyncLeads() {
               };
             });
 
-          // Merge without duplicate IDs
-          const liveMap = new Map(liveLeads.map(l => [String(l.id), l]));
-          for (const loc of localLeads) {
-            if (!liveMap.has(String(loc.id)) && !deletedSet.has(String(loc.id)) && !deletedSet.has(String(loc.loanNo))) {
-              liveLeads.push(loc);
+          // Merge by 10-digit Phone Number (1 Lead Per Applicant)
+          const leadsByPhone = new Map();
+          for (const l of liveLeads) {
+            const rawPhone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
+            const key = (rawPhone && rawPhone.length === 10) ? rawPhone : String(l.id);
+            if (!leadsByPhone.has(key)) {
+              leadsByPhone.set(key, l);
             }
           }
-          saveStoredLeads(liveLeads);
-          return liveLeads;
+          for (const loc of localLeads) {
+            const rawPhone = String(loc.phone || loc.mobile || '').replace(/\D/g, '').slice(-10);
+            const key = (rawPhone && rawPhone.length === 10) ? rawPhone : String(loc.id);
+            if (!leadsByPhone.has(key) && !deletedSet.has(String(loc.id)) && !deletedSet.has(String(loc.loanNo))) {
+              leadsByPhone.set(key, loc);
+            }
+          }
+          const uniqueLeads = Array.from(leadsByPhone.values());
+          saveStoredLeads(uniqueLeads);
+          return uniqueLeads;
         }
       }
     } catch (e) {}
@@ -379,7 +389,29 @@ function crmApiPlugin() {
                 date: now.toISOString().split('T')[0]
               }
 
-              const updatedLeads = [newLead, ...existingLeads]
+              // Upsert by 10-digit Phone Number (1 Lead Per Applicant)
+              const existingIdx = existingLeads.findIndex(l => {
+                const lp = String(l.phone || l.mobile || l.phoneNumber || '').replace(/\D/g, '').slice(-10);
+                return digitsOnly && lp && digitsOnly === lp;
+              });
+
+              let updatedLeads = [];
+              if (existingIdx >= 0) {
+                const old = existingLeads[existingIdx];
+                newLead.id = old.id || newLead.id;
+                newLead.loanNo = old.loanNo || newLead.loanNo;
+                newLead.lead_id = old.lead_id || newLead.lead_id;
+                if ((newLead.name === 'Applicant' || !newLead.name) && old.name && old.name !== 'Applicant') {
+                  newLead.name = old.name;
+                  newLead.fullName = old.fullName || old.name;
+                  newLead.initials = old.initials || 'AP';
+                }
+                const filtered = existingLeads.filter((_, i) => i !== existingIdx);
+                updatedLeads = [newLead, ...filtered];
+              } else {
+                updatedLeads = [newLead, ...existingLeads];
+              }
+
               saveStoredLeads(updatedLeads)
 
               res.statusCode = 200

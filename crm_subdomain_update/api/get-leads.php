@@ -259,27 +259,22 @@ if (file_exists($leadsLogCsv)) {
     }
 }
 
-// Normalize and format each lead
-$formattedLeads = [];
+// Deduplicate and merge by 10-digit Phone Number (1 Lead Per Applicant)
+$leadsByPhone = [];
 $avatarColors = ['bg-blue-600', 'bg-indigo-600', 'bg-emerald-600', 'bg-amber-600', 'bg-purple-600', 'bg-rose-600'];
 
 foreach ($allLeads as $index => $lead) {
+    $phone = preg_replace('/\D/', '', (string)($lead['phone'] ?? $lead['mobile'] ?? $lead['phoneNumber'] ?? ''));
+    if (strlen($phone) > 10) {
+        $phone = substr($phone, -10);
+    }
+    
+    // Key for grouping: clean 10-digit phone or unique lead id
+    $groupKey = (!empty($phone) && strlen($phone) === 10) ? $phone : ('ID_' . ($lead['id'] ?? $lead['lead_id'] ?? $index));
+
     $leadId = $lead['id'] ?? $lead['lead_id'] ?? $lead['loanNo'] ?? ('PIM-' . str_pad($index + 1, 6, '0', STR_PAD_LEFT));
     $name = trim($lead['name'] ?? $lead['fullName'] ?? $lead['full_name'] ?? 'Applicant');
     if ($name === '') $name = 'Applicant';
-
-    $phone = preg_replace('/\D/', '', (string)($lead['phone'] ?? $lead['mobile'] ?? $lead['mobile_number'] ?? ''));
-    $mobileFormatted = $phone;
-    if (strlen($phone) === 10) {
-        $mobileFormatted = '+91 ' . $phone;
-    } elseif (strlen($phone) === 12 && strpos($phone, '91') === 0) {
-        $mobileFormatted = '+91 ' . substr($phone, 2);
-    }
-
-    $email = trim($lead['email'] ?? $lead['emailAddress'] ?? $lead['email_address'] ?? '');
-    if (empty($email) || $email === '—') {
-        $email = $phone ? ($phone . '@paisainminutes.com') : '—';
-    }
 
     $rawLoan = $lead['loanAmount'] ?? $lead['applied'] ?? $lead['loan_amount'] ?? $lead['amount'] ?? 50000;
     $cleanedLoan = cleanLoanAmount($rawLoan);
@@ -292,14 +287,6 @@ foreach ($allLeads as $index => $lead) {
     $cibil = trim($lead['cibil'] ?? $lead['cibilScore'] ?? $lead['cibil_score'] ?? $lead['cibil_range'] ?? '—');
     $explicitCompany = $lead['assignedCompany'] ?? $lead['company'] ?? $lead['partner'] ?? $lead['partner_name'] ?? '';
     $assignedCompany = determineCompany($cibil, $cleanedSalary, $cleanedLoan, $explicitCompany);
-
-    $initials = 'AP';
-    $nameParts = preg_split('/\s+/', $name);
-    if (count($nameParts) >= 2 && !empty($nameParts[0]) && !empty($nameParts[1])) {
-        $initials = strtoupper(substr($nameParts[0], 0, 1) . substr($nameParts[1], 0, 1));
-    } elseif (!empty($name)) {
-        $initials = strtoupper(substr($name, 0, min(2, strlen($name))));
-    }
 
     $createdAt = $lead['created_at'] ?? $lead['created'] ?? $lead['date'] ?? $lead['timestamp'] ?? date('Y-m-d H:i:s');
     $timestamp = strtotime($createdAt) ?: time();
@@ -317,18 +304,16 @@ foreach ($allLeads as $index => $lead) {
 
     $eligibilityStatus = trim($lead['eligibilityStatus'] ?? $lead['eligibility_status'] ?? $lead['eligibility'] ?? 'Eligible');
 
-    $formattedLeads[] = [
+    $item = [
         'id'                => $leadId,
         'loanNo'            => $leadId,
         'lead_id'           => $leadId,
         'name'              => $name,
         'fullName'          => $name,
-        'initials'          => $initials,
-        'avatarBg'          => $avatarColors[abs(crc32($name)) % count($avatarColors)],
-        'mobile'            => $mobileFormatted,
-        'phone'             => $phone ?: $mobileFormatted,
-        'email'             => $email,
-        'emailAddress'      => $email,
+        'phone'             => $phone,
+        'mobile'            => $phone ? ('+91 ' . $phone) : '',
+        'email'             => !empty($lead['email']) && $lead['email'] !== '—' ? $lead['email'] : ($phone ? ($phone . '@paisainminutes.com') : '—'),
+        'emailAddress'      => !empty($lead['email']) && $lead['email'] !== '—' ? $lead['email'] : ($phone ? ($phone . '@paisainminutes.com') : '—'),
         'creditManager'     => $lead['creditManager'] ?? $lead['credit_manager'] ?? 'Unassigned',
         'pan'               => strtoupper(trim($lead['pan'] ?? '—')),
         'cibil'             => $cibil,
@@ -351,9 +336,53 @@ foreach ($allLeads as $index => $lead) {
         'created'           => $formattedDate,
         'created_at'        => date('Y-m-d H:i:s', $timestamp),
         'date'              => $isoDate,
-        'payout'            => floatval($lead['payout'] ?? 0),
-        'ip_address'        => $lead['ip_address'] ?? '::1'
+        'timestamp_num'     => $timestamp
     ];
+
+    if (!isset($leadsByPhone[$groupKey])) {
+        $leadsByPhone[$groupKey] = $item;
+    } else {
+        // Merge with existing: keep the best information (real name, specific amount/cibil, latest timestamp)
+        $existing = $leadsByPhone[$groupKey];
+        if (($existing['name'] === 'Applicant' || empty($existing['name'])) && $item['name'] !== 'Applicant') {
+            $existing['name'] = $item['name'];
+            $existing['fullName'] = $item['fullName'];
+        }
+        if (($existing['source'] === 'Website Application' || $existing['source'] === 'Apply Now Website') && $item['source'] === 'Check Eligibility Website') {
+            $existing['source'] = $item['source'];
+        }
+        if ($existing['cibil'] === '—' && $item['cibil'] !== '—') {
+            $existing['cibil'] = $item['cibil'];
+            $existing['cibilScore'] = $item['cibilScore'];
+        }
+        if ($existing['loanAmount'] === 50000 && $item['loanAmount'] !== 50000) {
+            $existing['loanAmount'] = $item['loanAmount'];
+            $existing['applied'] = $item['applied'];
+        }
+        if ($item['timestamp_num'] >= $existing['timestamp_num']) {
+            $existing['created'] = $item['created'];
+            $existing['created_at'] = $item['created_at'];
+            $existing['timestamp_num'] = $item['timestamp_num'];
+        }
+        $leadsByPhone[$groupKey] = $existing;
+    }
+}
+
+$formattedLeads = [];
+foreach ($leadsByPhone as $lead) {
+    $name = $lead['name'];
+    $initials = 'AP';
+    $nameParts = preg_split('/\s+/', $name);
+    if (count($nameParts) >= 2 && !empty($nameParts[0]) && !empty($nameParts[1])) {
+        $initials = strtoupper(substr($nameParts[0], 0, 1) . substr($nameParts[1], 0, 1));
+    } elseif (!empty($name)) {
+        $initials = strtoupper(substr($name, 0, min(2, strlen($name))));
+    }
+
+    $lead['initials'] = $initials;
+    $lead['avatarBg'] = $avatarColors[abs(crc32($name)) % count($avatarColors)];
+    unset($lead['timestamp_num']);
+    $formattedLeads[] = $lead;
 }
 
 // Sort newest first

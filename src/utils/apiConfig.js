@@ -135,11 +135,50 @@ export async function getLeadsFromBackend() {
     '/crm.php?action=fetch_realtime'
   ];
 
-  let combinedLeads = [];
-  const seenIds = new Set();
-  const seenPhones = new Set();
+  const leadsByPhone = new Map();
+  const leadsById = new Map();
 
-  // 1. Try local endpoints
+  function mergeOrAddLead(l) {
+    if (!l) return;
+    const rawPhone = String(l.phone || l.mobile || l.phoneNumber || '').replace(/\D/g, '').slice(-10);
+    const id = String(l.id || l.lead_id || l.loanNo || '');
+    const phoneKey = (rawPhone && rawPhone.length === 10) ? rawPhone : null;
+
+    if (phoneKey && leadsByPhone.has(phoneKey)) {
+      const existing = leadsByPhone.get(phoneKey);
+      // Merge best fields: keep non-generic name, non-default amounts, richest source
+      if ((existing.name === 'Applicant' || !existing.name) && l.name && l.name !== 'Applicant') {
+        existing.name = l.name;
+        existing.fullName = l.fullName || l.name;
+        existing.initials = l.initials || existing.initials;
+      }
+      if ((existing.source === 'Website Application' || existing.source === 'Apply Now Website') && l.source === 'Check Eligibility Website') {
+        existing.source = l.source;
+      }
+      if ((!existing.cibil || existing.cibil === '—') && l.cibil && l.cibil !== '—') {
+        existing.cibil = l.cibil;
+        existing.cibilScore = l.cibilScore || l.cibil;
+      }
+      if (Number(existing.loanAmount) === 50000 && Number(l.loanAmount) && Number(l.loanAmount) !== 50000) {
+        existing.loanAmount = Number(l.loanAmount);
+        existing.applied = Number(l.loanAmount);
+      }
+      if (l.email && l.email !== '—' && (!existing.email || existing.email === '—')) {
+        existing.email = l.email;
+        existing.emailAddress = l.email;
+      }
+      return;
+    }
+
+    if (id && leadsById.has(id)) {
+      return;
+    }
+
+    if (phoneKey) leadsByPhone.set(phoneKey, l);
+    if (id) leadsById.set(id, l);
+  }
+
+  // 1. Fetch from local endpoints
   for (const ep of endpoints) {
     const res = await fetchApi(ep);
     if (res && res.ok && res.data) {
@@ -150,20 +189,14 @@ export async function getLeadsFromBackend() {
 
       if (leads && Array.isArray(leads) && leads.length > 0) {
         for (const l of leads) {
-          const id = String(l.id || l.lead_id || l.loanNo);
-          const p = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
-          if (!seenIds.has(id)) {
-            seenIds.add(id);
-            if (p) seenPhones.add(p);
-            combinedLeads.push(l);
-          }
+          mergeOrAddLead(l);
         }
         break;
       }
     }
   }
 
-  // 2. Also try fetching from Render Cloud database
+  // 2. Also fetch and merge from Render Cloud database
   try {
     const token = localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token');
     const renderHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
@@ -178,16 +211,20 @@ export async function getLeadsFromBackend() {
       if (Array.isArray(rList)) {
         rList.forEach((item, idx) => {
           const mapped = mapRenderLead(item, idx);
-          if (mapped && !seenIds.has(mapped.id)) {
-            seenIds.add(mapped.id);
-            combinedLeads.unshift(mapped);
+          if (mapped) {
+            mergeOrAddLead(mapped);
           }
         });
       }
     }
   } catch (err) {
-    // Render offline or background sync
+    // Render offline / background sync
   }
+
+  // Combine unique leads list
+  const combinedLeads = Array.from(
+    new Set([...leadsByPhone.values(), ...leadsById.values()])
+  );
 
   if (combinedLeads.length > 0) {
     return { success: true, count: combinedLeads.length, leads: combinedLeads };
