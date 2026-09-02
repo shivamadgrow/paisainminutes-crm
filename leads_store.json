@@ -1,1 +1,18 @@
-[]
+[
+  {
+    "id": "PIM-741429",
+    "loanNo": "PIM-573619",
+    "name": "Vikram Singh",
+    "mobile": "+91 9812345678",
+    "phone": "9812345678",
+    "phoneNumber": "9812345678",
+    "loanAmount": 75000,
+    "salary": 45000,
+    "cibil": "750–799",
+    "assignedCompany": "Rupay91",
+    "source": "Apply Now Website",
+    "status": "Fresh",
+    "created": "2/9/2026, 11:07:59 am",
+    "date": "2026-09-02"
+  }
+]
