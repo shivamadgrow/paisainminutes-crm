@@ -326,7 +326,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  const allBranchOptions = ['Delhi Head Office', 'Noida Hub', 'Gurugram Central', 'Mumbai Branch', 'Bengaluru Branch'];
+  const allBranchOptions = ['Delhi Head Office'];
 
   // City helper for staff login simulation
   const getUserLocation = (user, idx) => {
@@ -338,14 +338,12 @@ export default function StaffView({ onSwitchUser, currentUser }) {
         isLive: true
       };
     }
-    const locations = [
-      { city: 'Delhi, India', coords: '28.6139, 77.2090', ip: '103.246.40.12' },
-      { city: 'Noida, Uttar Pradesh', coords: '28.5355, 77.3910', ip: '103.212.80.45' },
-      { city: 'Gurugram, Haryana', coords: '28.4595, 77.0266', ip: '103.195.120.89' },
-      { city: 'Mumbai, Maharashtra', coords: '19.0760, 72.8777', ip: '115.112.54.33' },
-      { city: 'Delhi, India', coords: '28.6280, 77.2180', ip: '103.246.40.18' }
-    ];
-    return { ...locations[idx % locations.length], isLive: false };
+    return {
+      city: `${liveGeo.city || 'Delhi'}, ${liveGeo.region || 'India'}`,
+      coords: `${liveGeo.latitude || '28.6139'}, ${liveGeo.longitude || '77.2090'}`,
+      ip: liveGeo.ip || '103.246.40.12',
+      isLive: false
+    };
   };
 
   return (
