@@ -323,20 +323,50 @@ if (file_exists($leadsLogCsv)) {
     }
 }
 
+// Load deleted leads blacklist
+$deletedCandidates = array_unique([
+    __DIR__ . '/../deleted_leads.json',
+    __DIR__ . '/../../data/deleted_leads.json',
+    __DIR__ . '/../../crm/deleted_leads.json',
+    dirname(__DIR__, 2) . '/data/deleted_leads.json',
+    dirname(__DIR__, 2) . '/crm/deleted_leads.json',
+    dirname(__DIR__, 3) . '/public_html/data/deleted_leads.json',
+    dirname(__DIR__, 3) . '/public_html/crm/deleted_leads.json'
+]);
+$deletedBlacklist = [];
+foreach ($deletedCandidates as $df) {
+    if (file_exists($df)) {
+        $arr = json_decode(file_get_contents($df), true);
+        if (is_array($arr)) {
+            foreach ($arr as $delItem) {
+                $delClean = strtolower(trim((string)$delItem));
+                if ($delClean !== '' && $delClean !== '*') {
+                    $deletedBlacklist[$delClean] = true;
+                }
+            }
+        }
+    }
+}
+
 // Deduplicate and merge by 10-digit Phone Number (1 Lead Per Applicant)
 $leadsByPhone = [];
 $avatarColors = ['bg-blue-600', 'bg-indigo-600', 'bg-emerald-600', 'bg-amber-600', 'bg-purple-600', 'bg-rose-600'];
 
 foreach ($allLeads as $index => $lead) {
+    $leadId = $lead['id'] ?? $lead['lead_id'] ?? $lead['loanNo'] ?? ('PIM-' . str_pad($index + 1, 6, '0', STR_PAD_LEFT));
+    $lIdClean = strtolower(trim((string)$leadId));
     $phone = preg_replace('/\D/', '', (string)($lead['phone'] ?? $lead['mobile'] ?? $lead['phoneNumber'] ?? ''));
     if (strlen($phone) > 10) {
         $phone = substr($phone, -10);
     }
+
+    // Skip leads that were deleted by admin
+    if (!empty($deletedBlacklist[$lIdClean]) || ($phone && !empty($deletedBlacklist[$phone]))) {
+        continue;
+    }
     
     // Key for grouping: clean 10-digit phone or unique lead id
-    $groupKey = (!empty($phone) && strlen($phone) === 10) ? $phone : ('ID_' . ($lead['id'] ?? $lead['lead_id'] ?? $index));
-
-    $leadId = $lead['id'] ?? $lead['lead_id'] ?? $lead['loanNo'] ?? ('PIM-' . str_pad($index + 1, 6, '0', STR_PAD_LEFT));
+    $groupKey = (!empty($phone) && strlen($phone) === 10) ? $phone : ('ID_' . $leadId);
     $name = trim($lead['name'] ?? $lead['fullName'] ?? $lead['full_name'] ?? 'Applicant');
     if ($name === '') $name = 'Applicant';
 

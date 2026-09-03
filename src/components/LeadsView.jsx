@@ -262,18 +262,23 @@ export default function LeadsView({
 
   const handleDeleteSingle = (item, idx) => {
     const itemId = getLeadId(item, idx);
+    const phone = String(item.phone || item.mobile || '').replace(/\D/g, '').slice(-10);
     console.log(`%c[CRM DELETE SINGLE] 🗑️ User requested deletion of lead: ${item.name || itemId} (ID: ${itemId})`, 'color: #e11d48; font-weight: bold;');
     if (confirm(`Are you sure you want to delete lead ${item.name || itemId}?`)) {
-      callDeleteApi({ action: 'single', id: itemId, leadId: itemId, phone: item.phone || item.mobile }, (serverRes) => {
-        if (setLeads) {
-          setLeads(prev => {
-            const updated = prev.filter((l, i) => getLeadId(l, i) !== itemId);
-            console.log(`[CRM STATE] 🧹 Lead ${itemId} removed from state. Remaining leads: ${updated.length}`);
-            return updated;
-          });
-        }
-      });
+      // 1. Immediately remove from React state
+      if (setLeads) {
+        setLeads(prev => prev.filter((l, i) => {
+          const lId = getLeadId(l, i);
+          const lPhone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
+          return lId !== itemId && (!phone || lPhone !== phone);
+        }));
+      }
       setSelectedLeadIds(prev => prev.filter(id => id !== itemId));
+
+      // 2. Call delete API (which automatically blacklists locally and on server)
+      callDeleteApi({ action: 'single', id: itemId, leadId: itemId, phone: phone }, (serverRes) => {
+        console.log(`[CRM STATE] 🧹 Lead ${itemId} permanently deleted. Server response:`, serverRes);
+      });
     }
   };
 
@@ -281,17 +286,16 @@ export default function LeadsView({
     if (selectedLeadIds.length === 0) return;
     console.log(`%c[CRM BULK DELETE] 🗑️ User requested deletion of ${selectedLeadIds.length} selected leads:`, 'color: #e11d48; font-weight: bold;', selectedLeadIds);
     if (confirm(`Delete ${selectedLeadIds.length} selected lead(s)?`)) {
-      callDeleteApi({ action: 'selected', ids: selectedLeadIds }, (serverRes) => {
-        if (setLeads) {
-          const toDelete = new Set(selectedLeadIds);
-          setLeads(prev => {
-            const updated = prev.filter((l, i) => !toDelete.has(getLeadId(l, i)));
-            console.log(`[CRM STATE] 🧹 Bulk delete applied. Remaining leads: ${updated.length}`);
-            return updated;
-          });
-        }
-      });
+      const toDelete = new Set(selectedLeadIds);
+      if (setLeads) {
+        setLeads(prev => prev.filter((l, i) => !toDelete.has(getLeadId(l, i))));
+      }
+      const idsToDelete = [...selectedLeadIds];
       setSelectedLeadIds([]);
+
+      callDeleteApi({ action: 'selected', ids: idsToDelete }, (serverRes) => {
+        console.log(`[CRM STATE] 🧹 Bulk delete permanently completed. Server response:`, serverRes);
+      });
     }
   };
 
@@ -302,15 +306,14 @@ export default function LeadsView({
     }
     console.log(`%c[CRM CLEAR ALL] 🚨 User triggered "DELETE ALL LEADS" for ${leads.length} leads!`, 'color: #dc2626; font-weight: bold;');
     if (confirm(`⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE ALL ${leads.length} LEADS? This cannot be undone.`)) {
-      callDeleteApi({ clear_all: true, action: 'reset_all', all: true, ids: ['*'] }, (serverRes) => {
-        if (setLeads) {
-          setLeads([]);
-          console.log('[CRM STATE] 🧹 All leads cleared from React state (Total: 0).');
-        }
-        setSelectedLeadIds([]);
-      });
+      const allIds = leads.map((l, i) => getLeadId(l, i));
+      const allPhones = leads.map(l => String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10)).filter(Boolean);
       if (setLeads) setLeads([]);
       setSelectedLeadIds([]);
+
+      callDeleteApi({ clear_all: true, action: 'reset_all', all: true, ids: allIds, phones: allPhones }, (serverRes) => {
+        console.log('[CRM STATE] 🧹 All leads cleared from state and server store.');
+      });
     }
   };
 

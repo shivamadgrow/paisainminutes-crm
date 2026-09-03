@@ -443,7 +443,17 @@ export async function deleteLeadsApi(payload) {
   }
 
   if (isClearAll) {
-    try { localStorage.removeItem('pim_deleted_leads'); } catch(e){}
+    const toAdd = [];
+    if (payload.ids && Array.isArray(payload.ids)) {
+      payload.ids.forEach(i => { if (i && i !== '*') toAdd.push(String(i).toLowerCase()); });
+    }
+    if (payload.phones && Array.isArray(payload.phones)) {
+      payload.phones.forEach(p => {
+        const clean = String(p).replace(/\D/g, '').slice(-10);
+        if (clean) toAdd.push(clean);
+      });
+    }
+    if (toAdd.length > 0) addToDeletedLeadBlacklist(toAdd);
   } else {
     const toAdd = targetIds.map(i => i.toLowerCase());
     if (payload.phone) {
