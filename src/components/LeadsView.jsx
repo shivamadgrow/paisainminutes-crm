@@ -27,7 +27,11 @@ import {
   Calendar,
   CreditCard,
   MessageCircle,
-  IndianRupee
+  IndianRupee,
+  Users,
+  Clock,
+  Sparkles,
+  TrendingUp
 } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
 import { AFFILIATE_PARTNERS, getPartnerMeta } from '../data/affiliatePartners';
@@ -166,9 +170,38 @@ export default function LeadsView({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [selectedLeadIds, setSelectedLeadIds] = useState([]);
-  const [reassigningLeadId, setReassigningLeadId] = useState(null);
+  const [openPartnerDropdownId, setOpenPartnerDropdownId] = useState(null);
+  const [openStatusDropdownId, setOpenStatusDropdownId] = useState(null);
   const [selectedLeadForOverview, setSelectedLeadForOverview] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
+
+  // Close custom popovers when clicking outside
+  useEffect(() => {
+    const handleGlobalClick = (e) => {
+      if (!e.target.closest('[data-dropdown-container]')) {
+        setOpenPartnerDropdownId(null);
+        setOpenStatusDropdownId(null);
+      }
+    };
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, []);
+
+  // Compute live stats for top KPI cards
+  const leadStats = useMemo(() => {
+    const total = leads.length;
+    const fresh = leads.filter(l => (l.status || 'Fresh') === 'Fresh').length;
+    const callbacks = leads.filter(l => l.status === 'Callback').length;
+    const approved = leads.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length;
+    const highCibil = leads.filter(l => {
+      const c = String(l.cibil || '');
+      const num = parseInt(c.replace(/\D/g, '').slice(0, 3), 10);
+      return (num && num >= 700) || c.includes('750') || c.includes('800') || c.includes('850');
+    }).length;
+    const totalApplied = leads.reduce((acc, l) => acc + cleanLoanAmount(l.applied || l.loanAmount), 0);
+
+    return { total, fresh, callbacks, approved, highCibil, totalApplied };
+  }, [leads]);
 
   const handleCopy = (text, field) => {
     if (!text) return;
@@ -620,87 +653,141 @@ export default function LeadsView({
   const isAllSelected = filteredLeads.length > 0 && filteredLeads.every((item, idx) => selectedLeadIds.includes(getLeadId(item, idx)));
 
   return (
-    <div className="space-y-5 animate-fade-in pb-12">
+    <div className="space-y-6 animate-fade-in pb-16">
       
-      {/* Realtime Apply Now & Affiliate Status Banner */}
-      <div className="bg-gradient-to-r from-[#0A3977] via-indigo-900 to-slate-900 text-white p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-md border border-blue-700/40">
-        <div className="flex items-center gap-3">
-          <div className="relative flex items-center justify-center">
-            <span className="animate-ping absolute inline-flex h-3.5 w-3.5 rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+      {/* Top FinTech Command Strip */}
+      <div className="bg-gradient-to-r from-slate-900 via-[#0A3977] to-slate-900 text-white p-4 sm:p-5 rounded-3xl shadow-xl border border-blue-600/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="relative flex items-center justify-center shrink-0">
+            <span className="animate-ping absolute inline-flex h-4 w-4 rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 shadow-md shadow-emerald-500/50"></span>
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-extrabold tracking-wide uppercase text-blue-200">Website Affiliate Ingestion Active</span>
-              <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">Auto Routing</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-black tracking-wider uppercase text-blue-200 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Live Lending Operations & Routing Engine</span>
+              </span>
+              <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+                100% Realtime Cloud Sync
+              </span>
             </div>
-            <p className="text-[11px] text-slate-300 mt-0.5">
-              Leads from <span className="text-amber-300 font-bold">paisainminutes.com</span> (Apply Now & Eligibility Check) auto-route to <span className="text-white font-bold">Rupay91, Adgrow, AGDM, or Rupaysure</span>.
+            <p className="text-xs text-slate-300 mt-0.5 font-medium">
+              Real-time website applications from <span className="text-amber-300 font-bold">paisainminutes.com</span> automatically dispatched to <span className="text-white font-bold">Rupay91, Adgrow, AGDM & Rupaysure</span>.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           <button
             onClick={() => setIsTestModalOpen(true)}
-            className="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs rounded-xl shadow transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+            className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-2xl shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
           >
-            <Smartphone className="w-3.5 h-3.5" />
-            <span>Test Website Lead Submit</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Header & Main Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl md:text-2xl font-black text-[#0A3977]">
-            Leads Management & Affiliate Allocation
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            {filteredLeads.length} displayed · {leads.length} total across all affiliate partner queues
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button 
-            onClick={() => setIsMyLeadsOnly(prev => !prev)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-semibold shadow-2xs transition flex items-center gap-1.5 cursor-pointer ${
-              isMyLeadsOnly 
-                ? 'bg-[#0A3977] text-white border border-[#0A3977] ring-2 ring-blue-300' 
-                : 'bg-white border border-slate-300 hover:bg-slate-50 text-slate-700'
-            }`}
-          >
-            <User className={`w-3.5 h-3.5 ${isMyLeadsOnly ? 'text-white' : 'text-slate-500'}`} />
-            <span>{isMyLeadsOnly ? 'My Leads (Active)' : 'My Leads'}</span>
+            <Smartphone className="w-4 h-4" />
+            <span>Simulate Lead</span>
           </button>
 
           <button 
             onClick={handleExportExcel}
-            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-bold shadow-2xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
-            title="Download CSV report of leads"
+            className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+            title="Download CSV report"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
             <span>Export CSV</span>
           </button>
 
           <button 
             onClick={handleClearAllLeads}
-            className="px-3 py-1.5 bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 rounded-xl text-xs font-bold shadow-2xs transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+            className="px-3.5 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/30 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
             title="Permanently delete all leads"
           >
-            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-            <span>Delete All Leads</span>
+            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+            <span>Clear All</span>
           </button>
 
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="px-4 py-1.5 bg-[#0A3977] hover:bg-blue-900 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5 cursor-pointer active:scale-95"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-xs font-black shadow-lg shadow-blue-600/30 transition flex items-center gap-1.5 cursor-pointer active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>New Lead</span>
           </button>
         </div>
+      </div>
+
+      {/* 4 Luxury KPI Metric Highlight Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        {/* Metric 1: Total Leads */}
+        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Total Leads</span>
+            <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#0A3977] flex items-center justify-center shadow-2xs">
+              <Users className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900">{leadStats.total}</span>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
+              Live Active
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-500 mt-1 font-medium">All incoming applicant submissions</p>
+        </div>
+
+        {/* Metric 2: Allocated to Partners */}
+        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Partner Allocated</span>
+            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shadow-2xs">
+              <Building2 className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900">
+              {leads.filter(l => l.assignedCompany && l.assignedCompany !== 'Pending Details' && l.assignedCompany !== 'Unassigned').length}
+            </span>
+            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-200">
+              4 Partners
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-500 mt-1 font-medium">Rupay91, Adgrow, AGDM, Rupaysure</p>
+        </div>
+
+        {/* Metric 3: Prime CIBIL */}
+        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">High Intent & Prime</span>
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shadow-2xs">
+              <ShieldCheck className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900">{leadStats.highCibil}</span>
+            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-md border border-emerald-200">
+              CIBIL 700+
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-500 mt-1 font-medium">Fast-track pre-approved borrowers</p>
+        </div>
+
+        {/* Metric 4: Follow-up Queue */}
+        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">Follow-up Queue</span>
+            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center shadow-2xs">
+              <Clock className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900">{leadStats.fresh + leadStats.callbacks}</span>
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-md border border-amber-200">
+              Fresh + Calls
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-500 mt-1 font-medium">Awaiting telecaller / partner connect</p>
+        </div>
+
       </div>
 
       {/* Bulk Delete Bar */}
@@ -712,7 +799,7 @@ export default function LeadsView({
             </div>
             <div>
               <span className="text-xs font-bold block">{selectedLeadIds.length} lead(s) selected</span>
-              <span className="text-[11px] text-rose-100">Perform bulk actions on selected records</span>
+              <span className="text-[11px] text-rose-100">Perform bulk operations on selected records</span>
             </div>
           </div>
 
@@ -734,8 +821,8 @@ export default function LeadsView({
         </div>
       )}
 
-      {/* Unified Modern Control Center */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-3.5 space-y-3">
+      {/* Unified Smart Control Center */}
+      <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-4 space-y-3.5">
         
         {/* Row 1: Workflow Status Tabs & Search Bar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
@@ -756,15 +843,15 @@ export default function LeadsView({
                 <button
                   key={tab.id}
                   onClick={() => handleFilterClick(tab.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                     isSelected
-                      ? 'bg-[#0A3977] text-white shadow-xs'
+                      ? 'bg-[#0A3977] text-white shadow-md shadow-blue-950/20 ring-2 ring-blue-400/30'
                       : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70'
                   }`}
                 >
                   <span>{tab.label}</span>
-                  <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-extrabold ${
-                    isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
                   }`}>
                     {tab.count}
                   </span>
@@ -774,19 +861,19 @@ export default function LeadsView({
           </div>
 
           {/* Search Bar */}
-          <div className="relative w-full lg:w-72 shrink-0">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <div className="relative w-full lg:w-80 shrink-0">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               placeholder="Search applicant, phone, ID, city..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A3977] focus:bg-white transition placeholder-slate-400 font-medium"
+              className="w-full pl-10 pr-9 py-2.5 text-xs bg-slate-50 border border-slate-200/90 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#0A3977] focus:bg-white transition-all placeholder-slate-400 font-semibold"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -795,23 +882,23 @@ export default function LeadsView({
         </div>
 
         {/* Row 2: Lending Partner Badges & Realtime Summary */}
-        <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
-            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
-              <Building2 className="w-3 h-3 text-slate-400" />
-              <span>Partner:</span>
+            <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1.5 px-1">
+              <Building2 className="w-3.5 h-3.5 text-slate-400" />
+              <span>Partner Filter:</span>
             </span>
 
             <button
               onClick={() => setSelectedPartnerFilter('ALL')}
-              className={`px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
                 selectedPartnerFilter === 'ALL'
-                  ? 'bg-slate-900 text-white shadow-2xs'
+                  ? 'bg-slate-900 text-white shadow-sm ring-2 ring-slate-400/40'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               <span>All Partners</span>
-              <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
+              <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono font-bold">
                 {leads.length}
               </span>
             </button>
@@ -826,15 +913,15 @@ export default function LeadsView({
                 <button
                   key={p.id}
                   onClick={() => setSelectedPartnerFilter(p.name)}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer border ${
+                  className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer border ${
                     isSel 
-                      ? `${p.pillClass} shadow-2xs border-transparent ring-2 ring-blue-300` 
-                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                      ? `${p.pillClass} shadow-md border-transparent ring-2 ring-indigo-300` 
+                      : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
                   }`}
                 >
-                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.accentColor }}></span>
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.accentColor }}></span>
                   <span>{p.name}</span>
-                  <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
                     isSel ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {count}
@@ -844,296 +931,386 @@ export default function LeadsView({
             })}
           </div>
 
-          <div className="text-[11px] font-semibold text-slate-500 hidden sm:block">
-            Showing <span className="font-bold text-slate-900">{filteredLeads.length}</span> of {leads.length} leads
+          <div className="text-xs font-semibold text-slate-500 hidden sm:flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Showing <strong className="text-slate-900 font-extrabold">{filteredLeads.length}</strong> of {leads.length} leads</span>
           </div>
         </div>
 
       </div>
 
-      {/* Leads Table Card */}
-      <div className="bg-white overflow-hidden rounded-2xl shadow-xs border border-slate-200/80">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50/90 text-slate-500 font-bold tracking-wider text-[10px] uppercase border-b border-slate-200 sticky top-0 z-10 backdrop-blur-xs">
-                <th className="py-3 px-3.5 w-8">
-                  <input 
-                    type="checkbox" 
-                    checked={isAllSelected}
-                    onChange={handleSelectAll}
-                    className="rounded border-slate-300 cursor-pointer" 
-                  />
-                </th>
-                <th className="py-3 px-3.5 min-w-[240px]">APPLICANT DETAILS</th>
-                <th className="py-3 px-3.5 min-w-[170px]">ASSIGNED PARTNER</th>
-                <th className="py-3 px-3.5 min-w-[150px]">ELIGIBILITY & CIBIL</th>
-                <th className="py-3 px-3.5 min-w-[130px]">APPLIED AMOUNT</th>
-                <th className="py-3 px-3.5 min-w-[160px]">SALARY / CITY</th>
-                <th className="py-3 px-3.5 min-w-[140px]">SOURCE</th>
-                <th className="py-3 px-3.5 min-w-[150px]">STATUS</th>
-                <th className="py-3 px-3.5 min-w-[140px]">CREATED</th>
-                <th className="py-3 px-3.5 min-w-[130px] text-center">ACTION</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filteredLeads.length > 0 ? (
-                filteredLeads.map((item, idx) => {
-                  if (!item) return null;
-                  const itemId = getLeadId(item, idx);
-                  const isSelected = selectedLeadIds.includes(itemId);
-                  const companyBadge = getCompanyBadge(item.assignedCompany || 'Pending Details');
-                  const statusBadge = getStatusBadge(item.status || 'Fresh');
+      {/* Floating Luxury SaaS Data Grid */}
+      <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-200/90 overflow-x-auto">
+        <table className="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr className="bg-slate-50/90 text-slate-600 font-black tracking-wider text-[11px] uppercase border-b border-slate-200/90 sticky top-0 z-20 backdrop-blur-md">
+              <th className="py-4 px-4 w-10">
+                <input 
+                  type="checkbox" 
+                  checked={isAllSelected}
+                  onChange={handleSelectAll}
+                  className="rounded-lg border-slate-300 text-[#0A3977] focus:ring-[#0A3977] cursor-pointer w-4 h-4" 
+                />
+              </th>
+              <th className="py-4 px-4 min-w-[260px]">APPLICANT DETAILS</th>
+              <th className="py-4 px-4 min-w-[190px]">ASSIGNED PARTNER</th>
+              <th className="py-4 px-4 min-w-[170px]">ELIGIBILITY & CIBIL</th>
+              <th className="py-4 px-4 min-w-[140px]">APPLIED AMOUNT</th>
+              <th className="py-4 px-4 min-w-[170px]">SALARY / LOCATION</th>
+              <th className="py-4 px-4 min-w-[150px]">SOURCE</th>
+              <th className="py-4 px-4 min-w-[160px]">STATUS</th>
+              <th className="py-4 px-4 min-w-[150px]">DATE</th>
+              <th className="py-4 px-4 min-w-[140px] text-center">ACTION</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 text-slate-700">
+            {filteredLeads.length > 0 ? (
+              filteredLeads.map((item, idx) => {
+                if (!item) return null;
+                const itemId = getLeadId(item, idx);
+                const isSelected = selectedLeadIds.includes(itemId);
+                const companyBadge = getCompanyBadge(item.assignedCompany || 'Pending Details');
+                const statusBadge = getStatusBadge(item.status || 'Fresh');
+                const isNearBottom = idx >= Math.max(0, filteredLeads.length - 2);
 
-                  return (
-                    <tr 
-                      key={itemId} 
-                      className={`transition-colors duration-150 ${isSelected ? 'bg-blue-50/70' : 'hover:bg-slate-50/80'}`}
-                    >
-                      
-                      {/* Checkbox */}
-                      <td className="py-3 px-3.5">
-                        <input 
-                          type="checkbox" 
-                          checked={isSelected}
-                          onChange={() => handleSelectRow(itemId)}
-                          className="rounded border-slate-300 cursor-pointer" 
-                        />
-                      </td>
+                return (
+                  <tr 
+                    key={itemId} 
+                    className={`transition-colors duration-150 relative ${
+                      isSelected 
+                        ? 'bg-blue-50/80 border-l-4 border-l-[#0A3977]' 
+                        : 'hover:bg-slate-50/80'
+                    }`}
+                  >
+                    
+                    {/* Checkbox */}
+                    <td className="py-4 px-4">
+                      <input 
+                        type="checkbox" 
+                        checked={isSelected}
+                        onChange={() => handleSelectRow(itemId)}
+                        className="rounded-lg border-slate-300 text-[#0A3977] focus:ring-[#0A3977] cursor-pointer w-4 h-4" 
+                      />
+                    </td>
 
-                      {/* APPLICANT DETAILS (Clickable Overview Trigger) */}
-                      <td className="py-3 px-3.5">
-                        <div 
-                          onClick={() => setSelectedLeadForOverview(item)}
-                          className="flex items-start gap-3 cursor-pointer group"
-                          title="Click to view full lead overview & details"
-                        >
-                          <div className={`w-9 h-9 rounded-xl ${item.avatarBg || 'bg-[#0A3977]'} text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs group-hover:scale-105 group-hover:shadow-md transition-all mt-0.5`}>
-                            {item.initials || 'AP'}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-bold text-slate-900 text-xs group-hover:text-[#0A3977] group-hover:underline transition-colors flex items-center gap-1.5 truncate">
-                              <span className="truncate">{item.name || 'Applicant'}</span>
-                              <Eye className="w-3 h-3 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded border border-slate-200/60">
-                                {item.loanNo || itemId}
-                              </span>
-                            </div>
-                            <div className="text-[11px] font-semibold text-slate-700 flex items-center gap-1 mt-1">
-                              <Phone className="w-2.5 h-2.5 text-slate-400" />
-                              <span className="font-mono">{item.mobile || (item.phone ? `+91 ${item.phone}` : '—')}</span>
-                            </div>
-                            {item.email && item.email !== '—' && !item.email.includes('@paisainminutes.com') && (
-                              <div className="text-[10px] text-slate-400 truncate max-w-[160px] flex items-center gap-1 mt-0.5">
-                                <Mail className="w-2.5 h-2.5 text-slate-300 shrink-0" />
-                                <span className="truncate">{item.email}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* ASSIGNED LENDING PARTNER (Native select styled badge - Never Clips!) */}
-                      <td className="py-3 px-3.5">
-                        <div className="relative inline-block">
-                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border transition ${companyBadge.classes} shadow-2xs`}>
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${companyBadge.dot}`}></span>
-                            <select
-                              value={item.assignedCompany || 'Pending Details'}
-                              onChange={(e) => handleReassignCompany(itemId, e.target.value)}
-                              className="bg-transparent text-inherit font-bold text-xs focus:outline-none cursor-pointer pr-4 appearance-none"
-                              title="Click to route to another lending partner"
-                            >
-                              <option value="Rupay91">Rupay91</option>
-                              <option value="Adgrow">Adgrow</option>
-                              <option value="AGDM">AGDM</option>
-                              <option value="Rupaysure">Rupaysure</option>
-                              {(item.assignedCompany === 'Pending Details' || !item.assignedCompany) && (
-                                <option value="Pending Details">Pending Details</option>
-                              )}
-                            </select>
-                            <ChevronDown className="w-3 h-3 opacity-60 absolute right-2 pointer-events-none" />
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* ELIGIBILITY & CIBIL */}
-                      <td className="py-3 px-3.5">
-                        <div>
-                          {item.eligibilityStatus === 'Incomplete / Phone Only' ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                              <span>Phone Only</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                              <span>{item.eligibilityStatus || 'Eligible'}</span>
-                            </span>
-                          )}
-                        </div>
-                        {item.cibil && item.cibil !== '—' ? (
-                          <div className="text-[10px] font-bold text-indigo-700 bg-indigo-50/80 px-2 py-0.5 rounded-md border border-indigo-200 mt-1 inline-flex items-center gap-1">
-                            <CreditCard className="w-2.5 h-2.5 text-indigo-500" />
-                            <span>CIBIL: {item.cibil}</span>
-                          </div>
-                        ) : (
-                          <div className="text-[10px] text-slate-400 font-medium mt-1">
-                            CIBIL: —
-                          </div>
-                        )}
-                      </td>
-
-                      {/* APPLIED AMOUNT */}
-                      <td className="py-3 px-3.5">
-                        {cleanLoanAmount(item.applied || item.loanAmount) > 0 ? (
-                          <div>
-                            <span className="text-xs font-black text-slate-900 tracking-tight flex items-center">
-                              <IndianRupee className="w-3 h-3 text-slate-500 inline" />
-                              {cleanLoanAmount(item.applied || item.loanAmount).toLocaleString('en-IN')}
-                            </span>
-                            <span className="text-[10px] text-slate-400 block font-medium">Applied</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 font-medium text-xs">—</span>
-                        )}
-                      </td>
-
-                      {/* SALARY / LOCATION */}
-                      <td className="py-3 px-3.5">
-                        {cleanSalary(item.salary, item.sal_val, item.salary_range) > 0 ? (
-                          <div className="font-bold text-slate-800 text-xs flex items-center">
-                            <IndianRupee className="w-2.5 h-2.5 text-slate-400 inline" />
-                            {cleanSalary(item.salary, item.sal_val, item.salary_range).toLocaleString('en-IN')}/mo
-                          </div>
-                        ) : (
-                          <div className="text-slate-400 font-medium text-xs">—</div>
-                        )}
-                        <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5 font-medium">
-                          <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />
-                          <span>{item.city && item.city !== '—' ? item.city : 'Online'}{item.pincode && item.pincode !== '—' ? ` · ${item.pincode}` : ''}</span>
-                        </div>
-                      </td>
-
-                      {/* SOURCE */}
-                      <td className="py-3 px-3.5">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-lg bg-blue-50 text-blue-800 border border-blue-200/80 shadow-2xs">
-                          <ExternalLink className="w-2.5 h-2.5 text-blue-500 shrink-0" />
-                          <span className="truncate max-w-[130px]">{item.source || 'Website Application'}</span>
-                        </span>
-                      </td>
-
-                      {/* STATUS (Native select styled badge - Never Clips!) */}
-                      <td className="py-3 px-3.5">
-                        <div className="relative inline-block">
-                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border transition ${statusBadge.classes} shadow-2xs`}>
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${statusBadge.dot}`}></span>
-                            <select
-                              value={item.status || 'Fresh'}
-                              onChange={(e) => handleStatusChange(itemId, e.target.value)}
-                              className="bg-transparent text-inherit font-bold text-xs focus:outline-none cursor-pointer pr-4 appearance-none"
-                              title="Change workflow status"
-                            >
-                              <option value="Fresh">Fresh</option>
-                              <option value="Callback">Callback</option>
-                              <option value="Interested">Interested</option>
-                              <option value="Docs received">Docs Received</option>
-                              <option value="Approved">Approved</option>
-                              <option value="Disbursed">Disbursed</option>
-                              <option value="Rejected">Rejected</option>
-                            </select>
-                            <ChevronDown className="w-3 h-3 opacity-60 absolute right-2 pointer-events-none" />
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* CREATED */}
-                      <td className="py-3 px-3.5 text-slate-500 text-[11px] whitespace-nowrap">
-                        <div className="flex items-center gap-1 text-slate-700 font-semibold text-[11px]">
-                          <Calendar className="w-2.5 h-2.5 text-slate-400" />
-                          <span>{item.date || (item.created ? item.created.split(',')[0] : 'Today')}</span>
-                        </div>
-                        {item.created && item.created.includes(',') && (
-                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
-                            {item.created.split(',')[1]}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* ACTIONS */}
-                      <td className="py-3 px-3.5 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          {/* Overview Modal Trigger */}
-                          <button
-                            onClick={() => setSelectedLeadForOverview(item)}
-                            className="p-1.5 bg-blue-50 text-[#0A3977] hover:bg-blue-600 hover:text-white rounded-lg transition shadow-2xs cursor-pointer"
-                            title="View Full Lead Overview"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          {item.mobile && (
-                            <a
-                              href={`tel:${item.mobile.replace(/\D/g, '')}`}
-                              className="p-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-lg transition shadow-2xs"
-                              title="Call Applicant"
-                            >
-                              <Phone className="w-3.5 h-3.5" />
-                            </a>
-                          )}
-                          {item.mobile && (
-                            <a
-                              href={`https://wa.me/91${item.mobile.replace(/\D/g, '').slice(-10)}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="p-1.5 bg-green-50 text-green-700 hover:bg-green-600 hover:text-white rounded-lg transition shadow-2xs"
-                              title="WhatsApp Chat"
-                            >
-                              <MessageCircle className="w-3.5 h-3.5" />
-                            </a>
-                          )}
-                          <button
-                            onClick={() => handleDeleteSingle(item, idx)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                            title="Delete Lead"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-
-                    </tr>
-                  );
-                })
-              ) : (
-                <tr>
-                  <td colSpan={10} className="p-12 text-center">
-                    <div className="max-w-sm mx-auto flex flex-col items-center">
-                      <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 mb-2 shadow-2xs">
-                        <Search className="w-6 h-6" />
-                      </div>
-                      <h3 className="text-sm font-bold text-slate-900">No leads matching current filters</h3>
-                      <p className="text-xs text-slate-400 mt-1">
-                        New submissions from <span className="text-[#0A3977] font-semibold">paisainminutes.com</span> will appear here automatically.
-                      </p>
-                      <button
-                        onClick={() => {
-                          setSelectedPartnerFilter('ALL');
-                          setActiveFilter('All Leads');
-                          setSearchQuery('');
-                        }}
-                        className="mt-3 px-3 py-1.5 text-xs font-bold bg-[#0A3977] text-white rounded-xl shadow-xs transition hover:bg-blue-900 cursor-pointer"
+                    {/* APPLICANT DETAILS (Clickable Overview Trigger) */}
+                    <td className="py-4 px-4">
+                      <div 
+                        onClick={() => setSelectedLeadForOverview(item)}
+                        className="flex items-start gap-3.5 cursor-pointer group"
+                        title="Click to view full lead overview & application dossier"
                       >
-                        Reset All Filters
-                      </button>
+                        <div className={`w-10 h-10 rounded-2xl ${item.avatarBg || 'bg-[#0A3977]'} text-white flex items-center justify-center font-black text-xs shrink-0 shadow-sm group-hover:scale-105 group-hover:shadow-md transition-all mt-0.5 relative`}>
+                          <span>{item.initials || 'AP'}</span>
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-white absolute -bottom-0.5 -right-0.5"></span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-extrabold text-slate-900 text-sm group-hover:text-[#0A3977] group-hover:underline transition-colors flex items-center gap-1.5 truncate">
+                            <span className="truncate">{item.name || 'Applicant'}</span>
+                            <Eye className="w-3.5 h-3.5 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200">
+                              {item.loanNo || itemId}
+                            </span>
+                          </div>
+                          <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mt-1 font-mono">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            <span>{item.mobile || (item.phone ? `+91 ${item.phone}` : '—')}</span>
+                          </div>
+                          {item.email && item.email !== '—' && !item.email.includes('@paisainminutes.com') && (
+                            <div className="text-[11px] text-slate-400 truncate max-w-[180px] flex items-center gap-1 mt-0.5">
+                              <Mail className="w-3 h-3 text-slate-300 shrink-0" />
+                              <span className="truncate">{item.email}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+
+                    {/* ASSIGNED LENDING PARTNER (Custom React Popover - ZERO clipping, ZERO native select!) */}
+                    <td className="py-4 px-4" data-dropdown-container>
+                      <div className="relative inline-block">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenStatusDropdownId(null);
+                            setOpenPartnerDropdownId(prev => prev === itemId ? null : itemId);
+                          }}
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs font-black border transition-all ${companyBadge.classes} shadow-2xs hover:shadow-sm cursor-pointer`}
+                          title="Click to route to a different lending partner"
+                        >
+                          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${companyBadge.dot}`}></span>
+                          <span>{item.assignedCompany || 'Pending Details'}</span>
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openPartnerDropdownId === itemId ? 'rotate-180 text-slate-800' : 'opacity-60'}`} />
+                        </button>
+
+                        {/* Custom Luxury Floating Popover */}
+                        {openPartnerDropdownId === itemId && (
+                          <div 
+                            className={`absolute left-0 ${
+                              isNearBottom ? 'bottom-full mb-2' : 'top-full mt-2'
+                            } w-60 bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-200/90 p-2 z-50 animate-fade-in divide-y divide-slate-100`}
+                          >
+                            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                              <span>Route Lending Partner</span>
+                              <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                            </div>
+                            <div className="pt-1.5 space-y-1">
+                              {AFFILIATE_PARTNERS.map(p => {
+                                const isCurrent = (item.assignedCompany || '').toLowerCase() === p.name.toLowerCase();
+                                return (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleReassignCompany(itemId, p.name);
+                                      setOpenPartnerDropdownId(null);
+                                    }}
+                                    className={`w-full px-3 py-2 rounded-2xl text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
+                                      isCurrent 
+                                        ? 'bg-blue-50 text-[#0A3977] font-black ring-1 ring-blue-200 shadow-2xs' 
+                                        : 'hover:bg-slate-50 text-slate-700 font-bold'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5 truncate">
+                                      <span className="w-3 h-3 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: p.accentColor }}></span>
+                                      <div className="truncate text-left">
+                                        <div className="font-black leading-tight">{p.name}</div>
+                                        <div className="text-[10px] text-slate-400 font-normal truncate">{p.tagline || 'Lending Partner'}</div>
+                                      </div>
+                                    </div>
+                                    {isCurrent && <Check className="w-4 h-4 text-[#0A3977] shrink-0 font-bold" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* ELIGIBILITY & CIBIL */}
+                    <td className="py-4 px-4">
+                      <div>
+                        {item.eligibilityStatus === 'Incomplete / Phone Only' ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-full bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs">
+                            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                            <span>Phone Verified Only</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            <span>{item.eligibilityStatus || 'Eligible'}</span>
+                          </span>
+                        )}
+                      </div>
+                      {item.cibil && item.cibil !== '—' ? (
+                        <div className="text-[10px] font-black text-indigo-700 bg-indigo-50/90 px-2.5 py-1 rounded-xl border border-indigo-200/80 mt-1.5 inline-flex items-center gap-1.5 shadow-2xs">
+                          <CreditCard className="w-3 h-3 text-indigo-500" />
+                          <span>CIBIL: {item.cibil}</span>
+                        </div>
+                      ) : (
+                        <div className="text-[11px] text-slate-400 font-medium mt-1">
+                          CIBIL: —
+                        </div>
+                      )}
+                    </td>
+
+                    {/* APPLIED AMOUNT */}
+                    <td className="py-4 px-4">
+                      {cleanLoanAmount(item.applied || item.loanAmount) > 0 ? (
+                        <div>
+                          <span className="text-sm font-black text-slate-900 tracking-tight flex items-center">
+                            <IndianRupee className="w-3.5 h-3.5 text-slate-600 inline" />
+                            {cleanLoanAmount(item.applied || item.loanAmount).toLocaleString('en-IN')}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider mt-0.5">Applied Amount</span>
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 font-bold text-xs">—</span>
+                      )}
+                    </td>
+
+                    {/* SALARY / LOCATION */}
+                    <td className="py-4 px-4">
+                      {cleanSalary(item.salary, item.sal_val, item.salary_range) > 0 ? (
+                        <div className="font-extrabold text-slate-800 text-xs flex items-center">
+                          <IndianRupee className="w-3 h-3 text-slate-500 inline" />
+                          {cleanSalary(item.salary, item.sal_val, item.salary_range).toLocaleString('en-IN')}/mo
+                        </div>
+                      ) : (
+                        <div className="text-slate-400 font-bold text-xs">—</div>
+                      )}
+                      <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-1 font-semibold">
+                        <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
+                        <span>{item.city && item.city !== '—' ? item.city : 'Online'}{item.pincode && item.pincode !== '—' ? ` · ${item.pincode}` : ''}</span>
+                      </div>
+                    </td>
+
+                    {/* SOURCE */}
+                    <td className="py-4 px-4">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-xl bg-blue-50 text-blue-800 border border-blue-200/80 shadow-2xs">
+                        <ExternalLink className="w-3 h-3 text-blue-500 shrink-0" />
+                        <span className="truncate max-w-[130px]">{item.source || 'Website Application'}</span>
+                      </span>
+                    </td>
+
+                    {/* STATUS (Custom React Popover - ZERO clipping, ZERO native select!) */}
+                    <td className="py-4 px-4" data-dropdown-container>
+                      <div className="relative inline-block">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenPartnerDropdownId(null);
+                            setOpenStatusDropdownId(prev => prev === itemId ? null : itemId);
+                          }}
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs font-black border transition-all ${statusBadge.classes} shadow-2xs hover:shadow-sm cursor-pointer`}
+                          title="Click to update workflow status"
+                        >
+                          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusBadge.dot} animate-pulse`}></span>
+                          <span>{item.status || 'Fresh'}</span>
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openStatusDropdownId === itemId ? 'rotate-180 text-slate-800' : 'opacity-60'}`} />
+                        </button>
+
+                        {/* Custom Luxury Floating Status Popover */}
+                        {openStatusDropdownId === itemId && (
+                          <div 
+                            className={`absolute left-0 ${
+                              isNearBottom ? 'bottom-full mb-2' : 'top-full mt-2'
+                            } w-52 bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-200/90 p-2 z-50 animate-fade-in divide-y divide-slate-100`}
+                          >
+                            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                              <span>Update Status</span>
+                              <GitMerge className="w-3.5 h-3.5 text-slate-400" />
+                            </div>
+                            <div className="pt-1.5 space-y-1">
+                              {[
+                                { id: 'Fresh', label: 'Fresh', dot: 'bg-sky-500', bg: 'hover:bg-sky-50 text-sky-800' },
+                                { id: 'Callback', label: 'Callback', dot: 'bg-amber-500', bg: 'hover:bg-amber-50 text-amber-800' },
+                                { id: 'Interested', label: 'Interested', dot: 'bg-purple-500', bg: 'hover:bg-purple-50 text-purple-800' },
+                                { id: 'Docs received', label: 'Docs Received', dot: 'bg-indigo-500', bg: 'hover:bg-indigo-50 text-indigo-800' },
+                                { id: 'Approved', label: 'Approved', dot: 'bg-emerald-500', bg: 'hover:bg-emerald-50 text-emerald-800' },
+                                { id: 'Disbursed', label: 'Disbursed', dot: 'bg-teal-500', bg: 'hover:bg-teal-50 text-teal-800' },
+                                { id: 'Rejected', label: 'Rejected', dot: 'bg-rose-500', bg: 'hover:bg-rose-50 text-rose-800' },
+                              ].map(st => {
+                                const isCurrent = (item.status || 'Fresh').toLowerCase() === st.id.toLowerCase();
+                                return (
+                                  <button
+                                    key={st.id}
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStatusChange(itemId, st.id);
+                                      setOpenStatusDropdownId(null);
+                                    }}
+                                    className={`w-full px-3 py-2 rounded-2xl text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
+                                      isCurrent 
+                                        ? 'bg-slate-100 text-slate-900 font-black ring-1 ring-slate-300 shadow-2xs' 
+                                        : `${st.bg} font-bold`
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5">
+                                      <span className={`w-2.5 h-2.5 rounded-full ${st.dot}`}></span>
+                                      <span>{st.label}</span>
+                                    </div>
+                                    {isCurrent && <Check className="w-4 h-4 text-slate-900 shrink-0 font-black" />}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+
+                    {/* CREATED */}
+                    <td className="py-4 px-4 text-slate-500 text-[11px] whitespace-nowrap">
+                      <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs">
+                        <Calendar className="w-3 h-3 text-slate-400" />
+                        <span>{item.date || (item.created ? item.created.split(',')[0] : 'Today')}</span>
+                      </div>
+                      {item.created && item.created.includes(',') && (
+                        <div className="text-[10px] text-slate-400 font-mono mt-0.5 pl-4">
+                          {item.created.split(',')[1]}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* ACTIONS */}
+                    <td className="py-4 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        {/* Overview Trigger */}
+                        <button
+                          onClick={() => setSelectedLeadForOverview(item)}
+                          className="p-2 bg-blue-50 text-[#0A3977] hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-2xs hover:shadow cursor-pointer"
+                          title="View Full Lead Overview"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        {item.mobile && (
+                          <a
+                            href={`tel:${item.mobile.replace(/\D/g, '')}`}
+                            className="p-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-xl transition-all shadow-2xs hover:shadow"
+                            title="Call Applicant"
+                          >
+                            <Phone className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                        {item.mobile && (
+                          <a
+                            href={`https://wa.me/91${item.mobile.replace(/\D/g, '').slice(-10)}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-2 bg-green-50 text-green-700 hover:bg-green-600 hover:text-white rounded-xl transition-all shadow-2xs hover:shadow"
+                            title="WhatsApp Chat"
+                          >
+                            <MessageCircle className="w-3.5 h-3.5" />
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handleDeleteSingle(item, idx)}
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                          title="Delete Lead"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+
+                  </tr>
+                );
+              })
+            ) : (
+              <tr>
+                <td colSpan={10} className="p-16 text-center">
+                  <div className="max-w-sm mx-auto flex flex-col items-center">
+                    <div className="w-14 h-14 rounded-3xl bg-blue-50 flex items-center justify-center text-blue-600 mb-3 shadow-xs">
+                      <Search className="w-6 h-6" />
                     </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    <h3 className="text-base font-black text-slate-900">No leads matching current filters</h3>
+                    <p className="text-xs text-slate-400 mt-1 font-medium">
+                      New applications from <span className="text-[#0A3977] font-bold">paisainminutes.com</span> will appear here automatically.
+                    </p>
+                    <button
+                      onClick={() => {
+                        setSelectedPartnerFilter('ALL');
+                        setActiveFilter('All Leads');
+                        setSearchQuery('');
+                      }}
+                      className="mt-4 px-4 py-2 text-xs font-extrabold bg-[#0A3977] hover:bg-blue-900 text-white rounded-2xl shadow transition cursor-pointer"
+                    >
+                      Reset All Filters
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {/* Modal: Test Website Lead Submit */}
