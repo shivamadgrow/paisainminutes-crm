@@ -536,8 +536,8 @@ export default defineConfig({
   base: './',
   plugins: [react(), tailwindcss(), crmApiPlugin()],
   build: {
-    outDir: 'dist',
-    emptyOutDir: true,
+    outDir: '.',
+    emptyOutDir: false,
     rollupOptions: {
       output: {
         entryFileNames: 'assets/index.js',
