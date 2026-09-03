@@ -4,18 +4,37 @@ import { getLiveSecurityDetails } from './geoService';
 
 export const STAFF_STORAGE_KEY = 'paisa_crm_staff_list';
 export const SESSION_STORAGE_KEY = 'paisa_crm_user';
-export const AUTH_VERSION = 'v4_jazz_force_logout';
+export const AUTH_VERSION = 'v5_clean_slate_reset';
 
 /**
- * Enforces a global logout across all browsers/devices when credentials or auth version changes
+ * Purge all stale, duplicate, and unused client-side caches and storage keys
+ */
+export function purgeAllClientCaches() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('pim_deleted_leads');
+      localStorage.removeItem('paisa_crm_lead_overrides');
+      localStorage.removeItem('paisa_security_incidents');
+      localStorage.removeItem('pim_jwt_token');
+      localStorage.removeItem(STAFF_STORAGE_KEY);
+      localStorage.removeItem('paisa_crm_active_tab');
+    }
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.clear();
+    }
+    console.log('[CRM CLEAN SLATE] 🧹 Purged all client caches and local lead/staff overrides.');
+  } catch (e) {}
+}
+
+/**
+ * Enforces a global logout and cleans stale/duplicate cache across all browsers/devices
  */
 export function checkAndEnforceGlobalLogout() {
   try {
     if (typeof localStorage !== 'undefined') {
       if (localStorage.getItem('paisa_crm_auth_version') !== AUTH_VERSION) {
+        purgeAllClientCaches();
         localStorage.removeItem(SESSION_STORAGE_KEY);
-        try { sessionStorage.removeItem(SESSION_STORAGE_KEY); } catch (e) {}
-        localStorage.removeItem(STAFF_STORAGE_KEY);
         localStorage.setItem('paisa_crm_auth_version', AUTH_VERSION);
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('paisa_session_changed', { detail: null }));

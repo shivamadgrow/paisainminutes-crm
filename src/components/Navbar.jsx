@@ -14,9 +14,10 @@ import {
   Clock, 
   ExternalLink,
   Sparkles,
+  RotateCcw,
   X
 } from 'lucide-react';
-import { getStaffList } from '../utils/authService';
+import { getStaffList, purgeAllClientCaches } from '../utils/authService';
 
 export default function Navbar({ 
   searchQuery, 
@@ -330,6 +331,19 @@ export default function Navbar({
                 >
                   <UserCheck className="w-3.5 h-3.5 text-slate-400" />
                   <span>My Profile</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (confirm('Clear all local caches, duplicate stored data, and reload CRM?')) {
+                      purgeAllClientCaches();
+                      window.location.reload();
+                    }
+                  }}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold text-amber-700 hover:bg-amber-50 flex items-center gap-2 cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Clear Cache & Reset Data</span>
                 </button>
 
                 <button
