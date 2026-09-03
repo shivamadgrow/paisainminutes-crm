@@ -17,7 +17,17 @@ import {
   ArrowUpDown,
   ExternalLink,
   ShieldCheck,
-  Zap
+  Zap,
+  Eye,
+  Copy,
+  Check,
+  Mail,
+  MapPin,
+  Briefcase,
+  Calendar,
+  CreditCard,
+  MessageCircle,
+  IndianRupee
 } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
 import { AFFILIATE_PARTNERS, getPartnerMeta } from '../data/affiliatePartners';
@@ -60,8 +70,17 @@ export default function LeadsView({
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [selectedLeadIds, setSelectedLeadIds] = useState([]);
   const [reassigningLeadId, setReassigningLeadId] = useState(null);
-  
-  // Test Apply Now form state
+  const [selectedLeadForOverview, setSelectedLeadForOverview] = useState(null);
+  const [copiedField, setCopiedField] = useState(null);
+
+  const handleCopy = (text, field) => {
+    if (!text) return;
+    try {
+      navigator.clipboard.writeText(String(text));
+      setCopiedField(field);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (e) {}
+  };
   const [testMobile, setTestMobile] = useState('');
   const [testName, setTestName] = useState('');
   const [testAmount, setTestAmount] = useState('₹50,000');
@@ -372,10 +391,32 @@ export default function LeadsView({
         method: 'POST',
         body: JSON.stringify(updatePayload)
       });
-      console.log('[CRM STATUS CHANGE] 📥 Server response:', res?.data);
     } catch (e) {
       console.error('[CRM STATUS CHANGE] ❌ Error:', e);
     }
+  };
+
+  // Keep selected lead in sync with any background leads state updates
+  const activeOverviewLead = useMemo(() => {
+    if (!selectedLeadForOverview) return null;
+    const targetId = getLeadId(selectedLeadForOverview);
+    const targetPhone = String(selectedLeadForOverview.phone || selectedLeadForOverview.mobile || '').replace(/\D/g, '').slice(-10);
+    const found = leads.find((l, idx) => {
+      const lId = getLeadId(l, idx);
+      const lPhone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
+      return lId === targetId || (targetPhone && lPhone === targetPhone);
+    });
+    return found || selectedLeadForOverview;
+  }, [selectedLeadForOverview, leads]);
+
+  const handleReassignCompanyInModal = async (leadId, newCompany) => {
+    await handleReassignCompany(leadId, newCompany);
+    setSelectedLeadForOverview(prev => prev ? { ...prev, assignedCompany: newCompany, partner_name: newCompany } : null);
+  };
+
+  const handleStatusChangeInModal = async (leadId, newStatus) => {
+    await handleStatusChange(leadId, newStatus);
+    setSelectedLeadForOverview(prev => prev ? { ...prev, status: newStatus } : null);
   };
 
   // Test Website Lead Submit Handler
@@ -721,21 +762,24 @@ export default function LeadsView({
 
                       {/* APPLICANT */}
                       <td className="p-3.5">
-                        <div className="flex items-start gap-2.5">
-                          <div className={`w-8 h-8 rounded-full ${item.avatarBg || 'bg-blue-600'} text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5`}>
+                        <div 
+                          onClick={() => setSelectedLeadForOverview(item)}
+                          className="flex items-start gap-2.5 cursor-pointer group"
+                          title="Click to view full lead overview & details"
+                        >
+                          <div className={`w-8 h-8 rounded-full ${item.avatarBg || 'bg-blue-600'} text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-400 transition-all`}>
                             {item.initials || 'AP'}
                           </div>
                           <div>
-                            <div className="font-bold text-slate-900 text-xs">{item.name || 'Applicant'}</div>
-                            <div className="text-[10px] text-slate-400 font-mono">{item.loanNo || itemId}</div>
-                            <div className="text-[11px] text-blue-900 font-mono font-bold mt-0.5">
-                              {(() => {
-                                const cleanDigits = String(item.mobile || item.phone || item.phoneNumber || (item.user && item.user.phone) || '').replace(/\D/g, '');
-                                if (cleanDigits.length >= 10) {
-                                  return `+91 ${cleanDigits.slice(-10)}`;
-                                }
-                                return item.mobile || item.phone || '—';
-                              })()}
+                            <div className="font-bold text-slate-900 text-xs group-hover:text-[#0A3977] group-hover:underline transition-colors flex items-center gap-1.5">
+                              <span>{item.name || 'Applicant'}</span>
+                              <Eye className="w-3 h-3 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                              <span>{item.loanNo || itemId}</span>
+                            </div>
+                            <div className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 mt-0.5">
+                              <span>{item.mobile || (item.phone ? `+91 ${item.phone}` : '—')}</span>
                             </div>
                             {item.email && item.email !== '—' && !item.email.includes('@paisainminutes.com') && (
                               <div className="text-[10px] text-slate-400">{item.email}</div>
@@ -861,6 +905,14 @@ export default function LeadsView({
                       {/* ACTIONS */}
                       <td className="p-3.5 text-center">
                         <div className="flex items-center justify-center gap-1.5">
+                          {/* Overview Modal Trigger */}
+                          <button
+                            onClick={() => setSelectedLeadForOverview(item)}
+                            className="p-1.5 bg-blue-50 text-[#0A3977] hover:bg-blue-100 rounded-lg transition cursor-pointer"
+                            title="View Full Lead Overview & Details"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
                           {item.mobile && (
                             <a
                               href={`tel:${item.mobile.replace(/\D/g, '')}`}
@@ -1120,6 +1172,298 @@ export default function LeadsView({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Lead Overview & Detailed View */}
+      {activeOverviewLead && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col animate-scale-up">
+            
+            {/* Modal Top Header */}
+            <div className="bg-gradient-to-r from-slate-900 via-[#0A3977] to-indigo-950 p-6 text-white shrink-0 relative">
+              <button
+                type="button"
+                onClick={() => setSelectedLeadForOverview(null)}
+                className="absolute top-4 right-4 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition cursor-pointer"
+                title="Close Overview"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pr-8">
+                <div className="flex items-center gap-3.5">
+                  <div className={`w-14 h-14 rounded-2xl ${activeOverviewLead.avatarBg || 'bg-blue-600'} text-white flex items-center justify-center font-bold text-xl shadow-md border-2 border-white/20 shrink-0`}>
+                    {activeOverviewLead.initials || 'AP'}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-xl font-bold tracking-tight text-white">
+                        {activeOverviewLead.name || 'Applicant'}
+                      </h2>
+                      <span className="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-white/20 text-blue-100 border border-white/20">
+                        {activeOverviewLead.status || 'Fresh'}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1 text-xs text-blue-100/80 font-mono">
+                      <span>ID: {activeOverviewLead.loanNo || activeOverviewLead.id}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(activeOverviewLead.loanNo || activeOverviewLead.id, 'id')}
+                        className="p-1 hover:bg-white/10 rounded transition text-blue-200 hover:text-white cursor-pointer"
+                        title="Copy Lead ID"
+                      >
+                        {copiedField === 'id' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                      {copiedField === 'id' && <span className="text-[10px] text-emerald-300 font-sans font-semibold">Copied!</span>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Call & WhatsApp Action Buttons */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {activeOverviewLead.phone && (
+                    <>
+                      <a
+                        href={`tel:${String(activeOverviewLead.phone).replace(/\D/g, '')}`}
+                        className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow transition"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        <span>Call</span>
+                      </a>
+                      <a
+                        href={`https://wa.me/91${String(activeOverviewLead.phone).replace(/\D/g, '').slice(-10)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 bg-[#25D366] hover:bg-[#1EBE5D] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow transition"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        <span>WhatsApp</span>
+                      </a>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body (Scrollable) */}
+            <div className="p-6 space-y-6 overflow-y-auto grow text-slate-800">
+              
+              {/* Metric Highlights (4 Cards) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl">
+                  <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
+                    <IndianRupee className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Applied Loan</span>
+                  </div>
+                  <div className="text-base sm:text-lg font-extrabold text-slate-900">
+                    {cleanLoanAmount(activeOverviewLead.applied || activeOverviewLead.loanAmount) > 0 
+                      ? `₹${cleanLoanAmount(activeOverviewLead.applied || activeOverviewLead.loanAmount).toLocaleString('en-IN')}` 
+                      : '₹50,000'}
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl">
+                  <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
+                    <Briefcase className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Monthly Salary</span>
+                  </div>
+                  <div className="text-base sm:text-lg font-extrabold text-slate-900">
+                    {cleanSalary(activeOverviewLead.salary, activeOverviewLead.sal_val, activeOverviewLead.salary_range) > 0 
+                      ? `₹${cleanSalary(activeOverviewLead.salary, activeOverviewLead.sal_val, activeOverviewLead.salary_range).toLocaleString('en-IN')}/mo` 
+                      : '₹30,000/mo'}
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl">
+                  <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>CIBIL Score</span>
+                  </div>
+                  <div className="text-base sm:text-lg font-extrabold text-emerald-700">
+                    {activeOverviewLead.cibil && activeOverviewLead.cibil !== '—' ? activeOverviewLead.cibil : '750+'}
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl">
+                  <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
+                    <Building2 className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Company</span>
+                  </div>
+                  <div className="text-base sm:text-lg font-extrabold text-[#0A3977]">
+                    {activeOverviewLead.assignedCompany || 'Rupay91'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Grid: Personal Info & Loan Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Card: Personal & Contact Information */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#0A3977] uppercase tracking-wider border-b border-slate-100 pb-2">
+                    <User className="w-4 h-4" />
+                    <span>Contact & Personal Details</span>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Full Name:</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.name || 'Applicant'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Mobile Number:</span>
+                      <div className="flex items-center gap-1.5 font-bold text-slate-900 font-mono">
+                        <span>{activeOverviewLead.mobile || (activeOverviewLead.phone ? `+91 ${activeOverviewLead.phone}` : '—')}</span>
+                        {activeOverviewLead.phone && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(activeOverviewLead.phone, 'phone')}
+                            className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700 cursor-pointer"
+                            title="Copy Phone"
+                          >
+                            {copiedField === 'phone' ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Email Address:</span>
+                      <span className="font-bold text-slate-900 break-all">{activeOverviewLead.email && activeOverviewLead.email !== '—' ? activeOverviewLead.email : '—'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">PAN Card:</span>
+                      <span className="font-bold font-mono text-slate-900">{activeOverviewLead.pan && activeOverviewLead.pan !== '—' ? activeOverviewLead.pan : '—'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">City / State:</span>
+                      <span className="font-bold text-slate-900">
+                        {activeOverviewLead.city && activeOverviewLead.city !== '—' ? activeOverviewLead.city : 'Delhi NCR'}, {activeOverviewLead.state || 'India'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Pincode:</span>
+                      <span className="font-bold font-mono text-slate-900">{activeOverviewLead.pincode && activeOverviewLead.pincode !== '—' ? activeOverviewLead.pincode : '110001'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card: Application & Routing Information */}
+                <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#0A3977] uppercase tracking-wider border-b border-slate-100 pb-2">
+                    <Building2 className="w-4 h-4" />
+                    <span>Application & Routing Status</span>
+                  </div>
+
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Employment:</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.employmentType || 'Salaried'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Loan Purpose:</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.purpose || 'Personal Loan'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Source / Channel:</span>
+                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 font-bold text-[11px] border border-blue-200/50">
+                        {activeOverviewLead.source || 'Website Application'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Eligibility:</span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-bold text-[11px] border border-emerald-200/50">
+                        {activeOverviewLead.eligibilityStatus || 'Eligible'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Credit Manager:</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.creditManager || 'Unassigned'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Submission Date:</span>
+                      <span className="font-bold text-slate-700">{activeOverviewLead.created || activeOverviewLead.created_at || activeOverviewLead.date || 'Today'}</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Interactive Assignment & Status Control Card */}
+              <div className="bg-gradient-to-r from-blue-50/70 to-indigo-50/70 border border-blue-200/80 rounded-2xl p-4 space-y-3">
+                <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-indigo-600" />
+                  <span>Lead Workflow & Partner Management</span>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Partner Company Selector */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Assigned Lending Partner / Company:
+                    </label>
+                    <select
+                      value={activeOverviewLead.assignedCompany || 'Rupay91'}
+                      onChange={(e) => handleReassignCompanyInModal(getLeadId(activeOverviewLead), e.target.value)}
+                      className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0A3977] cursor-pointer shadow-2xs"
+                    >
+                      {AFFILIATE_PARTNERS.map(p => (
+                        <option key={p.id} value={p.name}>
+                          {p.name} — {p.description || 'Lending Partner'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Status Selector */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Current Lead Status:
+                    </label>
+                    <select
+                      value={activeOverviewLead.status || 'Fresh'}
+                      onChange={(e) => handleStatusChangeInModal(getLeadId(activeOverviewLead), e.target.value)}
+                      className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0A3977] cursor-pointer shadow-2xs"
+                    >
+                      <option value="Fresh">Fresh</option>
+                      <option value="Callback">Callback</option>
+                      <option value="Interested">Interested</option>
+                      <option value="Docs received">Docs Received</option>
+                      <option value="Approved">Approved</option>
+                      <option value="Disbursed">Disbursed</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-slate-50 p-4 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0">
+              <div className="text-[11px] text-slate-400 font-medium">
+                Paisa in Minutes Affiliate CRM & Lead Management System
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedLeadForOverview(null)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Close Overview
+              </button>
+            </div>
+
           </div>
         </div>
       )}
