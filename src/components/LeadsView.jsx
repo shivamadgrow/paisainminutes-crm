@@ -54,6 +54,103 @@ const mapTabToFilterName = (tab) => {
   return tab;
 };
 
+// Modern workflow status styling helper
+export const getStatusBadge = (status) => {
+  const s = String(status || 'Fresh').toLowerCase().replace(/[\s\-_]/g, '');
+  if (s.includes('fresh')) {
+    return {
+      label: 'Fresh',
+      classes: 'bg-sky-50 text-sky-700 border-sky-200/80 hover:bg-sky-100/80',
+      dot: 'bg-sky-500'
+    };
+  }
+  if (s.includes('callback')) {
+    return {
+      label: 'Callback',
+      classes: 'bg-amber-50 text-amber-700 border-amber-200/80 hover:bg-amber-100/80',
+      dot: 'bg-amber-500'
+    };
+  }
+  if (s.includes('interest')) {
+    return {
+      label: 'Interested',
+      classes: 'bg-purple-50 text-purple-700 border-purple-200/80 hover:bg-purple-100/80',
+      dot: 'bg-purple-500'
+    };
+  }
+  if (s.includes('doc')) {
+    return {
+      label: 'Docs Received',
+      classes: 'bg-indigo-50 text-indigo-700 border-indigo-200/80 hover:bg-indigo-100/80',
+      dot: 'bg-indigo-500'
+    };
+  }
+  if (s.includes('approv')) {
+    return {
+      label: 'Approved',
+      classes: 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/80',
+      dot: 'bg-emerald-500'
+    };
+  }
+  if (s.includes('disburs')) {
+    return {
+      label: 'Disbursed',
+      classes: 'bg-teal-50 text-teal-700 border-teal-200/80 hover:bg-teal-100/80',
+      dot: 'bg-teal-500'
+    };
+  }
+  if (s.includes('reject')) {
+    return {
+      label: 'Rejected',
+      classes: 'bg-rose-50 text-rose-700 border-rose-200/80 hover:bg-rose-100/80',
+      dot: 'bg-rose-500'
+    };
+  }
+  return {
+    label: status || 'Fresh',
+    classes: 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200',
+    dot: 'bg-slate-400'
+  };
+};
+
+// Modern partner company styling helper
+export const getCompanyBadge = (company) => {
+  const clean = String(company || '').toLowerCase().replace(/[\s\-_]/g, '');
+  if (clean.includes('rupay91')) {
+    return {
+      name: 'Rupay91',
+      classes: 'bg-indigo-50 text-indigo-700 border-indigo-200/80 hover:bg-indigo-100/80',
+      dot: 'bg-indigo-600'
+    };
+  }
+  if (clean.includes('adgrow')) {
+    return {
+      name: 'Adgrow',
+      classes: 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/80',
+      dot: 'bg-emerald-600'
+    };
+  }
+  if (clean.includes('agdm')) {
+    return {
+      name: 'AGDM',
+      classes: 'bg-blue-50 text-blue-700 border-blue-200/80 hover:bg-blue-100/80',
+      dot: 'bg-blue-600'
+    };
+  }
+  if (clean.includes('rupaysure')) {
+    return {
+      name: 'Rupaysure',
+      classes: 'bg-amber-50 text-amber-800 border-amber-200/80 hover:bg-amber-100/80',
+      dot: 'bg-amber-600'
+    };
+  }
+  return {
+    name: company || 'Pending Details',
+    classes: 'bg-purple-50 text-purple-700 border-purple-200/80 hover:bg-purple-100/80',
+    dot: 'bg-purple-500'
+  };
+};
+
 export default function LeadsView({ 
   leads: propLeads, 
   setLeads, 
@@ -637,92 +734,130 @@ export default function LeadsView({
         </div>
       )}
 
-      {/* Partner Quick-Filter Tabs */}
-      <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2">Partner:</span>
-          <button
-            onClick={() => setSelectedPartnerFilter('ALL')}
-            className={`px-3 py-1 text-xs font-bold rounded-xl transition cursor-pointer shrink-0 ${
-              selectedPartnerFilter === 'ALL'
-                ? 'bg-[#0A3977] text-white shadow-2xs'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            All Partners ({leads.length})
-          </button>
+      {/* Unified Modern Control Center */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-3.5 space-y-3">
+        
+        {/* Row 1: Workflow Status Tabs & Search Bar */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          
+          {/* Status Workflow Tabs */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+            {[
+              { id: 'All Leads', label: 'All Status', count: leads.length },
+              { id: 'Fresh', label: 'Fresh', count: leads.filter(l => (l.status || 'Fresh') === 'Fresh').length },
+              { id: 'Callback', label: 'Callback', count: leads.filter(l => l.status === 'Callback').length },
+              { id: 'Interested', label: 'Interested', count: leads.filter(l => l.status === 'Interested').length },
+              { id: 'Docs Received', label: 'Docs Received', count: leads.filter(l => l.status === 'Docs received' || l.status === 'Docs Received').length },
+              { id: 'Approved', label: 'Approved', count: leads.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length },
+              { id: 'Rejected', label: 'Rejected', count: leads.filter(l => l.status === 'Rejected').length },
+            ].map(tab => {
+              const isSelected = activeFilter.toLowerCase().replace(/\s+/g, ' ') === tab.id.toLowerCase().replace(/\s+/g, ' ');
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleFilterClick(tab.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#0A3977] text-white shadow-xs'
+                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-extrabold ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
-          {AFFILIATE_PARTNERS.map(p => {
-            const count = leads.filter(l => {
-              const c = (l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
-              return c === p.id || c === p.name.toLowerCase().replace(/[\s\-_]/g, '');
-            }).length;
-            const isSel = selectedPartnerFilter.toLowerCase() === p.id;
-            return (
+          {/* Search Bar */}
+          <div className="relative w-full lg:w-72 shrink-0">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search applicant, phone, ID, city..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A3977] focus:bg-white transition placeholder-slate-400 font-medium"
+            />
+            {searchQuery && (
               <button
-                key={p.id}
-                onClick={() => setSelectedPartnerFilter(p.name)}
-                className={`px-3 py-1 text-xs font-bold rounded-xl transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                  isSel ? `${p.pillClass} shadow-2xs` : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200"
               >
-                <span>{p.name}</span>
-                <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-[10px] font-bold">
-                  {count}
-                </span>
+                <X className="w-3.5 h-3.5" />
               </button>
-            );
-          })}
+            )}
+          </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative w-full sm:w-64">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search name, phone, city..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0A3977] placeholder-slate-400"
-          />
-        </div>
-      </div>
+        {/* Row 2: Lending Partner Badges & Realtime Summary */}
+        <div className="pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+            <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
+              <Building2 className="w-3 h-3 text-slate-400" />
+              <span>Partner:</span>
+            </span>
 
-      {/* Status Filter Pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-        {[
-          { id: 'All Leads', label: 'All Status' },
-          { id: 'Fresh', label: 'Fresh' },
-          { id: 'Callback', label: 'Callback' },
-          { id: 'Interested', label: 'Interested' },
-          { id: 'Docs Received', label: 'Docs Received' },
-          { id: 'Approved', label: 'Approved & Converted' },
-          { id: 'Rejected', label: 'Rejected' },
-        ].map(pill => {
-          const isSelected = activeFilter.toLowerCase().replace(/\s+/g, ' ') === pill.id.toLowerCase().replace(/\s+/g, ' ');
-          return (
             <button
-              key={pill.id}
-              onClick={() => handleFilterClick(pill.id)}
-              className={`px-3 py-1 rounded-xl text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                isSelected 
-                  ? 'bg-blue-100 text-[#0A3977] font-bold border border-blue-300 shadow-2xs' 
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+              onClick={() => setSelectedPartnerFilter('ALL')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                selectedPartnerFilter === 'ALL'
+                  ? 'bg-slate-900 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              {pill.label}
+              <span>All Partners</span>
+              <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono">
+                {leads.length}
+              </span>
             </button>
-          );
-        })}
+
+            {AFFILIATE_PARTNERS.map(p => {
+              const count = leads.filter(l => {
+                const c = (l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
+                return c === p.id || c === p.name.toLowerCase().replace(/[\s\-_]/g, '');
+              }).length;
+              const isSel = selectedPartnerFilter.toLowerCase() === p.id;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedPartnerFilter(p.name)}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer border ${
+                    isSel 
+                      ? `${p.pillClass} shadow-2xs border-transparent ring-2 ring-blue-300` 
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.accentColor }}></span>
+                  <span>{p.name}</span>
+                  <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+                    isSel ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="text-[11px] font-semibold text-slate-500 hidden sm:block">
+            Showing <span className="font-bold text-slate-900">{filteredLeads.length}</span> of {leads.length} leads
+          </div>
+        </div>
+
       </div>
 
-      {/* Leads Table */}
-      <div className="crm-card bg-white overflow-hidden rounded-2xl shadow-sm border border-slate-200">
+      {/* Leads Table Card */}
+      <div className="bg-white overflow-hidden rounded-2xl shadow-xs border border-slate-200/80">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50/80 text-slate-400 font-bold tracking-wider text-[10px] uppercase border-b border-slate-200">
-                <th className="p-3.5 w-8">
+              <tr className="bg-slate-50/90 text-slate-500 font-bold tracking-wider text-[10px] uppercase border-b border-slate-200 sticky top-0 z-10 backdrop-blur-xs">
+                <th className="py-3 px-3.5 w-8">
                   <input 
                     type="checkbox" 
                     checked={isAllSelected}
@@ -730,15 +865,15 @@ export default function LeadsView({
                     className="rounded border-slate-300 cursor-pointer" 
                   />
                 </th>
-                <th className="p-3.5 min-w-[220px]">APPLICANT DETAILS</th>
-                <th className="p-3.5 min-w-[160px]">ASSIGNED PARTNER</th>
-                <th className="p-3.5">ELIGIBILITY & CIBIL</th>
-                <th className="p-3.5">APPLIED AMOUNT</th>
-                <th className="p-3.5">SALARY / CITY</th>
-                <th className="p-3.5">SOURCE</th>
-                <th className="p-3.5">STATUS</th>
-                <th className="p-3.5">CREATED</th>
-                <th className="p-3.5 text-center">ACTION</th>
+                <th className="py-3 px-3.5 min-w-[240px]">APPLICANT DETAILS</th>
+                <th className="py-3 px-3.5 min-w-[170px]">ASSIGNED PARTNER</th>
+                <th className="py-3 px-3.5 min-w-[150px]">ELIGIBILITY & CIBIL</th>
+                <th className="py-3 px-3.5 min-w-[130px]">APPLIED AMOUNT</th>
+                <th className="py-3 px-3.5 min-w-[160px]">SALARY / CITY</th>
+                <th className="py-3 px-3.5 min-w-[140px]">SOURCE</th>
+                <th className="py-3 px-3.5 min-w-[150px]">STATUS</th>
+                <th className="py-3 px-3.5 min-w-[140px]">CREATED</th>
+                <th className="py-3 px-3.5 min-w-[130px] text-center">ACTION</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -747,104 +882,102 @@ export default function LeadsView({
                   if (!item) return null;
                   const itemId = getLeadId(item, idx);
                   const isSelected = selectedLeadIds.includes(itemId);
-                  const partnerMeta = getPartnerMeta(item.assignedCompany || 'Unassigned');
-                  const isReassignOpen = reassigningLeadId === itemId;
+                  const companyBadge = getCompanyBadge(item.assignedCompany || 'Pending Details');
+                  const statusBadge = getStatusBadge(item.status || 'Fresh');
 
                   return (
-                    <tr key={itemId} className={`transition ${isSelected ? 'bg-blue-50/60' : 'hover:bg-slate-50/80'}`}>
+                    <tr 
+                      key={itemId} 
+                      className={`transition-colors duration-150 ${isSelected ? 'bg-blue-50/70' : 'hover:bg-slate-50/80'}`}
+                    >
                       
                       {/* Checkbox */}
-                      <td className="p-3.5">
+                      <td className="py-3 px-3.5">
                         <input 
                           type="checkbox" 
                           checked={isSelected}
-                          onChange={() => handleSelectOne(itemId)}
+                          onChange={() => handleSelectRow(itemId)}
                           className="rounded border-slate-300 cursor-pointer" 
                         />
                       </td>
 
-                      {/* APPLICANT */}
-                      <td className="p-3.5">
+                      {/* APPLICANT DETAILS (Clickable Overview Trigger) */}
+                      <td className="py-3 px-3.5">
                         <div 
                           onClick={() => setSelectedLeadForOverview(item)}
-                          className="flex items-start gap-2.5 cursor-pointer group"
+                          className="flex items-start gap-3 cursor-pointer group"
                           title="Click to view full lead overview & details"
                         >
-                          <div className={`w-8 h-8 rounded-full ${item.avatarBg || 'bg-blue-600'} text-white flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 group-hover:scale-105 group-hover:ring-2 group-hover:ring-blue-400 transition-all`}>
+                          <div className={`w-9 h-9 rounded-xl ${item.avatarBg || 'bg-[#0A3977]'} text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs group-hover:scale-105 group-hover:shadow-md transition-all mt-0.5`}>
                             {item.initials || 'AP'}
                           </div>
-                          <div>
-                            <div className="font-bold text-slate-900 text-xs group-hover:text-[#0A3977] group-hover:underline transition-colors flex items-center gap-1.5">
-                              <span>{item.name || 'Applicant'}</span>
-                              <Eye className="w-3 h-3 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="min-w-0">
+                            <div className="font-bold text-slate-900 text-xs group-hover:text-[#0A3977] group-hover:underline transition-colors flex items-center gap-1.5 truncate">
+                              <span className="truncate">{item.name || 'Applicant'}</span>
+                              <Eye className="w-3 h-3 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                             </div>
-                            <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
-                              <span>{item.loanNo || itemId}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded border border-slate-200/60">
+                                {item.loanNo || itemId}
+                              </span>
                             </div>
-                            <div className="text-[11px] font-semibold text-slate-600 flex items-center gap-1 mt-0.5">
-                              <span>{item.mobile || (item.phone ? `+91 ${item.phone}` : '—')}</span>
+                            <div className="text-[11px] font-semibold text-slate-700 flex items-center gap-1 mt-1">
+                              <Phone className="w-2.5 h-2.5 text-slate-400" />
+                              <span className="font-mono">{item.mobile || (item.phone ? `+91 ${item.phone}` : '—')}</span>
                             </div>
                             {item.email && item.email !== '—' && !item.email.includes('@paisainminutes.com') && (
-                              <div className="text-[10px] text-slate-400">{item.email}</div>
+                              <div className="text-[10px] text-slate-400 truncate max-w-[160px] flex items-center gap-1 mt-0.5">
+                                <Mail className="w-2.5 h-2.5 text-slate-300 shrink-0" />
+                                <span className="truncate">{item.email}</span>
+                              </div>
                             )}
                           </div>
                         </div>
                       </td>
 
-                      {/* ASSIGNED COMPANY / PARTNER (with 1-click Re-assign Dropdown) */}
-                      <td className="p-3.5">
-                        <div className="relative">
-                          <button
-                            onClick={() => setReassigningLeadId(isReassignOpen ? null : itemId)}
-                            className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border ${partnerMeta.badgeClass} hover:ring-2 hover:ring-indigo-300`}
-                            title="Click to change assigned lending company"
-                          >
-                            <Building2 className="w-3 h-3 opacity-70" />
-                            <span>{item.assignedCompany || 'Unassigned'}</span>
-                            <ChevronDown className="w-3 h-3 opacity-60 ml-0.5" />
-                          </button>
-
-                          {/* Dropdown Menu */}
-                          {isReassignOpen && (
-                            <div className="absolute left-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 animate-fade-in">
-                              <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                Route to Company:
-                              </div>
-                              {AFFILIATE_PARTNERS.map(p => (
-                                <button
-                                  key={p.id}
-                                  onClick={() => handleReassignCompany(itemId, p.name)}
-                                  className={`w-full text-left px-3 py-1.5 text-xs font-semibold hover:bg-slate-100 flex items-center justify-between cursor-pointer ${
-                                    (item.assignedCompany || '') === p.name ? 'text-[#0A3977] font-bold bg-blue-50' : 'text-slate-700'
-                                  }`}
-                                >
-                                  <span>{p.name}</span>
-                                  {(item.assignedCompany || '') === p.name && (
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-[#0A3977]" />
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          )}
+                      {/* ASSIGNED LENDING PARTNER (Native select styled badge - Never Clips!) */}
+                      <td className="py-3 px-3.5">
+                        <div className="relative inline-block">
+                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border transition ${companyBadge.classes} shadow-2xs`}>
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${companyBadge.dot}`}></span>
+                            <select
+                              value={item.assignedCompany || 'Pending Details'}
+                              onChange={(e) => handleReassignCompany(itemId, e.target.value)}
+                              className="bg-transparent text-inherit font-bold text-xs focus:outline-none cursor-pointer pr-4 appearance-none"
+                              title="Click to route to another lending partner"
+                            >
+                              <option value="Rupay91">Rupay91</option>
+                              <option value="Adgrow">Adgrow</option>
+                              <option value="AGDM">AGDM</option>
+                              <option value="Rupaysure">Rupaysure</option>
+                              {(item.assignedCompany === 'Pending Details' || !item.assignedCompany) && (
+                                <option value="Pending Details">Pending Details</option>
+                              )}
+                            </select>
+                            <ChevronDown className="w-3 h-3 opacity-60 absolute right-2 pointer-events-none" />
+                          </div>
                         </div>
                       </td>
 
                       {/* ELIGIBILITY & CIBIL */}
-                      <td className="p-3.5">
+                      <td className="py-3 px-3.5">
                         <div>
                           {item.eligibilityStatus === 'Incomplete / Phone Only' ? (
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200 inline-block">
-                              Phone Verified Only
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                              <span>Phone Only</span>
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 inline-block">
-                              {item.eligibilityStatus || 'Eligible'}
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                              <span>{item.eligibilityStatus || 'Eligible'}</span>
                             </span>
                           )}
                         </div>
                         {item.cibil && item.cibil !== '—' ? (
-                          <div className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200 mt-1 inline-block">
-                            CIBIL: {item.cibil}
+                          <div className="text-[10px] font-bold text-indigo-700 bg-indigo-50/80 px-2 py-0.5 rounded-md border border-indigo-200 mt-1 inline-flex items-center gap-1">
+                            <CreditCard className="w-2.5 h-2.5 text-indigo-500" />
+                            <span>CIBIL: {item.cibil}</span>
                           </div>
                         ) : (
                           <div className="text-[10px] text-slate-400 font-medium mt-1">
@@ -853,76 +986,111 @@ export default function LeadsView({
                         )}
                       </td>
 
-                      {/* APPLIED */}
-                      <td className="p-3.5 font-bold text-slate-900">
+                      {/* APPLIED AMOUNT */}
+                      <td className="py-3 px-3.5">
                         {cleanLoanAmount(item.applied || item.loanAmount) > 0 ? (
-                          `₹${cleanLoanAmount(item.applied || item.loanAmount).toLocaleString('en-IN')}`
+                          <div>
+                            <span className="text-xs font-black text-slate-900 tracking-tight flex items-center">
+                              <IndianRupee className="w-3 h-3 text-slate-500 inline" />
+                              {cleanLoanAmount(item.applied || item.loanAmount).toLocaleString('en-IN')}
+                            </span>
+                            <span className="text-[10px] text-slate-400 block font-medium">Applied</span>
+                          </div>
                         ) : (
                           <span className="text-slate-400 font-medium text-xs">—</span>
                         )}
                       </td>
 
-                      {/* SALARY / CITY */}
-                      <td className="p-3.5">
-                        <div className="font-semibold text-slate-800">
-                          {cleanSalary(item.salary, item.sal_val, item.salary_range) > 0 ? (
-                            `₹${cleanSalary(item.salary, item.sal_val, item.salary_range).toLocaleString('en-IN')}/mo`
-                          ) : (
-                            <span className="text-slate-400 font-medium text-xs">—</span>
-                          )}
-                        </div>
-                        <div className="text-[10px] text-slate-400">
-                          {item.city && item.city !== '—' ? item.city : 'Online'}{item.pincode && item.pincode !== '—' ? ` · ${item.pincode}` : ''}
+                      {/* SALARY / LOCATION */}
+                      <td className="py-3 px-3.5">
+                        {cleanSalary(item.salary, item.sal_val, item.salary_range) > 0 ? (
+                          <div className="font-bold text-slate-800 text-xs flex items-center">
+                            <IndianRupee className="w-2.5 h-2.5 text-slate-400 inline" />
+                            {cleanSalary(item.salary, item.sal_val, item.salary_range).toLocaleString('en-IN')}/mo
+                          </div>
+                        ) : (
+                          <div className="text-slate-400 font-medium text-xs">—</div>
+                        )}
+                        <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5 font-medium">
+                          <MapPin className="w-2.5 h-2.5 text-slate-400 shrink-0" />
+                          <span>{item.city && item.city !== '—' ? item.city : 'Online'}{item.pincode && item.pincode !== '—' ? ` · ${item.pincode}` : ''}</span>
                         </div>
                       </td>
 
                       {/* SOURCE */}
-                      <td className="p-3.5">
-                        <span className="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-50 text-blue-800 border border-blue-200/60">
-                          {item.source || 'Apply Now Website'}
+                      <td className="py-3 px-3.5">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-lg bg-blue-50 text-blue-800 border border-blue-200/80 shadow-2xs">
+                          <ExternalLink className="w-2.5 h-2.5 text-blue-500 shrink-0" />
+                          <span className="truncate max-w-[130px]">{item.source || 'Website Application'}</span>
                         </span>
                       </td>
 
-                      {/* STATUS */}
-                      <td className="p-3.5">
-                        <select
-                          value={item.status || 'Fresh'}
-                          onChange={(e) => handleStatusChange(itemId, e.target.value)}
-                          className="px-2 py-1 rounded-lg text-xs font-semibold border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0A3977] cursor-pointer"
-                        >
-                          <option value="Fresh">Fresh</option>
-                          <option value="Callback">Callback</option>
-                          <option value="Interested">Interested</option>
-                          <option value="Docs received">Docs Received</option>
-                          <option value="Approved">Approved</option>
-                          <option value="Disbursed">Disbursed</option>
-                          <option value="Rejected">Rejected</option>
-                        </select>
+                      {/* STATUS (Native select styled badge - Never Clips!) */}
+                      <td className="py-3 px-3.5">
+                        <div className="relative inline-block">
+                          <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold border transition ${statusBadge.classes} shadow-2xs`}>
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${statusBadge.dot}`}></span>
+                            <select
+                              value={item.status || 'Fresh'}
+                              onChange={(e) => handleStatusChange(itemId, e.target.value)}
+                              className="bg-transparent text-inherit font-bold text-xs focus:outline-none cursor-pointer pr-4 appearance-none"
+                              title="Change workflow status"
+                            >
+                              <option value="Fresh">Fresh</option>
+                              <option value="Callback">Callback</option>
+                              <option value="Interested">Interested</option>
+                              <option value="Docs received">Docs Received</option>
+                              <option value="Approved">Approved</option>
+                              <option value="Disbursed">Disbursed</option>
+                              <option value="Rejected">Rejected</option>
+                            </select>
+                            <ChevronDown className="w-3 h-3 opacity-60 absolute right-2 pointer-events-none" />
+                          </div>
+                        </div>
                       </td>
 
                       {/* CREATED */}
-                      <td className="p-3.5 text-slate-500 text-[11px] whitespace-nowrap">
-                        {item.created || item.date || 'Today'}
+                      <td className="py-3 px-3.5 text-slate-500 text-[11px] whitespace-nowrap">
+                        <div className="flex items-center gap-1 text-slate-700 font-semibold text-[11px]">
+                          <Calendar className="w-2.5 h-2.5 text-slate-400" />
+                          <span>{item.date || (item.created ? item.created.split(',')[0] : 'Today')}</span>
+                        </div>
+                        {item.created && item.created.includes(',') && (
+                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                            {item.created.split(',')[1]}
+                          </div>
+                        )}
                       </td>
 
                       {/* ACTIONS */}
-                      <td className="p-3.5 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                      <td className="py-3 px-3.5 text-center">
+                        <div className="flex items-center justify-center gap-1">
                           {/* Overview Modal Trigger */}
                           <button
                             onClick={() => setSelectedLeadForOverview(item)}
-                            className="p-1.5 bg-blue-50 text-[#0A3977] hover:bg-blue-100 rounded-lg transition cursor-pointer"
-                            title="View Full Lead Overview & Details"
+                            className="p-1.5 bg-blue-50 text-[#0A3977] hover:bg-blue-600 hover:text-white rounded-lg transition shadow-2xs cursor-pointer"
+                            title="View Full Lead Overview"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
                           {item.mobile && (
                             <a
                               href={`tel:${item.mobile.replace(/\D/g, '')}`}
-                              className="p-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded-lg transition"
+                              className="p-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-lg transition shadow-2xs"
                               title="Call Applicant"
                             >
                               <Phone className="w-3.5 h-3.5" />
+                            </a>
+                          )}
+                          {item.mobile && (
+                            <a
+                              href={`https://wa.me/91${item.mobile.replace(/\D/g, '').slice(-10)}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1.5 bg-green-50 text-green-700 hover:bg-green-600 hover:text-white rounded-lg transition shadow-2xs"
+                              title="WhatsApp Chat"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
                             </a>
                           )}
                           <button
@@ -941,11 +1109,25 @@ export default function LeadsView({
               ) : (
                 <tr>
                   <td colSpan={10} className="p-12 text-center">
-                    <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                    <p className="text-xs font-bold text-slate-600">No leads matching current filters</p>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      New submissions from <span className="text-[#0A3977] font-semibold">paisainminutes.com</span> will appear here automatically.
-                    </p>
+                    <div className="max-w-sm mx-auto flex flex-col items-center">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 mb-2 shadow-2xs">
+                        <Search className="w-6 h-6" />
+                      </div>
+                      <h3 className="text-sm font-bold text-slate-900">No leads matching current filters</h3>
+                      <p className="text-xs text-slate-400 mt-1">
+                        New submissions from <span className="text-[#0A3977] font-semibold">paisainminutes.com</span> will appear here automatically.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setSelectedPartnerFilter('ALL');
+                          setActiveFilter('All Leads');
+                          setSearchQuery('');
+                        }}
+                        className="mt-3 px-3 py-1.5 text-xs font-bold bg-[#0A3977] text-white rounded-xl shadow-xs transition hover:bg-blue-900 cursor-pointer"
+                      >
+                        Reset All Filters
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )}
