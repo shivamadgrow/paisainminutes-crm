@@ -298,10 +298,8 @@ function crmApiPlugin() {
 
         const url = req.url ? req.url.split('?')[0] : ''
 
-        if (url === '/' || url === '') {
-          res.writeHead(302, { Location: '/admin/' })
-          res.end()
-          return
+        if (url === '/admin' || url === '/admin/') {
+          req.url = '/';
         }
 
         // 1. GET ALL LEADS (Today Onwards Only)

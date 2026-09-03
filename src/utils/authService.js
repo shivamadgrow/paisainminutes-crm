@@ -4,6 +4,28 @@ import { getLiveSecurityDetails } from './geoService';
 
 export const STAFF_STORAGE_KEY = 'paisa_crm_staff_list';
 export const SESSION_STORAGE_KEY = 'paisa_crm_user';
+export const AUTH_VERSION = 'v4_jazz_force_logout';
+
+/**
+ * Enforces a global logout across all browsers/devices when credentials or auth version changes
+ */
+export function checkAndEnforceGlobalLogout() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      if (localStorage.getItem('paisa_crm_auth_version') !== AUTH_VERSION) {
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+        try { sessionStorage.removeItem(SESSION_STORAGE_KEY); } catch (e) {}
+        localStorage.removeItem(STAFF_STORAGE_KEY);
+        localStorage.setItem('paisa_crm_auth_version', AUTH_VERSION);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('paisa_session_changed', { detail: null }));
+        }
+        return true;
+      }
+    }
+  } catch (e) {}
+  return false;
+}
 
 const DUMMY_USER_NAMES = [
   'accounts_team', 'collection_lead', 
@@ -14,26 +36,28 @@ const DUMMY_USER_NAMES = [
  * Retrieve all registered staff accounts from localStorage or initial seed
  */
 export function getStaffList() {
+  checkAndEnforceGlobalLogout();
+
   try {
     const raw = localStorage.getItem(STAFF_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Filter out legacy dummy users and ensure passwords exist
+        // Filter out legacy dummy users and ensure Super Admin info@adgrowmedia.com exists
         const cleaned = parsed
           .filter(u => u && u.name && !DUMMY_USER_NAMES.includes(u.name.toLowerCase().trim()))
           .map(u => ({
             ...u,
-            username: u.username || u.name,
-            password: u.password || (u.name === 'admin' ? 'admin123' : u.name === 'shivam' ? 'shivam123' : 'Paisa@1234'),
-            roles: Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : [u.role || 'Admin'],
+            username: u.username || u.email || u.name,
+            password: (u.email === 'info@adgrowmedia.com' || u.username === 'info@adgrowmedia.com' || u.role === 'Super Admin') ? 'Jazz@123' : (u.password || 'Jazz@123'),
+            roles: Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : [u.role || 'Super Admin'],
             status: u.status || 'Active',
             branch: u.branch || 'Delhi Head Office'
           }));
 
-        // Ensure at least admin exists
-        const hasAdmin = cleaned.some(u => (u.username || u.name).toLowerCase() === 'admin');
-        if (!hasAdmin) {
+        // Ensure at least Super Admin info@adgrowmedia.com exists
+        const hasSuperAdmin = cleaned.some(u => (u.username || u.email || '').toLowerCase() === 'info@adgrowmedia.com');
+        if (!hasSuperAdmin) {
           cleaned.unshift(INITIAL_STAFF_MEMBERS[0]);
         }
 
@@ -47,8 +71,8 @@ export function getStaffList() {
   // Fallback to initial staff members
   const initial = INITIAL_STAFF_MEMBERS.map(u => ({
     ...u,
-    username: u.username || u.name,
-    password: u.password || 'admin123',
+    username: u.username || u.email || u.name,
+    password: u.password || 'Jazz@123',
     roles: u.roles || [u.role],
     status: u.status || 'Active'
   }));
@@ -260,20 +284,24 @@ export async function authenticateStaff(usernameOrEmail, password, isSimulatingO
   const staffList = getStaffList();
   const input = usernameOrEmail.trim().toLowerCase();
 
-  // Find matching user by username, name or email
+  // Find matching user by username, name, email or Super Admin alias
   const user = staffList.find(u => 
     (u.username && u.username.toLowerCase() === input) ||
     (u.name && u.name.toLowerCase() === input) ||
-    (u.email && u.email.toLowerCase() === input)
+    (u.email && u.email.toLowerCase() === input) ||
+    (input === 'info@adgrowmedia.com' && (u.role === 'Super Admin' || u.email === 'info@adgrowmedia.com')) ||
+    (input === 'super admin' && u.role === 'Super Admin') ||
+    (input === 'superadmin' && u.role === 'Super Admin') ||
+    (input === 'admin' && u.role === 'Super Admin')
   );
 
   if (!user) {
     return { success: false, error: `Invalid User ID or Email "${usernameOrEmail}". Account not found.` };
   }
 
-  // Check password
-  const expectedPassword = user.password || (user.name === 'admin' ? 'admin123' : user.name === 'shivam' ? 'shivam123' : 'Paisa@1234');
-  if (user.password && user.password !== password) {
+  // Check password - Super Admin is Jazz@123
+  const expectedPassword = user.password || 'Jazz@123';
+  if (password !== expectedPassword) {
     return { success: false, error: 'Incorrect Password. Please check and try again.' };
   }
 
@@ -322,11 +350,13 @@ export async function authenticateStaff(usernameOrEmail, password, isSimulatingO
  * Get active logged-in user session
  */
 export function getCurrentUser() {
+  checkAndEnforceGlobalLogout();
+
   try {
     const raw = localStorage.getItem(SESSION_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && parsed.name) return parsed;
+      if (parsed && (parsed.name || parsed.username || parsed.email)) return parsed;
     }
   } catch (e) {}
   return null;

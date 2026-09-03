@@ -314,23 +314,14 @@ export default function LoginModal({ isOpen = true, onClose, onLogin, currentUse
               {showCredentialsHelp && (
                 <div className="mt-2 p-3 bg-blue-50/70 border border-blue-200/70 rounded-xl text-[11px] space-y-2 text-slate-700 animate-fade-in">
                   <div className="flex items-center justify-between font-mono">
-                    <span>Username: <strong className="text-slate-900">admin</strong></span>
-                    <span>Password: <strong className="text-slate-900">admin123</strong></span>
+                    <div>
+                      <div>ID: <strong className="text-slate-900">info@adgrowmedia.com</strong></div>
+                      <div>Pass: <strong className="text-slate-900">Jazz@123</strong></div>
+                    </div>
                     <button
                       type="button"
-                      onClick={() => handleQuickLoginAsAdmin('admin', 'admin123')}
-                      className="px-2 py-0.5 bg-[#0A3977] text-white rounded text-[10px] font-sans font-bold hover:bg-blue-900 cursor-pointer"
-                    >
-                      Use
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between font-mono pt-1 border-t border-blue-200/50">
-                    <span>Username: <strong className="text-slate-900">shivam</strong></span>
-                    <span>Password: <strong className="text-slate-900">shivam123</strong></span>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLoginAsAdmin('shivam', 'shivam123')}
-                      className="px-2 py-0.5 bg-[#0A3977] text-white rounded text-[10px] font-sans font-bold hover:bg-blue-900 cursor-pointer"
+                      onClick={() => handleQuickLoginAsAdmin('info@adgrowmedia.com', 'Jazz@123')}
+                      className="px-2.5 py-1 bg-[#0A3977] text-white rounded-lg text-[10px] font-sans font-bold hover:bg-blue-900 cursor-pointer shadow-xs"
                     >
                       Use
                     </button>

@@ -15,9 +15,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// 1. Helper to clean and parse Loan Amount
+// 1. Helper to clean and parse Loan Amount (returns 0 if not provided)
 function cleanLoanAmount($raw) {
-    if ($raw === null || $raw === '' || $raw === false) return 50000;
+    if ($raw === null || $raw === '' || $raw === false || $raw === 0 || $raw === '0') return 0;
+    if (is_numeric($raw) && (int)$raw === 0) return 0;
     if (is_numeric($raw) && $raw > 0 && $raw <= 500000) return (int)$raw;
 
     $str = (string)$raw;
@@ -33,7 +34,7 @@ function cleanLoanAmount($raw) {
     }
 
     $clean = (int)preg_replace('/\D/', '', $str);
-    if ($clean <= 0) return 50000;
+    if ($clean <= 0) return 0;
 
     // Detect concatenated numeric ranges e.g. 2500050000 -> 50000
     if ($clean > 500000) {
@@ -48,14 +49,17 @@ function cleanLoanAmount($raw) {
                 }
             }
         }
-        if ($clean > 1000000) return 50000;
+        if ($clean > 1000000) return 0;
     }
     return $clean;
 }
 
-// 2. Helper to clean and parse Monthly Salary
+// 2. Helper to clean and parse Monthly Salary (returns 0 if not provided)
 function cleanSalary($raw, $salVal = null, $salRange = '') {
-    if (!empty($salVal) && is_numeric($salVal)) {
+    if ($raw === null || $raw === '' || $raw === false || $raw === 0 || $raw === '0') {
+        if (empty($salVal) && empty($salRange)) return 0;
+    }
+    if (!empty($salVal) && is_numeric($salVal) && (int)$salVal > 0) {
         $sv = (int)$salVal;
         if ($sv >= 5000 && $sv <= 500000) return $sv;
     }
@@ -72,7 +76,7 @@ function cleanSalary($raw, $salVal = null, $salRange = '') {
     }
 
     $clean = (int)preg_replace('/\D/', '', (string)$raw);
-    if ($clean <= 0) return 30000;
+    if ($clean <= 0) return 0;
 
     // Detect concatenated salary strings e.g. 7000079999 -> 75000
     if ($clean > 500000) {
@@ -94,20 +98,23 @@ function cleanSalary($raw, $salVal = null, $salRange = '') {
                 }
             }
         }
-        return 35000;
+        return 0;
     }
     return $clean;
 }
 
 // 3. Helper to determine partner company
 function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
-    if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO') {
+    if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO' && $explicitCompany !== 'Pending Details') {
         $clean = strtolower(trim($explicitCompany));
         if (strpos($clean, 'rupay91') !== false || strpos($clean, 'rupay 91') !== false) return 'Rupay91';
         if (strpos($clean, 'adgrow') !== false) return 'Adgrow';
         if (strpos($clean, 'agdm') !== false) return 'AGDM';
         if (strpos($clean, 'rupaysure') !== false || strpos($clean, 'rupay sure') !== false) return 'Rupaysure';
         return trim($explicitCompany);
+    }
+    if ($salaryNum === 0 && $amountNum === 0) {
+        return 'Pending Details';
     }
 
     $cibilNum = 0;
@@ -130,17 +137,33 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
     return 'AGDM';
 }
 
-// 4. Load from Primary Data File: public_html/data/leads.json
+// 4. Load from Primary Data Files across possible host configurations
 $rootPath = dirname(__DIR__, 2);
-$leadsFile = $rootPath . '/data/leads.json';
-$leadsStoreFile = $rootPath . '/crm/leads_store.json';
-$leadsLogCsv = $rootPath . '/leads_log.csv';
+$leadsCandidates = array_unique([
+    $rootPath . '/data/leads.json',
+    $rootPath . '/crm/leads_store.json',
+    dirname(__DIR__, 1) . '/leads_store.json',
+    dirname(__DIR__, 2) . '/crm/leads_store.json',
+    dirname(__DIR__, 3) . '/public_html/data/leads.json',
+    dirname(__DIR__, 3) . '/public_html/crm/leads_store.json',
+    __DIR__ . '/../leads_store.json',
+    __DIR__ . '/../../data/leads.json'
+]);
+
+$leadsLogCandidates = array_unique([
+    $rootPath . '/leads_log.csv',
+    dirname(__DIR__, 1) . '/leads_log.csv',
+    dirname(__DIR__, 2) . '/leads_log.csv',
+    dirname(__DIR__, 3) . '/public_html/leads_log.csv',
+    __DIR__ . '/../../leads_log.csv'
+]);
 
 // Load deleted leads blacklist
 $deletedMap = [];
 $deletedStoreCandidates = array_unique([
     $rootPath . '/crm/deleted_leads.json',
     $rootPath . '/data/deleted_leads.json',
+    dirname(__DIR__, 1) . '/deleted_leads.json',
     __DIR__ . '/../../crm/deleted_leads.json',
     __DIR__ . '/../deleted_leads.json',
     __DIR__ . '/deleted_leads.json'
@@ -152,7 +175,7 @@ foreach ($deletedStoreCandidates as $df) {
         if (is_array($dArr)) {
             foreach ($dArr as $dItem) {
                 $cleanD = trim(strtolower((string)$dItem));
-                if ($cleanD !== '') $deletedMap[$cleanD] = true;
+                if ($cleanD !== '' && $cleanD !== '*') $deletedMap[$cleanD] = true;
             }
         }
     }
@@ -160,54 +183,95 @@ foreach ($deletedStoreCandidates as $df) {
 
 $allLeads = [];
 $seenIds = [];
+$seenPhones = [];
 
-// Load from data/leads.json
-if (file_exists($leadsFile)) {
-    $content = file_get_contents($leadsFile);
-    $arr = json_decode($content, true);
-    if (is_array($arr)) {
-        foreach ($arr as $row) {
-            if (!is_array($row)) continue;
-            $leadId = trim((string)($row['id'] ?? $row['lead_id'] ?? $row['loanNo'] ?? ''));
-            $lIdLower = strtolower($leadId);
-            $lPhone = preg_replace('/\D/', '', (string)($row['phone'] ?? $row['mobile'] ?? ''));
-            
-            if ($lIdLower && !empty($deletedMap[$lIdLower])) continue;
-            if ($lPhone && !empty($deletedMap[$lPhone])) continue;
+// Load from all valid json leads stores
+foreach ($leadsCandidates as $lf) {
+    if (file_exists($lf)) {
+        $content = file_get_contents($lf);
+        $arr = json_decode($content, true);
+        if (is_array($arr)) {
+            foreach ($arr as $row) {
+                if (!is_array($row)) continue;
+                $leadId = trim((string)($row['id'] ?? $row['lead_id'] ?? $row['loanNo'] ?? ''));
+                $lIdLower = strtolower($leadId);
+                $lPhone = preg_replace('/\D/', '', (string)($row['phone'] ?? $row['mobile'] ?? ''));
+                if (strlen($lPhone) > 10) $lPhone = substr($lPhone, -10);
 
-            if (empty($leadId)) {
-                $leadId = 'PIM-' . rand(100000, 999999);
+                if ($lIdLower && !empty($deletedMap[$lIdLower])) continue;
+                if ($lPhone && !empty($deletedMap[$lPhone])) continue;
+                if ($leadId && !empty($seenIds[$leadId])) continue;
+
+                if (empty($leadId)) {
+                    $leadId = 'PIM-' . rand(100000, 999999);
+                }
+                $row['id'] = $leadId;
+                $row['loanNo'] = $leadId;
+                $row['lead_id'] = $leadId;
+                if ($lPhone) {
+                    $row['phone'] = $lPhone;
+                    $row['mobile'] = '+91 ' . $lPhone;
+                    $seenPhones[$lPhone] = true;
+                }
+                $allLeads[] = $row;
+                $seenIds[$leadId] = true;
             }
-            $row['id'] = $leadId;
-            $row['loanNo'] = $leadId;
-            $row['lead_id'] = $leadId;
-            $allLeads[] = $row;
-            $seenIds[$leadId] = true;
         }
     }
 }
 
-// Load secondary from crm/leads_store.json if not duplicate
-if (file_exists($leadsStoreFile)) {
-    $content = file_get_contents($leadsStoreFile);
-    $arr = json_decode($content, true);
-    if (is_array($arr)) {
-        foreach ($arr as $row) {
-            if (!is_array($row)) continue;
-            $leadId = trim((string)($row['id'] ?? $row['lead_id'] ?? $row['loanNo'] ?? ''));
-            $lIdLower = strtolower($leadId);
-            $lPhone = preg_replace('/\D/', '', (string)($row['phone'] ?? $row['mobile'] ?? ''));
-            if ($lIdLower && !empty($deletedMap[$lIdLower])) continue;
-            if ($lPhone && !empty($deletedMap[$lPhone])) continue;
-            if ($leadId && !empty($seenIds[$leadId])) continue;
-            if (empty($leadId)) {
-                $leadId = 'PIM-' . rand(100000, 999999);
+// Also sync live leads from Render Cloud database
+if (function_exists('curl_init')) {
+    $ch = curl_init('https://paisainminutes.onrender.com/api/loan-applications/all');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $renderJson = curl_exec($ch);
+    curl_close($ch);
+    if ($renderJson) {
+        $renderData = json_decode($renderJson, true);
+        $renderList = is_array($renderData) ? ($renderData['applications'] ?? $renderData['leads'] ?? $renderData) : [];
+        if (is_array($renderList)) {
+            foreach ($renderList as $rItem) {
+                if (!is_array($rItem)) continue;
+                $rPhone = preg_replace('/\D/', '', (string)($rItem['phone'] ?? $rItem['phoneNumber'] ?? $rItem['mobile'] ?? ''));
+                if (strlen($rPhone) > 10) $rPhone = substr($rPhone, -10);
+                if (strlen($rPhone) !== 10) continue;
+                
+                $rId = (string)($rItem['id'] ?? ('PIM-' . rand(100000, 999999)));
+                $rIdLower = strtolower($rId);
+                if (!empty($deletedMap[$rIdLower]) || !empty($deletedMap[$rPhone])) continue;
+                if (!empty($seenIds[$rId])) continue;
+                
+                $rName = trim((string)($rItem['name'] ?? 'Applicant'));
+                $cleanLoan = (int)($rItem['amount'] ?? 0);
+                $cleanSalary = (int)($rItem['monthlyIncome'] ?? 0);
+                $isPhoneOnly = ($rName === 'Applicant' || empty($rName)) && $cleanLoan === 0 && $cleanSalary === 0;
+
+                $allLeads[] = [
+                    'id'                => $rId,
+                    'loanNo'            => $rId,
+                    'lead_id'           => $rId,
+                    'name'              => $rName ?: 'Applicant',
+                    'fullName'          => $rName ?: 'Applicant',
+                    'phone'             => $rPhone,
+                    'mobile'            => '+91 ' . $rPhone,
+                    'email'             => !empty($rItem['email']) && strpos($rItem['email'], '@paisainminutes.com') === false ? $rItem['email'] : '—',
+                    'loanAmount'        => $cleanLoan,
+                    'applied'           => $cleanLoan,
+                    'salary'            => $cleanSalary,
+                    'monthlySalary'     => $cleanSalary,
+                    'cibil'             => $rItem['cibil'] ?? '—',
+                    'source'            => $isPhoneOnly ? 'Apply Now (Phone Only)' : 'Render API / Loan App',
+                    'status'            => $rItem['status'] ?? 'Fresh',
+                    'assignedCompany'   => $isPhoneOnly ? 'Pending Details' : ($cleanSalary >= 30000 ? 'Rupay91' : 'Rupaysure'),
+                    'eligibilityStatus' => $isPhoneOnly ? 'Incomplete / Phone Only' : 'Eligible',
+                    'created_at'        => $rItem['createdAt'] ?? date('Y-m-d H:i:s'),
+                    'created'           => isset($rItem['createdAt']) ? date('d M Y, h:i A', strtotime($rItem['createdAt'])) : date('d M Y, h:i A')
+                ];
+                $seenIds[$rId] = true;
+                $seenPhones[$rPhone] = true;
             }
-            $row['id'] = $leadId;
-            $row['loanNo'] = $leadId;
-            $row['lead_id'] = $leadId;
-            $allLeads[] = $row;
-            if ($leadId) $seenIds[$leadId] = true;
         }
     }
 }
@@ -276,17 +340,26 @@ foreach ($allLeads as $index => $lead) {
     $name = trim($lead['name'] ?? $lead['fullName'] ?? $lead['full_name'] ?? 'Applicant');
     if ($name === '') $name = 'Applicant';
 
-    $rawLoan = $lead['loanAmount'] ?? $lead['applied'] ?? $lead['loan_amount'] ?? $lead['amount'] ?? 50000;
+    $rawLoan = $lead['loanAmount'] ?? $lead['applied'] ?? $lead['loan_amount'] ?? $lead['amount'] ?? 0;
     $cleanedLoan = cleanLoanAmount($rawLoan);
 
-    $rawSalary = $lead['salary'] ?? $lead['monthlySalary'] ?? $lead['monthly_salary'] ?? $lead['income'] ?? 35000;
+    $rawSalary = $lead['salary'] ?? $lead['monthlySalary'] ?? $lead['monthly_salary'] ?? $lead['income'] ?? 0;
     $salVal = $lead['sal_val'] ?? null;
     $salRange = $lead['salary_range'] ?? '';
     $cleanedSalary = cleanSalary($rawSalary, $salVal, $salRange);
 
     $cibil = trim($lead['cibil'] ?? $lead['cibilScore'] ?? $lead['cibil_score'] ?? $lead['cibil_range'] ?? '—');
     $explicitCompany = $lead['assignedCompany'] ?? $lead['company'] ?? $lead['partner'] ?? $lead['partner_name'] ?? '';
-    $assignedCompany = determineCompany($cibil, $cleanedSalary, $cleanedLoan, $explicitCompany);
+
+    $isPhoneOnly = ($name === 'Applicant' || empty($lead['name'])) && ($cleanedLoan === 0) && ($cleanedSalary === 0) && ($cibil === '—');
+    
+    if ($isPhoneOnly) {
+        $assignedCompany = (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO') ? $explicitCompany : 'Pending Details';
+        $eligibilityStatus = 'Incomplete / Phone Only';
+    } else {
+        $assignedCompany = determineCompany($cibil, $cleanedSalary, $cleanedLoan, $explicitCompany);
+        $eligibilityStatus = trim($lead['eligibilityStatus'] ?? $lead['eligibility_status'] ?? $lead['eligibility'] ?? 'Eligible');
+    }
 
     $createdAt = $lead['created_at'] ?? $lead['created'] ?? $lead['date'] ?? $lead['timestamp'] ?? date('Y-m-d H:i:s');
     $timestamp = strtotime($createdAt) ?: time();
@@ -294,15 +367,13 @@ foreach ($allLeads as $index => $lead) {
     $isoDate = date('Y-m-d', $timestamp);
     $today = date('Y-m-d');
 
-    // STRICTLY TODAY ONLY: Filter out any leads from past dates
-    if ($isoDate < $today) {
-        continue;
-    }
-
     $status = trim($lead['status'] ?? 'Fresh');
     if (empty($status)) $status = 'Fresh';
 
-    $eligibilityStatus = trim($lead['eligibilityStatus'] ?? $lead['eligibility_status'] ?? $lead['eligibility'] ?? 'Eligible');
+    $leadEmail = trim((string)($lead['email'] ?? $lead['emailAddress'] ?? '—'));
+    if (strpos($leadEmail, '@paisainminutes.com') !== false || empty($leadEmail)) {
+        $leadEmail = '—';
+    }
 
     $item = [
         'id'                => $leadId,
@@ -312,8 +383,8 @@ foreach ($allLeads as $index => $lead) {
         'fullName'          => $name,
         'phone'             => $phone,
         'mobile'            => $phone ? ('+91 ' . $phone) : '',
-        'email'             => !empty($lead['email']) && $lead['email'] !== '—' ? $lead['email'] : ($phone ? ($phone . '@paisainminutes.com') : '—'),
-        'emailAddress'      => !empty($lead['email']) && $lead['email'] !== '—' ? $lead['email'] : ($phone ? ($phone . '@paisainminutes.com') : '—'),
+        'email'             => $leadEmail,
+        'emailAddress'      => $leadEmail,
         'creditManager'     => $lead['creditManager'] ?? $lead['credit_manager'] ?? 'Unassigned',
         'pan'               => strtoupper(trim($lead['pan'] ?? '—')),
         'cibil'             => $cibil,
@@ -324,13 +395,13 @@ foreach ($allLeads as $index => $lead) {
         'monthlySalary'     => $cleanedSalary,
         'sal_val'           => $salVal ?: $cleanedSalary,
         'salary_range'      => $salRange,
-        'city'              => $lead['city'] ?? 'Delhi NCR',
-        'state'             => $lead['state'] ?? 'India',
-        'pincode'           => $lead['pincode'] ?? $lead['pin_code'] ?? '110001',
+        'city'              => !empty($lead['city']) && $lead['city'] !== 'Delhi NCR' ? $lead['city'] : '—',
+        'state'             => !empty($lead['state']) && $lead['state'] !== 'India' ? $lead['state'] : '—',
+        'pincode'           => !empty($lead['pincode']) && $lead['pincode'] !== '110001' ? $lead['pincode'] : '—',
         'employmentType'    => $lead['employmentType'] ?? $lead['employment_type'] ?? 'Salaried',
         'assignedCompany'   => $assignedCompany,
         'eligibilityStatus' => $eligibilityStatus,
-        'source'            => $lead['source'] ?? $lead['page_source'] ?? 'Website Form',
+        'source'            => $lead['source'] ?? $lead['page_source'] ?? ($isPhoneOnly ? 'Apply Now (Phone Only)' : 'Check Eligibility Website'),
         'purpose'           => $lead['purpose'] ?? 'Personal Loan',
         'status'            => $status,
         'created'           => $formattedDate,
@@ -368,8 +439,48 @@ foreach ($allLeads as $index => $lead) {
     }
 }
 
+// Load persistent overrides (status and company re-assignments)
+$overrideCandidates = array_unique([
+    __DIR__ . '/../leads_overrides.json',
+    __DIR__ . '/../../data/leads_overrides.json',
+    __DIR__ . '/../../crm/leads_overrides.json',
+    dirname(__DIR__, 2) . '/data/leads_overrides.json',
+    dirname(__DIR__, 2) . '/crm/leads_overrides.json',
+    dirname(__DIR__, 3) . '/public_html/data/leads_overrides.json',
+    dirname(__DIR__, 3) . '/public_html/crm/leads_overrides.json'
+]);
+$mergedOverrides = [];
+foreach ($overrideCandidates as $of) {
+    if (file_exists($of)) {
+        $ovData = json_decode(file_get_contents($of), true);
+        if (is_array($ovData)) {
+            foreach ($ovData as $k => $v) {
+                $mergedOverrides[strtolower(trim((string)$k))] = $v;
+            }
+        }
+    }
+}
+
 $formattedLeads = [];
 foreach ($leadsByPhone as $lead) {
+    $flId = strtolower(trim((string)($lead['id'] ?? $lead['lead_id'] ?? $lead['loanNo'] ?? '')));
+    $flPhone = preg_replace('/\D/', '', (string)($lead['phone'] ?? $lead['mobile'] ?? ''));
+    if (strlen($flPhone) > 10) $flPhone = substr($flPhone, -10);
+
+    $ov = $mergedOverrides[$flId] ?? ($flPhone ? ($mergedOverrides[$flPhone] ?? null) : null);
+    if ($ov && is_array($ov)) {
+        if (!empty($ov['assignedCompany'])) {
+            $lead['assignedCompany'] = $ov['assignedCompany'];
+            $lead['partner_name'] = $ov['assignedCompany'];
+        }
+        if (!empty($ov['status'])) {
+            $lead['status'] = $ov['status'];
+        }
+        if (!empty($ov['eligibilityStatus'])) {
+            $lead['eligibilityStatus'] = $ov['eligibilityStatus'];
+        }
+    }
+
     $name = $lead['name'];
     $initials = 'AP';
     $nameParts = preg_split('/\s+/', $name);

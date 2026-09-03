@@ -22,10 +22,6 @@ function mapRenderLead(item, index) {
 
   const todayIso = new Date().toISOString().split('T')[0];
   const itemDate = item.createdAt ? item.createdAt.split('T')[0] : todayIso;
-  // STRICTLY TODAY ONLY: Filter out historical leads from previous days
-  if (itemDate < todayIso) {
-    return null;
-  }
 
   const formattedMobile = `+91 ${rawPhone}`;
   const rawName = (item.name || item.fullName || (item.user && item.user.name) || 'Applicant').trim();
@@ -143,7 +139,14 @@ export function getDeletedLeadBlacklist() {
     const raw = localStorage.getItem('pim_deleted_leads');
     if (!raw) return [];
     const arr = JSON.parse(raw);
-    return Array.isArray(arr) ? arr : [];
+    if (!Array.isArray(arr)) return [];
+    // If legacy '*' wildcard is found, clear it so new leads are not permanently blocked
+    if (arr.includes('*')) {
+      const filtered = arr.filter(x => x !== '*');
+      localStorage.setItem('pim_deleted_leads', JSON.stringify(filtered));
+      return filtered;
+    }
+    return arr;
   } catch (e) {
     return [];
   }
@@ -155,6 +158,7 @@ export function addToDeletedLeadBlacklist(idsOrPhones) {
     const newItems = Array.isArray(idsOrPhones) ? idsOrPhones : [idsOrPhones];
     const cleanList = newItems
       .filter(Boolean)
+      .filter(i => i !== '*')
       .map(i => String(i).trim().toLowerCase());
     const combined = Array.from(new Set([...current, ...cleanList]));
     localStorage.setItem('pim_deleted_leads', JSON.stringify(combined));
@@ -163,7 +167,6 @@ export function addToDeletedLeadBlacklist(idsOrPhones) {
 
 export function isLeadDeletedLocally(lead, deletedList) {
   if (!deletedList || deletedList.length === 0) return false;
-  if (deletedList.includes('*')) return true;
 
   const id = String(lead.id || lead.lead_id || lead.loanNo || '').trim().toLowerCase();
   const rawPhone = String(lead.phone || lead.mobile || lead.phoneNumber || '').replace(/\D/g, '').slice(-10);
@@ -171,6 +174,56 @@ export function isLeadDeletedLocally(lead, deletedList) {
   if (id && deletedList.includes(id)) return true;
   if (rawPhone && deletedList.includes(rawPhone)) return true;
   return false;
+}
+
+export const LEAD_OVERRIDES_STORAGE_KEY = 'paisa_crm_lead_overrides';
+
+export function getLeadOverrides() {
+  try {
+    const raw = localStorage.getItem(LEAD_OVERRIDES_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? parsed : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+export function saveLeadOverride(leadIdOrPhone, updates) {
+  try {
+    if (!leadIdOrPhone || !updates) return;
+    const current = getLeadOverrides();
+    const key = String(leadIdOrPhone).trim();
+    if (!key) return;
+    current[key] = {
+      ...(current[key] || {}),
+      ...updates,
+      _updatedAt: Date.now()
+    };
+    localStorage.setItem(LEAD_OVERRIDES_STORAGE_KEY, JSON.stringify(current));
+  } catch (e) {}
+}
+
+export function applyLeadOverrides(lead) {
+  if (!lead) return lead;
+  const overrides = getLeadOverrides();
+  const id = String(lead.id || lead.lead_id || lead.loanNo || '').trim();
+  const rawPhone = String(lead.phone || lead.mobile || lead.phoneNumber || '').replace(/\D/g, '').slice(-10);
+
+  const ov = (id && overrides[id]) || (rawPhone && overrides[rawPhone]);
+  if (ov) {
+    if (ov.assignedCompany) {
+      lead.assignedCompany = ov.assignedCompany;
+      lead.partner_name = ov.assignedCompany;
+    }
+    if (ov.status) {
+      lead.status = ov.status;
+    }
+    if (ov.eligibilityStatus) {
+      lead.eligibilityStatus = ov.eligibilityStatus;
+    }
+  }
+  return lead;
 }
 
 /**
@@ -187,9 +240,6 @@ export async function getLeadsFromBackend() {
   ];
 
   const deletedBlacklist = getDeletedLeadBlacklist();
-  if (deletedBlacklist.includes('*')) {
-    return { success: true, count: 0, leads: [] };
-  }
 
   const leadsByPhone = new Map();
   const leadsById = new Map();
@@ -246,8 +296,11 @@ export async function getLeadsFromBackend() {
       if (l.eligibilityStatus && l.eligibilityStatus !== 'Incomplete / Phone Only') {
         existing.eligibilityStatus = l.eligibilityStatus;
       }
-      if (l.assignedCompany && l.assignedCompany !== 'Pending Details') {
+      if ((!existing.assignedCompany || existing.assignedCompany === 'Pending Details' || existing.assignedCompany === 'Unassigned') && l.assignedCompany && l.assignedCompany !== 'Pending Details') {
         existing.assignedCompany = l.assignedCompany;
+      }
+      if ((!existing.status || existing.status === 'Fresh') && l.status && l.status !== 'Fresh') {
+        existing.status = l.status;
       }
       return;
     }
@@ -303,10 +356,11 @@ export async function getLeadsFromBackend() {
     // Render offline / background sync
   }
 
-  // Combine unique leads list
+  // Combine unique leads list and apply user persistent overrides
   const combinedLeads = Array.from(
     new Set([...leadsByPhone.values(), ...leadsById.values()])
-  ).filter(l => !isLeadDeletedLocally(l, deletedBlacklist));
+  ).filter(l => !isLeadDeletedLocally(l, deletedBlacklist))
+   .map(applyLeadOverrides);
 
   return { success: true, count: combinedLeads.length, leads: combinedLeads };
 }
@@ -389,7 +443,7 @@ export async function deleteLeadsApi(payload) {
   }
 
   if (isClearAll) {
-    localStorage.setItem('pim_deleted_leads', JSON.stringify(['*']));
+    try { localStorage.removeItem('pim_deleted_leads'); } catch(e){}
   } else {
     const toAdd = targetIds.map(i => i.toLowerCase());
     if (payload.phone) {

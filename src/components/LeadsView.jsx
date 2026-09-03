@@ -22,7 +22,7 @@ import {
 import { exportToCsv } from '../utils/exportCsv';
 import { AFFILIATE_PARTNERS, getPartnerMeta } from '../data/affiliatePartners';
 import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers';
-import { fetchApi, deleteLeadsApi } from '../utils/apiConfig';
+import { fetchApi, deleteLeadsApi, saveLeadOverride } from '../utils/apiConfig';
 
 const INITIAL_FULL_LEADS = [];
 
@@ -299,24 +299,39 @@ export default function LeadsView({
   const handleReassignCompany = async (leadId, newCompany) => {
     console.log(`%c[CRM REASSIGN] 🔀 Reassigning lead ${leadId} -> ${newCompany}`, 'color: #7c3aed; font-weight: bold;');
     try {
+      const targetLead = leads.find((l, i) => getLeadId(l, i) === leadId);
+      const phone = targetLead ? String(targetLead.phone || targetLead.mobile || '').replace(/\D/g, '').slice(-10) : '';
+
+      // 1. Immediately save to persistent client overrides so polling doesn't overwrite it
+      saveLeadOverride(leadId, { assignedCompany: newCompany });
+      if (phone) saveLeadOverride(phone, { assignedCompany: newCompany });
+
+      // 2. Instantly update React state
       if (setLeads) {
         setLeads(prev => prev.map((l, i) => {
-          if (getLeadId(l, i) === leadId) {
-            return { ...l, assignedCompany: newCompany };
+          const lPhone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
+          if (getLeadId(l, i) === leadId || (phone && lPhone === phone)) {
+            return { ...l, assignedCompany: newCompany, partner_name: newCompany };
           }
           return l;
         }));
       }
 
+      setReassigningLeadId(null);
+
+      // 3. Post to backend endpoints
+      const updatePayload = {
+        id: leadId,
+        leadId: leadId,
+        phone: phone,
+        updates: { assignedCompany: newCompany }
+      };
+
       const res = await fetchApi('/admin/api/update-lead', {
         method: 'POST',
-        body: JSON.stringify({
-          id: leadId,
-          updates: { assignedCompany: newCompany }
-        })
+        body: JSON.stringify(updatePayload)
       });
       console.log('[CRM REASSIGN] 📥 Server response:', res?.data);
-      setReassigningLeadId(null);
     } catch (e) {
       console.error('[CRM REASSIGN] ❌ Error:', e);
       setReassigningLeadId(null);
@@ -327,21 +342,35 @@ export default function LeadsView({
   const handleStatusChange = async (leadId, newStatus) => {
     console.log(`%c[CRM STATUS CHANGE] 🔄 Changing lead ${leadId} status -> ${newStatus}`, 'color: #2563eb; font-weight: bold;');
     try {
+      const targetLead = leads.find((l, i) => getLeadId(l, i) === leadId);
+      const phone = targetLead ? String(targetLead.phone || targetLead.mobile || '').replace(/\D/g, '').slice(-10) : '';
+
+      // 1. Immediately save to persistent client overrides so polling doesn't overwrite it
+      saveLeadOverride(leadId, { status: newStatus });
+      if (phone) saveLeadOverride(phone, { status: newStatus });
+
+      // 2. Instantly update React state
       if (setLeads) {
         setLeads(prev => prev.map((l, i) => {
-          if (getLeadId(l, i) === leadId) {
+          const lPhone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
+          if (getLeadId(l, i) === leadId || (phone && lPhone === phone)) {
             return { ...l, status: newStatus };
           }
           return l;
         }));
       }
 
+      // 3. Post to backend endpoints
+      const updatePayload = {
+        id: leadId,
+        leadId: leadId,
+        phone: phone,
+        updates: { status: newStatus }
+      };
+
       const res = await fetchApi('/admin/api/update-lead', {
         method: 'POST',
-        body: JSON.stringify({
-          id: leadId,
-          updates: { status: newStatus }
-        })
+        body: JSON.stringify(updatePayload)
       });
       console.log('[CRM STATUS CHANGE] 📥 Server response:', res?.data);
     } catch (e) {
