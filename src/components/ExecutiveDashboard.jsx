@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from 'recharts';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
-import { cleanLoanAmount } from '../utils/amountHelpers';
+import { cleanLoanAmount, formatToIST } from '../utils/amountHelpers';
 
 export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany, onOpenPartnerHub }) {
   // Aggregate partner metrics
@@ -295,7 +295,7 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
                     {l.assignedCompany || 'Unassigned'}
                   </span>
                   <span className="font-bold text-slate-800">₹{cleanLoanAmount(l.applied || l.loanAmount).toLocaleString('en-IN')}</span>
-                  <span className="text-slate-400 text-[10px]">{l.created || 'Today'}</span>
+                  <span className="text-slate-400 text-[10px]">{formatToIST(l.created_at || l.createdAt || l.created).full}</span>
                 </div>
               </div>
             ))}

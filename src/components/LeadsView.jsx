@@ -35,7 +35,7 @@ import {
 } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
 import { AFFILIATE_PARTNERS, getPartnerMeta } from '../data/affiliatePartners';
-import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers';
+import { cleanLoanAmount, cleanSalary, formatToIST } from '../utils/amountHelpers';
 import { fetchApi, deleteLeadsApi, saveLeadOverride } from '../utils/apiConfig';
 
 const INITIAL_FULL_LEADS = [];
@@ -1229,15 +1229,22 @@ export default function LeadsView({
 
                     {/* CREATED */}
                     <td className="py-4 px-4 text-slate-500 text-[11px] whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs">
-                        <Calendar className="w-3 h-3 text-slate-400" />
-                        <span>{item.date || (item.created ? item.created.split(',')[0] : 'Today')}</span>
-                      </div>
-                      {item.created && item.created.includes(',') && (
-                        <div className="text-[10px] text-slate-400 font-mono mt-0.5 pl-4">
-                          {item.created.split(',')[1]}
-                        </div>
-                      )}
+                      {(() => {
+                        const ist = formatToIST(item.created_at || item.createdAt || item.created || item.date);
+                        return (
+                          <>
+                            <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs">
+                              <Calendar className="w-3 h-3 text-slate-400" />
+                              <span>{ist.date}</span>
+                            </div>
+                            {ist.time && (
+                              <div className="text-[10px] text-slate-400 font-mono mt-0.5 pl-4">
+                                {ist.time}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </td>
 
                     {/* ACTIONS */}
@@ -1755,7 +1762,9 @@ export default function LeadsView({
 
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Submission Date:</span>
-                      <span className="font-bold text-slate-700">{activeOverviewLead.created || activeOverviewLead.created_at || activeOverviewLead.date || 'Today'}</span>
+                      <span className="font-bold text-slate-700">
+                        {formatToIST(activeOverviewLead.created_at || activeOverviewLead.createdAt || activeOverviewLead.created || activeOverviewLead.date).full}
+                      </span>
                     </div>
                   </div>
                 </div>

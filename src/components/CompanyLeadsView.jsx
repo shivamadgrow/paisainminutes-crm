@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { getPartnerMeta, AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
-import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers';
+import { cleanLoanAmount, cleanSalary, formatToIST } from '../utils/amountHelpers';
 import { fetchApi } from '../utils/apiConfig';
 
 export default function CompanyLeadsView({ 
@@ -427,7 +427,7 @@ export default function CompanyLeadsView({
 
                       {/* Created */}
                       <td className="p-3.5 text-slate-500 text-[11px] whitespace-nowrap">
-                        {item.created || item.date || 'Today'}
+                        {formatToIST(item.created_at || item.createdAt || item.created || item.date).full}
                       </td>
 
                       {/* Actions */}

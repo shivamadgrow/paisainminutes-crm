@@ -98,6 +98,70 @@ export function cleanSalary(raw, salVal, salRange) {
   return num;
 }
 
+/**
+ * Convert any timestamp/date to Indian Standard Time (IST, UTC+5:30)
+ * Handles ISO strings with Z, SQL datetime strings, and UTC server formatted strings.
+ */
+export function formatToIST(dateInput) {
+  if (!dateInput) return { date: 'Today', time: '', full: 'Today' };
+
+  let dateObj = null;
+
+  if (typeof dateInput === 'string') {
+    let str = dateInput.trim();
+    if (str.endsWith('Z') || (str.includes('T') && (str.includes('+') || str.includes('Z')))) {
+      dateObj = new Date(str);
+    } else if (str.includes('T') && !str.includes('+') && !str.endsWith('Z')) {
+      dateObj = new Date(str + 'Z');
+    } else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(str)) {
+      // SQL datetime without tz e.g. 2026-09-07 05:45:05 (written in UTC)
+      dateObj = new Date(str.replace(' ', 'T') + 'Z');
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      dateObj = new Date(str + 'T00:00:00+05:30');
+    } else if (/^\d{1,2}\s+[A-Za-z]{3,4}\s+\d{4},\s+\d{1,2}:\d{2}\s+(AM|PM)/i.test(str)) {
+      if (/UTC|GMT/i.test(str)) {
+        dateObj = new Date(str);
+      } else {
+        return {
+          date: str.split(',')[0].trim(),
+          time: (str.split(',')[1] || '').trim(),
+          full: str
+        };
+      }
+    } else {
+      dateObj = new Date(str);
+    }
+  } else if (dateInput instanceof Date) {
+    dateObj = dateInput;
+  } else if (typeof dateInput === 'number') {
+    dateObj = new Date(dateInput < 1e11 ? dateInput * 1000 : dateInput);
+  }
+
+  if (!dateObj || isNaN(dateObj.getTime())) {
+    return { date: String(dateInput || 'Today'), time: '', full: String(dateInput || 'Today') };
+  }
+
+  const datePart = new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Asia/Kolkata'
+  }).format(dateObj).replace('Sept', 'Sep');
+
+  const timePart = new Intl.DateTimeFormat('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata'
+  }).format(dateObj).toUpperCase();
+
+  return {
+    date: datePart,
+    time: timePart,
+    full: `${datePart}, ${timePart}`
+  };
+}
+
 export function sanitizeLead(lead) {
   if (!lead) return lead;
 
@@ -107,11 +171,18 @@ export function sanitizeLead(lead) {
   const rawSalary = lead.salary || lead.monthlySalary || lead.monthly_salary || lead.income;
   const cleanedSalary = cleanSalary(rawSalary, lead.sal_val, lead.salary_range);
 
+  // Normalize creation date to Indian Standard Time (IST)
+  const istTime = formatToIST(lead.created_at || lead.createdAt || lead.created || lead.timestamp || lead.date);
+
   return {
     ...lead,
     applied: cleanedLoan,
     loanAmount: cleanedLoan,
     salary: cleanedSalary,
-    monthlySalary: cleanedSalary
+    monthlySalary: cleanedSalary,
+    created: istTime.full,
+    date: istTime.date,
+    created_time: istTime.time
   };
 }
+

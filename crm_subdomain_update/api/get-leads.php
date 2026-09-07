@@ -4,6 +4,9 @@
  * Endpoint: /admin/api/get-leads, /admin/api/get-leads.php, /api/get-leads
  */
 
+// Set Indian Standard Time (IST)
+date_default_timezone_set('Asia/Kolkata');
+
 // Enable CORS
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -266,8 +269,8 @@ if (function_exists('curl_init')) {
                     'status'            => $rItem['status'] ?? 'Fresh',
                     'assignedCompany'   => $isPhoneOnly ? 'Pending Details' : ($cleanSalary >= 30000 ? 'Rupay91' : 'Rupaysure'),
                     'eligibilityStatus' => $isPhoneOnly ? 'Incomplete / Phone Only' : 'Eligible',
-                    'created_at'        => $rItem['createdAt'] ?? date('Y-m-d H:i:s'),
-                    'created'           => isset($rItem['createdAt']) ? date('d M Y, h:i A', strtotime($rItem['createdAt'])) : date('d M Y, h:i A')
+                    'created_at'        => isset($rItem['createdAt']) ? (new DateTime($rItem['createdAt']))->setTimezone(new DateTimeZone('Asia/Kolkata'))->format('c') : date('c'),
+                    'created'           => isset($rItem['createdAt']) ? (new DateTime($rItem['createdAt']))->setTimezone(new DateTimeZone('Asia/Kolkata'))->format('d M Y, h:i A') : date('d M Y, h:i A')
                 ];
                 $seenIds[$rId] = true;
                 $seenPhones[$rPhone] = true;
@@ -391,10 +394,46 @@ foreach ($allLeads as $index => $lead) {
         $eligibilityStatus = trim($lead['eligibilityStatus'] ?? $lead['eligibility_status'] ?? $lead['eligibility'] ?? 'Eligible');
     }
 
-    $createdAt = $lead['created_at'] ?? $lead['created'] ?? $lead['date'] ?? $lead['timestamp'] ?? date('Y-m-d H:i:s');
-    $timestamp = strtotime($createdAt) ?: time();
-    $formattedDate = date('d M Y, h:i A', $timestamp);
-    $isoDate = date('Y-m-d', $timestamp);
+    $createdAt = $lead['created_at'] ?? $lead['created'] ?? $lead['date'] ?? $lead['timestamp'] ?? 'now';
+    try {
+        if (is_numeric($createdAt)) {
+            $timestamp = (int)$createdAt;
+            $dt = new DateTime("@$timestamp");
+            $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
+            $formattedDate = $dt->format('d M Y, h:i A');
+            $isoDate = $dt->format('Y-m-d');
+            $isoDateTime = $dt->format('c');
+        } else if (is_string($createdAt)) {
+            $str = trim($createdAt);
+            if (strpos($str, 'Z') !== false || strpos($str, '+') !== false || (strpos($str, 'T') !== false && strlen($str) > 19)) {
+                $dt = new DateTime($str);
+                $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
+            } else if (preg_match('/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/', $str)) {
+                // SQL datetime string from previous UTC server writes e.g. 2026-09-07 05:51:46
+                $dt = new DateTime($str, new DateTimeZone('UTC'));
+                $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
+            } else {
+                $dt = new DateTime($str);
+                $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
+            }
+            $formattedDate = $dt->format('d M Y, h:i A');
+            $isoDate = $dt->format('Y-m-d');
+            $isoDateTime = $dt->format('c');
+            $timestamp = $dt->getTimestamp();
+        } else {
+            $dt = new DateTime('now', new DateTimeZone('Asia/Kolkata'));
+            $formattedDate = $dt->format('d M Y, h:i A');
+            $isoDate = $dt->format('Y-m-d');
+            $isoDateTime = $dt->format('c');
+            $timestamp = $dt->getTimestamp();
+        }
+    } catch (Exception $e) {
+        $dt = new DateTime('now', new DateTimeZone('Asia/Kolkata'));
+        $formattedDate = $dt->format('d M Y, h:i A');
+        $isoDate = $dt->format('Y-m-d');
+        $isoDateTime = $dt->format('c');
+        $timestamp = $dt->getTimestamp();
+    }
     $today = date('Y-m-d');
 
     $status = trim($lead['status'] ?? 'Fresh');
@@ -435,7 +474,7 @@ foreach ($allLeads as $index => $lead) {
         'purpose'           => $lead['purpose'] ?? 'Personal Loan',
         'status'            => $status,
         'created'           => $formattedDate,
-        'created_at'        => date('Y-m-d H:i:s', $timestamp),
+        'created_at'        => $isoDateTime,
         'date'              => $isoDate,
         'timestamp_num'     => $timestamp
     ];

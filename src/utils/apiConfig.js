@@ -4,6 +4,8 @@
  * Render Cloud Backend API (https://paisainminutes.onrender.com), and Localhost Dev.
  */
 
+import { formatToIST } from './amountHelpers';
+
 const RENDER_BASE = 'https://paisainminutes.onrender.com';
 
 // Candidate Base URLs in fallback priority
@@ -62,9 +64,10 @@ function mapRenderLead(item, index) {
     source: item.source || (isPhoneOnly ? 'Apply Now (Phone Only)' : 'Render API / Apply Now'),
     purpose: item.purpose || 'Personal Loan',
     status: item.status || 'Fresh',
-    created: item.createdAt ? new Date(item.createdAt).toLocaleString('en-IN') : new Date().toLocaleString('en-IN'),
+    created: formatToIST(item.createdAt || new Date()).full,
     created_at: item.createdAt || new Date().toISOString(),
-    date: itemDate
+    created_time: formatToIST(item.createdAt || new Date()).time,
+    date: formatToIST(item.createdAt || new Date()).date
   };
 }
 
