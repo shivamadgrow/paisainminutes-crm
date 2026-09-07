@@ -4,7 +4,7 @@ import { getLiveSecurityDetails } from './geoService';
 
 export const STAFF_STORAGE_KEY = 'paisa_crm_staff_list';
 export const SESSION_STORAGE_KEY = 'paisa_crm_user';
-export const AUTH_VERSION = 'v5_clean_slate_reset';
+export const AUTH_VERSION = 'v6_enforce_credentials_gate';
 
 /**
  * Purge all stale, duplicate, and unused client-side caches and storage keys
@@ -35,6 +35,7 @@ export function checkAndEnforceGlobalLogout() {
       if (localStorage.getItem('paisa_crm_auth_version') !== AUTH_VERSION) {
         purgeAllClientCaches();
         localStorage.removeItem(SESSION_STORAGE_KEY);
+        try { sessionStorage.removeItem(SESSION_STORAGE_KEY); } catch (e) {}
         localStorage.setItem('paisa_crm_auth_version', AUTH_VERSION);
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('paisa_session_changed', { detail: null }));
@@ -372,7 +373,8 @@ export function getCurrentUser() {
   checkAndEnforceGlobalLogout();
 
   try {
-    const raw = localStorage.getItem(SESSION_STORAGE_KEY);
+    // Only check active tab sessionStorage so fresh browser/incognito windows always require credentials
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (parsed && (parsed.name || parsed.username || parsed.email)) return parsed;
@@ -387,11 +389,12 @@ export function getCurrentUser() {
 export function setCurrentUserSession(user) {
   try {
     if (user) {
-      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(user));
-      try { sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(user)); } catch (e) {}
+      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(user));
+      // Remove from localStorage so it never persists across new windows/tabs automatically
+      try { localStorage.removeItem(SESSION_STORAGE_KEY); } catch (e) {}
     } else {
-      localStorage.removeItem(SESSION_STORAGE_KEY);
       try { sessionStorage.removeItem(SESSION_STORAGE_KEY); } catch (e) {}
+      try { localStorage.removeItem(SESSION_STORAGE_KEY); } catch (e) {}
     }
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('paisa_session_changed', { detail: user }));
