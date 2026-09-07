@@ -15,8 +15,7 @@ import {
   ExternalLink, 
   RefreshCw,
   KeyRound,
-  Shield,
-  Info
+  Shield
 } from 'lucide-react';
 import paisaLogo from '../assets/paisa-logo.png';
 import { 
@@ -33,7 +32,6 @@ export default function LoginModal({ isOpen = true, onClose, onLogin, currentUse
   const [isLoading, setIsLoading] = useState(false);
   const [blockedIncident, setBlockedIncident] = useState(null);
   const [isSimulatingOffHours, setIsSimulatingOffHours] = useState(false);
-  const [showCredentialsHelp, setShowCredentialsHelp] = useState(false);
 
   // If not full screen and not open, don't render
   if (!isFullScreen && !isOpen) return null;
@@ -296,39 +294,6 @@ export default function LoginModal({ isOpen = true, onClose, onLogin, currentUse
                 )}
               </button>
             </form>
-
-            {/* Quick Helper Credentials Accordion */}
-            <div className="mt-5 pt-4 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setShowCredentialsHelp(prev => !prev)}
-                className="w-full flex items-center justify-between text-[11px] text-slate-500 hover:text-slate-800 font-semibold cursor-pointer py-1"
-              >
-                <div className="flex items-center gap-1.5 text-blue-700">
-                  <Info className="w-3.5 h-3.5" />
-                  <span>Default Super Admin Credentials</span>
-                </div>
-                <span>{showCredentialsHelp ? '▲ Hide' : '▼ View'}</span>
-              </button>
-
-              {showCredentialsHelp && (
-                <div className="mt-2 p-3 bg-blue-50/70 border border-blue-200/70 rounded-xl text-[11px] space-y-2 text-slate-700 animate-fade-in">
-                  <div className="flex items-center justify-between font-mono">
-                    <div>
-                      <div>ID: <strong className="text-slate-900">info@adgrowmedia.com</strong></div>
-                      <div>Pass: <strong className="text-slate-900">Jazz@123</strong></div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLoginAsAdmin('info@adgrowmedia.com', 'Jazz@123')}
-                      className="px-2.5 py-1 bg-[#0A3977] text-white rounded-lg text-[10px] font-sans font-bold hover:bg-blue-900 cursor-pointer shadow-xs"
-                    >
-                      Use
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
 
             {/* Security Footer Note */}
             <div className="mt-4 flex items-center justify-center gap-1.5 text-[10px] text-slate-400 font-medium">
