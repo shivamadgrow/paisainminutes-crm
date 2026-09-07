@@ -60,26 +60,6 @@ export default function LoginModal({ isOpen = true, onClose, onLogin, currentUse
     }
   };
 
-  const handleQuickLoginAsAdmin = async (adminUsername, adminPass) => {
-    setUsername(adminUsername);
-    setPassword(adminPass);
-    setIsLoading(true);
-    setError('');
-    try {
-      const result = await authenticateStaff(adminUsername, adminPass, false);
-      if (result.success && result.user) {
-        if (onLogin) onLogin(result.user);
-        if (onClose) onClose();
-      } else {
-        setError(result.error || 'Failed to authenticate.');
-      }
-    } catch (e) {
-      setError('Error authenticating admin.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto ${
       isFullScreen 
@@ -163,20 +143,11 @@ export default function LoginModal({ isOpen = true, onClose, onLogin, currentUse
               </div>
             </div>
 
-            <div className="space-y-2 pt-1">
-              <button
-                type="button"
-                onClick={() => handleQuickLoginAsAdmin('admin', 'admin123')}
-                className="w-full py-2.5 bg-[#0A3977] hover:bg-blue-900 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <ShieldCheck className="w-4 h-4" />
-                <span>Sign in as Super Admin (24x7 Exempt)</span>
-              </button>
-
+            <div className="pt-2">
               <button
                 type="button"
                 onClick={() => setBlockedIncident(null)}
-                className="w-full py-2 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+                className="w-full py-2.5 bg-[#0A3977] hover:bg-blue-900 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 Back to Login Form
               </button>

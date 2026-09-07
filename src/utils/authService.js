@@ -4,7 +4,7 @@ import { getLiveSecurityDetails } from './geoService';
 
 export const STAFF_STORAGE_KEY = 'paisa_crm_staff_list';
 export const SESSION_STORAGE_KEY = 'paisa_crm_user';
-export const AUTH_VERSION = 'v6_enforce_credentials_gate';
+export const AUTH_VERSION = 'v8_strict_manual_login_only';
 
 /**
  * Purge all stale, duplicate, and unused client-side caches and storage keys

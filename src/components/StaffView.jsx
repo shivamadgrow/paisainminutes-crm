@@ -513,23 +513,6 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                         {/* Action Buttons */}
                         <td className="p-3.5 text-right whitespace-nowrap">
                           <div className="flex items-center justify-end gap-1.5">
-                            
-                            {/* Login / Switch session */}
-                            <button
-                              onClick={() => {
-                                onSwitchUser(user);
-                                showToast(`Switched active session to "${user.name}"`);
-                              }}
-                              className={`px-2.5 py-1 text-xs font-bold rounded-lg border transition cursor-pointer ${
-                                isLogged 
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 pointer-events-none' 
-                                  : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-50'
-                              }`}
-                              title="Sign in as this user"
-                            >
-                              {isLogged ? 'Active' : 'Login'}
-                            </button>
-
                             {/* Edit */}
                             <button
                               onClick={() => handleOpenEdit(user)}

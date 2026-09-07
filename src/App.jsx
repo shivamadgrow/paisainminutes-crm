@@ -327,6 +327,19 @@ export default function App() {
     }
   };
 
+  // Strict Mandatory Login Gate: If user is not authenticated, lock CRM completely!
+  if (!currentUser) {
+    return (
+      <LoginModal 
+        isFullScreen={true}
+        isOpen={true} 
+        onClose={() => {}} 
+        onLogin={handleLoginSuccess}
+        currentUser={null}
+      />
+    );
+  }
+
   return (
     <div className="flex h-screen bg-[#F4F7FC] overflow-hidden text-slate-800">
       

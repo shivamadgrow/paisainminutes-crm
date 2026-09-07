@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Sparkles,
   RotateCcw,
+  KeyRound,
   X
 } from 'lucide-react';
 import { getStaffList, purgeAllClientCaches } from '../utils/authService';
@@ -290,38 +291,17 @@ export default function Navbar({
                 </span>
               </div>
 
-              {/* Quick Profile list */}
-              <div className="text-[10px] uppercase font-bold text-slate-400 px-2 py-1 flex items-center justify-between">
-                <span>Switch Staff Account</span>
-                <span className="text-slate-400 font-normal">{staffList.length} staff</span>
-              </div>
-
-              <div className="max-h-44 overflow-y-auto space-y-1 pr-1">
-                {staffList.map(staff => (
-                  <button
-                    key={staff.id}
-                    onClick={() => {
-                      onSwitchUser(staff);
-                      setIsDropdownOpen(false);
-                    }}
-                    className={`w-full p-1.5 rounded-lg text-left flex items-center justify-between text-xs transition cursor-pointer ${
-                      activeUser.name === staff.name || activeUser.username === staff.username
-                        ? 'bg-blue-50 text-[#0A3977] font-bold' 
-                        : 'hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 truncate">
-                      <div className={`w-5 h-5 rounded-full ${staff.avatarBg || 'bg-[#0A3977]'} text-white text-[9px] font-bold flex items-center justify-center shrink-0`}>
-                        {staff.initials || 'ST'}
-                      </div>
-                      <span className="truncate">{staff.name}</span>
-                    </div>
-                    <span className="text-[10px] text-slate-400 shrink-0">{staff.role}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 mt-2 space-y-1">
+              <div className="pt-1 border-t border-slate-100 mt-1 space-y-1">
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    if (onOpenLogin) onOpenLogin();
+                  }}
+                  className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold text-blue-800 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-[#0A3977]" />
+                  <span>Switch Account (Enter Credentials)</span>
+                </button>
                 <button
                   onClick={() => {
                     setActiveTab && setActiveTab('profile');
