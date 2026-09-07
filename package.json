@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node -e \"const fs=require('fs'); if(fs.existsSync('index.dev.html')) fs.copyFileSync('index.dev.html', 'index.html');\" && vite",
-    "build": "node -e \"const fs=require('fs'); if(fs.existsSync('index.dev.html')) fs.copyFileSync('index.dev.html', 'index.html');\" && vite build",
+    "build": "node -e \"const fs=require('fs'); if(fs.existsSync('index.dev.html')) fs.copyFileSync('index.dev.html', 'index.html');\" && vite build && node -e \"const fs=require('fs'); const t=Date.now(); let h=fs.readFileSync('index.html','utf8'); h=h.replace(/\\.\\/assets\\/index\\.js/g, './assets/index.js?v=' + t).replace(/\\.\\/assets\\/index\\.css/g, './assets/index.css?v=' + t); fs.writeFileSync('index.html', h);\"",
     "lint": "oxlint",
     "preview": "vite preview"
   },
