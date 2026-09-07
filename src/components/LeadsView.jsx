@@ -52,9 +52,6 @@ const mapTabToFilterName = (tab) => {
   if (clean === 'no answer') return 'No Answer';
   if (clean === 'not interested') return 'Not Interested';
   if (clean === 'rupay91') return 'Rupay91';
-  if (clean === 'adgrow') return 'Adgrow';
-  if (clean === 'agdm') return 'AGDM';
-  if (clean === 'rupaysure') return 'Rupaysure';
   return tab;
 };
 
@@ -125,27 +122,6 @@ export const getCompanyBadge = (company) => {
       name: 'Rupay91',
       classes: 'bg-indigo-50 text-indigo-700 border-indigo-200/80 hover:bg-indigo-100/80',
       dot: 'bg-indigo-600'
-    };
-  }
-  if (clean.includes('adgrow')) {
-    return {
-      name: 'Adgrow',
-      classes: 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/80',
-      dot: 'bg-emerald-600'
-    };
-  }
-  if (clean.includes('agdm')) {
-    return {
-      name: 'AGDM',
-      classes: 'bg-blue-50 text-blue-700 border-blue-200/80 hover:bg-blue-100/80',
-      dot: 'bg-blue-600'
-    };
-  }
-  if (clean.includes('rupaysure')) {
-    return {
-      name: 'Rupaysure',
-      classes: 'bg-amber-50 text-amber-800 border-amber-200/80 hover:bg-amber-100/80',
-      dot: 'bg-amber-600'
     };
   }
   return {
@@ -266,7 +242,7 @@ export default function LeadsView({
         }
       }
 
-      // 2. Partner Filter (ALL vs Rupay91, Adgrow, AGDM, Rupaysure)
+      // 2. Partner Filter (ALL vs Rupay91)
       if (selectedPartnerFilter !== 'ALL') {
         const c = (item.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
         if (c !== selectedPartnerFilter.toLowerCase().replace(/[\s\-_]/g, '')) {
@@ -673,7 +649,7 @@ export default function LeadsView({
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-0.5 font-medium">
-              Real-time website applications from <span className="text-amber-300 font-bold">paisainminutes.com</span> automatically dispatched to <span className="text-white font-bold">Rupay91, Adgrow, AGDM & Rupaysure</span>.
+              Real-time website applications from <span className="text-amber-300 font-bold">paisainminutes.com</span> automatically dispatched to <span className="text-white font-bold">Rupay91</span>.
             </p>
           </div>
         </div>
@@ -748,10 +724,10 @@ export default function LeadsView({
               {leads.filter(l => l.assignedCompany && l.assignedCompany !== 'Pending Details' && l.assignedCompany !== 'Unassigned').length}
             </span>
             <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-200">
-              4 Partners
+              Exclusive Partner
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-1 font-medium">Rupay91, Adgrow, AGDM, Rupaysure</p>
+          <p className="text-[11px] text-slate-500 mt-1 font-medium">Rupay91</p>
         </div>
 
         {/* Metric 3: Prime CIBIL */}
@@ -1427,9 +1403,6 @@ export default function LeadsView({
                 >
                   <option value="AUTO">✨ Smart Auto-Route (Based on Eligibility Rules)</option>
                   <option value="Rupay91">💳 Rupay91</option>
-                  <option value="Adgrow">📈 Adgrow</option>
-                  <option value="AGDM">🏛️ AGDM</option>
-                  <option value="Rupaysure">🛡️ Rupaysure</option>
                 </select>
               </div>
 
@@ -1519,9 +1492,6 @@ export default function LeadsView({
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white font-bold"
                 >
                   <option value="Rupay91">Rupay91</option>
-                  <option value="Adgrow">Adgrow</option>
-                  <option value="AGDM">AGDM</option>
-                  <option value="Rupaysure">Rupaysure</option>
                 </select>
               </div>
 

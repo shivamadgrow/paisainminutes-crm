@@ -111,33 +111,12 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
     if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO' && $explicitCompany !== 'Pending Details') {
         $clean = strtolower(trim($explicitCompany));
         if (strpos($clean, 'rupay91') !== false || strpos($clean, 'rupay 91') !== false) return 'Rupay91';
-        if (strpos($clean, 'adgrow') !== false) return 'Adgrow';
-        if (strpos($clean, 'agdm') !== false) return 'AGDM';
-        if (strpos($clean, 'rupaysure') !== false || strpos($clean, 'rupay sure') !== false) return 'Rupaysure';
         return trim($explicitCompany);
     }
     if ($salaryNum === 0 && $amountNum === 0) {
         return 'Pending Details';
     }
-
-    $cibilNum = 0;
-    if (!empty($cibilStr)) {
-        preg_match('/\d{3}/', $cibilStr, $matches);
-        if (!empty($matches[0])) {
-            $cibilNum = (int)$matches[0];
-        } elseif (strpos(strtolower($cibilStr), '750') !== false || strpos(strtolower($cibilStr), 'excellent') !== false) {
-            $cibilNum = 780;
-        } elseif (strpos(strtolower($cibilStr), '700') !== false || strpos(strtolower($cibilStr), 'good') !== false) {
-            $cibilNum = 720;
-        } elseif (strpos(strtolower($cibilStr), '650') !== false || strpos(strtolower($cibilStr), 'average') !== false) {
-            $cibilNum = 660;
-        }
-    }
-
-    if ($cibilNum >= 720 || $salaryNum >= 40000) return 'Rupay91';
-    if ($amountNum >= 150000 || ($salaryNum >= 25000 && $cibilNum >= 650)) return 'Adgrow';
-    if ($cibilNum >= 670 || $salaryNum >= 20000) return 'Rupaysure';
-    return 'AGDM';
+    return 'Rupay91';
 }
 
 // 4. Load from Primary Data Files across possible host configurations
@@ -267,7 +246,7 @@ if (function_exists('curl_init')) {
                     'cibil'             => $rItem['cibil'] ?? '—',
                     'source'            => $isPhoneOnly ? 'Apply Now (Phone Only)' : 'Render API / Loan App',
                     'status'            => $rItem['status'] ?? 'Fresh',
-                    'assignedCompany'   => $isPhoneOnly ? 'Pending Details' : ($cleanSalary >= 30000 ? 'Rupay91' : 'Rupaysure'),
+                    'assignedCompany'   => $isPhoneOnly ? 'Pending Details' : 'Rupay91',
                     'eligibilityStatus' => $isPhoneOnly ? 'Incomplete / Phone Only' : 'Eligible',
                     'created_at'        => isset($rItem['createdAt']) ? (new DateTime($rItem['createdAt']))->setTimezone(new DateTimeZone('Asia/Kolkata'))->format('c') : date('c'),
                     'created'           => isset($rItem['createdAt']) ? (new DateTime($rItem['createdAt']))->setTimezone(new DateTimeZone('Asia/Kolkata'))->format('d M Y, h:i A') : date('d M Y, h:i A')

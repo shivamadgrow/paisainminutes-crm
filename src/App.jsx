@@ -147,11 +147,8 @@ export default function App() {
   const partnerCounts = useMemo(() => {
     const normalize = (name) => (name || '').toLowerCase().replace(/[\s\-_]/g, '');
     const rupay91 = leads.filter(l => normalize(l.assignedCompany) === 'rupay91').length;
-    const adgrow = leads.filter(l => normalize(l.assignedCompany) === 'adgrow').length;
-    const agdm = leads.filter(l => normalize(l.assignedCompany) === 'agdm').length;
-    const rupaysure = leads.filter(l => normalize(l.assignedCompany) === 'rupaysure').length;
 
-    return { rupay91, adgrow, agdm, rupaysure };
+    return { rupay91 };
   }, [leads]);
 
   // Dashboard Stats calculation
@@ -221,36 +218,6 @@ export default function App() {
           />
         );
 
-      case 'company-adgrow':
-        return (
-          <CompanyLeadsView 
-            companyId="adgrow" 
-            leads={leads} 
-            setLeads={setLeads} 
-            onBackToHub={() => setActiveTab('partner-hub')} 
-          />
-        );
-
-      case 'company-agdm':
-        return (
-          <CompanyLeadsView 
-            companyId="agdm" 
-            leads={leads} 
-            setLeads={setLeads} 
-            onBackToHub={() => setActiveTab('partner-hub')} 
-          />
-        );
-
-      case 'company-rupaysure':
-        return (
-          <CompanyLeadsView 
-            companyId="rupaysure" 
-            leads={leads} 
-            setLeads={setLeads} 
-            onBackToHub={() => setActiveTab('partner-hub')} 
-          />
-        );
-
       case 'all-leads':
       case 'fresh':
       case 'callback':
@@ -261,9 +228,6 @@ export default function App() {
       case 'approved':
       case 'rejected':
       case 'rupay91':
-      case 'adgrow':
-      case 'agdm':
-      case 'rupaysure':
         return (
           <LeadsView 
             leads={leads} 

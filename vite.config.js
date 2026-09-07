@@ -259,26 +259,9 @@ function determineAssignedCompany(cibilStr, salaryNum, amountNum, explicitCompan
   if (explicitCompany && explicitCompany.trim() && explicitCompany !== '—') {
     const clean = explicitCompany.trim().toLowerCase();
     if (clean.includes('rupay91')) return 'Rupay91';
-    if (clean.includes('adgrow')) return 'Adgrow';
-    if (clean.includes('agdm')) return 'AGDM';
-    if (clean.includes('rupaysure')) return 'Rupaysure';
     return explicitCompany.trim();
   }
-
-  let cibilNum = 0;
-  if (cibilStr) {
-    const match = String(cibilStr).match(/\d{3}/);
-    if (match) cibilNum = parseInt(match[0], 10);
-    else if (cibilStr.includes('750') || cibilStr.includes('excellent')) cibilNum = 780;
-    else if (cibilStr.includes('700') || cibilStr.includes('good')) cibilNum = 720;
-    else if (cibilStr.includes('650') || cibilStr.includes('average')) cibilNum = 660;
-    else if (cibilStr.includes('600') || cibilStr.includes('poor')) cibilNum = 610;
-  }
-
-  if (cibilNum >= 720 || salaryNum >= 40000) return 'Rupay91';
-  if (amountNum >= 150000 || (salaryNum >= 25000 && cibilNum >= 650)) return 'Adgrow';
-  if (cibilNum >= 670 || salaryNum >= 20000) return 'Rupaysure';
-  return 'AGDM';
+  return 'Rupay91';
 }
 
 function crmApiPlugin() {

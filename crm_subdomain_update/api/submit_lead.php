@@ -1,213 +1,471 @@
 <?php
-require_once __DIR__ . '/db_config.php';
+/**
+ * Paisa in Minutes - Direct Customer Lead Submission Handler & PaisaCRM Integration
+ */
 
-header('Content-Type: application/json');
+// Set Indian Standard Time (IST)
+date_default_timezone_set('Asia/Kolkata');
+
+// Enable session if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Security & CORS Headers
+if (!headers_sent()) {
+    header("Strict-Transport-Security: max-age=31536000; includeSubDomains; preload");
+    header("X-Content-Type-Options: nosniff");
+}
+header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Methods: POST, GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 
+// Handle preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
-    exit();
+    exit;
 }
 
+// 1. Capture Form Inputs (supports JSON & URL-encoded POST)
 $rawInput = file_get_contents('php://input');
-$data = json_decode($rawInput, true) ?: $_POST;
+$jsonInput = json_decode($rawInput, true);
+$data = is_array($jsonInput) ? array_merge($_POST, $jsonInput) : $_POST;
 
-$mobile = trim($data['mobile'] ?? $data['phone'] ?? $data['mobile_number'] ?? $data['phone_number'] ?? $data['contact'] ?? '');
+// Sanitize and extract inputs with fallback keys
+$phone = preg_replace('/[^0-9]/', '', (string)($data['phone'] ?? $data['mobile'] ?? $data['phoneNumber'] ?? $data['mobile_number'] ?? ''));
+if (strlen($phone) > 10) {
+    $phone = substr($phone, -10);
+}
 
-if (empty($mobile)) {
+// Validate Phone Number
+if (strlen($phone) !== 10 || !in_array($phone[0], ['6', '7', '8', '9'])) {
     http_response_code(400);
-    echo json_encode(['success' => false, 'error' => 'Mobile number is required']);
-    exit();
+    echo json_encode([
+        'status'  => 'error',
+        'success' => false,
+        'error'   => 'Mobile number is required and must be a valid 10-digit Indian number starting with 6-9.',
+        'message' => 'Please enter a valid 10-digit mobile number.'
+    ]);
+    exit;
 }
 
-// Format mobile number with +91
-$digitsOnly = preg_replace('/\D/', '', $mobile);
-$formattedMobile = $mobile;
-if (strlen($digitsOnly) === 10) {
-    $formattedMobile = '+91 ' . $digitsOnly;
-} elseif (strlen($digitsOnly) === 12 && strpos($digitsOnly, '91') === 0) {
-    $formattedMobile = '+91 ' . substr($digitsOnly, 2);
-}
+$name          = trim((string)($data['name'] ?? $data['fullName'] ?? $data['full_name'] ?? 'Applicant'));
+if ($name === '') $name = 'Applicant';
+$email         = trim((string)($data['email'] ?? $data['emailAddress'] ?? $data['email_address'] ?? '—'));
+if (empty($email) || strpos($email, '@paisainminutes.com') !== false) $email = '—';
 
-$rawName = trim($data['name'] ?? $data['fullName'] ?? $data['full_name'] ?? $data['applicant_name'] ?? $data['customer_name'] ?? '');
-$name = $rawName ?: ('Applicant (' . substr($digitsOnly, -4) . ')');
+$loanAmt       = trim((string)($data['loanAmount'] ?? $data['loan_amount'] ?? $data['amount'] ?? $data['applied'] ?? ''));
+$cibil         = trim((string)($data['cibilScore'] ?? $data['cibil_score'] ?? $data['cibil'] ?? '—'));
+$monthlySalary = trim((string)($data['monthlySalary'] ?? $data['monthly_salary'] ?? $data['salary'] ?? ''));
+$pincode       = trim((string)($data['pincode'] ?? $data['pin_code'] ?? '—'));
+$city          = trim((string)($data['city'] ?? '—'));
+$state         = trim((string)($data['state'] ?? 'India'));
+$employmentType= trim((string)($data['employmentType'] ?? $data['employment_type'] ?? 'Salaried'));
+$pageSource    = trim((string)($data['source'] ?? ($cibil !== '—' ? 'Check Eligibility Website' : 'Apply Now (Phone Only)')));
+$explicitCompany = trim((string)($data['assignedCompany'] ?? $data['company'] ?? $data['partner'] ?? ''));
 
-$email = trim($data['email'] ?? $data['email_address'] ?? $data['emailAddress'] ?? '');
-if (empty($email)) {
-    $email = $digitsOnly . '@paisainminutes.com';
-}
-
-// Helper to parse loan amount numeric value
-function parseLoanAmount($val) {
-    if (empty($val) && $val !== 0 && $val !== '0') return 50000;
-    if (is_string($val)) {
-        $parts = preg_split('/[-–—]|to/i', str_replace(',', '', $val));
-        if (count($parts) >= 2) {
-            $n1 = floatval(preg_replace('/\D/', '', $parts[0]));
-            $n2 = floatval(preg_replace('/\D/', '', $parts[1]));
-            if ($n2 > 0) return $n2;
-            if ($n1 > 0) return $n1;
-        }
-    }
-    $clean = preg_replace('/[^\d.]/', '', strval($val));
-    $num = floatval($clean);
-    if ($num <= 0) return 50000;
-    if ($num > 500000) {
-        $s = strval(floor($num));
-        $len = strlen($s);
-        for ($i = 3; $i <= 6; $i++) {
-            if ($i < $len) {
-                $p1 = floatval(substr($s, 0, $i));
-                $p2 = floatval(substr($s, $i));
-                if ($p1 >= 1000 && $p1 <= 500000 && $p2 >= 1000 && $p2 <= 1000000 && $p2 >= $p1) {
-                    return $p2;
-                }
-            }
-        }
-        if ($num > 1000000) return 50000;
-    }
-    return $num;
-}
-
-// Helper to parse monthly salary numeric value
-function parseSalary($val, $salVal = null, $salRange = '') {
-    if (!empty($salVal)) {
-        $sv = floatval($salVal);
-        if ($sv >= 5000 && $sv <= 500000) return $sv;
-    }
-    $textToCheck = strval(!empty($salRange) ? $salRange : $val);
-    if (preg_match('/[-–—]|to/i', $textToCheck)) {
-        $parts = preg_split('/[-–—]|to/i', str_replace(',', '', $textToCheck));
-        if (count($parts) >= 2) {
-            $n1 = floatval(preg_replace('/\D/', '', $parts[0]));
-            $n2 = floatval(preg_replace('/\D/', '', $parts[1]));
-            if ($n1 > 0 && $n2 > 0) return round(($n1 + $n2) / 2);
-            if ($n1 > 0) return $n1;
-        }
-    }
-    $clean = preg_replace('/[^\d.]/', '', strval($val));
-    $num = floatval($clean);
-    if ($num <= 0) return 30000;
-    if ($num > 500000) {
-        $s = strval(floor($num));
-        $len = strlen($s);
-        if ($len === 10) {
-            $p1 = floatval(substr($s, 0, 5));
-            $p2 = floatval(substr($s, 5));
-            if ($p1 >= 10000 && $p1 <= 300000 && $p2 >= 10000 && $p2 <= 300000) {
-                return round(($p1 + $p2) / 2);
-            }
-        }
-        for ($i = 4; $i <= 6; $i++) {
-            if ($i < $len) {
-                $p1 = floatval(substr($s, 0, $i));
-                $p2 = floatval(substr($s, $i));
-                if ($p1 >= 10000 && $p1 <= 300000 && $p2 >= 10000 && $p2 <= 300000) {
-                    return round(($p1 + $p2) / 2);
-                }
-            }
-        }
-        return 35000;
-    }
-    return $num;
-}
+// Detect if this is a Step-1 Phone-Only lead or full eligibility submission
+$isPhoneOnly = ($name === 'Applicant' || empty($data['name'])) && 
+               (empty($data['loanAmount']) || $data['loanAmount'] === 0 || $data['loanAmount'] === '0') && 
+               (empty($data['monthlySalary']) || $data['monthlySalary'] === 0 || $data['monthlySalary'] === '0') &&
+               ($cibil === '—' || empty($data['cibilScore']));
 
 // Helper to determine partner company
 function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
-    if (!empty($explicitCompany) && $explicitCompany !== '—') {
-        $clean = strtolower(trim($explicitCompany));
-        if (strpos($clean, 'rupay91') !== false) return 'Rupay91';
-        if (strpos($clean, 'adgrow') !== false) return 'Adgrow';
-        if (strpos($clean, 'agdm') !== false) return 'AGDM';
-        if (strpos($clean, 'rupaysure') !== false) return 'Rupaysure';
-        return trim($explicitCompany);
-    }
-
     $cibilNum = 0;
     if (!empty($cibilStr)) {
         preg_match('/\d{3}/', $cibilStr, $matches);
         if (!empty($matches[0])) {
-            $cibilNum = intval($matches[0]);
+            $cibilNum = (int)$matches[0];
+        } elseif (strpos(strtolower($cibilStr), '850') !== false) {
+            $cibilNum = 850;
+        } elseif (strpos(strtolower($cibilStr), '800') !== false) {
+            $cibilNum = 800;
         } elseif (strpos(strtolower($cibilStr), '750') !== false || strpos(strtolower($cibilStr), 'excellent') !== false) {
             $cibilNum = 780;
         } elseif (strpos(strtolower($cibilStr), '700') !== false || strpos(strtolower($cibilStr), 'good') !== false) {
             $cibilNum = 720;
         } elseif (strpos(strtolower($cibilStr), '650') !== false || strpos(strtolower($cibilStr), 'average') !== false) {
             $cibilNum = 660;
+        } elseif (strpos(strtolower($cibilStr), '600') !== false) {
+            $cibilNum = 620;
+        } elseif (strpos(strtolower($cibilStr), '550') !== false) {
+            $cibilNum = 560;
+        } elseif (strpos(strtolower($cibilStr), '500') !== false) {
+            $cibilNum = 510;
         }
     }
 
-    if ($cibilNum >= 720 || $salaryNum >= 40000) return 'Rupay91';
-    if ($amountNum >= 150000 || ($salaryNum >= 25000 && $cibilNum >= 650)) return 'Adgrow';
-    if ($cibilNum >= 670 || $salaryNum >= 20000) return 'Rupaysure';
-    return 'AGDM';
+    if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO' && $explicitCompany !== 'Pending Details') {
+        $clean = strtolower(trim($explicitCompany));
+        if (strpos($clean, 'rupay91') !== false || strpos($clean, 'rupay 91') !== false) {
+            return 'Rupay91';
+        }
+        return trim($explicitCompany);
+    }
+
+    if ($salaryNum === 0 && $cibilNum === 0 && $amountNum === 0) {
+        return 'Pending Details';
+    }
+
+    return 'Rupay91';
 }
 
-$rawLoan = $data['loanAmount'] ?? $data['loan_amount'] ?? $data['amount'] ?? $data['applied'] ?? $data['applied_amount'] ?? $data['loan_range'] ?? $data['required_loan_amount'] ?? 50000;
-$applied = parseLoanAmount($rawLoan);
+// 2. Calculate Eligibility Slab & Status
+function getSlabInfo($salaryStr, $cibilStr) {
+    $salVal = 0;
+    if (preg_match('/90,?000/i', $salaryStr)) {
+        $salVal = 95000;
+    } elseif (preg_match('/80,?000/i', $salaryStr)) {
+        $salVal = 85000;
+    } elseif (preg_match('/70,?000/i', $salaryStr)) {
+        $salVal = 75000;
+    } elseif (preg_match('/60,?000/i', $salaryStr)) {
+        $salVal = 65000;
+    } elseif (preg_match('/50,?000/i', $salaryStr)) {
+        $salVal = 55000;
+    } elseif (preg_match('/40,?000/i', $salaryStr)) {
+        $salVal = 45000;
+    } elseif (preg_match('/30,?000/i', $salaryStr)) {
+        $salVal = 35000;
+    } elseif (preg_match('/20,?000/i', $salaryStr)) {
+        $salVal = 25000;
+    } else {
+        $clean = (int)preg_replace('/[^0-9]/', '', $salaryStr);
+        if ($clean > 0) $salVal = $clean;
+    }
 
-$rawSalary = $data['salary'] ?? $data['monthly_salary'] ?? $data['income'] ?? $data['monthlySalary'] ?? 30000;
-$salVal = $data['sal_val'] ?? null;
-$salRange = $data['salary_range'] ?? '';
-$salary = parseSalary($rawSalary, $salVal, $salRange);
-$city = trim($data['city'] ?? 'Online Apply');
-$state = trim($data['state'] ?? 'India');
-$pincode = trim($data['pincode'] ?? $data['pin_code'] ?? $data['pin'] ?? $data['zipcode'] ?? '110001');
-$employmentType = trim($data['employmentType'] ?? $data['employment_type'] ?? $data['occupation'] ?? 'Salaried');
-$cibil = trim($data['cibil'] ?? $data['cibil_score'] ?? $data['cibilScore'] ?? $data['estimated_cibil'] ?? $data['cibil_range'] ?? '—');
-$defaultSource = ($cibil !== '—') ? 'Check Eligibility Website' : 'Apply Now Website';
-$source = trim($data['source'] ?? $data['form_type'] ?? $data['page_source'] ?? $defaultSource);
+    $cibilVal = 0;
+    if (!empty($cibilStr) && $cibilStr !== '—') {
+        preg_match('/\d{3}/', $cibilStr, $cm);
+        if (!empty($cm[0])) $cibilVal = (int)$cm[0];
+    }
 
-$explicitCompany = trim($data['assignedCompany'] ?? $data['company'] ?? $data['partner'] ?? $data['assignedPartner'] ?? '');
-$assignedCompany = determineCompany($cibil, $salary, $applied, $explicitCompany);
-$eligibilityStatus = trim($data['eligibilityStatus'] ?? $data['eligibility_status'] ?? ($cibil !== '—' ? 'Eligible' : 'Fresh Review'));
+    if ($salVal === 0 && $cibilVal === 0) {
+        return ['slab' => 0, 'cibil_range' => '—', 'salary_range' => '—', 'eligibility' => 'Incomplete / Phone Only', 'sal_val' => 0];
+    }
 
-$purpose = trim($data['purpose'] ?? 'Personal Loan');
-$status = 'Fresh';
-
-// Fallback JSON persistence
-$jsonFile = __DIR__ . '/../leads_store.json';
-$existingLeads = [];
-if (file_exists($jsonFile)) {
-    $existingLeads = json_decode(file_get_contents($jsonFile), true) ?: [];
+    if ($cibilVal >= 850 || $salVal >= 90000) {
+        return ['slab' => 8, 'cibil_range' => '850–900', 'salary_range' => '₹90,000+', 'eligibility' => 'Eligible – Premium', 'sal_val' => $salVal];
+    } elseif ($cibilVal >= 800 || $salVal >= 80000) {
+        return ['slab' => 7, 'cibil_range' => '800–849', 'salary_range' => '₹80,000–₹89,999', 'eligibility' => 'Eligible – Premium', 'sal_val' => $salVal];
+    } elseif ($cibilVal >= 750 || $salVal >= 70000) {
+        return ['slab' => 6, 'cibil_range' => '750–799', 'salary_range' => '₹70,000–₹79,999', 'eligibility' => 'Eligible – Preferred', 'sal_val' => $salVal];
+    } elseif ($cibilVal >= 700 || $salVal >= 60000) {
+        return ['slab' => 5, 'cibil_range' => '700–749', 'salary_range' => '₹60,000–₹69,999', 'eligibility' => 'Eligible – Good', 'sal_val' => $salVal];
+    } elseif ($cibilVal >= 650 || $salVal >= 50000) {
+        return ['slab' => 4, 'cibil_range' => '650–699', 'salary_range' => '₹50,000–₹59,999', 'eligibility' => 'Eligible', 'sal_val' => $salVal];
+    } elseif ($cibilVal >= 600 || $salVal >= 40000) {
+        return ['slab' => 3, 'cibil_range' => '600–649', 'salary_range' => '₹40,000–₹49,999', 'eligibility' => 'Eligible', 'sal_val' => $salVal];
+    } elseif ($cibilVal >= 550 || $salVal >= 30000) {
+        return ['slab' => 2, 'cibil_range' => '550–599', 'salary_range' => '₹30,000–₹39,999', 'eligibility' => 'Eligible', 'sal_val' => $salVal];
+    } elseif ($cibilVal >= 500 || $salVal >= 20000) {
+        return ['slab' => 1, 'cibil_range' => '500–549', 'salary_range' => '₹20,000–₹29,999', 'eligibility' => 'Eligible – Base', 'sal_val' => $salVal];
+    } else {
+        return ['slab' => 0, 'cibil_range' => 'Below 500', 'salary_range' => 'Under ₹20,000', 'eligibility' => 'Below Minimum Threshold', 'sal_val' => $salVal];
+    }
 }
 
-$leadId = 'PIM-2026-' . str_pad(count($existingLeads) + 1, 4, '0', STR_PAD_LEFT);
-$newLead = [
-    'id' => $leadId,
-    'loanNo' => $leadId,
-    'name' => $name,
-    'initials' => strtoupper(substr($name, 0, 2)),
-    'avatarBg' => 'bg-blue-600',
-    'mobile' => $formattedMobile,
-    'email' => $email,
-    'creditManager' => 'Unassigned',
-    'pan' => strtoupper(trim($data['pan'] ?? '—')),
-    'cibil' => $cibil,
-    'applied' => $applied,
-    'loanAmount' => $applied,
-    'salary' => $salary,
-    'city' => $city,
-    'state' => $state,
-    'pincode' => $pincode,
-    'employmentType' => $employmentType,
-    'assignedCompany' => $assignedCompany,
-    'eligibilityStatus' => $eligibilityStatus,
-    'source' => $source,
-    'purpose' => $purpose,
-    'status' => 'Fresh',
-    'created' => date('d M Y, h:i A'),
-    'date' => date('Y-m-d')
+if ($isPhoneOnly) {
+    $cleanLoan = 0;
+    $slabData = ['slab' => 0, 'cibil_range' => '—', 'salary_range' => '—', 'eligibility' => 'Incomplete / Phone Only', 'sal_val' => 0];
+    $assignedCompany = !empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'Pending Details' ? $explicitCompany : 'Pending Details';
+    $cibil = '—';
+    $monthlySalary = '—';
+} else {
+    $slabData  = getSlabInfo($monthlySalary, $cibil);
+    $cleanLoan = (int)preg_replace('/\D/', '', (string)$loanAmt);
+    if ($cleanLoan > 500000) {
+        $s = (string)$cleanLoan;
+        $len = strlen($s);
+        for ($i = 3; $i <= 6; $i++) {
+            if ($i < $len) {
+                $p1 = (int)substr($s, 0, $i);
+                $p2 = (int)substr($s, $i);
+                if ($p1 >= 1000 && $p1 <= 500000 && $p2 >= 1000 && $p2 <= 1000000 && $p2 >= $p1) {
+                    $cleanLoan = $p2;
+                    break;
+                }
+            }
+        }
+        if ($cleanLoan > 1000000) $cleanLoan = 50000;
+    }
+    $assignedCompany = determineCompany($cibil, $slabData['sal_val'], $cleanLoan, $explicitCompany);
+}
+
+// Initials
+$initials = 'AP';
+$nameParts = preg_split('/\s+/', $name);
+if (count($nameParts) >= 2 && !empty($nameParts[0]) && !empty($nameParts[1])) {
+    $initials = strtoupper(substr($nameParts[0], 0, 1) . substr($nameParts[1], 0, 1));
+} elseif (!empty($name)) {
+    $initials = strtoupper(substr($name, 0, min(2, strlen($name))));
+}
+
+// 3. Store in Session for navigation (Do not store dummy placeholders)
+$_SESSION['pim_lead_id']          = $leadId;
+$_SESSION['pim_lead_phone']       = $phone;
+if (!empty($name) && $name !== 'Applicant') {
+    $_SESSION['pim_lead_name'] = $name;
+} else {
+    unset($_SESSION['pim_lead_name']);
+}
+if (!empty($email) && strpos($email, '@paisainminutes.com') === false) {
+    $_SESSION['pim_lead_email'] = $email;
+} else {
+    unset($_SESSION['pim_lead_email']);
+}
+if (!empty($monthlySalary) && $monthlySalary !== '₹35,000' && $monthlySalary !== '35000') {
+    $_SESSION['pim_lead_salary'] = $monthlySalary;
+} else {
+    unset($_SESSION['pim_lead_salary']);
+}
+if (!empty($cibil) && $cibil !== '—' && $cibil !== '750+') {
+    $_SESSION['pim_lead_cibil'] = $cibil;
+} else {
+    unset($_SESSION['pim_lead_cibil']);
+}
+$_SESSION['pim_lead_slab']        = $slabData['slab'];
+$_SESSION['pim_lead_eligibility'] = $slabData['eligibility'];
+
+$leadRecord = [
+    'id'                => $leadId,
+    'loanNo'            => $leadId,
+    'lead_id'           => $leadId,
+    'name'              => $name,
+    'fullName'          => $name,
+    'initials'          => $initials,
+    'avatarBg'          => 'bg-blue-600',
+    'phone'             => $phone,
+    'mobile'            => '+91 ' . $phone,
+    'email'             => $email,
+    'emailAddress'      => $email,
+    'creditManager'     => 'Unassigned',
+    'pan'               => '—',
+    'loan_amount'       => $loanAmt,
+    'loanAmount'        => $cleanLoan,
+    'applied'           => $cleanLoan,
+    'cibil_score'       => $cibil,
+    'cibil'             => $cibil,
+    'cibilScore'        => $cibil,
+    'monthly_salary'    => $monthlySalary,
+    'monthlySalary'     => $slabData['sal_val'],
+    'salary'            => $slabData['sal_val'],
+    'sal_val'           => $slabData['sal_val'],
+    'pincode'           => $pincode,
+    'city'              => $city,
+    'state'             => $state,
+    'employmentType'    => $employmentType,
+    'slab'              => $slabData['slab'],
+    'cibil_range'       => $slabData['cibil_range'],
+    'salary_range'      => $slabData['salary_range'],
+    'eligibility'       => $slabData['eligibility'],
+    'eligibilityStatus' => $slabData['eligibility'],
+    'assignedCompany'   => $assignedCompany,
+    'partner_name'      => $assignedCompany,
+    'purpose'           => 'Personal Loan',
+    'status'            => 'Fresh',
+    'source'            => $pageSource,
+    'created'           => $formattedDate,
+    'created_at'        => $timestamp,
+    'date'              => $isoDate
 ];
 
-array_unshift($existingLeads, $newLead);
-file_put_contents($jsonFile, json_encode($existingLeads, JSON_PRETTY_PRINT));
+// 4. Sync Lead & Loan Application to Render Backend API
+require_once __DIR__ . '/config/env.php';
 
+function syncToRenderBackend($phone, $name, $email, $loanAmount, $monthlyIncome, $clientToken = null) {
+    if (!function_exists('curl_init')) return null;
+
+    $baseUrl = getEnvVal('RENDER_API_URL', 'https://paisainminutes.onrender.com');
+    $token = $clientToken;
+    
+    // If client token not provided, try OTP verification flow
+    if (empty($token)) {
+        // 1. Send OTP
+        $ch = curl_init($baseUrl . '/api/auth/send-otp');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['phone' => $phone]));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $otpRes = curl_exec($ch);
+        curl_close($ch);
+
+        $otpData = json_decode($otpRes, true);
+        $otpCode = $otpData['debug']['code'] ?? $otpData['code'] ?? '1234';
+
+        // 2. Verify OTP & get token
+        $ch = curl_init($baseUrl . '/api/auth/verify-otp');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['phone' => $phone, 'code' => (string)$otpCode, 'otp' => (string)$otpCode]));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $verifyRes = curl_exec($ch);
+        curl_close($ch);
+
+        $verifyData = json_decode($verifyRes, true);
+        $token = $verifyData['token'] ?? $verifyData['accessToken'] ?? null;
+    }
+
+    if ($token) {
+        // 3. Update Name and Email on user profile
+        $ch = curl_init($baseUrl . '/api/users/me');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['name' => $name, 'email' => $email]));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $token
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_exec($ch);
+        curl_close($ch);
+
+        // 4. Create Loan Application with Phone Number on Render Database
+        $ch = curl_init($baseUrl . '/api/loan-applications');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+            'amount'        => (int)$loanAmount,
+            'tenureMonths'  => 12,
+            'purpose'       => 'Personal Loan',
+            'monthlyIncome' => (int)$monthlyIncome,
+            'phone'         => (string)$phone,
+            'phoneNumber'   => (string)$phone,
+            'mobile'        => (string)$phone,
+            'name'          => (string)$name,
+            'email'         => (string)$email
+        ]));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $token
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $appRes = curl_exec($ch);
+        curl_close($ch);
+
+        return json_decode($appRes, true);
+    }
+
+    return null;
+}
+
+// Trigger background sync to Render
+$clientToken = $data['token'] ?? null;
+$renderSyncResult = syncToRenderBackend($phone, $name, $email, $cleanLoan, $slabData['sal_val'], $clientToken);
+
+// 5. Helper to upsert (update or insert) lead uniquely by phone number
+function upsertLeadInList(&$list, $newLead, $phone) {
+    $cleanPhone = preg_replace('/\D/', '', (string)$phone);
+    $foundIndex = -1;
+    foreach ($list as $idx => $item) {
+        $itemPhone = preg_replace('/\D/', '', (string)($item['phone'] ?? $item['mobile'] ?? ''));
+        if (!empty($itemPhone) && !empty($cleanPhone) && substr($itemPhone, -10) === substr($cleanPhone, -10)) {
+            $foundIndex = $idx;
+            break;
+        }
+    }
+
+    if ($foundIndex >= 0) {
+        $existing = $list[$foundIndex];
+        // Preserve original lead ID if already established
+        $newLead['id'] = $existing['id'] ?? $existing['lead_id'] ?? $newLead['id'];
+        $newLead['loanNo'] = $existing['loanNo'] ?? $newLead['loanNo'];
+        $newLead['lead_id'] = $existing['lead_id'] ?? $newLead['lead_id'];
+        
+        // Preserve specific custom name if new is generic 'Applicant'
+        if (($newLead['name'] === 'Applicant' || empty($newLead['name'])) && !empty($existing['name']) && $existing['name'] !== 'Applicant') {
+            $newLead['name'] = $existing['name'];
+            $newLead['fullName'] = $existing['fullName'] ?? $existing['name'];
+            $newLead['initials'] = $existing['initials'] ?? 'AP';
+        }
+
+        // Preserve status if already progressed beyond 'Fresh'
+        if (!empty($existing['status']) && $existing['status'] !== 'Fresh' && $newLead['status'] === 'Fresh') {
+            $newLead['status'] = $existing['status'];
+        }
+        
+        // Remove old position and place updated record at top
+        array_splice($list, $foundIndex, 1);
+        array_unshift($list, $newLead);
+    } else {
+        array_unshift($list, $newLead);
+    }
+}
+
+// 6. Save to local data/leads.json
+$dataDir = __DIR__ . '/data';
+if (!is_dir($dataDir)) {
+    mkdir($dataDir, 0755, true);
+}
+$jsonFile = $dataDir . '/leads.json';
+$leadsList = [];
+if (file_exists($jsonFile)) {
+    $existing = file_get_contents($jsonFile);
+    $leadsList = json_decode($existing, true) ?: [];
+}
+upsertLeadInList($leadsList, $leadRecord, $phone);
+file_put_contents($jsonFile, json_encode($leadsList, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+
+// 7. Also sync to crm/leads_store.json
+$crmStoreFile = __DIR__ . '/crm/leads_store.json';
+if (file_exists($crmStoreFile) || is_dir(__DIR__ . '/crm')) {
+    $crmLeads = [];
+    if (file_exists($crmStoreFile)) {
+        $crmLeads = json_decode(file_get_contents($crmStoreFile), true) ?: [];
+    }
+    upsertLeadInList($crmLeads, $leadRecord, $phone);
+    file_put_contents($crmStoreFile, json_encode($crmLeads, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+}
+
+// 7. Append to leads_log.csv for audit trail
+$csvLog = __DIR__ . '/leads_log.csv';
+$csvRow = [
+    $timestamp,
+    $name,
+    $email,
+    $phone,
+    $cleanLoan,
+    $assignedCompany,
+    $slabData['eligibility'],
+    $_SERVER['REMOTE_ADDR'] ?? '::1',
+    'Fresh'
+];
+$fp = fopen($csvLog, 'a');
+if ($fp) {
+    if (filesize($csvLog) === 0) {
+        fputcsv($fp, ['Timestamp', 'Name', 'Email', 'Phone', 'Amount', 'Partner', 'Eligibility', 'IP', 'Status']);
+    }
+    fputcsv($fp, $csvRow);
+    fclose($fp);
+}
+
+// 7. Construct redirect URL for offers page
+$redirectUrl = 'loan-offers.php?lead_id=' . urlencode($leadId) . 
+               '&phone=' . urlencode($phone) . 
+               '&salary=' . urlencode($monthlySalary ?: $slabData['salary_range']) . 
+               '&cibil=' . urlencode($cibil ?: $slabData['cibil_range']) .
+               '&slab=' . urlencode((string)$slabData['slab']);
+
+// 8. Return JSON response to frontend
 echo json_encode([
-    'success' => true,
-    'message' => "Lead received and assigned to {$assignedCompany}!",
-    'lead' => $newLead
-]);
-?>
+    'status'        => 'success',
+    'success'       => true,
+    'message'       => 'Lead submitted successfully!',
+    'lead_id'       => $leadId,
+    'lead'          => $leadRecord,
+    'slab'          => $slabData['slab'],
+    'eligibility'   => $slabData['eligibility'],
+    'data'          => [
+        'lead_id'      => $leadId,
+        'redirect_url' => $redirectUrl
+    ]
+], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+exit;

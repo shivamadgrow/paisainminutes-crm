@@ -100,14 +100,8 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
     if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO' && $explicitCompany !== 'Pending Details') {
         $clean = strtolower(trim($explicitCompany));
         if (strpos($clean, 'rupay91') !== false || strpos($clean, 'rupay 91') !== false) {
-            if ($salaryNum >= 30000 && $cibilNum >= 700) {
-                return 'Rupay91';
-            }
-            return 'Rupaysure';
+            return 'Rupay91';
         }
-        if (strpos($clean, 'adgrow') !== false) return 'Adgrow';
-        if (strpos($clean, 'agdm') !== false) return 'AGDM';
-        if (strpos($clean, 'rupaysure') !== false || strpos($clean, 'rupay sure') !== false) return 'Rupaysure';
         return trim($explicitCompany);
     }
 
@@ -115,17 +109,7 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
         return 'Pending Details';
     }
 
-    // Rupay 91: ONLY if salary >= 30,000 AND CIBIL >= 700
-    if ($salaryNum >= 30000 && $cibilNum >= 700) {
-        return 'Rupay91';
-    }
-    if ($amountNum >= 150000 || ($salaryNum >= 25000 && $cibilNum >= 600)) {
-        return 'Adgrow';
-    }
-    if ($cibilNum >= 550 || $salaryNum >= 20000) {
-        return 'Rupaysure';
-    }
-    return 'AGDM';
+    return 'Rupay91';
 }
 
 // 2. Calculate Eligibility Slab & Status

@@ -160,48 +160,6 @@ export default function Sidebar({
                   {partnerCounts.rupay91 ?? 0}
                 </span>
               </button>
-
-              {/* 2. Adgrow */}
-              <button 
-                onClick={() => handleNavClick('company-adgrow')} 
-                className={getNavItemClass('company-adgrow')}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-                  <span>Adgrow</span>
-                </div>
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700">
-                  {partnerCounts.adgrow ?? 0}
-                </span>
-              </button>
-
-              {/* 3. AGDM */}
-              <button 
-                onClick={() => handleNavClick('company-agdm')} 
-                className={getNavItemClass('company-agdm')}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                  <span>AGDM</span>
-                </div>
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 text-blue-700">
-                  {partnerCounts.agdm ?? 0}
-                </span>
-              </button>
-
-              {/* 4. Rupaysure */}
-              <button 
-                onClick={() => handleNavClick('company-rupaysure')} 
-                className={getNavItemClass('company-rupaysure')}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-600"></span>
-                  <span>Rupaysure</span>
-                </div>
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 text-amber-800">
-                  {partnerCounts.rupaysure ?? 0}
-                </span>
-              </button>
             </div>
           )}
         </div>

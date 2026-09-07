@@ -59,7 +59,7 @@ function mapRenderLead(item, index) {
     state: item.state || '—',
     pincode: item.pincode || '—',
     employmentType: item.employmentType || 'Salaried',
-    assignedCompany: item.assignedCompany || (isPhoneOnly ? 'Pending Details' : (cleanSalary >= 30000 ? 'Rupay91' : 'Rupaysure')),
+    assignedCompany: item.assignedCompany || (isPhoneOnly ? 'Pending Details' : 'Rupay91'),
     eligibilityStatus: isPhoneOnly ? 'Incomplete / Phone Only' : (item.eligibilityStatus || 'Eligible'),
     source: item.source || (isPhoneOnly ? 'Apply Now (Phone Only)' : 'Render API / Apply Now'),
     purpose: item.purpose || 'Personal Loan',

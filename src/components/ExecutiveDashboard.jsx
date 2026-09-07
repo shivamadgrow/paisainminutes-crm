@@ -138,7 +138,7 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
             {AFFILIATE_PARTNERS.length}
           </div>
           <div className="text-xs text-indigo-700 font-semibold mt-1">
-            Rupay91, Adgrow, AGDM, Rupaysure
+            Rupay91
           </div>
         </div>
 

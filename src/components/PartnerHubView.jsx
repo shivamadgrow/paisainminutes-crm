@@ -86,7 +86,7 @@ export default function PartnerHubView({ leads = [], onSelectCompany, onOpenTest
               Partner Distribution Hub
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm mt-2 leading-relaxed">
-              Real-time routing overview for <span className="text-white font-bold">Rupay91, Adgrow, AGDM & Rupaysure</span>. All website applications and eligibility checks from <span className="text-amber-300 font-bold">paisainminutes.com</span> are categorized by lending partner.
+              Real-time routing overview for <span className="text-white font-bold">Rupay91</span>. All website applications and eligibility checks from <span className="text-amber-300 font-bold">paisainminutes.com</span> are categorized by lending partner.
             </p>
           </div>
 
@@ -133,7 +133,7 @@ export default function PartnerHubView({ leads = [], onSelectCompany, onOpenTest
             {AFFILIATE_PARTNERS.length}
           </div>
           <div className="text-xs text-indigo-600 font-semibold mt-1">
-            Rupay91, Adgrow, AGDM, Rupaysure
+            Rupay91
           </div>
         </div>
 

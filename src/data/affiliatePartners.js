@@ -17,57 +17,6 @@ export const AFFILIATE_PARTNERS = [
     description: 'Fast digital approvals for prime & salaried applicants with CIBIL >= 700.',
     website: 'https://rupay91.com',
     commissionRate: '2.5% - 3.2% per disbursal'
-  },
-  {
-    id: 'adgrow',
-    name: 'Adgrow',
-    code: 'ADGROW',
-    tagline: 'Growth Capital & Flexible Personal Finance',
-    badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-    pillClass: 'bg-emerald-600 text-white',
-    accentColor: '#059669',
-    accentBg: 'bg-emerald-50',
-    gradient: 'from-emerald-600 to-teal-700',
-    minCibil: 650,
-    minSalary: 20000,
-    maxLoan: 1000000,
-    description: 'High ticket size loans & flexible underwriting for salaried and business owners.',
-    website: 'https://adgrow.in',
-    commissionRate: '2.8% per disbursal'
-  },
-  {
-    id: 'agdm',
-    name: 'AGDM',
-    code: 'AGDM',
-    tagline: 'Direct Market Lending & Salary Advance Solutions',
-    badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',
-    pillClass: 'bg-blue-600 text-white',
-    accentColor: '#2563EB',
-    accentBg: 'bg-blue-50',
-    gradient: 'from-blue-600 to-cyan-700',
-    minCibil: 600,
-    minSalary: 15000,
-    maxLoan: 300000,
-    description: 'Specialized in quick salary advances and near-prime applicants across Tier 1 to Tier 3.',
-    website: 'https://agdm.in',
-    commissionRate: '3.0% per disbursal'
-  },
-  {
-    id: 'rupaysure',
-    name: 'Rupaysure',
-    code: 'RUPAYSURE',
-    tagline: 'Assured Personal & Emergency Credit Line',
-    badgeClass: 'bg-amber-50 text-amber-800 border border-amber-200',
-    pillClass: 'bg-amber-600 text-white',
-    accentColor: '#D97706',
-    accentBg: 'bg-amber-50',
-    gradient: 'from-amber-600 to-orange-700',
-    minCibil: 680,
-    minSalary: 18000,
-    maxLoan: 750000,
-    description: 'Instant credit line & emergency cash assistance with paperless verification.',
-    website: 'https://rupaysure.com',
-    commissionRate: '2.7% per disbursal'
   }
 ];
 
@@ -112,10 +61,9 @@ import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers';
 
 // Smart Auto-assignment rule engine based on eligibility factors
 export function recommendPartner(lead) {
-  if (!lead) return { partner: 'AGDM', eligibilityStatus: 'Eligible' };
+  if (!lead) return { partner: 'Rupay91', eligibilityStatus: 'Eligible' };
   const cibilStr = String(lead.cibil || '').toLowerCase();
   const salary = cleanSalary(lead.salary || lead.monthlySalary || lead.monthly_salary, lead.sal_val, lead.salary_range);
-  const amount = cleanLoanAmount(lead.loanAmount || lead.applied || lead.loan_amount || lead.amount);
 
   // Extract numeric CIBIL score if present
   let cibilNum = 0;
@@ -132,33 +80,8 @@ export function recommendPartner(lead) {
     cibilNum = 610;
   }
 
-  // High CIBIL & prime salary -> Rupay91
-  if (cibilNum >= 720 || salary >= 40000) {
-    return {
-      partner: 'Rupay91',
-      eligibilityStatus: 'High Approval'
-    };
-  }
-
-  // Large ticket or business profile -> Adgrow
-  if (amount >= 200000 || (salary >= 25000 && cibilNum >= 650)) {
-    return {
-      partner: 'Adgrow',
-      eligibilityStatus: 'Pre-Approved'
-    };
-  }
-
-  // Standard prime / Assured emergency -> Rupaysure
-  if (cibilNum >= 670 || salary >= 20000) {
-    return {
-      partner: 'Rupaysure',
-      eligibilityStatus: 'Eligible'
-    };
-  }
-
-  // Standard salary advance / entry level -> AGDM
   return {
-    partner: 'AGDM',
-    eligibilityStatus: 'Eligible'
+    partner: 'Rupay91',
+    eligibilityStatus: (cibilNum >= 700 || salary >= 30000) ? 'High Approval' : 'Eligible'
   };
 }
