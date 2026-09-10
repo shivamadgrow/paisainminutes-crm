@@ -47,6 +47,30 @@ export function checkAndEnforceGlobalLogout() {
   return false;
 }
 
+/**
+ * Helper to identify if a staff user is a Super Admin
+ * Super Admin cannot be deleted, deactivated or disabled by any user.
+ */
+export function isSuperAdmin(user) {
+  if (!user) return false;
+  const role = String(user.role || '').trim().toLowerCase();
+  const roles = Array.isArray(user.roles) ? user.roles.map(r => String(r).trim().toLowerCase()) : [];
+  const email = String(user.email || '').trim().toLowerCase();
+  const username = String(user.username || '').trim().toLowerCase();
+  const name = String(user.name || '').trim().toLowerCase();
+  const id = String(user.id || '');
+
+  return (
+    role === 'super admin' ||
+    roles.includes('super admin') ||
+    user.isSuperAdmin === true ||
+    id === '1' ||
+    email === 'info@adgrowmedia.com' ||
+    username === 'info@adgrowmedia.com' ||
+    name === 'super admin'
+  );
+}
+
 const DUMMY_USER_NAMES = [
   'accounts_team', 'collection_lead', 
   'credit_evaluator', 'telecaller_riya', 'ops_supervisor', 'telecaller_rahul'
@@ -178,6 +202,8 @@ export function updateStaffUser(id, updatedFields) {
 
   const updatedList = staffList.map(u => {
     if (String(u.id) === String(id)) {
+      const isSuper = isSuperAdmin(u);
+
       const initials = (updatedFields.name || u.name)
         .split(' ')
         .filter(Boolean)
@@ -185,15 +211,26 @@ export function updateStaffUser(id, updatedFields) {
         .join('')
         .slice(0, 2) || u.initials || 'US';
 
-      const role = updatedFields.role || (Array.isArray(updatedFields.roles) ? updatedFields.roles[0] : u.role);
-      const roles = Array.isArray(updatedFields.roles) && updatedFields.roles.length > 0 ? updatedFields.roles : (u.roles || [role]);
+      let role = updatedFields.role || (Array.isArray(updatedFields.roles) ? updatedFields.roles[0] : u.role);
+      let roles = Array.isArray(updatedFields.roles) && updatedFields.roles.length > 0 ? updatedFields.roles : (u.roles || [role]);
+
+      // Protect Super Admin: Must always stay Active and retain Super Admin role
+      let status = updatedFields.status || u.status || 'Active';
+      if (isSuper) {
+        status = 'Active';
+        if (!roles.includes('Super Admin')) {
+          roles = ['Super Admin', ...roles];
+        }
+        role = 'Super Admin';
+      }
 
       updatedUser = {
         ...u,
         ...updatedFields,
         initials,
         role,
-        roles
+        roles,
+        status
       };
       return updatedUser;
     }
@@ -243,9 +280,17 @@ export function resetStaffPassword(id, newPassword) {
 
 /**
  * Delete a staff user profile
+ * Protected: Super Admin accounts CANNOT be deleted by anyone!
  */
 export function deleteStaffUser(id) {
   const staffList = getStaffList();
+  const targetUser = staffList.find(u => String(u.id) === String(id));
+
+  if (targetUser && isSuperAdmin(targetUser)) {
+    console.warn('[SECURITY] Attempted to delete protected Super Admin account:', targetUser.name);
+    return { success: false, error: 'Super Admin account is permanently protected and cannot be deleted!' };
+  }
+
   const filtered = staffList.filter(u => String(u.id) !== String(id));
   saveStaffList(filtered);
 
@@ -260,14 +305,30 @@ export function deleteStaffUser(id) {
 
 /**
  * Toggle Active / Disabled status for a staff profile
+ * Protected: Super Admin accounts CANNOT be disabled by anyone!
  */
 export function toggleUserStatus(id) {
   const staffList = getStaffList();
+  const targetCheck = staffList.find(u => String(u.id) === String(id));
+
+  if (targetCheck && isSuperAdmin(targetCheck)) {
+    console.warn('[SECURITY] Attempted to disable protected Super Admin account:', targetCheck.name);
+    return { 
+      success: false, 
+      status: 'Active', 
+      error: 'Super Admin account is permanently active and cannot be disabled!' 
+    };
+  }
+
   let nextStatus = 'Active';
   let targetUser = null;
 
   const updatedList = staffList.map(u => {
     if (String(u.id) === String(id)) {
+      if (isSuperAdmin(u)) {
+        targetUser = { ...u, status: 'Active' };
+        return targetUser;
+      }
       nextStatus = u.status === 'Active' ? 'Disabled' : 'Active';
       targetUser = { ...u, status: nextStatus };
       return targetUser;
