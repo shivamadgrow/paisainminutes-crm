@@ -17,7 +17,9 @@ export const AFFILIATE_PARTNERS = [
     maxLoan: 500000,
     description: 'Fast digital approvals for prime applicants with CIBIL >= 750 (Slabs 6, 7, 8).',
     website: 'https://rupay91.com',
-    commissionRate: '2.5% - 3.2% per disbursal'
+    commissionRate: '2.8%',
+    commissionPct: 0.028,
+    paymentStatus: 'Paid'
   },
   {
     id: 'jhatpatloans',
@@ -34,7 +36,123 @@ export const AFFILIATE_PARTNERS = [
     maxLoan: 300000,
     description: 'Flexible personal loans for applicants with CIBIL 500–749 (Slabs 1 to 5).',
     website: 'https://jhatpatloans.com',
-    commissionRate: '2.0% - 2.8% per disbursal'
+    commissionRate: '2.4%',
+    commissionPct: 0.024,
+    paymentStatus: 'Paid'
+  },
+  {
+    id: 'instarupees',
+    name: 'Insta Rupees',
+    code: 'INSTARUPEES',
+    tagline: 'Fast Cash Loans (CIBIL 550+)',
+    badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+    pillClass: 'bg-amber-600 text-white',
+    accentColor: '#D97706',
+    accentBg: 'bg-amber-50',
+    gradient: 'from-amber-600 to-orange-700',
+    minCibil: 550,
+    minSalary: 20000,
+    maxLoan: 100000,
+    description: 'Paperless instant sanction & high approval online credit line.',
+    website: 'https://instarupees.com',
+    commissionRate: '2.5%',
+    commissionPct: 0.025,
+    paymentStatus: 'Pending'
+  },
+  {
+    id: 'udhaarnow',
+    name: 'UdhaarNow',
+    code: 'UDHAARNOW',
+    tagline: 'Flexible Pre-Approved Credit (CIBIL 500+)',
+    badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',
+    pillClass: 'bg-blue-600 text-white',
+    accentColor: '#2563EB',
+    accentBg: 'bg-blue-50',
+    gradient: 'from-blue-600 to-cyan-700',
+    minCibil: 500,
+    minSalary: 20000,
+    maxLoan: 100000,
+    description: 'Instant pre-matched credit limit with minimal KYC required.',
+    website: 'https://udhaarnow.com',
+    commissionRate: '2.2%',
+    commissionPct: 0.022,
+    paymentStatus: 'Paid'
+  },
+  {
+    id: 'loanwithin',
+    name: 'LoanWithin',
+    code: 'LOANWITHIN',
+    tagline: 'Verified Partner Credit (CIBIL 550+)',
+    badgeClass: 'bg-teal-50 text-teal-700 border border-teal-200',
+    pillClass: 'bg-teal-600 text-white',
+    accentColor: '#0D9488',
+    accentBg: 'bg-teal-50',
+    gradient: 'from-teal-600 to-emerald-700',
+    minCibil: 550,
+    minSalary: 25000,
+    maxLoan: 100000,
+    description: 'Paperless fast-track disbursals with zero collateral needed.',
+    website: 'https://loanwithin.com',
+    commissionRate: '2.6%',
+    commissionPct: 0.026,
+    paymentStatus: 'Pending'
+  },
+  {
+    id: 'shubhcash',
+    name: 'ShubhCash',
+    code: 'SHUBHCASH',
+    tagline: 'Instant Credit (CIBIL 500+)',
+    badgeClass: 'bg-rose-50 text-rose-700 border border-rose-200',
+    pillClass: 'bg-rose-600 text-white',
+    accentColor: '#E11D48',
+    accentBg: 'bg-rose-50',
+    gradient: 'from-rose-600 to-pink-700',
+    minCibil: 500,
+    minSalary: 20000,
+    maxLoan: 100000,
+    description: '100% online application with direct bank credit on same day.',
+    website: 'https://shubhcash.com',
+    commissionRate: '2.3%',
+    commissionPct: 0.023,
+    paymentStatus: 'Paid'
+  },
+  {
+    id: 'borrowera',
+    name: 'Borrowera',
+    code: 'BORROWERA',
+    tagline: 'Speedy Digital Lending (CIBIL 600+)',
+    badgeClass: 'bg-purple-50 text-purple-700 border border-purple-200',
+    pillClass: 'bg-purple-600 text-white',
+    accentColor: '#9333EA',
+    accentBg: 'bg-purple-50',
+    gradient: 'from-purple-600 to-fuchsia-700',
+    minCibil: 600,
+    minSalary: 25000,
+    maxLoan: 100000,
+    description: 'Direct account credit in minutes with speedy digital verification.',
+    website: 'https://borrowera.com',
+    commissionRate: '2.7%',
+    commissionPct: 0.027,
+    paymentStatus: 'Pending'
+  },
+  {
+    id: 'easyfincare',
+    name: 'Easy Fincare',
+    code: 'EASYFINCARE',
+    tagline: 'Simplifying Finance (CIBIL 550+)',
+    badgeClass: 'bg-cyan-50 text-cyan-700 border border-cyan-200',
+    pillClass: 'bg-cyan-600 text-white',
+    accentColor: '#0891B2',
+    accentBg: 'bg-cyan-50',
+    gradient: 'from-cyan-600 to-blue-700',
+    minCibil: 550,
+    minSalary: 20000,
+    maxLoan: 100000,
+    description: 'Fast personal loan process with minimal documentation.',
+    website: 'https://easyfincare.com',
+    commissionRate: '2.4%',
+    commissionPct: 0.024,
+    paymentStatus: 'Paid'
   }
 ];
 
@@ -49,22 +167,20 @@ export function getPartnerMeta(partnerNameOrId) {
       pillClass: 'bg-slate-500 text-white',
       accentColor: '#64748B',
       accentBg: 'bg-slate-50',
-      gradient: 'from-slate-600 to-slate-700'
+      gradient: 'from-slate-600 to-slate-700',
+      commissionRate: '0%',
+      commissionPct: 0,
+      paymentStatus: 'Pending'
     };
   }
 
   const clean = partnerNameOrId.toString().toLowerCase().replace(/[\s\-_]/g, '');
-  if (clean.includes('rupay91') || clean.includes('rupay')) {
-    return AFFILIATE_PARTNERS[0];
-  }
-  if (clean.includes('jhatpat')) {
-    return AFFILIATE_PARTNERS[1];
-  }
-
   const found = AFFILIATE_PARTNERS.find(p => 
     p.id.toLowerCase() === clean || 
     p.name.toLowerCase().replace(/[\s\-_]/g, '') === clean ||
-    p.code.toLowerCase() === clean
+    p.code.toLowerCase() === clean ||
+    clean.includes(p.id) ||
+    clean.includes(p.name.toLowerCase().replace(/[\s\-_]/g, ''))
   );
 
   if (found) return found;
@@ -78,7 +194,10 @@ export function getPartnerMeta(partnerNameOrId) {
     pillClass: 'bg-purple-600 text-white',
     accentColor: '#7C3AED',
     accentBg: 'bg-purple-50',
-    gradient: 'from-purple-600 to-indigo-700'
+    gradient: 'from-purple-600 to-indigo-700',
+    commissionRate: '2.5%',
+    commissionPct: 0.025,
+    paymentStatus: 'Pending'
   };
 }
 

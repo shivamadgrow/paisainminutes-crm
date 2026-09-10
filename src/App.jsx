@@ -8,6 +8,7 @@ import LeadsView from './components/LeadsView';
 import ApplicationTracker from './components/ApplicationTracker';
 import PipelineView from './components/PipelineView';
 import KPISummary from './components/KPISummary';
+import PartnerAnalyticsKPISummary from './components/PartnerAnalyticsKPISummary';
 import StaffView from './components/StaffView';
 import AuditLogView from './components/AuditLogView';
 import MyProfileView from './components/MyProfileView';
@@ -21,6 +22,7 @@ import {
   setCurrentUserSession, 
   clearCurrentUserSession 
 } from './utils/authService';
+import { AFFILIATE_PARTNERS } from './data/affiliatePartners';
 
 // Initial clean slate leads array
 const INITIAL_LEADS = [];
@@ -146,9 +148,14 @@ export default function App() {
   // Compute partner-wise counts
   const partnerCounts = useMemo(() => {
     const normalize = (name) => (name || '').toLowerCase().replace(/[\s\-_]/g, '');
-    const rupay91 = leads.filter(l => normalize(l.assignedCompany) === 'rupay91').length;
-
-    return { rupay91 };
+    const counts = {};
+    AFFILIATE_PARTNERS.forEach(p => {
+      counts[p.id] = leads.filter(l => {
+        const c = normalize(l.assignedCompany);
+        return c === p.id || c === normalize(p.name) || (c && c.includes(p.id));
+      }).length;
+    });
+    return counts;
   }, [leads]);
 
   // Dashboard Stats calculation
@@ -254,8 +261,9 @@ export default function App() {
 
       case 'kpi':
         return (
-          <KPISummary 
-            stats={stats} 
+          <PartnerAnalyticsKPISummary 
+            leads={leads} 
+            onSelectCompany={(companyId) => setActiveTab(`company-${companyId}`)}
           />
         );
 
@@ -280,6 +288,17 @@ export default function App() {
         );
 
       default:
+        if (activeTab && activeTab.startsWith('company-')) {
+          const companyId = activeTab.replace('company-', '');
+          return (
+            <CompanyLeadsView 
+              companyId={companyId} 
+              leads={leads} 
+              setLeads={setLeads} 
+              onBackToHub={() => setActiveTab('partner-hub')} 
+            />
+          );
+        }
         return (
           <ExecutiveDashboard 
             stats={stats} 

@@ -294,6 +294,82 @@ function crmApiPlugin() {
           return
         }
 
+        // 1.1 GET PARTNER ANALYTICS KPI SUMMARY
+        if (url.endsWith('/api/partner-analytics/kpi-summary')) {
+          const leads = await getOrSyncLeads()
+          const PARTNERS_CONFIG = [
+            { id: 'rupay91', name: 'Rupay91', rateStr: '2.8%', ratePct: 0.028, status: 'Paid' },
+            { id: 'jhatpatloans', name: 'Jhatpat Loans', rateStr: '2.4%', ratePct: 0.024, status: 'Paid' },
+            { id: 'instarupees', name: 'Insta Rupees', rateStr: '2.5%', ratePct: 0.025, status: 'Pending' },
+            { id: 'udhaarnow', name: 'UdhaarNow', rateStr: '2.2%', ratePct: 0.022, status: 'Paid' },
+            { id: 'loanwithin', name: 'LoanWithin', rateStr: '2.6%', ratePct: 0.026, status: 'Pending' },
+            { id: 'shubhcash', name: 'ShubhCash', rateStr: '2.3%', ratePct: 0.023, status: 'Paid' },
+            { id: 'borrowera', name: 'Borrowera', rateStr: '2.7%', ratePct: 0.027, status: 'Pending' },
+            { id: 'easyfincare', name: 'Easy Fincare', rateStr: '2.4%', ratePct: 0.024, status: 'Paid' }
+          ];
+
+          const partnerStats = PARTNERS_CONFIG.map(p => {
+            const pLeads = leads.filter(l => {
+              const c = String(l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
+              return c === p.id || c === p.name.toLowerCase().replace(/[\s\-_]/g, '') || c.includes(p.id);
+            });
+            const leadsSent = pLeads.length;
+            const approvedLeads = pLeads.filter(l => l.status === 'Approved' || l.status === 'Disbursed');
+            const approved = approvedLeads.length;
+            const conversionRate = leadsSent > 0 ? Number(((approved / leadsSent) * 100).toFixed(1)) : 0;
+            const disbursal = approvedLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied || 50000), 0);
+            const commissionEarned = Math.round(disbursal * p.ratePct);
+
+            return {
+              id: p.id,
+              name: p.name,
+              leadsSent,
+              approved,
+              conversionRate,
+              disbursal,
+              commissionEarned,
+              commissionRate: p.rateStr,
+              paymentStatus: p.status
+            };
+          });
+
+          const totalLeadsSent = partnerStats.reduce((s, p) => s + p.leadsSent, 0);
+          const totalApproved = partnerStats.reduce((s, p) => s + p.approved, 0);
+          const totalDisbursal = partnerStats.reduce((s, p) => s + p.disbursal, 0);
+          const totalCommissionEarned = partnerStats.reduce((s, p) => s + p.commissionEarned, 0);
+          const conversionRate = totalLeadsSent > 0 ? Number(((totalApproved / totalLeadsSent) * 100).toFixed(1)) : 0;
+          const avgCommissionPerLead = totalApproved > 0 ? Math.round(totalCommissionEarned / totalApproved) : 0;
+
+          const commissionReceived = partnerStats
+            .filter(p => p.paymentStatus === 'Paid')
+            .reduce((s, p) => s + p.commissionEarned, 0);
+
+          const commissionPending = partnerStats
+            .filter(p => p.paymentStatus !== 'Paid')
+            .reduce((s, p) => s + p.commissionEarned, 0);
+
+          const sortedByEarnings = [...partnerStats].sort((a, b) => b.commissionEarned - a.commissionEarned || b.disbursal - a.disbursal);
+          const topPartner = sortedByEarnings.length > 0 && sortedByEarnings[0].commissionEarned > 0
+            ? { name: sortedByEarnings[0].name, amount: sortedByEarnings[0].commissionEarned }
+            : { name: partnerStats[0]?.name || 'Rupay91', amount: 0 };
+
+          res.statusCode = 200
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({
+            totalLeadsSent,
+            totalApproved,
+            totalDisbursal,
+            totalCommissionEarned,
+            conversionRate,
+            avgCommissionPerLead,
+            commissionReceived,
+            commissionPending,
+            topPartner,
+            partners: partnerStats
+          }))
+          return
+        }
+
         // 2. SUBMIT LEAD (Website Apply Now & Eligibility Check Form)
         if (url.endsWith('/api/submit-lead')) {
           let body = ''

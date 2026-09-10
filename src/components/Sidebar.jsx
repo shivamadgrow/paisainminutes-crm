@@ -147,19 +147,25 @@ export default function Sidebar({
                 </span>
               </button>
 
-              {/* 1. Rupay91 */}
-              <button 
-                onClick={() => handleNavClick('company-rupay91')} 
-                className={getNavItemClass('company-rupay91')}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
-                  <span>Rupay91</span>
-                </div>
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-indigo-50 text-indigo-700">
-                  {partnerCounts.rupay91 ?? 0}
-                </span>
-              </button>
+              {/* Affiliate Partners List */}
+              {AFFILIATE_PARTNERS.map(partner => (
+                <button 
+                  key={partner.id}
+                  onClick={() => handleNavClick(`company-${partner.id}`)} 
+                  className={getNavItemClass(`company-${partner.id}`)}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span 
+                      className="w-2 h-2 rounded-full shrink-0" 
+                      style={{ backgroundColor: partner.accentColor || '#4F46E5' }}
+                    ></span>
+                    <span className="truncate">{partner.name}</span>
+                  </div>
+                  <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-700">
+                    {partnerCounts[partner.id] ?? 0}
+                  </span>
+                </button>
+              ))}
             </div>
           )}
         </div>
