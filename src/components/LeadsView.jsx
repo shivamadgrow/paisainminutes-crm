@@ -221,7 +221,7 @@ export default function LeadsView({
     }
   };
 
-  const getLeadId = (item, idx) => item.id || item.loanNo || `lead-${idx}`;
+  const getLeadId = (item, idx) => String(item?.id || item?.loanNo || item?.lead_id || `lead-${idx}`).trim();
 
   // Filter Leads based on Search, Status, Partner Company & My Leads
   const filteredLeads = useMemo(() => {
@@ -334,7 +334,9 @@ export default function LeadsView({
   };
 
   const handleSelectAll = (e) => {
-    if (e.target.checked) {
+    if (e && e.stopPropagation) e.stopPropagation();
+    const shouldSelect = typeof e?.target?.checked === 'boolean' ? e.target.checked : !isAllSelected;
+    if (shouldSelect) {
       const allIds = filteredLeads.map((item, idx) => getLeadId(item, idx));
       setSelectedLeadIds(allIds);
     } else {
@@ -342,11 +344,13 @@ export default function LeadsView({
     }
   };
 
-  const handleSelectOne = (itemId) => {
+  const handleSelectRow = (itemId) => {
+    const targetId = String(itemId).trim();
     setSelectedLeadIds(prev => 
-      prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
+      prev.includes(targetId) ? prev.filter(id => id !== targetId) : [...prev, targetId]
     );
   };
+  const handleSelectOne = handleSelectRow;
 
   // API Call helper for Deleting
   const callDeleteApi = async (bodyPayload, onSuccess) => {
@@ -920,13 +924,23 @@ export default function LeadsView({
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="bg-slate-50/90 text-slate-600 font-black tracking-wider text-[11px] uppercase border-b border-slate-200/90 sticky top-0 z-20 backdrop-blur-md">
-              <th className="py-4 px-4 w-10">
-                <input 
-                  type="checkbox" 
-                  checked={isAllSelected}
-                  onChange={handleSelectAll}
-                  className="rounded-lg border-slate-300 text-[#0A3977] focus:ring-[#0A3977] cursor-pointer w-4 h-4" 
-                />
+              <th 
+                className="py-4 px-4 w-12 cursor-pointer hover:bg-slate-100/80 transition-colors select-none"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSelectAll();
+                }}
+                title={isAllSelected ? "Deselect All" : "Select All Leads"}
+              >
+                <div className="flex items-center justify-center pointer-events-none">
+                  <input 
+                    type="checkbox" 
+                    checked={Boolean(isAllSelected)}
+                    readOnly
+                    tabIndex={-1}
+                    className="rounded-md border-slate-300 text-[#0A3977] focus:ring-[#0A3977] cursor-pointer w-4 h-4 transition" 
+                  />
+                </div>
               </th>
               <th className="py-4 px-4 min-w-[260px]">APPLICANT DETAILS</th>
               <th className="py-4 px-4 min-w-[190px]">ASSIGNED PARTNER</th>
@@ -959,14 +973,24 @@ export default function LeadsView({
                     }`}
                   >
                     
-                    {/* Checkbox */}
-                    <td className="py-4 px-4">
-                      <input 
-                        type="checkbox" 
-                        checked={isSelected}
-                        onChange={() => handleSelectRow(itemId)}
-                        className="rounded-lg border-slate-300 text-[#0A3977] focus:ring-[#0A3977] cursor-pointer w-4 h-4" 
-                      />
+                    {/* Checkbox (Full Cell Clickable) */}
+                    <td 
+                      className="py-4 px-4 cursor-pointer hover:bg-slate-100/50 transition-colors select-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectRow(itemId);
+                      }}
+                      title={isSelected ? "Deselect row" : "Select row"}
+                    >
+                      <div className="flex items-center justify-center pointer-events-none">
+                        <input 
+                          type="checkbox" 
+                          checked={Boolean(isSelected)}
+                          readOnly
+                          tabIndex={-1}
+                          className="rounded-md border-slate-300 text-[#0A3977] focus:ring-[#0A3977] cursor-pointer w-4 h-4 transition" 
+                        />
+                      </div>
                     </td>
 
                     {/* APPLICANT DETAILS (Clickable Overview Trigger) */}
