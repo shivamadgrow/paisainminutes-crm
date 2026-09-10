@@ -309,6 +309,7 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
       totalLeads,
       freshCount,
       totalApproved,
+      appliedVolume: totalVolume,
       totalVolume,
       totalCommissionEarned,
       leadsOverTime,
@@ -323,19 +324,19 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
   }, [leads, periodStart, periodEnd, priorStart, priorEnd, getLeadDate]);
 
   // Use API data if available, with computed metrics as dependable real-time source
-  const totalLeads = apiData?.totalLeads ?? computedMetrics.totalLeads;
-  const totalApproved = apiData?.totalApproved ?? computedMetrics.totalApproved;
-  const appliedVolume = apiData?.appliedVolume ?? computedMetrics.appliedVolume;
-  const totalCommissionEarned = apiData?.totalCommissionEarned ?? computedMetrics.totalCommissionEarned;
-  const partnerBreakdown = apiData?.partners ?? computedMetrics.partnerBreakdown;
-  const leadsOverTime = (apiData?.leadsOverTime && apiData.leadsOverTime.length > 0) ? apiData.leadsOverTime : computedMetrics.leadsOverTime;
-  const recentActivity = (apiData?.recentActivity && apiData.recentActivity.length > 0) ? apiData.recentActivity : computedMetrics.recentActivity;
+  const totalLeads = (apiData?.totalLeads ?? computedMetrics?.totalLeads) || 0;
+  const totalApproved = (apiData?.totalApproved ?? computedMetrics?.totalApproved) || 0;
+  const appliedVolume = (apiData?.appliedVolume ?? computedMetrics?.appliedVolume) || 0;
+  const totalCommissionEarned = (apiData?.totalCommissionEarned ?? computedMetrics?.totalCommissionEarned) || 0;
+  const partnerBreakdown = apiData?.partners ?? computedMetrics?.partnerBreakdown ?? [];
+  const leadsOverTime = (apiData?.leadsOverTime && apiData.leadsOverTime.length > 0) ? apiData.leadsOverTime : (computedMetrics?.leadsOverTime || []);
+  const recentActivity = (apiData?.recentActivity && apiData.recentActivity.length > 0) ? apiData.recentActivity : (computedMetrics?.recentActivity || []);
 
   const trends = {
-    totalLeads: apiData?.totalLeadsTrend ?? computedMetrics.trends.totalLeads,
-    totalApproved: apiData?.totalApprovedTrend ?? computedMetrics.trends.totalApproved,
-    appliedVolume: apiData?.appliedVolumeTrend ?? computedMetrics.trends.appliedVolume,
-    totalCommissionEarned: apiData?.totalCommissionTrend ?? computedMetrics.trends.totalCommissionEarned
+    totalLeads: apiData?.totalLeadsTrend ?? computedMetrics?.trends?.totalLeads ?? null,
+    totalApproved: apiData?.totalApprovedTrend ?? computedMetrics?.trends?.totalApproved ?? null,
+    appliedVolume: apiData?.appliedVolumeTrend ?? computedMetrics?.trends?.appliedVolume ?? null,
+    totalCommissionEarned: apiData?.totalCommissionTrend ?? computedMetrics?.trends?.totalCommissionEarned ?? null
   };
 
   // Bar and Pie chart data
