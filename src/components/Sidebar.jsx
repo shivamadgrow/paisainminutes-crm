@@ -1,49 +1,83 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import paisaLogo from '../assets/paisa-logo.png';
 import { 
   LayoutDashboard, 
-  TrendingUp, 
   BarChart3, 
+  Building2, 
+  Layers, 
+  UserPlus, 
+  FileText, 
+  DollarSign, 
+  Send, 
+  CheckCircle2, 
+  Receipt, 
+  Sliders, 
   Users, 
+  Smartphone, 
+  Sparkles, 
   GitMerge, 
   Compass, 
-  Sparkles, 
   PhoneCall, 
   Heart, 
   FileCheck, 
-  CheckCircle2, 
   XCircle, 
+  AlertCircle, 
+  ShieldCheck, 
+  Activity, 
+  Link as LinkIcon, 
+  Bell, 
+  Settings, 
   ChevronDown,
-  Building2,
-  Layers,
-  ShieldCheck,
-  Zap
+  FileSpreadsheet
 } from 'lucide-react';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
+
+const STORAGE_KEY = 'paisa_crm_sidebar_sections';
 
 export default function Sidebar({ 
   activeTab, 
   setActiveTab, 
-  leadCounts, 
+  leadCounts = {}, 
   partnerCounts = {}, 
+  commissionCounts = {},
+  onOpenOnboarding,
   isMobileOpen, 
   setIsMobileOpen 
 }) {
-  const [collapsedSections, setCollapsedSections] = useState({
-    dashboards: false,
-    partners: false,
-    leads: false,
-    administration: false
+  const [collapsedSections, setCollapsedSections] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      dashboards: false,
+      partners: false,
+      commissions: false,
+      leads: false,
+      administration: false,
+      reports: false
+    };
   });
 
   const toggleSection = (key) => {
-    setCollapsedSections(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    setCollapsedSections(prev => {
+      const updated = {
+        ...prev,
+        [key]: !prev[key]
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
   };
 
   const handleNavClick = (tabId) => {
+    if (tabId === 'partner-onboarding' && onOpenOnboarding) {
+      onOpenOnboarding();
+      if (setIsMobileOpen) setIsMobileOpen(false);
+      return;
+    }
     setActiveTab(tabId);
     if (setIsMobileOpen) setIsMobileOpen(false);
   };
@@ -115,7 +149,7 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* 2. Section: AFFILIATE PARTNERS (Company Sections) */}
+        {/* 2. Section: AFFILIATE PARTNERS */}
         <div>
           <button
             type="button"
@@ -147,7 +181,7 @@ export default function Sidebar({
                 </span>
               </button>
 
-              {/* Affiliate Partners List */}
+              {/* All 8 Affiliate Partners */}
               {AFFILIATE_PARTNERS.map(partner => (
                 <button 
                   key={partner.id}
@@ -166,11 +200,98 @@ export default function Sidebar({
                   </span>
                 </button>
               ))}
+
+              {/* [NEW] Add New Partner */}
+              <button 
+                onClick={() => handleNavClick('partner-onboarding')} 
+                className={getNavItemClass('partner-onboarding')}
+              >
+                <div className="flex items-center gap-2.5 text-indigo-700 font-semibold">
+                  <UserPlus className="w-4 h-4 text-indigo-600" />
+                  <span>Add New Partner</span>
+                </div>
+              </button>
+
+              {/* [NEW] Partner Agreements */}
+              <button 
+                onClick={() => handleNavClick('partner-agreements')} 
+                className={getNavItemClass('partner-agreements')}
+              >
+                <div className="flex items-center gap-2.5">
+                  <FileText className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
+                  <span>Partner Agreements</span>
+                </div>
+              </button>
             </div>
           )}
         </div>
 
-        {/* 3. Section: LEAD MANAGEMENT */}
+        {/* 3. Section: COMMISSIONS & PAYOUTS (NEW SECTION) */}
+        <div>
+          <button
+            type="button"
+            onClick={() => toggleSection('commissions')}
+            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-slate-100/80 transition text-[11px] font-extrabold tracking-wider text-emerald-950 uppercase cursor-pointer"
+          >
+            <span className="flex items-center gap-1.5 text-emerald-900">
+              <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+              <span>COMMISSIONS & PAYOUTS</span>
+            </span>
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
+              collapsedSections.commissions ? '-rotate-90' : 'rotate-0'
+            }`} />
+          </button>
+          
+          {!collapsedSections.commissions && (
+            <div className="space-y-0.5 mt-1 animate-fade-in">
+              <button onClick={() => handleNavClick('commission-summary')} className={getNavItemClass('commission-summary')}>
+                <div className="flex items-center gap-2.5">
+                  <DollarSign className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
+                  <span>Commission Summary</span>
+                </div>
+              </button>
+
+              <button onClick={() => handleNavClick('payout-requests')} className={getNavItemClass('payout-requests')}>
+                <div className="flex items-center gap-2.5">
+                  <Send className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+                  <span>Payout Requests</span>
+                </div>
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 text-amber-700">
+                  {commissionCounts?.payoutRequests ?? 3}
+                </span>
+              </button>
+
+              <button onClick={() => handleNavClick('settlements')} className={getNavItemClass('settlements')}>
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
+                  <span>Settlements</span>
+                </div>
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700">
+                  {commissionCounts?.settlements ?? 5}
+                </span>
+              </button>
+
+              <button onClick={() => handleNavClick('invoices-raised')} className={getNavItemClass('invoices-raised')}>
+                <div className="flex items-center gap-2.5">
+                  <Receipt className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
+                  <span>Invoices Raised</span>
+                </div>
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-indigo-50 text-indigo-700">
+                  {commissionCounts?.invoices ?? 5}
+                </span>
+              </button>
+
+              <button onClick={() => handleNavClick('rate-cards')} className={getNavItemClass('rate-cards')}>
+                <div className="flex items-center gap-2.5">
+                  <Sliders className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
+                  <span>Commission Rate Cards</span>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 4. Section: LEAD MANAGEMENT */}
         <div>
           <button
             type="button"
@@ -185,6 +306,7 @@ export default function Sidebar({
           
           {!collapsedSections.leads && (
             <div className="space-y-0.5 mt-1 animate-fade-in">
+              {/* All Leads */}
               <button onClick={() => handleNavClick('all-leads')} className={getNavItemClass('all-leads')}>
                 <div className="flex items-center gap-2.5">
                   <Users className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
@@ -195,6 +317,18 @@ export default function Sidebar({
                 </span>
               </button>
 
+              {/* [NEW] Mobile-only Leads */}
+              <button onClick={() => handleNavClick('mobile-only')} className={getNavItemClass('mobile-only')}>
+                <div className="flex items-center gap-2.5">
+                  <Smartphone className="w-4 h-4 text-slate-400 group-hover:text-blue-600" />
+                  <span>Mobile-only Leads</span>
+                </div>
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 text-blue-700">
+                  {leadCounts?.mobileOnly ?? 0}
+                </span>
+              </button>
+
+              {/* Fresh Applications */}
               <button onClick={() => handleNavClick('fresh')} className={getNavItemClass('fresh')}>
                 <div className="flex items-center gap-2.5">
                   <Sparkles className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
@@ -205,6 +339,7 @@ export default function Sidebar({
                 </span>
               </button>
 
+              {/* Pipeline Flow */}
               <button onClick={() => handleNavClick('pipeline')} className={getNavItemClass('pipeline')}>
                 <div className="flex items-center gap-2.5">
                   <GitMerge className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
@@ -212,6 +347,7 @@ export default function Sidebar({
                 </div>
               </button>
 
+              {/* Application Tracker */}
               <button onClick={() => handleNavClick('tracker')} className={getNavItemClass('tracker')}>
                 <div className="flex items-center gap-2.5">
                   <Compass className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
@@ -219,6 +355,7 @@ export default function Sidebar({
                 </div>
               </button>
 
+              {/* Callback */}
               <button onClick={() => handleNavClick('callback')} className={getNavItemClass('callback')}>
                 <div className="flex items-center gap-2.5">
                   <PhoneCall className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
@@ -229,13 +366,18 @@ export default function Sidebar({
                 </span>
               </button>
 
+              {/* Interested */}
               <button onClick={() => handleNavClick('interested')} className={getNavItemClass('interested')}>
                 <div className="flex items-center gap-2.5">
                   <Heart className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
                   <span>Interested</span>
                 </div>
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-purple-50 text-purple-700">
+                  {leadCounts?.interested ?? 0}
+                </span>
               </button>
 
+              {/* Docs Received */}
               <button onClick={() => handleNavClick('docs-received')} className={getNavItemClass('docs-received')}>
                 <div className="flex items-center gap-2.5">
                   <FileCheck className="w-4 h-4 text-slate-400 group-hover:text-slate-[#0A3977]" />
@@ -246,6 +388,7 @@ export default function Sidebar({
                 </span>
               </button>
 
+              {/* Approved & Converted */}
               <button onClick={() => handleNavClick('approved')} className={getNavItemClass('approved')}>
                 <div className="flex items-center gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
@@ -256,17 +399,32 @@ export default function Sidebar({
                 </span>
               </button>
 
+              {/* Rejected / Drop-off */}
               <button onClick={() => handleNavClick('rejected')} className={getNavItemClass('rejected')}>
                 <div className="flex items-center gap-2.5">
                   <XCircle className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
                   <span>Rejected / Drop-off</span>
                 </div>
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-rose-50 text-rose-700">
+                  {leadCounts?.rejected ?? 0}
+                </span>
+              </button>
+
+              {/* [NEW] Duplicate Leads */}
+              <button onClick={() => handleNavClick('duplicate-leads')} className={getNavItemClass('duplicate-leads')}>
+                <div className="flex items-center gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-slate-400 group-hover:text-amber-600" />
+                  <span>Duplicate Leads</span>
+                </div>
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 text-amber-800">
+                  {leadCounts?.duplicateLeads ?? 0}
+                </span>
               </button>
             </div>
           )}
         </div>
 
-        {/* 4. Section: ADMINISTRATION */}
+        {/* 5. Section: ADMINISTRATION */}
         <div>
           <button
             type="button"
@@ -285,6 +443,74 @@ export default function Sidebar({
                 <div className="flex items-center gap-2.5">
                   <Users className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
                   <span>Staff & Telecallers</span>
+                </div>
+              </button>
+
+              {/* [NEW] Roles & Permissions */}
+              <button onClick={() => handleNavClick('admin-roles')} className={getNavItemClass('admin-roles')}>
+                <div className="flex items-center gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+                  <span>Roles & Permissions</span>
+                </div>
+              </button>
+
+              {/* [NEW] Activity Log */}
+              <button onClick={() => handleNavClick('admin-audit')} className={getNavItemClass('admin-audit')}>
+                <div className="flex items-center gap-2.5">
+                  <Activity className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+                  <span>Activity Log</span>
+                </div>
+              </button>
+
+              {/* [NEW] Integration Settings */}
+              <button onClick={() => handleNavClick('admin-integrations')} className={getNavItemClass('admin-integrations')}>
+                <div className="flex items-center gap-2.5">
+                  <LinkIcon className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+                  <span>Integration Settings</span>
+                </div>
+              </button>
+
+              {/* [NEW] Notification Settings */}
+              <button onClick={() => handleNavClick('admin-notifications')} className={getNavItemClass('admin-notifications')}>
+                <div className="flex items-center gap-2.5">
+                  <Bell className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+                  <span>Notification Settings</span>
+                </div>
+              </button>
+
+              {/* [NEW] General Settings */}
+              <button onClick={() => handleNavClick('admin-settings')} className={getNavItemClass('admin-settings')}>
+                <div className="flex items-center gap-2.5">
+                  <Settings className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+                  <span>General Settings</span>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 6. Section: REPORTS (NEW SECTION AT BOTTOM) */}
+        <div>
+          <button
+            type="button"
+            onClick={() => toggleSection('reports')}
+            className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg hover:bg-slate-100/80 transition text-[11px] font-extrabold tracking-wider text-indigo-950 uppercase cursor-pointer"
+          >
+            <span className="flex items-center gap-1.5 text-indigo-900">
+              <FileSpreadsheet className="w-3.5 h-3.5 text-indigo-600" />
+              <span>REPORTS</span>
+            </span>
+            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
+              collapsedSections.reports ? '-rotate-90' : 'rotate-0'
+            }`} />
+          </button>
+          
+          {!collapsedSections.reports && (
+            <div className="space-y-0.5 mt-1 animate-fade-in">
+              <button onClick={() => handleNavClick('reports')} className={getNavItemClass('reports')}>
+                <div className="flex items-center gap-2.5">
+                  <FileSpreadsheet className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
+                  <span>Custom Reports</span>
                 </div>
               </button>
             </div>

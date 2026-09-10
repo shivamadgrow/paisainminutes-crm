@@ -52,6 +52,8 @@ const mapTabToFilterName = (tab) => {
   if (clean === 'no answer') return 'No Answer';
   if (clean === 'not interested') return 'Not Interested';
   if (clean === 'rupay91') return 'Rupay91';
+  if (clean === 'mobile only') return 'Mobile-only';
+  if (clean === 'duplicate leads' || clean === 'duplicates') return 'Duplicate Leads';
   return tab;
 };
 
@@ -281,6 +283,25 @@ export default function LeadsView({
 
   const getLeadId = (item, idx) => String(item?.id || item?.loanNo || item?.lead_id || `lead-${idx}`).trim();
 
+  // Multi-lead duplicate occurrence detection maps
+  const phoneCounts = useMemo(() => {
+    const counts = {};
+    leads.forEach(l => {
+      const p = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
+      if (p.length === 10) counts[p] = (counts[p] || 0) + 1;
+    });
+    return counts;
+  }, [leads]);
+
+  const panCounts = useMemo(() => {
+    const counts = {};
+    leads.forEach(l => {
+      const pan = String(l.pan || '').trim().toUpperCase();
+      if (pan && pan !== '—' && pan.length >= 10) counts[pan] = (counts[pan] || 0) + 1;
+    });
+    return counts;
+  }, [leads]);
+
   // Filter Leads based on Search, Status, Partner Company & My Leads
   const filteredLeads = useMemo(() => {
     return leads.filter((item, idx) => {
@@ -330,6 +351,16 @@ export default function LeadsView({
           return false;
         } else if (filterKey === 'rejected' && itemStatus !== 'rejected') {
           return false;
+        } else if (filterKey === 'mobile only') {
+          const isMobile = item.isPhoneOnly || 
+            (item.eligibilityStatus && item.eligibilityStatus.includes('Phone Only')) ||
+            ((!item.name || item.name === 'Applicant') && (!item.loanAmount || Number(item.loanAmount) === 0));
+          if (!isMobile) return false;
+        } else if (filterKey === 'duplicate leads') {
+          const phone = String(item.phone || item.mobile || '').replace(/\D/g, '').slice(-10);
+          const pan = String(item.pan || '').trim().toUpperCase();
+          const isDup = (phone && phoneCounts[phone] > 1) || (pan && pan !== '—' && panCounts[pan] > 1);
+          if (!isDup) return false;
         }
       }
 
@@ -343,7 +374,7 @@ export default function LeadsView({
 
       return true;
     });
-  }, [leads, searchQuery, selectedPartnerFilter, activeFilter, isMyLeadsOnly, currentUser]);
+  }, [leads, searchQuery, selectedPartnerFilter, activeFilter, isMyLeadsOnly, currentUser, phoneCounts, panCounts]);
 
   const handleExportExcel = () => {
     if (!filteredLeads || filteredLeads.length === 0) {
@@ -873,12 +904,26 @@ export default function LeadsView({
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
               { id: 'All Leads', label: 'All Status', count: leads.length },
+              { 
+                id: 'Mobile-only', 
+                label: 'Mobile-only', 
+                count: leads.filter(l => l.isPhoneOnly || (l.eligibilityStatus && l.eligibilityStatus.includes('Phone Only')) || ((!l.name || l.name === 'Applicant') && (!l.loanAmount || Number(l.loanAmount) === 0))).length 
+              },
               { id: 'Fresh', label: 'Fresh', count: leads.filter(l => (l.status || 'Fresh') === 'Fresh').length },
               { id: 'Callback', label: 'Callback', count: leads.filter(l => l.status === 'Callback').length },
               { id: 'Interested', label: 'Interested', count: leads.filter(l => l.status === 'Interested').length },
               { id: 'Docs Received', label: 'Docs Received', count: leads.filter(l => l.status === 'Docs received' || l.status === 'Docs Received').length },
               { id: 'Approved', label: 'Approved', count: leads.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length },
               { id: 'Rejected', label: 'Rejected', count: leads.filter(l => l.status === 'Rejected').length },
+              { 
+                id: 'Duplicate Leads', 
+                label: 'Duplicate Leads', 
+                count: leads.filter(l => {
+                  const phone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
+                  const pan = String(l.pan || '').trim().toUpperCase();
+                  return (phone && phoneCounts[phone] > 1) || (pan && pan !== '—' && panCounts[pan] > 1);
+                }).length 
+              },
             ].map(tab => {
               const isSelected = activeFilter.toLowerCase().replace(/\s+/g, ' ') === tab.id.toLowerCase().replace(/\s+/g, ' ');
               return (
@@ -978,8 +1023,38 @@ export default function LeadsView({
             <span>Showing <strong className="text-slate-900 font-extrabold">{filteredLeads.length}</strong> of {leads.length} leads</span>
           </div>
         </div>
-
       </div>
+
+      {/* Contextual Queue Banners for Mobile-only and Duplicate Leads */}
+      {activeFilter === 'Mobile-only' && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-900 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <Smartphone className="w-5 h-5 text-blue-600 shrink-0" />
+            <div>
+              <div className="text-xs font-bold text-blue-950">Mobile-only Abandoned Incomplete Leads</div>
+              <div className="text-[11px] text-blue-700">These applicants submitted their mobile number on the website mini-form but dropped off before entering PAN, salary, or loan amount. Follow up to complete the application.</div>
+            </div>
+          </div>
+          <span className="px-3 py-1 bg-white text-blue-700 border border-blue-200 rounded-xl text-xs font-bold shrink-0">
+            {filteredLeads.length} Incomplete Leads
+          </span>
+        </div>
+      )}
+
+      {activeFilter === 'Duplicate Leads' && (
+        <div className="bg-gradient-to-r from-amber-50 to-rose-50 border border-amber-200 text-amber-900 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+            <div>
+              <div className="text-xs font-bold text-amber-950">Duplicate Records Flagged</div>
+              <div className="text-[11px] text-amber-800">These leads share an identical mobile number or PAN with existing records in the database. Verify before re-dispatching to another lending partner.</div>
+            </div>
+          </div>
+          <span className="px-3 py-1 bg-white text-amber-800 border border-amber-200 rounded-xl text-xs font-bold shrink-0">
+            {filteredLeads.length} Matches Flagged
+          </span>
+        </div>
+      )}
 
       {/* Floating Luxury SaaS Data Grid */}
       <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-200/90 overflow-x-auto">

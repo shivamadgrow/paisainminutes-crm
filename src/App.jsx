@@ -13,6 +13,21 @@ import StaffView from './components/StaffView';
 import AuditLogView from './components/AuditLogView';
 import MyProfileView from './components/MyProfileView';
 import LoginModal from './components/LoginModal';
+
+// New Affiliate CRM Components
+import PartnerOnboardingModal from './components/PartnerOnboardingModal';
+import PartnerAgreementsView from './components/PartnerAgreementsView';
+import CommissionSummaryView from './components/CommissionSummaryView';
+import PayoutRequestsView from './components/PayoutRequestsView';
+import SettlementsView from './components/SettlementsView';
+import InvoicesRaisedView from './components/InvoicesRaisedView';
+import CommissionRateCardsView from './components/CommissionRateCardsView';
+import RolesPermissionsView from './components/RolesPermissionsView';
+import IntegrationSettingsView from './components/IntegrationSettingsView';
+import NotificationsView from './components/NotificationsView';
+import GeneralSettingsView from './components/GeneralSettingsView';
+import ReportsView from './components/ReportsView';
+
 import { isOffHours, isUserExempt, logSecurityIncident } from './utils/shiftSecurity';
 import { getLiveSecurityDetails } from './utils/geoService';
 import { sanitizeLead } from './utils/amountHelpers';
@@ -45,6 +60,7 @@ export default function App() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [leads, setLeads] = useState(INITIAL_LEADS);
 
   // Authenticated user session (null when locked/logged out)
@@ -131,19 +147,53 @@ export default function App() {
   const leadCounts = useMemo(() => {
     const fresh = leads.filter(l => l.status === 'Fresh').length;
     const callback = leads.filter(l => l.status === 'Callback').length;
-    const docsReceived = leads.filter(l => l.status === 'Docs received').length;
+    const interested = leads.filter(l => l.status === 'Interested').length;
+    const docsReceived = leads.filter(l => l.status === 'Docs received' || l.status === 'Docs Received').length;
     const approved = leads.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length;
     const rejected = leads.filter(l => l.status === 'Rejected').length;
 
+    // Mobile-only mini-form dropoffs
+    const mobileOnly = leads.filter(l => 
+      l.isPhoneOnly || 
+      (l.eligibilityStatus && l.eligibilityStatus.includes('Phone Only')) || 
+      ((!l.name || l.name === 'Applicant') && (!l.loanAmount || Number(l.loanAmount) === 0))
+    ).length;
+
+    // Duplicate leads count based on phone or PAN
+    const phoneCounts = {};
+    const panCounts = {};
+    leads.forEach(l => {
+      const p = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
+      if (p.length === 10) phoneCounts[p] = (phoneCounts[p] || 0) + 1;
+      const pan = String(l.pan || '').trim().toUpperCase();
+      if (pan && pan !== '—' && pan.length >= 10) panCounts[pan] = (panCounts[pan] || 0) + 1;
+    });
+
+    const duplicateLeads = leads.filter(l => {
+      const p = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
+      const pan = String(l.pan || '').trim().toUpperCase();
+      return (p && phoneCounts[p] > 1) || (pan && pan !== '—' && panCounts[pan] > 1);
+    }).length;
+
     return {
       total: leads.length,
+      mobileOnly,
       fresh,
       callback,
+      interested,
       docsReceived,
       approved,
-      rejected
+      rejected,
+      duplicateLeads
     };
   }, [leads]);
+
+  // Counts for commissions & payouts
+  const commissionCounts = useMemo(() => ({
+    payoutRequests: 3,
+    settlements: 5,
+    invoices: 5
+  }), []);
 
   // Compute partner-wise counts
   const partnerCounts = useMemo(() => {
@@ -225,6 +275,47 @@ export default function App() {
           />
         );
 
+      // Affiliate Partners new routes
+      case 'partner-agreements':
+        return (
+          <PartnerAgreementsView onOpenOnboarding={() => setIsOnboardingOpen(true)} />
+        );
+
+      case 'partner-onboarding':
+        return (
+          <PartnerAgreementsView onOpenOnboarding={() => setIsOnboardingOpen(true)} />
+        );
+
+      // Commissions & Payouts routes
+      case 'commission-summary':
+        return (
+          <CommissionSummaryView 
+            leads={leads} 
+            onSelectCompany={(companyId) => setActiveTab(`company-${companyId}`)} 
+          />
+        );
+
+      case 'payout-requests':
+        return (
+          <PayoutRequestsView />
+        );
+
+      case 'settlements':
+        return (
+          <SettlementsView />
+        );
+
+      case 'invoices-raised':
+        return (
+          <InvoicesRaisedView />
+        );
+
+      case 'rate-cards':
+        return (
+          <CommissionRateCardsView />
+        );
+
+      // Lead Management routes (including mobile-only and duplicate-leads)
       case 'all-leads':
       case 'fresh':
       case 'callback':
@@ -235,6 +326,8 @@ export default function App() {
       case 'approved':
       case 'rejected':
       case 'rupay91':
+      case 'mobile-only':
+      case 'duplicate-leads':
         return (
           <LeadsView 
             leads={leads} 
@@ -275,9 +368,34 @@ export default function App() {
           />
         );
 
+      case 'admin-roles':
+        return (
+          <RolesPermissionsView />
+        );
+
       case 'admin-audit':
         return (
           <AuditLogView />
+        );
+
+      case 'admin-integrations':
+        return (
+          <IntegrationSettingsView />
+        );
+
+      case 'admin-notifications':
+        return (
+          <NotificationsView />
+        );
+
+      case 'admin-settings':
+        return (
+          <GeneralSettingsView />
+        );
+
+      case 'reports':
+        return (
+          <ReportsView leads={leads} />
         );
 
       case 'profile':
@@ -332,6 +450,8 @@ export default function App() {
         setActiveTab={setActiveTab} 
         leadCounts={leadCounts} 
         partnerCounts={partnerCounts}
+        commissionCounts={commissionCounts}
+        onOpenOnboarding={() => setIsOnboardingOpen(true)}
         isMobileOpen={isMobileOpen} 
         setIsMobileOpen={setIsMobileOpen} 
       />
@@ -370,6 +490,16 @@ export default function App() {
         onClose={() => setIsLoginModalOpen(false)} 
         onLogin={handleLoginSuccess}
         currentUser={currentUser}
+      />
+
+      {/* Onboard Partner Modal */}
+      <PartnerOnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        onAddPartner={(newPartner) => {
+          AFFILIATE_PARTNERS.push(newPartner);
+          setActiveTab(`company-${newPartner.id}`);
+        }}
       />
 
     </div>

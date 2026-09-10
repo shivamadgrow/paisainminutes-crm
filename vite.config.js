@@ -585,6 +585,54 @@ function crmApiPlugin() {
           return
         }
 
+        // 8. GET/POST /api/rate-cards
+        if (req.url && req.url.startsWith('/api/rate-cards')) {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, message: 'Rate cards API operational' }));
+          return;
+        }
+
+        // 9. GET/POST /api/payout-requests
+        if (req.url && req.url.startsWith('/api/payout-requests')) {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, message: 'Payout requests API operational' }));
+          return;
+        }
+
+        // 10. GET/POST /api/settlements
+        if (req.url && req.url.startsWith('/api/settlements')) {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, message: 'Settlements API operational' }));
+          return;
+        }
+
+        // 11. GET/POST /api/invoices
+        if (req.url && req.url.startsWith('/api/invoices')) {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, message: 'Invoices API operational' }));
+          return;
+        }
+
+        // 12. GET/POST /api/activity-log
+        if (req.url && req.url.startsWith('/api/activity-log')) {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, message: 'Activity log API operational' }));
+          return;
+        }
+
+        // 13. GET/POST /api/integrations
+        if (req.url && req.url.startsWith('/api/integrations')) {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, message: 'Integrations API operational' }));
+          return;
+        }
+
         next()
       })
     }
