@@ -265,7 +265,10 @@ export default function StaffView({ onSwitchUser, currentUser }) {
     e.preventDefault();
     if (!editingUser) return;
 
-    const isSuper = isSuperAdmin(editingUser);
+    const isSuper = isSuperAdmin(editingUser) || 
+      String(editingUser?.name || '').toLowerCase().includes('super admin') ||
+      String(editingUser?.email || '').toLowerCase() === 'info@adgrowmedia.com' ||
+      String(editingUser?.role || '').toLowerCase() === 'super admin';
     const finalRoles = isSuper && !editRoles.includes('Super Admin') ? ['Super Admin', ...editRoles] : editRoles;
     const primaryRole = isSuper ? 'Super Admin' : (finalRoles[0] || 'Admin');
     const finalStatus = isSuper ? 'Active' : (editStatus === 'Inactive' ? 'Disabled' : 'Active');
@@ -293,7 +296,12 @@ export default function StaffView({ onSwitchUser, currentUser }) {
 
   // Toggle Disable / Enable
   const handleToggleDisable = (user) => {
-    if (isSuperAdmin(user)) {
+    const isSuper = isSuperAdmin(user) || 
+      String(user?.name || '').toLowerCase().includes('super admin') ||
+      String(user?.email || '').toLowerCase() === 'info@adgrowmedia.com' ||
+      String(user?.username || '').toLowerCase() === 'info@adgrowmedia.com' ||
+      String(user?.role || '').toLowerCase() === 'super admin';
+    if (isSuper) {
       showToast(`🛡️ Super Admin cannot be disabled! This account is permanently active.`);
       return;
     }
@@ -327,7 +335,12 @@ export default function StaffView({ onSwitchUser, currentUser }) {
   };
 
   const handleDeleteUser = (userToDelete) => {
-    if (isSuperAdmin(userToDelete)) {
+    const isSuper = isSuperAdmin(userToDelete) || 
+      String(userToDelete?.name || '').toLowerCase().includes('super admin') ||
+      String(userToDelete?.email || '').toLowerCase() === 'info@adgrowmedia.com' ||
+      String(userToDelete?.username || '').toLowerCase() === 'info@adgrowmedia.com' ||
+      String(userToDelete?.role || '').toLowerCase() === 'super admin';
+    if (isSuper) {
       showToast(`🛡️ Super Admin cannot be deleted! This master account is protected.`);
       return;
     }
@@ -466,7 +479,14 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {filteredStaff.map((user) => {
                     const isLogged = currentUser?.name === user.name || currentUser?.username === user.username;
-                    const isDisabled = user.status === 'Disabled' || user.status === 'Inactive';
+                    const isSuper = isSuperAdmin(user) || 
+                      String(user?.name || '').toLowerCase().includes('super admin') ||
+                      String(user?.email || '').toLowerCase() === 'info@adgrowmedia.com' ||
+                      String(user?.username || '').toLowerCase() === 'info@adgrowmedia.com' ||
+                      String(user?.role || '').toLowerCase() === 'super admin' ||
+                      (Array.isArray(user?.roles) && user.roles.some(r => String(r).toLowerCase() === 'super admin')) ||
+                      String(user?.id) === '1';
+                    const isDisabled = !isSuper && (user.status === 'Disabled' || user.status === 'Inactive');
                     return (
                       <tr key={user.id} className={`hover:bg-slate-50/80 transition ${isLogged ? 'bg-blue-50/40' : ''}`}>
                         
@@ -553,8 +573,8 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                               Reset
                             </button>
 
-                            {/* Disable / Enable & Delete (PROTECTED FOR SUPER ADMIN) */}
-                            {isSuperAdmin(user) ? (
+                            {/* Disable / Enable & Delete (PROTECTED / REMOVED FOR SUPER ADMIN) */}
+                            {isSuper ? (
                               <span 
                                 className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-slate-400 bg-slate-100/90 border border-slate-200/90 rounded-lg select-none"
                                 title="Super Admin is permanently active and cannot be deleted or disabled"
@@ -998,7 +1018,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
 
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Status</label>
-                  {isSuperAdmin(editingUser) ? (
+                  {(isSuperAdmin(editingUser) || String(editingUser?.name || '').toLowerCase().includes('super admin') || String(editingUser?.email || '').toLowerCase() === 'info@adgrowmedia.com' || String(editingUser?.role || '').toLowerCase() === 'super admin') ? (
                     <div className="flex items-center gap-2 pt-0.5">
                       <span className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1.5 shadow-2xs">
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />

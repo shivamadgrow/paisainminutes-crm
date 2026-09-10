@@ -67,7 +67,8 @@ export function isSuperAdmin(user) {
     id === '1' ||
     email === 'info@adgrowmedia.com' ||
     username === 'info@adgrowmedia.com' ||
-    name === 'super admin'
+    name === 'super admin' ||
+    name.includes('super admin')
   );
 }
 
