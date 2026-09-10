@@ -4,7 +4,7 @@ import { getLiveSecurityDetails } from './geoService';
 
 export const STAFF_STORAGE_KEY = 'paisa_crm_staff_list';
 export const SESSION_STORAGE_KEY = 'paisa_crm_user';
-export const AUTH_VERSION = 'v8_strict_manual_login_only';
+export const AUTH_VERSION = 'v9_super_admin_permanently_active';
 
 /**
  * Purge all stale, duplicate, and unused client-side caches and storage keys
@@ -87,22 +87,35 @@ export function getStaffList() {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Filter out legacy dummy users and ensure Super Admin info@adgrowmedia.com exists
+        let needsResave = false;
+        // Filter out legacy dummy users and ensure Super Admin info@adgrowmedia.com exists & is Active
         const cleaned = parsed
           .filter(u => u && u.name && !DUMMY_USER_NAMES.includes(u.name.toLowerCase().trim()))
-          .map(u => ({
-            ...u,
-            username: u.username || u.email || u.name,
-            password: (u.email === 'info@adgrowmedia.com' || u.username === 'info@adgrowmedia.com' || u.role === 'Super Admin') ? 'Jazz@123' : (u.password || 'Jazz@123'),
-            roles: Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : [u.role || 'Super Admin'],
-            status: u.status || 'Active',
-            branch: u.branch || 'Delhi Head Office'
-          }));
+          .map(u => {
+            const isSuper = isSuperAdmin(u);
+            const status = isSuper ? 'Active' : (u.status || 'Active');
+            if (isSuper && u.status !== 'Active') {
+              needsResave = true;
+            }
+            return {
+              ...u,
+              username: u.username || u.email || u.name,
+              password: (u.email === 'info@adgrowmedia.com' || u.username === 'info@adgrowmedia.com' || u.role === 'Super Admin' || isSuper) ? 'Jazz@123' : (u.password || 'Jazz@123'),
+              roles: Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : [u.role || 'Super Admin'],
+              status: status,
+              branch: u.branch || 'Delhi Head Office'
+            };
+          });
 
         // Ensure at least Super Admin info@adgrowmedia.com exists
         const hasSuperAdmin = cleaned.some(u => (u.username || u.email || '').toLowerCase() === 'info@adgrowmedia.com');
         if (!hasSuperAdmin) {
           cleaned.unshift(INITIAL_STAFF_MEMBERS[0]);
+          needsResave = true;
+        }
+
+        if (needsResave) {
+          saveStaffList(cleaned);
         }
 
         return cleaned;
@@ -386,8 +399,10 @@ export async function authenticateStaff(usernameOrEmail, password, isSimulatingO
     return { success: false, error: 'Incorrect Password. Please check and try again.' };
   }
 
-  // Check account status
-  if (user.status === 'Disabled') {
+  // Check account status - Super Admin can NEVER be disabled
+  if (isSuperAdmin(user) || (user.email && user.email.toLowerCase() === 'info@adgrowmedia.com') || (user.username && user.username.toLowerCase() === 'info@adgrowmedia.com')) {
+    user.status = 'Active';
+  } else if (user.status === 'Disabled') {
     return { success: false, error: 'Your staff account is currently Disabled. Please contact Super Admin.' };
   }
 
