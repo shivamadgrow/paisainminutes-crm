@@ -31,7 +31,8 @@ import {
   Cell, 
   LineChart, 
   Line, 
-  CartesianGrid 
+  CartesianGrid,
+  Legend 
 } from 'recharts';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { cleanLoanAmount, formatToIST } from '../utils/amountHelpers';
@@ -535,7 +536,7 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-black tracking-wider text-emerald-800 uppercase flex items-center gap-1">
-                COMMISSION EARNED
+                TOTAL COMMISSION EARNED
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               </span>
               <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
@@ -619,43 +620,26 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
               <div
                 key={p.id}
                 onClick={() => onSelectCompany && onSelectCompany(p.id)}
-                className="crm-card bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-[#0A3977] transition cursor-pointer group flex flex-col justify-between"
+                className="crm-card bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-[#0A3977] transition cursor-pointer group"
               >
-                <div>
-                  <div className="flex items-center justify-between mb-2.5">
-                    <span className={`px-2 py-0.5 rounded-lg text-xs font-black uppercase tracking-wider ${p.badgeClass}`}>
-                      {p.name}
-                    </span>
-                    <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-[#0A3977] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
-                  </div>
-                  
-                  {/* Metric 1: Leads */}
-                  <div className="text-xl font-black text-slate-900">
-                    {leadsCount} <span className="text-xs font-medium text-slate-400">Leads</span>
-                  </div>
-
-                  {/* Metric 2: Volume */}
-                  <div className="text-xs text-slate-600 mt-1">
-                    Volume: <span className="font-bold text-slate-900">₹{volumeAmt.toLocaleString('en-IN')}</span>
-                  </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`px-2 py-0.5 rounded-lg text-xs font-black uppercase tracking-wider ${p.badgeClass}`}>
+                    {p.name}
+                  </span>
+                  <ArrowUpRight className="w-4 h-4 text-slate-400 group-hover:text-[#0A3977] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition" />
                 </div>
-
-                {/* Newly Added Fields: Approved & Commission */}
-                <div className="mt-3 pt-2.5 border-t border-slate-100 space-y-1 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500 font-medium">Approved:</span>
-                    <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200/60">
-                      {approvedCount}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500 font-medium">Commission:</span>
-                    <span className="font-bold text-slate-900">
-                      ₹{commissionAmt.toLocaleString('en-IN')}
-                    </span>
-                  </div>
+                <div className="text-xl font-black text-slate-900 mt-2">
+                  {leadsCount} <span className="text-xs font-medium text-slate-400">Leads</span>
                 </div>
-
+                <div className="text-[11px] text-slate-500 mt-1">
+                  Volume: <span className="font-bold text-slate-800">₹{volumeAmt.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="text-[11px] text-slate-500 mt-0.5">
+                  Approved: <span className="font-bold text-emerald-700">{approvedCount}</span>
+                </div>
+                <div className="text-[11px] text-slate-500 mt-0.5">
+                  Commission: <span className="font-bold text-slate-800">₹{commissionAmt.toLocaleString('en-IN')}</span>
+                </div>
               </div>
             );
           })}
@@ -705,6 +689,14 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
                   fontSize: '11px',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
                 }} 
+              />
+              <Legend 
+                onClick={(e) => {
+                  if (e.dataKey === 'approved') {
+                    setShowApprovedLine(!showApprovedLine);
+                  }
+                }}
+                wrapperStyle={{ cursor: 'pointer', fontSize: '11px', paddingTop: '8px' }}
               />
               <Line 
                 type="monotone" 
