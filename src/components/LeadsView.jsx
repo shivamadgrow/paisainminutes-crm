@@ -1264,7 +1264,7 @@ export default function LeadsView({
                         <div>
                           <span className="text-sm font-black text-slate-900 tracking-tight flex items-center">
                             <IndianRupee className="w-3.5 h-3.5 text-slate-600 inline" />
-                            {cleanLoanAmount(item.applied || item.loanAmount).toLocaleString('en-IN')}
+                            {Number(cleanLoanAmount(item.applied || item.loanAmount) || 0).toLocaleString('en-IN')}
                           </span>
                           <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider mt-0.5">Applied Amount</span>
                         </div>
@@ -1277,8 +1277,8 @@ export default function LeadsView({
                     <td className="py-4 px-4">
                       {cleanSalary(item.salary, item.sal_val, item.salary_range) > 0 ? (
                         <div className="font-extrabold text-slate-800 text-xs flex items-center">
-                          <IndianRupee className="w-3 h-3 text-slate-500 inline" />
-                          {cleanSalary(item.salary, item.sal_val, item.salary_range).toLocaleString('en-IN')}/mo
+                          <IndianRupee className="w-3.5 h-3.5 text-slate-500 inline" />
+                          {Number(cleanSalary(item.salary, item.sal_val, item.salary_range) || 0).toLocaleString('en-IN')}/mo
                         </div>
                       ) : (
                         <div className="text-slate-400 font-bold text-xs">—</div>
@@ -1768,7 +1768,7 @@ export default function LeadsView({
                   </div>
                   <div className="text-base sm:text-lg font-extrabold text-slate-900">
                     {cleanLoanAmount(activeOverviewLead.applied || activeOverviewLead.loanAmount) > 0 
-                      ? `₹${cleanLoanAmount(activeOverviewLead.applied || activeOverviewLead.loanAmount).toLocaleString('en-IN')}` 
+                      ? `₹${Number(cleanLoanAmount(activeOverviewLead.applied || activeOverviewLead.loanAmount) || 0).toLocaleString('en-IN')}` 
                       : '₹50,000'}
                   </div>
                 </div>
@@ -1780,7 +1780,7 @@ export default function LeadsView({
                   </div>
                   <div className="text-base sm:text-lg font-extrabold text-slate-900">
                     {cleanSalary(activeOverviewLead.salary, activeOverviewLead.sal_val, activeOverviewLead.salary_range) > 0 
-                      ? `₹${cleanSalary(activeOverviewLead.salary, activeOverviewLead.sal_val, activeOverviewLead.salary_range).toLocaleString('en-IN')}/mo` 
+                      ? `₹${Number(cleanSalary(activeOverviewLead.salary, activeOverviewLead.sal_val, activeOverviewLead.salary_range) || 0).toLocaleString('en-IN')}/mo` 
                       : '₹30,000/mo'}
                   </div>
                 </div>

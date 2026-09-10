@@ -241,12 +241,12 @@ export default function ReportsView({ leads = [] }) {
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Funded Loan Volume</div>
-          <div className="text-2xl font-black text-slate-900 mt-1">₹{(metrics.approvedVolume / 100000).toFixed(2)} L</div>
+          <div className="text-2xl font-black text-slate-900 mt-1">₹{(Number(metrics.approvedVolume || 0) / 100000).toFixed(2)} L</div>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Accrued Commission</div>
-          <div className="text-2xl font-black text-emerald-600 mt-1">₹{metrics.estimatedCommission.toLocaleString('en-IN')}</div>
+          <div className="text-2xl font-black text-emerald-600 mt-1">₹{Number(metrics.estimatedCommission || 0).toLocaleString('en-IN')}</div>
         </div>
       </div>
 
@@ -292,10 +292,10 @@ export default function ReportsView({ leads = [] }) {
                       </span>
                     </td>
                     <td className="py-3 px-4 font-mono font-bold text-slate-800">
-                      ₹{cleanLoanAmount(l.loanAmount || l.applied || 0).toLocaleString('en-IN')}
+                      ₹{Number(cleanLoanAmount(l.loanAmount || l.applied || 0) || 0).toLocaleString('en-IN')}
                     </td>
                     <td className="py-3 px-4 font-mono text-slate-600">
-                      ₹{cleanSalary(l.salary || l.monthlySalary || 0).toLocaleString('en-IN')}
+                      ₹{Number(cleanSalary(l.salary || l.monthlySalary || 0) || 0).toLocaleString('en-IN')}
                     </td>
                     <td className="py-3 px-4 font-mono text-slate-600">
                       {l.cibil || l.cibilScore || '—'}

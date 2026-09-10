@@ -517,11 +517,11 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
             </div>
             <div className="flex items-baseline gap-2">
               <div className="text-2xl font-black text-slate-900 truncate">
-                ₹{appliedVolume >= 10000000 
-                  ? `${(appliedVolume / 10000000).toFixed(2)} Cr` 
-                  : (appliedVolume >= 100000 
-                    ? `${(appliedVolume / 100000).toFixed(2)} L` 
-                    : appliedVolume.toLocaleString('en-IN'))}
+                ₹{Number(appliedVolume || 0) >= 10000000 
+                  ? `${(Number(appliedVolume || 0) / 10000000).toFixed(2)} Cr` 
+                  : (Number(appliedVolume || 0) >= 100000 
+                    ? `${(Number(appliedVolume || 0) / 100000).toFixed(2)} L` 
+                    : Number(appliedVolume || 0).toLocaleString('en-IN'))}
               </div>
               <TrendBadge value={trends.appliedVolume} />
             </div>
@@ -546,7 +546,7 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
             </div>
             <div className="flex items-baseline gap-2">
               <div className="text-2xl font-black text-emerald-950">
-                ₹{totalCommissionEarned.toLocaleString('en-IN')}
+                ₹{Number(totalCommissionEarned || 0).toLocaleString('en-IN')}
               </div>
               <TrendBadge value={trends.totalCommissionEarned} />
             </div>
@@ -633,13 +633,13 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
                   {leadsCount} <span className="text-xs font-medium text-slate-400">Leads</span>
                 </div>
                 <div className="text-[11px] text-slate-500 mt-1">
-                  Volume: <span className="font-bold text-slate-800">₹{volumeAmt.toLocaleString('en-IN')}</span>
+                  Volume: <span className="font-bold text-slate-800">₹{Number(volumeAmt || 0).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="text-[11px] text-slate-500 mt-0.5">
-                  Approved: <span className="font-bold text-emerald-700">{approvedCount}</span>
+                  Approved: <span className="font-bold text-emerald-700">{approvedCount || 0}</span>
                 </div>
                 <div className="text-[11px] text-slate-500 mt-0.5">
-                  Commission: <span className="font-bold text-slate-800">₹{commissionAmt.toLocaleString('en-IN')}</span>
+                  Commission: <span className="font-bold text-slate-800">₹{Number(commissionAmt || 0).toLocaleString('en-IN')}</span>
                 </div>
               </div>
             );
@@ -870,7 +870,7 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
                       {act.partner}
                     </span>
                     <span className="font-bold text-slate-800">
-                      ₹{act.amount ? act.amount.toLocaleString('en-IN') : '50,000'}
+                      ₹{act.amount ? Number(act.amount || 0).toLocaleString('en-IN') : '50,000'}
                     </span>
                     <span className="text-slate-400 text-[10px] whitespace-nowrap">
                       {dt.full}

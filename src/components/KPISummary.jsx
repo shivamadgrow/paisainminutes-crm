@@ -52,7 +52,7 @@ export default function KPISummary({ stats }) {
               TOTAL DISBURSAL
             </span>
             <div className="text-3xl font-bold text-slate-900 mb-1">
-              ₹{stats?.disbursedAmount?.toLocaleString('en-IN') || 0}
+              ₹{Number(stats?.disbursedAmount || 0).toLocaleString('en-IN')}
             </div>
             <div className="text-xs text-slate-500">
               {stats?.disbursedCount || 0} cases · August 2026
@@ -85,7 +85,7 @@ export default function KPISummary({ stats }) {
               TOTAL COLLECTIONS
             </span>
             <div className="text-3xl font-bold text-slate-900 mb-1">
-              ₹{stats?.collectedAmount?.toLocaleString('en-IN') || 0}
+              ₹{Number(stats?.collectedAmount || 0).toLocaleString('en-IN')}
             </div>
             <div className="text-xs text-slate-500">
               0 receipts · August 2026 <span className="text-slate-400 italic">excludes refunds</span>

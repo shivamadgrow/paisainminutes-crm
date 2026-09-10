@@ -127,7 +127,7 @@ export default function SettlementsView() {
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Received Funds</div>
           <div className="text-2xl font-black text-emerald-600 mt-1">
-            ₹{settlements.reduce((s, item) => s + item.receivedAmount, 0).toLocaleString('en-IN')}
+            ₹{Number(settlements.reduce((s, item) => s + (item.receivedAmount || 0), 0) || 0).toLocaleString('en-IN')}
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">Credited to operating account</div>
         </div>
@@ -213,10 +213,10 @@ export default function SettlementsView() {
                       <div className="text-[10px] text-slate-500">{item.notes}</div>
                     </td>
                     <td className="py-3.5 px-4 font-mono font-medium text-slate-700">
-                      ₹{item.expectedAmount.toLocaleString('en-IN')}
+                      ₹{Number(item.expectedAmount || 0).toLocaleString('en-IN')}
                     </td>
                     <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
-                      ₹{item.receivedAmount.toLocaleString('en-IN')}
+                      ₹{Number(item.receivedAmount || 0).toLocaleString('en-IN')}
                     </td>
                     <td className="py-3.5 px-4 font-mono">
                       {item.variance === 0 && (
@@ -224,12 +224,12 @@ export default function SettlementsView() {
                       )}
                       {item.variance < 0 && (
                         <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded border border-rose-200 text-[11px]">
-                          -₹{Math.abs(item.variance).toLocaleString('en-IN')} (Shortfall)
+                          -₹{Number(Math.abs(item.variance || 0)).toLocaleString('en-IN')} (Shortfall)
                         </span>
                       )}
                       {item.variance > 0 && (
                         <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[11px]">
-                          +₹{item.variance.toLocaleString('en-IN')} (Bonus)
+                          +₹{Number(item.variance || 0).toLocaleString('en-IN')} (Bonus)
                         </span>
                       )}
                     </td>

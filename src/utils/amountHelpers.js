@@ -181,8 +181,19 @@ export function sanitizeLead(lead) {
     salary: cleanedSalary,
     monthlySalary: cleanedSalary,
     created: istTime.full,
-    date: istTime.date,
     created_time: istTime.time
   };
 }
 
+export function safeNumber(val, fallback = 0) {
+  if (val === null || val === undefined || val === '') return fallback;
+  const n = Number(val);
+  return isNaN(n) ? fallback : n;
+}
+
+export function formatINR(val, fallback = '0') {
+  if (val === null || val === undefined || val === '') return fallback;
+  const n = Number(val);
+  if (isNaN(n)) return fallback;
+  return n.toLocaleString('en-IN');
+}

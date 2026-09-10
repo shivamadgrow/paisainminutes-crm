@@ -235,8 +235,8 @@ export default function CompanyLeadsView({
 
         <div className="crm-card bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Loan Volume</span>
-          <div className="text-2xl font-black text-slate-900 mt-1">₹{stats.volume.toLocaleString('en-IN')}</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Avg: ₹{stats.avgTicket.toLocaleString('en-IN')} per lead</div>
+          <div className="text-2xl font-black text-slate-900 mt-1">₹{Number(stats.volume || 0).toLocaleString('en-IN')}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Avg: ₹{Number(stats.avgTicket || 0).toLocaleString('en-IN')} per lead</div>
         </div>
 
         <div className="crm-card bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80">
@@ -248,7 +248,7 @@ export default function CompanyLeadsView({
         <div className="crm-card bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Partner Criteria</span>
           <div className="text-xs font-bold text-slate-800 mt-1">CIBIL: {partner.minCibil}+</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Min Salary: ₹{partner.minSalary?.toLocaleString('en-IN')}</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Min Salary: ₹{Number(partner.minSalary || 0).toLocaleString('en-IN')}</div>
         </div>
 
       </div>
@@ -351,13 +351,13 @@ export default function CompanyLeadsView({
 
                       {/* Applied Amount */}
                       <td className="p-3.5 font-bold text-slate-900">
-                        ₹{cleanLoanAmount(item.applied || item.loanAmount).toLocaleString('en-IN')}
+                        ₹{Number(cleanLoanAmount(item.applied || item.loanAmount) || 0).toLocaleString('en-IN')}
                       </td>
 
                       {/* Salary / City */}
                       <td className="p-3.5">
                         <div className="font-semibold text-slate-800">
-                          ₹{cleanSalary(item.salary, item.sal_val, item.salary_range).toLocaleString('en-IN')}/mo
+                          ₹{Number(cleanSalary(item.salary, item.sal_val, item.salary_range) || 0).toLocaleString('en-IN')}/mo
                         </div>
                         <div className="text-[10px] text-slate-400">
                           {item.city || 'Online'} · {item.pincode || '110001'}

@@ -157,7 +157,7 @@ export default function PayoutRequestsView() {
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pending Requests</div>
           <div className="text-2xl font-black text-amber-600 mt-1">
-            ₹{requests.filter(r => r.status !== 'Paid').reduce((s, r) => s + r.amount, 0).toLocaleString('en-IN')}
+            ₹{Number(requests.filter(r => r.status !== 'Paid').reduce((s, r) => s + (r.amount || 0), 0) || 0).toLocaleString('en-IN')}
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">
             {requests.filter(r => r.status !== 'Paid').length} request(s) awaiting partner release
@@ -167,7 +167,7 @@ export default function PayoutRequestsView() {
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Cleared & Paid (This FY)</div>
           <div className="text-2xl font-black text-emerald-600 mt-1">
-            ₹{requests.filter(r => r.status === 'Paid').reduce((s, r) => s + r.amount, 0).toLocaleString('en-IN')}
+            ₹{Number(requests.filter(r => r.status === 'Paid').reduce((s, r) => s + (r.amount || 0), 0) || 0).toLocaleString('en-IN')}
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">Confirmed received in bank</div>
         </div>
@@ -244,7 +244,7 @@ export default function PayoutRequestsView() {
                       <div className="text-[10px] text-slate-400">{req.contactEmail}</div>
                     </td>
                     <td className="py-3.5 px-4 font-mono font-bold text-slate-900 text-sm">
-                      ₹{req.amount.toLocaleString('en-IN')}
+                      ₹{Number(req.amount || 0).toLocaleString('en-IN')}
                     </td>
                     <td className="py-3.5 px-4 text-slate-600 font-mono text-[11px]">
                       {req.disbursalPeriod}

@@ -122,16 +122,27 @@ $topPartner = [
 ];
 
 echo json_encode([
+    'success' => true,
     'period' => $period,
     'asOf' => $asOf,
-    'totalLeadsSent' => $totalLeadsSent,
-    'totalApproved' => $totalApproved,
-    'totalDisbursal' => $totalDisbursal,
-    'totalCommissionEarned' => $totalCommissionEarned,
-    'conversionRate' => $conversionRate,
-    'avgCommissionPerLead' => $avgCommissionPerLead,
-    'commissionReceived' => $commissionReceived,
-    'commissionPending' => $commissionPending,
+    'totalLeadsSent' => (int)$totalLeadsSent,
+    'totalApproved' => (int)$totalApproved,
+    'totalDisbursal' => (float)$totalDisbursal,
+    'totalCommissionEarned' => (float)$totalCommissionEarned,
+    'conversionRate' => (float)$conversionRate,
+    'avgCommissionPerLead' => (float)$avgCommissionPerLead,
+    'commissionReceived' => (float)$commissionReceived,
+    'commissionPending' => (float)$commissionPending,
+    'summary' => [
+        'totalLeadsSent' => (int)$totalLeadsSent,
+        'totalApproved' => (int)$totalApproved,
+        'totalDisbursal' => (float)$totalDisbursal,
+        'totalCommissionEarned' => (float)$totalCommissionEarned,
+        'conversionRate' => (float)$conversionRate,
+        'avgCommissionPerLead' => (float)$avgCommissionPerLead,
+        'commissionReceived' => (float)$commissionReceived,
+        'commissionPending' => (float)$commissionPending,
+    ],
     'topPartner' => $topPartner,
     'partners' => $partnerStats
 ], JSON_PRETTY_PRINT);

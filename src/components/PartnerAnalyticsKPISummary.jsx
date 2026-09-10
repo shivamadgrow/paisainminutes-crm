@@ -71,7 +71,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
 
   // Derive consolidated affiliate metrics from leads & partner metadata (or API data if available)
   const affiliateMetrics = useMemo(() => {
-    if (apiData && apiData.summary && apiData.partners && apiData.partners.length > 0) {
+    if (apiData && (apiData.summary || apiData.partners) && Array.isArray(apiData.partners) && apiData.partners.length > 0) {
       const partnerList = AFFILIATE_PARTNERS.map(partner => {
         const found = apiData.partners.find(p => p.id === partner.id || (p.name && p.name.toLowerCase() === partner.name.toLowerCase()));
         if (found) {
@@ -98,7 +98,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
         };
       });
 
-      const s = apiData.summary;
+      const s = apiData.summary || apiData;
       const sortedByCommission = [...partnerList].sort((a, b) => b.commissionEarned - a.commissionEarned || b.disbursal - a.disbursal);
       const topPartner = (sortedByCommission.length > 0 && sortedByCommission[0].commissionEarned > 0)
         ? { name: sortedByCommission[0].name, amount: sortedByCommission[0].commissionEarned }
@@ -297,7 +297,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               {isLoading ? (
                 <div className="h-8 w-24 bg-slate-200 rounded-md animate-pulse"></div>
               ) : (
-                affiliateMetrics.totalLeadsSent.toLocaleString('en-IN')
+                Number(affiliateMetrics.totalLeadsSent || 0).toLocaleString('en-IN')
               )}
             </div>
             <div className="text-xs text-slate-500">
@@ -341,7 +341,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               {isLoading ? (
                 <div className="h-8 w-24 bg-slate-200 rounded-md animate-pulse"></div>
               ) : (
-                affiliateMetrics.totalApproved.toLocaleString('en-IN')
+                Number(affiliateMetrics.totalApproved || 0).toLocaleString('en-IN')
               )}
             </div>
             <div className="text-xs text-slate-500">
@@ -387,7 +387,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               {isLoading ? (
                 <div className="h-8 w-28 bg-slate-200 rounded-md animate-pulse"></div>
               ) : (
-                `₹${affiliateMetrics.totalDisbursal.toLocaleString('en-IN')}`
+                `₹${Number(affiliateMetrics.totalDisbursal || 0).toLocaleString('en-IN')}`
               )}
             </div>
             <div className="text-xs text-slate-500">
@@ -413,7 +413,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.accentColor }}></span>
                       {p.name}:
                     </span>
-                    <strong className="text-slate-900 font-mono">₹{p.disbursal.toLocaleString('en-IN')}</strong>
+                    <strong className="text-slate-900 font-mono">₹{Number(p.disbursal || 0).toLocaleString('en-IN')}</strong>
                   </div>
                 ))}
               </div>
@@ -437,7 +437,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               {isLoading ? (
                 <div className="h-8 w-28 bg-amber-200 rounded-md animate-pulse"></div>
               ) : (
-                `₹${affiliateMetrics.totalCommissionEarned.toLocaleString('en-IN')}`
+                `₹${Number(affiliateMetrics.totalCommissionEarned || 0).toLocaleString('en-IN')}`
               )}
             </div>
             <div className="text-xs text-amber-700/80 font-medium">
@@ -463,7 +463,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: p.accentColor }}></span>
                       {p.name} ({p.commissionRate}):
                     </span>
-                    <strong className="text-amber-900 font-mono">₹{p.commissionEarned.toLocaleString('en-IN')}</strong>
+                    <strong className="text-amber-900 font-mono">₹{Number(p.commissionEarned || 0).toLocaleString('en-IN')}</strong>
                   </div>
                 ))}
               </div>
@@ -525,7 +525,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               {isLoading ? (
                 <div className="h-6 w-16 bg-slate-200 rounded-md animate-pulse"></div>
               ) : (
-                `₹${affiliateMetrics.avgCommissionPerLead.toLocaleString('en-IN')}`
+                `₹${Number(affiliateMetrics.avgCommissionPerLead || 0).toLocaleString('en-IN')}`
               )}
             </div>
             <div className="text-[11px] text-slate-500">
@@ -548,7 +548,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
                   return (
                     <div key={p.id} className="flex justify-between">
                       <span className="truncate max-w-[100px]">{p.name}:</span>
-                      <strong className="text-slate-900">₹{avg.toLocaleString('en-IN')}</strong>
+                      <strong className="text-slate-900">₹{Number(avg || 0).toLocaleString('en-IN')}</strong>
                     </div>
                   );
                 })}
@@ -567,7 +567,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               {isLoading ? (
                 <div className="h-6 w-20 bg-slate-200 rounded-md animate-pulse"></div>
               ) : (
-                `₹${affiliateMetrics.commissionReceived.toLocaleString('en-IN')}`
+                `₹${Number(affiliateMetrics.commissionReceived || 0).toLocaleString('en-IN')}`
               )}
             </div>
             <div className="text-[11px] text-slate-500">
@@ -588,7 +588,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
                 {affiliateMetrics.partners.filter(p => p.paymentStatus === 'Paid').map(p => (
                   <div key={p.id} className="flex justify-between">
                     <span className="truncate max-w-[100px]">{p.name}:</span>
-                    <strong className="text-emerald-700">₹{p.commissionEarned.toLocaleString('en-IN')}</strong>
+                    <strong className="text-emerald-700">₹{Number(p.commissionEarned || 0).toLocaleString('en-IN')}</strong>
                   </div>
                 ))}
               </div>
@@ -606,7 +606,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               {isLoading ? (
                 <div className="h-6 w-20 bg-slate-200 rounded-md animate-pulse"></div>
               ) : (
-                `₹${affiliateMetrics.commissionPending.toLocaleString('en-IN')}`
+                `₹${Number(affiliateMetrics.commissionPending || 0).toLocaleString('en-IN')}`
               )}
             </div>
             <div className="text-[11px] text-slate-500">
@@ -627,7 +627,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
                 {affiliateMetrics.partners.filter(p => p.paymentStatus !== 'Paid').map(p => (
                   <div key={p.id} className="flex justify-between">
                     <span className="truncate max-w-[100px]">{p.name}:</span>
-                    <strong className="text-amber-700">₹{p.commissionEarned.toLocaleString('en-IN')}</strong>
+                    <strong className="text-amber-700">₹{Number(p.commissionEarned || 0).toLocaleString('en-IN')}</strong>
                   </div>
                 ))}
               </div>
@@ -649,7 +649,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               )}
             </div>
             <div className="text-[11px] text-slate-500">
-              ₹{affiliateMetrics.topPartner.amount.toLocaleString('en-IN')} · August 2026
+              ₹{Number(affiliateMetrics?.topPartner?.amount || 0).toLocaleString('en-IN')} · August 2026
             </div>
           </div>
           <div className="border-t border-slate-100 bg-slate-50/50">
@@ -668,7 +668,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
                   .map((p, rank) => (
                     <div key={p.id} className="flex justify-between">
                       <span className="truncate max-w-[100px]">#{rank + 1} {p.name}:</span>
-                      <strong className="text-slate-900">₹{p.commissionEarned.toLocaleString('en-IN')}</strong>
+                      <strong className="text-slate-900">₹{Number(p.commissionEarned || 0).toLocaleString('en-IN')}</strong>
                     </div>
                   ))}
               </div>
@@ -816,12 +816,12 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
 
                     {/* Leads Sent */}
                     <td className="p-3.5 text-right font-mono font-semibold text-slate-800">
-                      {partner.leadsSent > 0 ? partner.leadsSent.toLocaleString('en-IN') : '0'}
+                      {partner.leadsSent > 0 ? Number(partner.leadsSent || 0).toLocaleString('en-IN') : '0'}
                     </td>
 
                     {/* Approved */}
                     <td className="p-3.5 text-right font-mono font-semibold text-emerald-700">
-                      {partner.approved > 0 ? partner.approved.toLocaleString('en-IN') : '0'}
+                      {partner.approved > 0 ? Number(partner.approved || 0).toLocaleString('en-IN') : '0'}
                     </td>
 
                     {/* Conversion % */}
@@ -839,12 +839,12 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
 
                     {/* Disbursal (₹) */}
                     <td className="p-3.5 text-right font-mono text-slate-800">
-                      {partner.disbursal > 0 ? `₹${partner.disbursal.toLocaleString('en-IN')}` : '₹0'}
+                      {partner.disbursal > 0 ? `₹${Number(partner.disbursal || 0).toLocaleString('en-IN')}` : '₹0'}
                     </td>
 
                     {/* Commission Earned (₹) */}
                     <td className="p-3.5 text-right font-mono font-bold text-amber-900">
-                      {partner.commissionEarned > 0 ? `₹${partner.commissionEarned.toLocaleString('en-IN')}` : '₹0'}
+                      {partner.commissionEarned > 0 ? `₹${Number(partner.commissionEarned || 0).toLocaleString('en-IN')}` : '₹0'}
                     </td>
 
                     {/* Commission Rate */}
@@ -870,8 +870,8 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               <span>💡 Tip: Click any row to view full applicant tracking and distribution list for that partner.</span>
             </div>
             <div className="flex items-center gap-4 text-slate-700 font-semibold font-mono">
-              <div>Total Disbursed: <strong className="text-slate-900">₹{affiliateMetrics.totalDisbursal.toLocaleString('en-IN')}</strong></div>
-              <div className="text-amber-800">Total Accrued: <strong className="text-amber-950">₹{affiliateMetrics.totalCommissionEarned.toLocaleString('en-IN')}</strong></div>
+              <div>Total Disbursed: <strong className="text-slate-900">₹{Number(affiliateMetrics.totalDisbursal || 0).toLocaleString('en-IN')}</strong></div>
+              <div className="text-amber-800">Total Accrued: <strong className="text-amber-950">₹{Number(affiliateMetrics.totalCommissionEarned || 0).toLocaleString('en-IN')}</strong></div>
             </div>
           </div>
         )}

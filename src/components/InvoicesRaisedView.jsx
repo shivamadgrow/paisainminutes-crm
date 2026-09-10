@@ -154,7 +154,7 @@ export default function InvoicesRaisedView() {
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Billed Volume</div>
           <div className="text-2xl font-black text-slate-900 mt-1">
-            ₹{invoices.reduce((s, inv) => s + inv.totalPayable, 0).toLocaleString('en-IN')}
+            ₹{Number(invoices.reduce((s, inv) => s + (inv.totalPayable || 0), 0) || 0).toLocaleString('en-IN')}
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">Includes 18% GST input/output</div>
         </div>
@@ -162,7 +162,7 @@ export default function InvoicesRaisedView() {
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Unpaid Invoices</div>
           <div className="text-2xl font-black text-amber-600 mt-1">
-            ₹{invoices.filter(i => i.status !== 'Paid').reduce((s, inv) => s + inv.totalPayable, 0).toLocaleString('en-IN')}
+            ₹{Number(invoices.filter(i => i.status !== 'Paid').reduce((s, inv) => s + (inv.totalPayable || 0), 0) || 0).toLocaleString('en-IN')}
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">
             {invoices.filter(i => i.status !== 'Paid').length} invoices pending settlement
@@ -172,7 +172,7 @@ export default function InvoicesRaisedView() {
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Paid & Cleared</div>
           <div className="text-2xl font-black text-emerald-600 mt-1">
-            ₹{invoices.filter(i => i.status === 'Paid').reduce((s, inv) => s + inv.totalPayable, 0).toLocaleString('en-IN')}
+            ₹{Number(invoices.filter(i => i.status === 'Paid').reduce((s, inv) => s + (inv.totalPayable || 0), 0) || 0).toLocaleString('en-IN')}
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">Settled by lending partners</div>
         </div>
@@ -244,13 +244,13 @@ export default function InvoicesRaisedView() {
                       <div className="text-[10px] text-slate-400">Due: {inv.dueDate}</div>
                     </td>
                     <td className="py-3.5 px-4 font-mono text-slate-700">
-                      ₹{inv.netCommission.toLocaleString('en-IN')}
+                      ₹{Number(inv.netCommission || 0).toLocaleString('en-IN')}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-slate-500">
-                      ₹{inv.gstAmount.toLocaleString('en-IN')}
+                      ₹{Number(inv.gstAmount || 0).toLocaleString('en-IN')}
                     </td>
                     <td className="py-3.5 px-4 font-mono font-bold text-slate-900 text-sm">
-                      ₹{inv.totalPayable.toLocaleString('en-IN')}
+                      ₹{Number(inv.totalPayable || 0).toLocaleString('en-IN')}
                     </td>
                     <td className="py-3.5 px-4">
                       {getStatusBadge(inv.status)}
@@ -308,8 +308,8 @@ export default function InvoicesRaisedView() {
                 />
                 {newInv.netCommission && (
                   <div className="mt-1 text-[11px] text-slate-500 flex items-center justify-between">
-                    <span>GST (18%): ₹{Math.round(Number(newInv.netCommission) * 0.18).toLocaleString('en-IN')}</span>
-                    <span className="font-bold text-slate-800">Total: ₹{Math.round(Number(newInv.netCommission) * 1.18).toLocaleString('en-IN')}</span>
+                    <span>GST (18%): ₹{Math.round(Number(newInv.netCommission || 0) * 0.18).toLocaleString('en-IN')}</span>
+                    <span className="font-bold text-slate-800">Total: ₹{Math.round(Number(newInv.netCommission || 0) * 1.18).toLocaleString('en-IN')}</span>
                   </div>
                 )}
               </div>
@@ -392,19 +392,19 @@ export default function InvoicesRaisedView() {
               <div className="bg-slate-50 p-4 rounded-xl space-y-2">
                 <div className="flex justify-between font-semibold text-slate-700">
                   <span>Net Commission (SAC 998311)</span>
-                  <span>₹{previewInvoice.netCommission.toLocaleString('en-IN')}</span>
+                  <span>₹{Number(previewInvoice.netCommission || 0).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between text-slate-500">
                   <span>CGST @ 9%</span>
-                  <span>₹{Math.round(previewInvoice.gstAmount / 2).toLocaleString('en-IN')}</span>
+                  <span>₹{Math.round(Number(previewInvoice.gstAmount || 0) / 2).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between text-slate-500">
                   <span>SGST @ 9%</span>
-                  <span>₹{Math.round(previewInvoice.gstAmount / 2).toLocaleString('en-IN')}</span>
+                  <span>₹{Math.round(Number(previewInvoice.gstAmount || 0) / 2).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="pt-2 border-t border-slate-200 flex justify-between font-bold text-base text-[#0A3977]">
                   <span>Total Payable</span>
-                  <span>₹{previewInvoice.totalPayable.toLocaleString('en-IN')}</span>
+                  <span>₹{Number(previewInvoice.totalPayable || 0).toLocaleString('en-IN')}</span>
                 </div>
               </div>
 

@@ -145,7 +145,7 @@ export default function PartnerHubView({ leads = [], onSelectCompany, onOpenTest
             </div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-slate-900">
-            ₹{totalVolumeAll.toLocaleString('en-IN')}
+            ₹{Number(totalVolumeAll || 0).toLocaleString('en-IN')}
           </div>
           <div className="text-xs text-slate-400 mt-1">
             Across all affiliate lender pipelines
@@ -216,7 +216,7 @@ export default function PartnerHubView({ leads = [], onSelectCompany, onOpenTest
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-500 font-medium">Applied Volume</span>
                     <span className="font-bold text-slate-800">
-                      ₹{partner.totalVolume.toLocaleString('en-IN')}
+                      ₹{Number(partner.totalVolume || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
@@ -235,7 +235,7 @@ export default function PartnerHubView({ leads = [], onSelectCompany, onOpenTest
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Min Salary:</span>
-                    <span className="font-bold text-slate-700">₹{partner.minSalary.toLocaleString('en-IN')}</span>
+                    <span className="font-bold text-slate-700">₹{Number(partner.minSalary || 0).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               </div>

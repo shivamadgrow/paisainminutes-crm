@@ -156,8 +156,8 @@ export default function DisbursalView({ leads, type }) {
                     <tr key={item.id} className="hover:bg-slate-50/80 transition">
                       <td className="p-3.5 font-bold text-slate-900">{item.name}</td>
                       <td className="p-3.5 font-mono text-[#0A3977] font-semibold">{item.loanNo}</td>
-                      <td className="p-3.5 font-bold text-slate-900">₹{item.applied.toLocaleString('en-IN')}</td>
-                      <td className="p-3.5 font-bold text-slate-900">₹{item.applied.toLocaleString('en-IN')}</td>
+                      <td className="p-3.5 font-bold text-slate-900">₹{Number(item.applied || 0).toLocaleString('en-IN')}</td>
+                      <td className="p-3.5 font-bold text-slate-900">₹{Number(item.applied || 0).toLocaleString('en-IN')}</td>
                       <td className="p-3.5 font-mono text-slate-500">UTR129847192</td>
                       <td className="p-3.5 text-slate-500">{item.created}</td>
                       <td className="p-3.5 text-slate-600">SBI · 8492</td>
