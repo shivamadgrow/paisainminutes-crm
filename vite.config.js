@@ -633,6 +633,123 @@ function crmApiPlugin() {
           return;
         }
 
+        // 14. GET /api/dashboard/executive-overview
+        if (req.url && req.url.startsWith('/api/dashboard/executive-overview')) {
+          try {
+            const parsedUrl = new URL(req.url, 'http://localhost');
+            const periodParam = parsedUrl.searchParams.get('period') || 'this_month';
+            const allLeads = getStoredLeads() || [];
+
+            const PARTNERS_CONFIG = [
+              { id: 'rupay91', name: 'Rupay91', rateStr: '2.8%', ratePct: 0.028, badgeClass: 'bg-blue-50 text-blue-700 border-blue-200' },
+              { id: 'jhatpatloans', name: 'Jhatpat Loans', rateStr: '2.4%', ratePct: 0.024, badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+              { id: 'instarupees', name: 'Insta Rupees', rateStr: '2.5%', ratePct: 0.025, badgeClass: 'bg-amber-50 text-amber-700 border-amber-200' },
+              { id: 'udhaarnow', name: 'UdhaarNow', rateStr: '2.2%', ratePct: 0.022, badgeClass: 'bg-purple-50 text-purple-700 border-purple-200' },
+              { id: 'loanwithin', name: 'LoanWithin', rateStr: '2.6%', ratePct: 0.026, badgeClass: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+              { id: 'shubhcash', name: 'ShubhCash', rateStr: '2.3%', ratePct: 0.023, badgeClass: 'bg-teal-50 text-teal-700 border-teal-200' },
+              { id: 'borrowera', name: 'Borrowera', rateStr: '2.7%', ratePct: 0.027, badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
+              { id: 'easyfincare', name: 'Easy Fincare', rateStr: '2.4%', ratePct: 0.024, badgeClass: 'bg-orange-50 text-orange-700 border-orange-200' }
+            ];
+
+            const partnerMap = {};
+            PARTNERS_CONFIG.forEach(p => {
+              partnerMap[p.id] = { ...p, leads: 0, volume: 0, approved: 0, commission: 0 };
+            });
+
+            let totalVolume = 0;
+            let totalApproved = 0;
+            let totalCommissionEarned = 0;
+
+            allLeads.forEach(l => {
+              const amt = cleanLoanAmount(l.loanAmount || l.applied || 50000);
+              totalVolume += amt;
+              const st = (l.status || '').toLowerCase();
+              const isApp = (st === 'approved' || st === 'disbursed');
+              if (isApp) totalApproved++;
+
+              const assigned = (l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
+              let matched = PARTNERS_CONFIG.find(p => assigned === p.id || assigned === p.name.toLowerCase().replace(/[\s\-_]/g, '') || assigned.includes(p.id));
+              const pId = matched ? matched.id : 'rupay91';
+
+              partnerMap[pId].leads++;
+              partnerMap[pId].volume += amt;
+              if (isApp) {
+                partnerMap[pId].approved++;
+                const comm = Math.round(amt * partnerMap[pId].ratePct);
+                partnerMap[pId].commission += comm;
+                totalCommissionEarned += comm;
+              }
+            });
+
+            const recentActivity = allLeads.slice(0, 10).map((l, idx) => {
+              const st = (l.status || 'Fresh').toLowerCase();
+              let eventType = 'New Lead';
+              let eventCode = 'new_lead';
+              if (st === 'approved') {
+                eventType = 'Status Change → Approved';
+                eventCode = 'approved';
+              } else if (st === 'disbursed') {
+                eventType = 'Loan Disbursed';
+                eventCode = 'disbursed';
+              } else if (st.includes('doc')) {
+                eventType = 'Documents Submitted';
+                eventCode = 'docs';
+              }
+              return {
+                id: 'act-' + idx,
+                timestamp: l.created_at || l.createdAt || l.created || new Date().toISOString(),
+                leadRef: String(l.id || ('L-' + (1000 + idx))),
+                leadName: l.name || 'Applicant',
+                partner: l.assignedCompany || 'Rupay91',
+                eventType,
+                eventCode,
+                amount: cleanLoanAmount(l.loanAmount || l.applied || 50000)
+              };
+            });
+
+            const leadsOverTime = [
+              { date: '01 Sep', totalLeads: Math.max(1, Math.round(allLeads.length * 0.15)), approved: Math.round(totalApproved * 0.1) },
+              { date: '03 Sep', totalLeads: Math.max(2, Math.round(allLeads.length * 0.25)), approved: Math.round(totalApproved * 0.2) },
+              { date: '05 Sep', totalLeads: Math.max(3, Math.round(allLeads.length * 0.45)), approved: Math.round(totalApproved * 0.4) },
+              { date: '07 Sep', totalLeads: Math.max(4, Math.round(allLeads.length * 0.70)), approved: Math.round(totalApproved * 0.65) },
+              { date: '10 Sep', totalLeads: allLeads.length, approved: totalApproved }
+            ];
+
+            const data = {
+              success: true,
+              period: {
+                type: periodParam,
+                label: periodParam === 'last_month' ? 'August 2026' : (periodParam === 'this_fy' ? 'FY 2026-27' : 'September 2026'),
+                start: '2026-09-01',
+                end: '2026-09-10'
+              },
+              totalLeads: allLeads.length,
+              totalLeadsTrend: 14.2,
+              totalApproved: totalApproved,
+              totalApprovedTrend: 8.5,
+              appliedVolume: totalVolume,
+              appliedVolumeTrend: 12.0,
+              totalCommissionEarned: totalCommissionEarned,
+              totalCommissionTrend: 15.8,
+              affiliatePartnerCount: PARTNERS_CONFIG.length,
+              matchRoutingRate: 100.0,
+              partners: Object.values(partnerMap),
+              leadsOverTime,
+              recentActivity
+            };
+
+            res.statusCode = 200;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(data));
+            return;
+          } catch (err) {
+            console.error('Error handling executive overview API:', err);
+            res.statusCode = 500;
+            res.end(JSON.stringify({ success: false, error: err.message }));
+            return;
+          }
+        }
+
         next()
       })
     }
