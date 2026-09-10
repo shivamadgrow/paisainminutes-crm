@@ -3,6 +3,11 @@
  * Paisa in Minutes - Direct Customer Lead Submission Handler & PaisaCRM Integration
  */
 
+// Ensure script finishes saving even if user navigates away
+ignore_user_abort(true);
+error_reporting(0);
+ini_set('display_errors', '0');
+
 // Set Indian Standard Time (IST)
 date_default_timezone_set('Asia/Kolkata');
 
@@ -100,8 +105,18 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
     if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO' && $explicitCompany !== 'Pending Details') {
         $clean = strtolower(trim($explicitCompany));
         if (strpos($clean, 'rupay91') !== false || strpos($clean, 'rupay 91') !== false) {
-            return 'Rupay91';
+            if ($salaryNum >= 30000 && $cibilNum >= 700) {
+                return 'Rupay91';
+            }
+            return 'Jhatpat Loans';
         }
+        if (strpos($clean, 'jhatpat') !== false) return 'Jhatpat Loans';
+        if (strpos($clean, 'borrowera') !== false) return 'Borrowera';
+        if (strpos($clean, 'easyfincare') !== false || strpos($clean, 'easy fincare') !== false) return 'Easy Fincare';
+        if (strpos($clean, 'instarupees') !== false || strpos($clean, 'insta rupees') !== false) return 'Insta Rupees';
+        if (strpos($clean, 'udhaar') !== false || strpos($clean, 'dhanar') !== false) return 'UdhaarNow';
+        if (strpos($clean, 'loanwithin') !== false || strpos($clean, 'loan within') !== false) return 'LoanWithin';
+        if (strpos($clean, 'shubh') !== false) return 'ShubhCash';
         return trim($explicitCompany);
     }
 
@@ -109,10 +124,20 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
         return 'Pending Details';
     }
 
-    return 'Rupay91';
+    // 750 se upr cibil vale ko rupay 91 dikhaao baaki sbb ko uske niche vala
+    if ($cibilNum >= 750) {
+        return 'Rupay91';
+    } elseif ($cibilNum > 0) {
+        return 'Jhatpat Loans';
+    }
+
+    if ($salaryNum >= 70000) {
+        return 'Rupay91';
+    }
+    return 'Jhatpat Loans';
 }
 
-// 2. Calculate Eligibility Slab & Status
+// 2. Calculate Eligibility Slab & Status strictly per User Matrix
 function getSlabInfo($salaryStr, $cibilStr) {
     $salVal = 0;
     if (preg_match('/90,?000/i', $salaryStr)) {
@@ -138,29 +163,47 @@ function getSlabInfo($salaryStr, $cibilStr) {
 
     $cibilVal = 0;
     if (!empty($cibilStr) && $cibilStr !== '—') {
-        preg_match('/\d{3}/', $cibilStr, $cm);
-        if (!empty($cm[0])) $cibilVal = (int)$cm[0];
+        if (preg_match('/\b(850|8[5-9]\d|900)\b/', $cibilStr)) {
+            $cibilVal = 875;
+        } elseif (preg_match('/\b(800|8[0-4]\d)\b/', $cibilStr)) {
+            $cibilVal = 825;
+        } elseif (preg_match('/\b(750|7[5-9]\d)\b/', $cibilStr)) {
+            $cibilVal = 775;
+        } elseif (preg_match('/\b(700|7[0-4]\d)\b/', $cibilStr)) {
+            $cibilVal = 725;
+        } elseif (preg_match('/\b(650|6[5-9]\d)\b/', $cibilStr)) {
+            $cibilVal = 675;
+        } elseif (preg_match('/\b(600|6[0-4]\d)\b/', $cibilStr)) {
+            $cibilVal = 625;
+        } elseif (preg_match('/\b(550|5[5-9]\d)\b/', $cibilStr)) {
+            $cibilVal = 575;
+        } elseif (preg_match('/\b(500|5[0-4]\d)\b/', $cibilStr)) {
+            $cibilVal = 525;
+        } else {
+            preg_match('/\d{3}/', $cibilStr, $cm);
+            if (!empty($cm[0])) $cibilVal = (int)$cm[0];
+        }
     }
 
     if ($salVal === 0 && $cibilVal === 0) {
         return ['slab' => 0, 'cibil_range' => '—', 'salary_range' => '—', 'eligibility' => 'Incomplete / Phone Only', 'sal_val' => 0];
     }
 
-    if ($cibilVal >= 850 || $salVal >= 90000) {
+    if ($cibilVal >= 850 || ($cibilVal === 0 && $salVal >= 90000)) {
         return ['slab' => 8, 'cibil_range' => '850–900', 'salary_range' => '₹90,000+', 'eligibility' => 'Eligible – Premium', 'sal_val' => $salVal];
-    } elseif ($cibilVal >= 800 || $salVal >= 80000) {
+    } elseif ($cibilVal >= 800 || ($cibilVal === 0 && $salVal >= 80000)) {
         return ['slab' => 7, 'cibil_range' => '800–849', 'salary_range' => '₹80,000–₹89,999', 'eligibility' => 'Eligible – Premium', 'sal_val' => $salVal];
-    } elseif ($cibilVal >= 750 || $salVal >= 70000) {
+    } elseif ($cibilVal >= 750 || ($cibilVal === 0 && $salVal >= 70000)) {
         return ['slab' => 6, 'cibil_range' => '750–799', 'salary_range' => '₹70,000–₹79,999', 'eligibility' => 'Eligible – Preferred', 'sal_val' => $salVal];
-    } elseif ($cibilVal >= 700 || $salVal >= 60000) {
+    } elseif ($cibilVal >= 700 || ($cibilVal === 0 && $salVal >= 60000)) {
         return ['slab' => 5, 'cibil_range' => '700–749', 'salary_range' => '₹60,000–₹69,999', 'eligibility' => 'Eligible – Good', 'sal_val' => $salVal];
-    } elseif ($cibilVal >= 650 || $salVal >= 50000) {
+    } elseif ($cibilVal >= 650 || ($cibilVal === 0 && $salVal >= 50000)) {
         return ['slab' => 4, 'cibil_range' => '650–699', 'salary_range' => '₹50,000–₹59,999', 'eligibility' => 'Eligible', 'sal_val' => $salVal];
-    } elseif ($cibilVal >= 600 || $salVal >= 40000) {
+    } elseif ($cibilVal >= 600 || ($cibilVal === 0 && $salVal >= 40000)) {
         return ['slab' => 3, 'cibil_range' => '600–649', 'salary_range' => '₹40,000–₹49,999', 'eligibility' => 'Eligible', 'sal_val' => $salVal];
-    } elseif ($cibilVal >= 550 || $salVal >= 30000) {
+    } elseif ($cibilVal >= 550 || ($cibilVal === 0 && $salVal >= 30000)) {
         return ['slab' => 2, 'cibil_range' => '550–599', 'salary_range' => '₹30,000–₹39,999', 'eligibility' => 'Eligible', 'sal_val' => $salVal];
-    } elseif ($cibilVal >= 500 || $salVal >= 20000) {
+    } elseif ($cibilVal >= 500 || ($cibilVal === 0 && $salVal >= 20000)) {
         return ['slab' => 1, 'cibil_range' => '500–549', 'salary_range' => '₹20,000–₹29,999', 'eligibility' => 'Eligible – Base', 'sal_val' => $salVal];
     } else {
         return ['slab' => 0, 'cibil_range' => 'Below 500', 'salary_range' => 'Under ₹20,000', 'eligibility' => 'Below Minimum Threshold', 'sal_val' => $salVal];
@@ -203,7 +246,14 @@ if (count($nameParts) >= 2 && !empty($nameParts[0]) && !empty($nameParts[1])) {
     $initials = strtoupper(substr($name, 0, min(2, strlen($name))));
 }
 
-// 3. Store in Session for navigation (Do not store dummy placeholders)
+// 3. Generate unique Lead ID & Store in Session for navigation
+$existingLeadId = $data['lead_id'] ?? $data['leadId'] ?? $data['id'] ?? ($_SESSION['pim_lead_id'] ?? null);
+if (!empty($existingLeadId) && $existingLeadId !== 'null' && $existingLeadId !== 'undefined') {
+    $leadId = (string)$existingLeadId;
+} else {
+    $leadId = 'PIM-' . date('Ymd') . '-' . rand(1000, 9999);
+}
+
 $_SESSION['pim_lead_id']          = $leadId;
 $_SESSION['pim_lead_phone']       = $phone;
 if (!empty($name) && $name !== 'Applicant') {
@@ -211,7 +261,7 @@ if (!empty($name) && $name !== 'Applicant') {
 } else {
     unset($_SESSION['pim_lead_name']);
 }
-if (!empty($email) && strpos($email, '@paisainminutes.com') === false) {
+if (!empty($email) && strpos($email, '@paisainminutes.com') === false && $email !== '—' && $email !== '-' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
     $_SESSION['pim_lead_email'] = $email;
 } else {
     unset($_SESSION['pim_lead_email']);
@@ -228,6 +278,11 @@ if (!empty($cibil) && $cibil !== '—' && $cibil !== '750+') {
 }
 $_SESSION['pim_lead_slab']        = $slabData['slab'];
 $_SESSION['pim_lead_eligibility'] = $slabData['eligibility'];
+
+$nowTime       = time();
+$formattedDate = date('d M Y, h:i A', $nowTime);
+$timestamp     = date('Y-m-d H:i:s', $nowTime);
+$isoDate       = date('Y-m-d', $nowTime);
 
 $leadRecord = [
     'id'                => $leadId,
@@ -272,7 +327,94 @@ $leadRecord = [
     'date'              => $isoDate
 ];
 
-// 4. Sync Lead & Loan Application to Render Backend API
+// 4. Helper to upsert (update or insert) lead uniquely by phone number
+function upsertLeadInList(&$list, $newLead, $phone) {
+    $cleanPhone = preg_replace('/\D/', '', (string)$phone);
+    $foundIndex = -1;
+    foreach ($list as $idx => $item) {
+        $itemPhone = preg_replace('/\D/', '', (string)($item['phone'] ?? $item['mobile'] ?? ''));
+        if (!empty($itemPhone) && !empty($cleanPhone) && substr($itemPhone, -10) === substr($cleanPhone, -10)) {
+            $foundIndex = $idx;
+            break;
+        }
+    }
+
+    if ($foundIndex >= 0) {
+        $existing = $list[$foundIndex];
+        // Preserve original lead ID if already established
+        $newLead['id'] = (!empty($existing['id']) && $existing['id'] !== 'null') ? $existing['id'] : $newLead['id'];
+        $newLead['loanNo'] = (!empty($existing['loanNo']) && $existing['loanNo'] !== 'null') ? $existing['loanNo'] : $newLead['loanNo'];
+        $newLead['lead_id'] = (!empty($existing['lead_id']) && $existing['lead_id'] !== 'null') ? $existing['lead_id'] : $newLead['lead_id'];
+        
+        // Preserve specific custom name if new is generic 'Applicant'
+        if (($newLead['name'] === 'Applicant' || empty($newLead['name'])) && !empty($existing['name']) && $existing['name'] !== 'Applicant') {
+            $newLead['name'] = $existing['name'];
+            $newLead['fullName'] = $existing['fullName'] ?? $existing['name'];
+            $newLead['initials'] = $existing['initials'] ?? 'AP';
+        }
+
+        // Preserve status if already progressed beyond 'Fresh'
+        if (!empty($existing['status']) && $existing['status'] !== 'Fresh' && $newLead['status'] === 'Fresh') {
+            $newLead['status'] = $existing['status'];
+        }
+        
+        // Remove old position and place updated record at top
+        array_splice($list, $foundIndex, 1);
+        array_unshift($list, $newLead);
+    } else {
+        array_unshift($list, $newLead);
+    }
+}
+
+// 5. Save IMMEDIATELY to local stores (ultra-fast, under 1ms)
+$dataDir = __DIR__ . '/data';
+if (!is_dir($dataDir)) {
+    mkdir($dataDir, 0755, true);
+}
+$jsonFile = $dataDir . '/leads.json';
+$leadsList = [];
+if (file_exists($jsonFile)) {
+    $existing = file_get_contents($jsonFile);
+    $leadsList = json_decode($existing, true) ?: [];
+}
+upsertLeadInList($leadsList, $leadRecord, $phone);
+file_put_contents($jsonFile, json_encode($leadsList, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+
+// Also sync to crm/leads_store.json
+$crmStoreFile = __DIR__ . '/crm/leads_store.json';
+if (file_exists($crmStoreFile) || is_dir(__DIR__ . '/crm')) {
+    $crmLeads = [];
+    if (file_exists($crmStoreFile)) {
+        $crmLeads = json_decode(file_get_contents($crmStoreFile), true) ?: [];
+    }
+    upsertLeadInList($crmLeads, $leadRecord, $phone);
+    file_put_contents($crmStoreFile, json_encode($crmLeads, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+}
+
+// 5b. Un-blacklist phone and leadId from deleted_leads.json so fresh submission is never hidden
+$unblackDeletedStores = [
+    $dataDir . '/deleted_leads.json',
+    __DIR__ . '/crm/deleted_leads.json',
+    __DIR__ . '/crm/crm_subdomain_update/deleted_leads.json',
+    __DIR__ . '/deploy_update/data/deleted_leads.json',
+    __DIR__ . '/deploy_update/crm/deleted_leads.json'
+];
+foreach ($unblackDeletedStores as $delStore) {
+    if (file_exists($delStore)) {
+        $delArr = json_decode(file_get_contents($delStore), true);
+        if (is_array($delArr)) {
+            $updatedDel = array_values(array_filter($delArr, function($item) use ($phone, $leadId) {
+                $it = trim(strtolower((string)$item));
+                return $it !== strtolower((string)$leadId) && $it !== (string)$phone;
+            }));
+            if (count($updatedDel) !== count($delArr)) {
+                file_put_contents($delStore, json_encode($updatedDel, JSON_PRETTY_PRINT));
+            }
+        }
+    }
+}
+
+// 6. Sync Lead & Loan Application to Render Backend API (in background / with short timeout)
 require_once __DIR__ . '/config/env.php';
 
 function syncToRenderBackend($phone, $name, $email, $loanAmount, $monthlyIncome, $clientToken = null) {
@@ -289,7 +431,7 @@ function syncToRenderBackend($phone, $name, $email, $loanAmount, $monthlyIncome,
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['phone' => $phone]));
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         $otpRes = curl_exec($ch);
         curl_close($ch);
@@ -303,7 +445,7 @@ function syncToRenderBackend($phone, $name, $email, $loanAmount, $monthlyIncome,
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['phone' => $phone, 'code' => (string)$otpCode, 'otp' => (string)$otpCode]));
         curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         $verifyRes = curl_exec($ch);
         curl_close($ch);
@@ -322,7 +464,7 @@ function syncToRenderBackend($phone, $name, $email, $loanAmount, $monthlyIncome,
             'Content-Type: application/json',
             'Authorization: Bearer ' . $token
         ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         curl_exec($ch);
         curl_close($ch);
@@ -346,7 +488,7 @@ function syncToRenderBackend($phone, $name, $email, $loanAmount, $monthlyIncome,
             'Content-Type: application/json',
             'Authorization: Bearer ' . $token
         ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         $appRes = curl_exec($ch);
         curl_close($ch);
@@ -360,70 +502,6 @@ function syncToRenderBackend($phone, $name, $email, $loanAmount, $monthlyIncome,
 // Trigger background sync to Render
 $clientToken = $data['token'] ?? null;
 $renderSyncResult = syncToRenderBackend($phone, $name, $email, $cleanLoan, $slabData['sal_val'], $clientToken);
-
-// 5. Helper to upsert (update or insert) lead uniquely by phone number
-function upsertLeadInList(&$list, $newLead, $phone) {
-    $cleanPhone = preg_replace('/\D/', '', (string)$phone);
-    $foundIndex = -1;
-    foreach ($list as $idx => $item) {
-        $itemPhone = preg_replace('/\D/', '', (string)($item['phone'] ?? $item['mobile'] ?? ''));
-        if (!empty($itemPhone) && !empty($cleanPhone) && substr($itemPhone, -10) === substr($cleanPhone, -10)) {
-            $foundIndex = $idx;
-            break;
-        }
-    }
-
-    if ($foundIndex >= 0) {
-        $existing = $list[$foundIndex];
-        // Preserve original lead ID if already established
-        $newLead['id'] = $existing['id'] ?? $existing['lead_id'] ?? $newLead['id'];
-        $newLead['loanNo'] = $existing['loanNo'] ?? $newLead['loanNo'];
-        $newLead['lead_id'] = $existing['lead_id'] ?? $newLead['lead_id'];
-        
-        // Preserve specific custom name if new is generic 'Applicant'
-        if (($newLead['name'] === 'Applicant' || empty($newLead['name'])) && !empty($existing['name']) && $existing['name'] !== 'Applicant') {
-            $newLead['name'] = $existing['name'];
-            $newLead['fullName'] = $existing['fullName'] ?? $existing['name'];
-            $newLead['initials'] = $existing['initials'] ?? 'AP';
-        }
-
-        // Preserve status if already progressed beyond 'Fresh'
-        if (!empty($existing['status']) && $existing['status'] !== 'Fresh' && $newLead['status'] === 'Fresh') {
-            $newLead['status'] = $existing['status'];
-        }
-        
-        // Remove old position and place updated record at top
-        array_splice($list, $foundIndex, 1);
-        array_unshift($list, $newLead);
-    } else {
-        array_unshift($list, $newLead);
-    }
-}
-
-// 6. Save to local data/leads.json
-$dataDir = __DIR__ . '/data';
-if (!is_dir($dataDir)) {
-    mkdir($dataDir, 0755, true);
-}
-$jsonFile = $dataDir . '/leads.json';
-$leadsList = [];
-if (file_exists($jsonFile)) {
-    $existing = file_get_contents($jsonFile);
-    $leadsList = json_decode($existing, true) ?: [];
-}
-upsertLeadInList($leadsList, $leadRecord, $phone);
-file_put_contents($jsonFile, json_encode($leadsList, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-
-// 7. Also sync to crm/leads_store.json
-$crmStoreFile = __DIR__ . '/crm/leads_store.json';
-if (file_exists($crmStoreFile) || is_dir(__DIR__ . '/crm')) {
-    $crmLeads = [];
-    if (file_exists($crmStoreFile)) {
-        $crmLeads = json_decode(file_get_contents($crmStoreFile), true) ?: [];
-    }
-    upsertLeadInList($crmLeads, $leadRecord, $phone);
-    file_put_contents($crmStoreFile, json_encode($crmLeads, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-}
 
 // 7. Append to leads_log.csv for audit trail
 $csvLog = __DIR__ . '/leads_log.csv';

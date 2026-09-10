@@ -34,7 +34,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
-import { AFFILIATE_PARTNERS, getPartnerMeta } from '../data/affiliatePartners';
+import { AFFILIATE_PARTNERS, getPartnerMeta, getEligibilityMatrix } from '../data/affiliatePartners';
 import { cleanLoanAmount, cleanSalary, formatToIST } from '../utils/amountHelpers';
 import { fetchApi, deleteLeadsApi, saveLeadOverride } from '../utils/apiConfig';
 
@@ -117,17 +117,75 @@ export const getStatusBadge = (status) => {
 // Modern partner company styling helper
 export const getCompanyBadge = (company) => {
   const clean = String(company || '').toLowerCase().replace(/[\s\-_]/g, '');
-  if (clean.includes('rupay91')) {
+  if (clean.includes('rupay91') || clean.includes('rupay')) {
     return {
       name: 'Rupay91',
       classes: 'bg-indigo-50 text-indigo-700 border-indigo-200/80 hover:bg-indigo-100/80',
       dot: 'bg-indigo-600'
     };
   }
+  if (clean.includes('jhatpat')) {
+    return {
+      name: 'Jhatpat Loans',
+      classes: 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/80',
+      dot: 'bg-emerald-500'
+    };
+  }
   return {
     name: company || 'Pending Details',
     classes: 'bg-purple-50 text-purple-700 border-purple-200/80 hover:bg-purple-100/80',
     dot: 'bg-purple-500'
+  };
+};
+
+// Eligibility and CIBIL display helper mapped strictly to 8-slab matrix & routing rules
+export const getEligibilityInfo = (item) => {
+  if (!item) {
+    return {
+      label: 'Eligible',
+      isPhoneOnly: false,
+      cibilDisplay: '—',
+      partner: 'Pending Details',
+      slab: 0
+    };
+  }
+
+  if (item.eligibilityStatus === 'Incomplete / Phone Only') {
+    return {
+      label: 'Incomplete / Phone Only',
+      isPhoneOnly: true,
+      cibilDisplay: '—',
+      partner: 'Pending Details',
+      slab: 0
+    };
+  }
+
+  const matrix = getEligibilityMatrix(item);
+
+  // Label: prioritize verified backend eligibility status if already set to standard slab
+  let label = matrix.eligibilityStatus;
+  if (item.eligibilityStatus && 
+      item.eligibilityStatus !== 'Eligible' && 
+      item.eligibilityStatus !== 'High Approval' && 
+      item.eligibilityStatus !== 'Pending') {
+    label = item.eligibilityStatus;
+  }
+
+  // CIBIL Score display string
+  let cibilDisplay = (item.cibil && item.cibil !== '—') ? item.cibil : (matrix.cibilRange !== '—' ? matrix.cibilRange : '');
+
+  // Default partner routing: 750+ Rupay91, below 750 Jhatpat Loans
+  let assignedPartner = item.assignedCompany;
+  if (!assignedPartner || assignedPartner === 'Pending Details' || assignedPartner === 'AUTO' || assignedPartner === '—') {
+    assignedPartner = matrix.partner;
+  }
+
+  return {
+    label,
+    isPhoneOnly: false,
+    cibilDisplay,
+    partner: assignedPartner,
+    slab: matrix.slab
   };
 };
 
@@ -521,6 +579,10 @@ export default function LeadsView({
     });
     return found || selectedLeadForOverview;
   }, [selectedLeadForOverview, leads]);
+
+  const overviewElig = useMemo(() => {
+    return activeOverviewLead ? getEligibilityInfo(activeOverviewLead) : null;
+  }, [activeOverviewLead]);
 
   const handleReassignCompanyInModal = async (leadId, newCompany) => {
     await handleReassignCompany(leadId, newCompany);
@@ -959,7 +1021,9 @@ export default function LeadsView({
                 if (!item) return null;
                 const itemId = getLeadId(item, idx);
                 const isSelected = selectedLeadIds.includes(itemId);
-                const companyBadge = getCompanyBadge(item.assignedCompany || 'Pending Details');
+                const eligInfo = getEligibilityInfo(item);
+                const currentPartner = item.assignedCompany || eligInfo.partner || 'Pending Details';
+                const companyBadge = getCompanyBadge(currentPartner);
                 const statusBadge = getStatusBadge(item.status || 'Fresh');
                 const isNearBottom = idx >= Math.max(0, filteredLeads.length - 2);
 
@@ -1042,7 +1106,7 @@ export default function LeadsView({
                           title="Click to route to a different lending partner"
                         >
                           <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${companyBadge.dot}`}></span>
-                          <span>{item.assignedCompany || 'Pending Details'}</span>
+                          <span>{companyBadge.name}</span>
                           <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openPartnerDropdownId === itemId ? 'rotate-180 text-slate-800' : 'opacity-60'}`} />
                         </button>
 
@@ -1059,7 +1123,7 @@ export default function LeadsView({
                             </div>
                             <div className="pt-1.5 space-y-1">
                               {AFFILIATE_PARTNERS.map(p => {
-                                const isCurrent = (item.assignedCompany || '').toLowerCase() === p.name.toLowerCase();
+                                const isCurrent = (companyBadge.name || '').toLowerCase() === p.name.toLowerCase();
                                 return (
                                   <button
                                     key={p.id}
@@ -1095,7 +1159,7 @@ export default function LeadsView({
                     {/* ELIGIBILITY & CIBIL */}
                     <td className="py-4 px-4">
                       <div>
-                        {item.eligibilityStatus === 'Incomplete / Phone Only' ? (
+                        {eligInfo.isPhoneOnly ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-full bg-amber-50 text-amber-800 border border-amber-200 shadow-2xs">
                             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                             <span>Phone Verified Only</span>
@@ -1103,14 +1167,14 @@ export default function LeadsView({
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                            <span>{item.eligibilityStatus || 'Eligible'}</span>
+                            <span>{eligInfo.label}</span>
                           </span>
                         )}
                       </div>
-                      {item.cibil && item.cibil !== '—' ? (
+                      {eligInfo.cibilDisplay && eligInfo.cibilDisplay !== '—' ? (
                         <div className="text-[10px] font-black text-indigo-700 bg-indigo-50/90 px-2.5 py-1 rounded-xl border border-indigo-200/80 mt-1.5 inline-flex items-center gap-1.5 shadow-2xs">
                           <CreditCard className="w-3 h-3 text-indigo-500" />
-                          <span>CIBIL: {item.cibil}</span>
+                          <span>CIBIL: {eligInfo.cibilDisplay}</span>
                         </div>
                       ) : (
                         <div className="text-[11px] text-slate-400 font-medium mt-1">
@@ -1406,12 +1470,16 @@ export default function LeadsView({
                 <select
                   value={testCibil}
                   onChange={(e) => setTestCibil(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white"
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white font-semibold"
                 >
-                  <option value="750+ (Excellent - Best Approval)">750+ (Excellent - Best Approval)</option>
-                  <option value="700 - 749 (Good)">700 - 749 (Good)</option>
-                  <option value="650 - 699 (Average)">650 - 699 (Average)</option>
-                  <option value="Below 650 (Near Prime / Micro)">Below 650 (Near Prime / Micro)</option>
+                  <option value="850–900">850–900 (Slab 8: ₹90,000+ | Eligible – Premium | Rupay91)</option>
+                  <option value="800–849">800–849 (Slab 7: ₹80,000–₹89,999 | Eligible – Premium | Rupay91)</option>
+                  <option value="750–799">750–799 (Slab 6: ₹70,000–₹79,999 | Eligible – Preferred | Rupay91)</option>
+                  <option value="700–749">700–749 (Slab 5: ₹60,000–₹69,999 | Eligible – Good | Jhatpat Loans)</option>
+                  <option value="650–699">650–699 (Slab 4: ₹50,000–₹59,999 | Eligible | Jhatpat Loans)</option>
+                  <option value="600–649">600–649 (Slab 3: ₹40,000–₹49,999 | Eligible | Jhatpat Loans)</option>
+                  <option value="550–599">550–599 (Slab 2: ₹30,000–₹39,999 | Eligible | Jhatpat Loans)</option>
+                  <option value="500–549">500–549 (Slab 1: ₹20,000–₹29,999 | Eligible – Base | Jhatpat Loans)</option>
                   <option value="—">No CIBIL / Not Provided</option>
                 </select>
               </div>
@@ -1425,8 +1493,9 @@ export default function LeadsView({
                   onChange={(e) => setTestAssignedCompany(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white font-bold"
                 >
-                  <option value="AUTO">✨ Smart Auto-Route (Based on Eligibility Rules)</option>
-                  <option value="Rupay91">💳 Rupay91</option>
+                  <option value="AUTO">✨ Smart Auto-Route (750+ Rupay91, &lt;750 Jhatpat Loans)</option>
+                  <option value="Rupay91">💳 Rupay91 (CIBIL 750+)</option>
+                  <option value="Jhatpat Loans">⚡ Jhatpat Loans (CIBIL &lt; 750)</option>
                 </select>
               </div>
 
@@ -1515,7 +1584,9 @@ export default function LeadsView({
                   onChange={(e) => setNewCompany(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white font-bold"
                 >
-                  <option value="Rupay91">Rupay91</option>
+                  <option value="AUTO">✨ Auto (750+ Rupay91, &lt;750 Jhatpat Loans)</option>
+                  <option value="Rupay91">💳 Rupay91</option>
+                  <option value="Jhatpat Loans">⚡ Jhatpat Loans</option>
                 </select>
               </div>
 
@@ -1645,7 +1716,7 @@ export default function LeadsView({
                     <span>CIBIL Score</span>
                   </div>
                   <div className="text-base sm:text-lg font-extrabold text-emerald-700">
-                    {activeOverviewLead.cibil && activeOverviewLead.cibil !== '—' ? activeOverviewLead.cibil : '750+'}
+                    {overviewElig?.cibilDisplay && overviewElig.cibilDisplay !== '—' ? overviewElig.cibilDisplay : '—'}
                   </div>
                 </div>
 
@@ -1655,7 +1726,7 @@ export default function LeadsView({
                     <span>Company</span>
                   </div>
                   <div className="text-base sm:text-lg font-extrabold text-[#0A3977]">
-                    {activeOverviewLead.assignedCompany || 'Rupay91'}
+                    {activeOverviewLead.assignedCompany || overviewElig?.partner || 'Pending Details'}
                   </div>
                 </div>
               </div>
@@ -1745,7 +1816,7 @@ export default function LeadsView({
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Eligibility:</span>
                       <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-bold text-[11px] border border-emerald-200/50">
-                        {activeOverviewLead.eligibilityStatus || 'Eligible'}
+                        {overviewElig?.label || activeOverviewLead.eligibilityStatus || 'Eligible'}
                       </span>
                     </div>
 
@@ -1779,7 +1850,7 @@ export default function LeadsView({
                       Assigned Lending Partner / Company:
                     </label>
                     <select
-                      value={activeOverviewLead.assignedCompany || 'Rupay91'}
+                      value={activeOverviewLead.assignedCompany || overviewElig?.partner || 'Rupay91'}
                       onChange={(e) => handleReassignCompanyInModal(getLeadId(activeOverviewLead), e.target.value)}
                       className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0A3977] cursor-pointer shadow-2xs"
                     >

@@ -1,19 +1,23 @@
 <?php
+error_reporting(0);
+ini_set('display_errors', '0');
+date_default_timezone_set('Asia/Kolkata');
 /**
  * Paisa in Minutes - Unified Lead Retrieval API Endpoint
  * Endpoint: /admin/api/get-leads, /admin/api/get-leads.php, /api/get-leads
  */
 
-// Set Indian Standard Time (IST)
-date_default_timezone_set('Asia/Kolkata');
-
-// Enable CORS
+// Enable CORS & Disable Cache
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0, post-check=0, pre-check=0');
+header('Pragma: no-cache');
+header('Expires: 0');
+header('X-Accel-Expires: 0');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
@@ -106,17 +110,105 @@ function cleanSalary($raw, $salVal = null, $salRange = '') {
     return $clean;
 }
 
-// 3. Helper to determine partner company
-function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
+// 3. Helper to determine eligibility slab and partner company strictly per user matrix
+function getSlabAndPartner($cibilStr, $salaryNum = 0, $explicitCompany = '') {
+    $cibilVal = 0;
+    if (!empty($cibilStr) && $cibilStr !== '—') {
+        if (preg_match('/\b(850|8[5-9]\d|900)\b/', $cibilStr)) {
+            $cibilVal = 875;
+        } elseif (preg_match('/\b(800|8[0-4]\d)\b/', $cibilStr)) {
+            $cibilVal = 825;
+        } elseif (preg_match('/\b(750|7[5-9]\d)\b/', $cibilStr)) {
+            $cibilVal = 775;
+        } elseif (preg_match('/\b(700|7[0-4]\d)\b/', $cibilStr)) {
+            $cibilVal = 725;
+        } elseif (preg_match('/\b(650|6[5-9]\d)\b/', $cibilStr)) {
+            $cibilVal = 675;
+        } elseif (preg_match('/\b(600|6[0-4]\d)\b/', $cibilStr)) {
+            $cibilVal = 625;
+        } elseif (preg_match('/\b(550|5[5-9]\d)\b/', $cibilStr)) {
+            $cibilVal = 575;
+        } elseif (preg_match('/\b(500|5[0-4]\d)\b/', $cibilStr)) {
+            $cibilVal = 525;
+        } else {
+            preg_match('/\d{3}/', $cibilStr, $matches);
+            if (!empty($matches[0])) $cibilVal = (int)$matches[0];
+        }
+    }
+
+    if ($cibilVal >= 850 || ($cibilVal === 0 && $salaryNum >= 90000)) {
+        $slab = 8;
+        $cibilRange = '850–900';
+        $salaryRange = '₹90,000+';
+        $eligibility = 'Eligible – Premium';
+    } elseif ($cibilVal >= 800 || ($cibilVal === 0 && $salaryNum >= 80000)) {
+        $slab = 7;
+        $cibilRange = '800–849';
+        $salaryRange = '₹80,000–₹89,999';
+        $eligibility = 'Eligible – Premium';
+    } elseif ($cibilVal >= 750 || ($cibilVal === 0 && $salaryNum >= 70000)) {
+        $slab = 6;
+        $cibilRange = '750–799';
+        $salaryRange = '₹70,000–₹79,999';
+        $eligibility = 'Eligible – Preferred';
+    } elseif ($cibilVal >= 700 || ($cibilVal === 0 && $salaryNum >= 60000)) {
+        $slab = 5;
+        $cibilRange = '700–749';
+        $salaryRange = '₹60,000–₹69,999';
+        $eligibility = 'Eligible – Good';
+    } elseif ($cibilVal >= 650 || ($cibilVal === 0 && $salaryNum >= 50000)) {
+        $slab = 4;
+        $cibilRange = '650–699';
+        $salaryRange = '₹50,000–₹59,999';
+        $eligibility = 'Eligible';
+    } elseif ($cibilVal >= 600 || ($cibilVal === 0 && $salaryNum >= 40000)) {
+        $slab = 3;
+        $cibilRange = '600–649';
+        $salaryRange = '₹40,000–₹49,999';
+        $eligibility = 'Eligible';
+    } elseif ($cibilVal >= 550 || ($cibilVal === 0 && $salaryNum >= 30000)) {
+        $slab = 2;
+        $cibilRange = '550–599';
+        $salaryRange = '₹30,000–₹39,999';
+        $eligibility = 'Eligible';
+    } elseif ($cibilVal >= 500 || ($cibilVal === 0 && $salaryNum >= 20000)) {
+        $slab = 1;
+        $cibilRange = '500–549';
+        $salaryRange = '₹20,000–₹29,999';
+        $eligibility = 'Eligible – Base';
+    } else {
+        $slab = 0;
+        $cibilRange = !empty($cibilStr) && $cibilStr !== '—' ? $cibilStr : '—';
+        $salaryRange = 'Under ₹20,000';
+        $eligibility = ($cibilVal === 0 && $salaryNum === 0) ? 'Incomplete / Phone Only' : 'Below Minimum Threshold';
+    }
+
+    // 750 se upar CIBIL: Rupay91. Below 750: Jhatpat Loans
+    if ($cibilVal >= 750) {
+        $partner = 'Rupay91';
+    } elseif ($cibilVal > 0) {
+        $partner = 'Jhatpat Loans';
+    } else {
+        if ($salaryNum >= 70000) {
+            $partner = 'Rupay91';
+        } elseif ($salaryNum > 0) {
+            $partner = 'Jhatpat Loans';
+        } else {
+            $partner = 'Pending Details';
+        }
+    }
+
     if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO' && $explicitCompany !== 'Pending Details') {
-        $clean = strtolower(trim($explicitCompany));
-        if (strpos($clean, 'rupay91') !== false || strpos($clean, 'rupay 91') !== false) return 'Rupay91';
-        return trim($explicitCompany);
+        $partner = trim($explicitCompany);
     }
-    if ($salaryNum === 0 && $amountNum === 0) {
-        return 'Pending Details';
-    }
-    return 'Rupay91';
+
+    return [
+        'slab' => $slab,
+        'cibil_range' => $cibilRange,
+        'salary_range' => $salaryRange,
+        'eligibility' => $eligibility,
+        'partner' => $partner
+    ];
 }
 
 // 4. Load from Primary Data Files across possible host configurations
@@ -180,8 +272,17 @@ foreach ($leadsCandidates as $lf) {
                 $lPhone = preg_replace('/\D/', '', (string)($row['phone'] ?? $row['mobile'] ?? ''));
                 if (strlen($lPhone) > 10) $lPhone = substr($lPhone, -10);
 
+                // Check deleted map by lead ID
                 if ($lIdLower && !empty($deletedMap[$lIdLower])) continue;
-                if ($lPhone && !empty($deletedMap[$lPhone])) continue;
+
+                // If lead has phone, un-blacklist that phone so fresh website submission is visible
+                $rowStatus = strtolower(trim((string)($row['status'] ?? 'fresh')));
+                if ($rowStatus === 'fresh' && $lPhone) {
+                    unset($deletedMap[$lPhone]);
+                } elseif ($lPhone && !empty($deletedMap[$lPhone])) {
+                    continue;
+                }
+
                 if ($leadId && !empty($seenIds[$leadId])) continue;
 
                 if (empty($leadId)) {
@@ -206,7 +307,8 @@ foreach ($leadsCandidates as $lf) {
 if (function_exists('curl_init')) {
     $ch = curl_init('https://paisainminutes.onrender.com/api/loan-applications/all');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 4);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 3);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     $renderJson = curl_exec($ch);
     curl_close($ch);
@@ -222,7 +324,8 @@ if (function_exists('curl_init')) {
                 
                 $rId = (string)($rItem['id'] ?? ('PIM-' . rand(100000, 999999)));
                 $rIdLower = strtolower($rId);
-                if (!empty($deletedMap[$rIdLower]) || !empty($deletedMap[$rPhone])) continue;
+                if (!empty($deletedMap[$rIdLower])) continue;
+                if (!empty($deletedMap[$rPhone])) continue;
                 if (!empty($seenIds[$rId])) continue;
                 
                 $rName = trim((string)($rItem['name'] ?? 'Applicant'));
@@ -246,10 +349,28 @@ if (function_exists('curl_init')) {
                     'cibil'             => $rItem['cibil'] ?? '—',
                     'source'            => $isPhoneOnly ? 'Apply Now (Phone Only)' : 'Render API / Loan App',
                     'status'            => $rItem['status'] ?? 'Fresh',
-                    'assignedCompany'   => $isPhoneOnly ? 'Pending Details' : 'Rupay91',
+                    'assignedCompany'   => $isPhoneOnly ? 'Pending Details' : ($cleanSalary >= 30000 ? 'Rupay91' : 'Rupaysure'),
                     'eligibilityStatus' => $isPhoneOnly ? 'Incomplete / Phone Only' : 'Eligible',
-                    'created_at'        => isset($rItem['createdAt']) ? (new DateTime($rItem['createdAt']))->setTimezone(new DateTimeZone('Asia/Kolkata'))->format('c') : date('c'),
-                    'created'           => isset($rItem['createdAt']) ? (new DateTime($rItem['createdAt']))->setTimezone(new DateTimeZone('Asia/Kolkata'))->format('d M Y, h:i A') : date('d M Y, h:i A')
+                    'created_at'        => (function() use ($rItem) {
+                        if (!empty($rItem['createdAt'])) {
+                            try {
+                                $dt = new DateTime($rItem['createdAt']);
+                                $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
+                                return $dt->format('Y-m-d H:i:s');
+                            } catch (Exception $e) {}
+                        }
+                        return date('Y-m-d H:i:s');
+                    })(),
+                    'created'           => (function() use ($rItem) {
+                        if (!empty($rItem['createdAt'])) {
+                            try {
+                                $dt = new DateTime($rItem['createdAt']);
+                                $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
+                                return $dt->format('d M Y, h:i A');
+                            } catch (Exception $e) {}
+                        }
+                        return date('d M Y, h:i A');
+                    })()
                 ];
                 $seenIds[$rId] = true;
                 $seenPhones[$rPhone] = true;
@@ -259,74 +380,72 @@ if (function_exists('curl_init')) {
 }
 
 // Also load from leads_log.csv and merge any records not already in list
-if (file_exists($leadsLogCsv)) {
-    $csvData = array_map('str_getcsv', file($leadsLogCsv));
-    if (count($csvData) > 1) {
-        $headers = array_shift($csvData);
-        foreach ($csvData as $row) {
-            if (count($row) >= 4) {
-                // Support both format with leadId in row[0] or timestamp in row[0]
-                $isIdFirst = (strpos((string)$row[0], 'PIM-') === 0);
-                $rowId = trim((string)($isIdFirst ? $row[0] : ('PIM-' . rand(100000, 999999))));
-                $rowTimestamp = $isIdFirst ? ($row[1] ?? '') : ($row[0] ?? '');
-                $rowName = $isIdFirst ? ($row[2] ?? 'Applicant') : ($row[1] ?? 'Applicant');
-                $rowPhone = $isIdFirst ? ($row[4] ?? '') : ($row[3] ?? '');
-                $rowAmount = $isIdFirst ? ($row[7] ?? 50000) : ($row[4] ?? 50000);
-                $rowPartner = $isIdFirst ? ($row[6] ?? '') : ($row[5] ?? '');
-                $rowStatus = $row[count($row) - 1] ?? 'Fresh';
+foreach ($leadsLogCandidates as $leadsLogCsv) {
+    if (file_exists($leadsLogCsv)) {
+        $csvData = array_map('str_getcsv', file($leadsLogCsv));
+        if (is_array($csvData) && count($csvData) > 1) {
+            $headers = array_shift($csvData);
+            foreach ($csvData as $row) {
+                if (count($row) >= 4) {
+                    // Extract phone number from row
+                    $cleanPhone = '';
+                    foreach ($row as $cell) {
+                        $p = preg_replace('/\D/', '', (string)$cell);
+                        if (strlen($p) === 10 && in_array($p[0], ['6','7','8','9'])) {
+                            $cleanPhone = $p;
+                            break;
+                        }
+                    }
 
-                $cleanPhone = preg_replace('/\D/', '', (string)$rowPhone);
-                $rIdLower = strtolower($rowId);
-                if ($rIdLower && !empty($deletedMap[$rIdLower])) continue;
-                if ($cleanPhone && !empty($deletedMap[$cleanPhone])) continue;
-                if (!empty($rowId) && !empty($seenIds[$rowId])) continue;
-                if (!empty($cleanPhone) && !empty($seenIds[$cleanPhone])) continue;
+                    if (!$cleanPhone) continue;
+                    if (!empty($deletedMap[$cleanPhone])) continue;
+                    if (!empty($seenPhones[$cleanPhone])) continue;
 
-                $allLeads[] = [
-                    'id'              => $rowId,
-                    'loanNo'          => $rowId,
-                    'lead_id'         => $rowId,
-                    'name'            => $rowName ?: 'Applicant',
-                    'mobile'          => $cleanPhone ? ('+91 ' . $cleanPhone) : '',
-                    'phone'           => $cleanPhone,
-                    'loanAmount'      => $rowAmount ?: 50000,
-                    'salary'          => 35000,
-                    'cibil'           => '750+',
-                    'assignedCompany' => $rowPartner ?: 'Rupay91',
-                    'created'         => $rowTimestamp ?: date('d M Y, h:i A'),
-                    'created_at'      => $rowTimestamp ?: date('Y-m-d H:i:s'),
-                    'status'          => $rowStatus ?: 'Fresh',
-                    'source'          => 'Website Application'
-                ];
-                if (!empty($rowId)) $seenIds[$rowId] = true;
-                if (!empty($cleanPhone)) $seenIds[$cleanPhone] = true;
-            }
-        }
-    }
-}
+                    $isIdFirst = (strpos((string)$row[0], 'PIM-') === 0);
+                    $rowId = trim((string)($isIdFirst ? $row[0] : ('PIM-' . date('Ymd') . '-' . substr($cleanPhone, -4))));
+                    $rowTimestamp = $isIdFirst ? ($row[1] ?? '') : ($row[0] ?? '');
+                    $rowName = $isIdFirst ? ($row[2] ?? 'Applicant') : ($row[1] ?? 'Applicant');
+                    $rowAmount = $isIdFirst ? ($row[7] ?? 50000) : ($row[4] ?? 50000);
+                    $rowPartner = $isIdFirst ? ($row[6] ?? '') : ($row[5] ?? '');
+                    $rowStatus = $row[count($row) - 1] ?? 'Fresh';
 
-// Load deleted leads blacklist
-$deletedCandidates = array_unique([
-    __DIR__ . '/../deleted_leads.json',
-    __DIR__ . '/../../data/deleted_leads.json',
-    __DIR__ . '/../../crm/deleted_leads.json',
-    dirname(__DIR__, 2) . '/data/deleted_leads.json',
-    dirname(__DIR__, 2) . '/crm/deleted_leads.json',
-    dirname(__DIR__, 3) . '/public_html/data/deleted_leads.json',
-    dirname(__DIR__, 3) . '/public_html/crm/deleted_leads.json'
-]);
-$deletedBlacklist = [];
-foreach ($deletedCandidates as $df) {
-    if (file_exists($df)) {
-        $arr = json_decode(file_get_contents($df), true);
-        if (is_array($arr)) {
-            foreach ($arr as $delItem) {
-                $delClean = strtolower(trim((string)$delItem));
-                if ($delClean !== '' && $delClean !== '*') {
-                    $deletedBlacklist[$delClean] = true;
+                    $rIdLower = strtolower($rowId);
+                    if (!empty($deletedMap[$rIdLower])) continue;
+                    if (!empty($seenIds[$rowId])) continue;
+
+                    $allLeads[] = [
+                        'id'              => $rowId,
+                        'loanNo'          => $rowId,
+                        'lead_id'         => $rowId,
+                        'name'            => $rowName ?: 'Applicant',
+                        'mobile'          => '+91 ' . $cleanPhone,
+                        'phone'           => $cleanPhone,
+                        'loanAmount'      => $rowAmount ?: 50000,
+                        'salary'          => 35000,
+                        'cibil'           => '750+',
+                        'assignedCompany' => $rowPartner ?: 'Rupay91',
+                        'created'         => $rowTimestamp ?: date('d M Y, h:i A'),
+                        'created_at'      => $rowTimestamp ?: date('Y-m-d H:i:s'),
+                        'status'          => $rowStatus ?: 'Fresh',
+                        'source'          => 'Website Application'
+                    ];
+                    $seenIds[$rowId] = true;
+                    $seenPhones[$cleanPhone] = true;
                 }
             }
         }
+        break;
+    }
+}
+
+// Consolidate deleted leads blacklist for frontend response
+$deletedBlacklist = [];
+$deletedBlacklistMap = [];
+foreach ($deletedMap as $k => $v) {
+    $strK = trim(strtolower((string)$k));
+    if ($strK !== '' && strlen($strK) >= 5) {
+        $deletedBlacklist[] = $strK;
+        $deletedBlacklistMap[$strK] = true;
     }
 }
 
@@ -342,8 +461,13 @@ foreach ($allLeads as $index => $lead) {
         $phone = substr($phone, -10);
     }
 
-    // Skip leads that were deleted by admin
-    if (!empty($deletedBlacklist[$lIdClean]) || ($phone && !empty($deletedBlacklist[$phone]))) {
+    // Skip leads that were deleted by admin (by specific Lead ID)
+    if (!empty($deletedBlacklistMap[$lIdClean])) {
+        continue;
+    }
+    // Only check phone if status is not Fresh
+    $leadStatus = strtolower(trim((string)($lead['status'] ?? 'fresh')));
+    if ($leadStatus !== 'fresh' && $phone && !empty($deletedBlacklistMap[$phone])) {
         continue;
     }
     
@@ -369,49 +493,28 @@ foreach ($allLeads as $index => $lead) {
         $assignedCompany = (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO') ? $explicitCompany : 'Pending Details';
         $eligibilityStatus = 'Incomplete / Phone Only';
     } else {
-        $assignedCompany = determineCompany($cibil, $cleanedSalary, $cleanedLoan, $explicitCompany);
-        $eligibilityStatus = trim($lead['eligibilityStatus'] ?? $lead['eligibility_status'] ?? $lead['eligibility'] ?? 'Eligible');
+        $slabInfo = getSlabAndPartner($cibil, $cleanedSalary);
+        $assignedCompany = $slabInfo['partner'];
+        $eligibilityStatus = $slabInfo['eligibility'];
+        if (empty($cibil) || $cibil === '—') {
+            $cibil = $slabInfo['cibil_range'];
+        }
     }
 
-    $createdAt = $lead['created_at'] ?? $lead['created'] ?? $lead['date'] ?? $lead['timestamp'] ?? 'now';
+    $createdAt = $lead['created_at'] ?? $lead['created'] ?? $lead['date'] ?? $lead['timestamp'] ?? date('Y-m-d H:i:s');
+    $formattedDate = date('d M Y, h:i A');
+    $isoDate = date('Y-m-d');
+    $timestamp = time();
     try {
-        if (is_numeric($createdAt)) {
-            $timestamp = (int)$createdAt;
-            $dt = new DateTime("@$timestamp");
-            $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
-            $formattedDate = $dt->format('d M Y, h:i A');
-            $isoDate = $dt->format('Y-m-d');
-            $isoDateTime = $dt->format('c');
-        } else if (is_string($createdAt)) {
-            $str = trim($createdAt);
-            if (strpos($str, 'Z') !== false || strpos($str, '+') !== false || (strpos($str, 'T') !== false && strlen($str) > 19)) {
-                $dt = new DateTime($str);
-                $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
-            } else if (preg_match('/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/', $str)) {
-                // SQL datetime string from previous UTC server writes e.g. 2026-09-07 05:51:46
-                $dt = new DateTime($str, new DateTimeZone('UTC'));
-                $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
-            } else {
-                $dt = new DateTime($str);
-                $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
-            }
-            $formattedDate = $dt->format('d M Y, h:i A');
-            $isoDate = $dt->format('Y-m-d');
-            $isoDateTime = $dt->format('c');
-            $timestamp = $dt->getTimestamp();
-        } else {
-            $dt = new DateTime('now', new DateTimeZone('Asia/Kolkata'));
-            $formattedDate = $dt->format('d M Y, h:i A');
-            $isoDate = $dt->format('Y-m-d');
-            $isoDateTime = $dt->format('c');
-            $timestamp = $dt->getTimestamp();
-        }
-    } catch (Exception $e) {
-        $dt = new DateTime('now', new DateTimeZone('Asia/Kolkata'));
+        $dt = new DateTime($createdAt);
+        $dt->setTimezone(new DateTimeZone('Asia/Kolkata'));
         $formattedDate = $dt->format('d M Y, h:i A');
         $isoDate = $dt->format('Y-m-d');
-        $isoDateTime = $dt->format('c');
         $timestamp = $dt->getTimestamp();
+    } catch (Exception $e) {
+        $timestamp = strtotime($createdAt) ?: time();
+        $formattedDate = date('d M Y, h:i A', $timestamp);
+        $isoDate = date('Y-m-d', $timestamp);
     }
     $today = date('Y-m-d');
 
@@ -453,7 +556,7 @@ foreach ($allLeads as $index => $lead) {
         'purpose'           => $lead['purpose'] ?? 'Personal Loan',
         'status'            => $status,
         'created'           => $formattedDate,
-        'created_at'        => $isoDateTime,
+        'created_at'        => date('Y-m-d H:i:s', $timestamp),
         'date'              => $isoDate,
         'timestamp_num'     => $timestamp
     ];
@@ -552,5 +655,6 @@ usort($formattedLeads, function($a, $b) {
 echo json_encode([
     'success' => true,
     'count'   => count($formattedLeads),
+    'deleted_blacklist' => array_values(array_unique($deletedBlacklist)),
     'leads'   => $formattedLeads
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
