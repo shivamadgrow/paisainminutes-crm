@@ -206,9 +206,6 @@ $deletedStores = array_unique([
 ]);
 
 $newDeletedEntries = array_keys($idsMap);
-foreach (array_keys($cleanPhones) as $p) {
-    $newDeletedEntries[] = $p;
-}
 
 foreach ($deletedStores as $df) {
     $dir = dirname($df);

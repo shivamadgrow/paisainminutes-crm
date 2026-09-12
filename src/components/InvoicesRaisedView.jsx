@@ -18,8 +18,10 @@ import { INITIAL_INVOICES } from '../data/invoicesData';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
 
-export default function InvoicesRaisedView() {
-  const [invoices, setInvoices] = useState(INITIAL_INVOICES);
+export default function InvoicesRaisedView({ invoices: propInvoices, setInvoices: propSetInvoices }) {
+  const [localInvoices, setLocalInvoices] = useState(INITIAL_INVOICES);
+  const invoices = propInvoices !== undefined ? propInvoices : localInvoices;
+  const setInvoices = propSetInvoices !== undefined ? propSetInvoices : setLocalInvoices;
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);

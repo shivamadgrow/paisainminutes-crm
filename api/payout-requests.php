@@ -36,9 +36,6 @@ if (file_exists($dataFile)) {
 
 echo json_encode([
     'success' => true,
-    'payoutRequests' => [
-        ['id' => 'PR-2026-081', 'partnerName' => 'Insta Rupees', 'amount' => 145000, 'requestedDate' => '2026-08-15', 'status' => 'Requested'],
-        ['id' => 'PR-2026-079', 'partnerName' => 'LoanWithin', 'amount' => 88500, 'requestedDate' => '2026-08-12', 'status' => 'Acknowledged'],
-        ['id' => 'PR-2026-068', 'partnerName' => 'Rupay91', 'amount' => 284000, 'requestedDate' => '2026-08-02', 'status' => 'Paid']
-    ]
+    'payoutRequests' => []
 ]);
+

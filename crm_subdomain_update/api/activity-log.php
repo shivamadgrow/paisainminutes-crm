@@ -41,7 +41,6 @@ if (file_exists($dataFile)) {
 
 echo json_encode([
     'success' => true,
-    'logs' => [
-        ['id' => 'act-001', 'when' => '10/08/2026 04:12 PM', 'who' => 'Super Admin', 'module' => 'Commissions', 'type' => 'Update', 'activity' => 'Updated Commission Rate Card for Rupay91.']
-    ]
+    'logs' => []
 ]);
+

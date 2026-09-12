@@ -2,68 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { FileSpreadsheet, Search, Filter, Clock, ShieldCheck, Activity, Calendar } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
 
-export const INITIAL_ACTIVITY_LOGS = [
-  {
-    id: 'act-001',
-    when: '10/08/2026 04:12 PM',
-    date: '2026-08-10',
-    who: 'Super Admin (info@adgrowmedia.com)',
-    module: 'Commissions',
-    type: 'Update',
-    typeColor: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
-    activity: 'Updated Commission Rate Card for Rupay91 to 2.8% Tiered slab structure effective 01/04/2026.'
-  },
-  {
-    id: 'act-002',
-    when: '10/08/2026 02:45 PM',
-    date: '2026-08-10',
-    who: 'Admin (Karan S.)',
-    module: 'Leads',
-    type: 'Status Change',
-    typeColor: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-    activity: 'Changed lead status for Shivam (PIM-1002) from "Fresh" to "Approved" with ₹25,000 disbursal on Rupay91.'
-  },
-  {
-    id: 'act-003',
-    when: '10/08/2026 11:30 AM',
-    date: '2026-08-10',
-    who: 'Telecaller (Pooja R.)',
-    module: 'Mobile-only Leads',
-    type: 'Outreach',
-    typeColor: 'bg-blue-50 text-blue-700 border border-blue-200',
-    activity: 'Sent instant application link via WhatsApp to abandoned mini-form lead +91 9811223344.'
-  },
-  {
-    id: 'act-004',
-    when: '09/08/2026 05:20 PM',
-    date: '2026-08-09',
-    who: 'Super Admin',
-    module: 'Partners',
-    type: 'Agreement',
-    typeColor: 'bg-amber-50 text-amber-700 border border-amber-200',
-    activity: 'Uploaded executed contract renewal deed for Jhatpat Loans (PIM-AGR-2025-004).'
-  },
-  {
-    id: 'act-005',
-    when: '08/08/2026 03:15 PM',
-    date: '2026-08-08',
-    who: 'Finance Desk',
-    module: 'Payouts',
-    type: 'Settlement',
-    typeColor: 'bg-purple-50 text-purple-700 border border-purple-200',
-    activity: 'Reconciled settlement #SET-2026-042 for ₹2,84,000 from Rupay91 via NEFT-HDFC009283719.'
-  },
-  {
-    id: 'act-006',
-    when: '07/08/2026 10:05 AM',
-    date: '2026-08-07',
-    who: 'Admin (Karan S.)',
-    module: 'Leads',
-    type: 'De-duplicate',
-    typeColor: 'bg-rose-50 text-rose-700 border border-rose-200',
-    activity: 'Merged duplicate lead #PIM-1048 into primary lead #PIM-1012 (matched on mobile +91 7838056998).'
-  }
-];
+export const INITIAL_ACTIVITY_LOGS = [];
+
 
 export default function AuditLogView() {
   const [logs, setLogs] = useState(() => {

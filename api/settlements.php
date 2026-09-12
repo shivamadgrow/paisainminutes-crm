@@ -36,8 +36,6 @@ if (file_exists($dataFile)) {
 
 echo json_encode([
     'success' => true,
-    'settlements' => [
-        ['id' => 'SET-2026-042', 'partnerName' => 'Rupay91', 'receivedAmount' => 284000, 'variance' => 0, 'reconciledStatus' => 'Matched'],
-        ['id' => 'SET-2026-041', 'partnerName' => 'Jhatpat Loans', 'receivedAmount' => 112000, 'variance' => -3000, 'reconciledStatus' => 'Variance Flagged']
-    ]
+    'settlements' => []
 ]);
+

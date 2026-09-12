@@ -18,9 +18,15 @@ import {
   Sparkles,
   Calendar
 } from 'lucide-react';
-import { getPartnerMeta, AFFILIATE_PARTNERS } from '../data/affiliatePartners';
+import { 
+  getPartnerMeta, 
+  AFFILIATE_PARTNERS, 
+  getPartnerTrackingUrl, 
+  trackPartnerClick, 
+  getPartnerDirectUtmUrl 
+} from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
-import { cleanLoanAmount, cleanSalary, formatToIST } from '../utils/amountHelpers';
+import { cleanLoanAmount, cleanSalary, formatToIST, isDateInRange, DATE_RANGE_PRESETS } from '../utils/amountHelpers';
 import { fetchApi } from '../utils/apiConfig';
 
 export default function CompanyLeadsView({ 
@@ -32,6 +38,9 @@ export default function CompanyLeadsView({
   const partner = getPartnerMeta(companyId);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedDatePreset, setSelectedDatePreset] = useState('ALL');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [selectedLeadIds, setSelectedLeadIds] = useState([]);
   const [reassigningLeadId, setReassigningLeadId] = useState(null);
 
@@ -45,7 +54,7 @@ export default function CompanyLeadsView({
     });
   }, [leads, partner]);
 
-  // Apply search and status filter
+  // Apply search, status, and date range filter
   const filteredLeads = useMemo(() => {
     return companyLeads.filter(l => {
       // Search
@@ -65,9 +74,15 @@ export default function CompanyLeadsView({
         if (leadStatus !== statusFilter) return false;
       }
 
+      // Date Range
+      if (selectedDatePreset !== 'ALL') {
+        const leadDate = l.created_at || l.createdAt || l.created || l.date;
+        if (!isDateInRange(leadDate, selectedDatePreset, customStartDate, customEndDate)) return false;
+      }
+
       return true;
     });
-  }, [companyLeads, searchQuery, statusFilter]);
+  }, [companyLeads, searchQuery, statusFilter, selectedDatePreset, customStartDate, customEndDate]);
 
   // Partner specific statistics
   const stats = useMemo(() => {
@@ -202,15 +217,17 @@ export default function CompanyLeadsView({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          {partner.website && (
+          {partner && (
             <a
-              href={partner.website}
+              href={getPartnerTrackingUrl(partner, { source: 'crm_partner_view', term: `${partner.id}_header` })}
               target="_blank"
-              rel="noreferrer"
-              className="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+              rel="noopener noreferrer"
+              onClick={() => trackPartnerClick(partner, { source: 'crm_partner_view', term: `${partner.id}_header` })}
+              className="px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-800 hover:text-[#0A3977] border border-slate-200 hover:border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs group cursor-pointer active:scale-95"
+              title={`Visit ${partner.name} portal with live affiliate tracking & UTM tags`}
             >
               <span>Visit {partner.name}</span>
-              <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+              <ExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#0A3977] transition-colors" />
             </a>
           )}
 
@@ -268,10 +285,51 @@ export default function CompanyLeadsView({
           />
         </div>
 
+        {/* Date Range Filter Selector */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1">
+            <Calendar className="w-3 h-3 text-blue-600" />
+            <span>Date:</span>
+          </span>
+          {DATE_RANGE_PRESETS.map(preset => {
+            const isSel = selectedDatePreset === preset.id;
+            return (
+              <button
+                key={preset.id}
+                onClick={() => setSelectedDatePreset(preset.id)}
+                className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition cursor-pointer shrink-0 ${
+                  isSel
+                    ? 'bg-[#0A3977] text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
+          {selectedDatePreset === 'CUSTOM' && (
+            <div className="flex items-center gap-1 bg-blue-50/70 p-1 rounded-xl border border-blue-200 shrink-0">
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="px-1.5 py-0.5 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-700"
+              />
+              <span className="text-[10px] text-slate-400 font-bold">to</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="px-1.5 py-0.5 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-700"
+              />
+            </div>
+          )}
+        </div>
+
         {/* Status Filter Buttons */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           {[
-            { id: 'all', label: `All (${companyLeads.length})` },
+            { id: 'all', label: `All Status (${companyLeads.length})` },
             { id: 'fresh', label: `Fresh (${stats.fresh})` },
             { id: 'callback', label: 'Callback' },
             { id: 'docs-received', label: 'Docs Received' },
@@ -453,6 +511,24 @@ export default function CompanyLeadsView({
                               <span className="font-bold text-[10px]">WA</span>
                             </a>
                           )}
+                          <a
+                            href={getPartnerTrackingUrl(partner, { 
+                              leadId: itemId, 
+                              phone: item.mobile || item.phone, 
+                              source: 'crm_lead_row' 
+                            })}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={() => trackPartnerClick(partner, { 
+                              leadId: itemId, 
+                              phone: item.mobile || item.phone, 
+                              source: 'crm_lead_row' 
+                            })}
+                            className="p-1.5 bg-blue-50 text-[#0A3977] hover:bg-blue-100 rounded-lg transition"
+                            title={`Open ${partner.name} Portal with Lead ID ${itemId} & UTM tracking`}
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
                         </div>
                       </td>
 

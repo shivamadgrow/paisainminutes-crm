@@ -16,8 +16,10 @@ import { INITIAL_PAYOUT_REQUESTS } from '../data/payoutsData';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
 
-export default function PayoutRequestsView() {
-  const [requests, setRequests] = useState(INITIAL_PAYOUT_REQUESTS);
+export default function PayoutRequestsView({ requests: propRequests, setRequests: propSetRequests }) {
+  const [localRequests, setLocalRequests] = useState(INITIAL_PAYOUT_REQUESTS);
+  const requests = propRequests !== undefined ? propRequests : localRequests;
+  const setRequests = propSetRequests !== undefined ? propSetRequests : setLocalRequests;
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -174,7 +176,9 @@ export default function PayoutRequestsView() {
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Avg Settlement Cycle</div>
-          <div className="text-2xl font-black text-[#0A3977] mt-1">4.2 Days</div>
+          <div className="text-2xl font-black text-[#0A3977] mt-1">
+            {requests.filter(r => r.status === 'Paid').length > 0 ? '4.2 Days' : '—'}
+          </div>
           <div className="text-[10px] text-slate-500 mt-0.5">From request submission to bank credit</div>
         </div>
       </div>

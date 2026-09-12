@@ -21,6 +21,9 @@ import CommissionSummaryView from './components/CommissionSummaryView';
 import PayoutRequestsView from './components/PayoutRequestsView';
 import SettlementsView from './components/SettlementsView';
 import InvoicesRaisedView from './components/InvoicesRaisedView';
+import { INITIAL_PAYOUT_REQUESTS } from './data/payoutsData';
+import { INITIAL_SETTLEMENTS } from './data/settlementsData';
+import { INITIAL_INVOICES } from './data/invoicesData';
 import CommissionRateCardsView from './components/CommissionRateCardsView';
 import RolesPermissionsView from './components/RolesPermissionsView';
 import IntegrationSettingsView from './components/IntegrationSettingsView';
@@ -62,6 +65,52 @@ export default function App() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [leads, setLeads] = useState(INITIAL_LEADS);
+
+  // Financial transactions state initialized clean (0 records for live marketing)
+  const [payoutRequests, setPayoutRequests] = useState(() => {
+    try {
+      const saved = localStorage.getItem('paisa_crm_payout_requests');
+      return saved ? JSON.parse(saved) : INITIAL_PAYOUT_REQUESTS;
+    } catch (e) {
+      return INITIAL_PAYOUT_REQUESTS;
+    }
+  });
+
+  const [settlements, setSettlements] = useState(() => {
+    try {
+      const saved = localStorage.getItem('paisa_crm_settlements');
+      return saved ? JSON.parse(saved) : INITIAL_SETTLEMENTS;
+    } catch (e) {
+      return INITIAL_SETTLEMENTS;
+    }
+  });
+
+  const [invoices, setInvoices] = useState(() => {
+    try {
+      const saved = localStorage.getItem('paisa_crm_invoices');
+      return saved ? JSON.parse(saved) : INITIAL_INVOICES;
+    } catch (e) {
+      return INITIAL_INVOICES;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('paisa_crm_payout_requests', JSON.stringify(payoutRequests));
+    } catch (e) {}
+  }, [payoutRequests]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('paisa_crm_settlements', JSON.stringify(settlements));
+    } catch (e) {}
+  }, [settlements]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('paisa_crm_invoices', JSON.stringify(invoices));
+    } catch (e) {}
+  }, [invoices]);
 
   // Authenticated user session (null when locked/logged out)
   const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
@@ -188,12 +237,12 @@ export default function App() {
     };
   }, [leads]);
 
-  // Counts for commissions & payouts
+  // Counts for commissions & payouts - dynamic based on live state (0 for clean marketing launch)
   const commissionCounts = useMemo(() => ({
-    payoutRequests: 3,
-    settlements: 5,
-    invoices: 5
-  }), []);
+    payoutRequests: (payoutRequests || []).filter(r => r.status !== 'Paid').length,
+    settlements: (settlements || []).length,
+    invoices: (invoices || []).filter(i => i.status !== 'Paid').length
+  }), [payoutRequests, settlements, invoices]);
 
   // Compute partner-wise counts
   const partnerCounts = useMemo(() => {
@@ -297,17 +346,26 @@ export default function App() {
 
       case 'payout-requests':
         return (
-          <PayoutRequestsView />
+          <PayoutRequestsView 
+            requests={payoutRequests} 
+            setRequests={setPayoutRequests} 
+          />
         );
 
       case 'settlements':
         return (
-          <SettlementsView />
+          <SettlementsView 
+            settlements={settlements} 
+            setSettlements={setSettlements} 
+          />
         );
 
       case 'invoices-raised':
         return (
-          <InvoicesRaisedView />
+          <InvoicesRaisedView 
+            invoices={invoices} 
+            setInvoices={setInvoices} 
+          />
         );
 
       case 'rate-cards':

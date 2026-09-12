@@ -197,3 +197,107 @@ export function formatINR(val, fallback = '0') {
   if (isNaN(n)) return fallback;
   return n.toLocaleString('en-IN');
 }
+
+/**
+ * Normalizes any timestamp or date string to YYYY-MM-DD in Asia/Kolkata (IST)
+ */
+export function getISTDateKey(dateInput) {
+  if (!dateInput) return '';
+  let dateObj = null;
+
+  if (typeof dateInput === 'string') {
+    let str = dateInput.trim();
+    if (str.endsWith('Z') || (str.includes('T') && (str.includes('+') || str.includes('Z')))) {
+      dateObj = new Date(str);
+    } else if (str.includes('T') && !str.includes('+') && !str.endsWith('Z')) {
+      dateObj = new Date(str + 'Z');
+    } else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(str)) {
+      dateObj = new Date(str.replace(' ', 'T') + 'Z');
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      return str;
+    } else {
+      dateObj = new Date(str);
+    }
+  } else if (dateInput instanceof Date) {
+    dateObj = dateInput;
+  } else if (typeof dateInput === 'number') {
+    dateObj = new Date(dateInput < 1e11 ? dateInput * 1000 : dateInput);
+  }
+
+  if (!dateObj || isNaN(dateObj.getTime())) return '';
+
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(dateObj);
+  } catch (e) {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const d = String(dateObj.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+}
+
+export const DATE_RANGE_PRESETS = [
+  { id: 'ALL', label: 'All Time' },
+  { id: 'TODAY', label: 'Today' },
+  { id: 'YESTERDAY', label: 'Yesterday' },
+  { id: 'LAST_7_DAYS', label: 'Last 7 Days' },
+  { id: 'THIS_MONTH', label: 'This Month' },
+  { id: 'LAST_MONTH', label: 'Last Month' },
+  { id: 'CUSTOM', label: 'Custom Range' }
+];
+
+/**
+ * Checks if a lead date falls within the selected preset or custom range
+ */
+export function isDateInRange(dateInput, preset = 'ALL', customStart = '', customEnd = '') {
+  if (!preset || preset === 'ALL') return true;
+  const leadKey = getISTDateKey(dateInput);
+  if (!leadKey) return true;
+
+  const now = new Date();
+  const todayKey = getISTDateKey(now);
+
+  if (preset === 'TODAY') {
+    return leadKey === todayKey;
+  }
+
+  if (preset === 'YESTERDAY') {
+    const yest = new Date(now);
+    yest.setDate(yest.getDate() - 1);
+    const yestKey = getISTDateKey(yest);
+    return leadKey === yestKey;
+  }
+
+  if (preset === 'LAST_7_DAYS') {
+    const past7 = new Date(now);
+    past7.setDate(past7.getDate() - 6);
+    const past7Key = getISTDateKey(past7);
+    return leadKey >= past7Key && leadKey <= todayKey;
+  }
+
+  if (preset === 'THIS_MONTH') {
+    const mStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const mEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    return leadKey >= getISTDateKey(mStart) && leadKey <= getISTDateKey(mEnd);
+  }
+
+  if (preset === 'LAST_MONTH') {
+    const lmStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lmEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+    return leadKey >= getISTDateKey(lmStart) && leadKey <= getISTDateKey(lmEnd);
+  }
+
+  if (preset === 'CUSTOM') {
+    if (customStart && leadKey < customStart) return false;
+    if (customEnd && leadKey > customEnd) return false;
+    return true;
+  }
+
+  return true;
+}
+

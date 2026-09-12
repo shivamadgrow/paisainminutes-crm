@@ -1,5 +1,4 @@
-// Affiliate Lending Partners & Companies Configuration for Paisa in Minutes CRM
-import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers';
+import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers.js';
 
 export const AFFILIATE_PARTNERS = [
   {
@@ -17,6 +16,7 @@ export const AFFILIATE_PARTNERS = [
     maxLoan: 500000,
     description: 'Fast digital approvals for prime applicants with CIBIL >= 750 (Slabs 6, 7, 8).',
     website: 'https://rupay91.com',
+    applyUrl: 'https://www.rupay91.com/applynow.php?source=paisainminutes&utm_source=paisainminutes&ref=paisainminutes&affiliate=paisainminutes&sub_id=CRM&channel=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=rupay91_crm',
     commissionRate: '2.8%',
     commissionPct: 0.028,
     paymentStatus: 'Paid'
@@ -36,6 +36,7 @@ export const AFFILIATE_PARTNERS = [
     maxLoan: 300000,
     description: 'Flexible personal loans for applicants with CIBIL 500–749 (Slabs 1 to 5).',
     website: 'https://jhatpatloans.com',
+    applyUrl: 'https://www.jhatpatloans.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=jhatpatloans_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '2.4%',
     commissionPct: 0.024,
     paymentStatus: 'Paid'
@@ -55,6 +56,7 @@ export const AFFILIATE_PARTNERS = [
     maxLoan: 100000,
     description: 'Paperless instant sanction & high approval online credit line.',
     website: 'https://instarupees.com',
+    applyUrl: 'https://www.instarupees.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=instarupees_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '2.5%',
     commissionPct: 0.025,
     paymentStatus: 'Pending'
@@ -74,6 +76,7 @@ export const AFFILIATE_PARTNERS = [
     maxLoan: 100000,
     description: 'Instant pre-matched credit limit with minimal KYC required.',
     website: 'https://udhaarnow.com',
+    applyUrl: 'https://www.udhaarnow.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=udhaarnow_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '2.2%',
     commissionPct: 0.022,
     paymentStatus: 'Paid'
@@ -93,6 +96,7 @@ export const AFFILIATE_PARTNERS = [
     maxLoan: 100000,
     description: 'Paperless fast-track disbursals with zero collateral needed.',
     website: 'https://loanwithin.com',
+    applyUrl: 'https://www.loanwithin.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=loanwithin_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '2.6%',
     commissionPct: 0.026,
     paymentStatus: 'Pending'
@@ -112,6 +116,7 @@ export const AFFILIATE_PARTNERS = [
     maxLoan: 100000,
     description: '100% online application with direct bank credit on same day.',
     website: 'https://shubhcash.com',
+    applyUrl: 'https://www.shubhcash.com/apply-now?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=shubhcash_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '2.3%',
     commissionPct: 0.023,
     paymentStatus: 'Paid'
@@ -131,6 +136,7 @@ export const AFFILIATE_PARTNERS = [
     maxLoan: 100000,
     description: 'Direct account credit in minutes with speedy digital verification.',
     website: 'https://borrowera.com',
+    applyUrl: 'https://www.borrowera.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=borrowera_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '2.7%',
     commissionPct: 0.027,
     paymentStatus: 'Pending'
@@ -150,6 +156,7 @@ export const AFFILIATE_PARTNERS = [
     maxLoan: 100000,
     description: 'Fast personal loan process with minimal documentation.',
     website: 'https://easyfincare.com',
+    applyUrl: 'https://www.easyfincare.com/apply-now?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=easyfincare_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '2.4%',
     commissionPct: 0.024,
     paymentStatus: 'Paid'
@@ -158,6 +165,11 @@ export const AFFILIATE_PARTNERS = [
 
 // Helper to find partner metadata by name or id
 export function getPartnerMeta(partnerNameOrId) {
+  if (typeof partnerNameOrId === 'object' && partnerNameOrId !== null) {
+    if (partnerNameOrId.applyUrl && partnerNameOrId.id) return partnerNameOrId;
+    partnerNameOrId = partnerNameOrId.name || partnerNameOrId.id || partnerNameOrId.slug || '';
+  }
+
   if (!partnerNameOrId || partnerNameOrId === '—' || partnerNameOrId === 'Unassigned' || partnerNameOrId === 'Pending Details') {
     return {
       id: 'unassigned',
@@ -319,3 +331,104 @@ export function recommendPartner(lead) {
     eligibilityStatus: result.eligibilityStatus
   };
 }
+
+/**
+ * Builds the outbound tracking URL routed through /redirect.php with full UTM parameters.
+ * Clicking this logs the click to data/clicks.json and clicks_log.csv,
+ * then 302 redirects to the partner's official apply page.
+ */
+export function getPartnerTrackingUrl(partnerOrId, options = {}) {
+  const meta = getPartnerMeta(partnerOrId);
+  const partnerSlug = meta?.id || 'jhatpatloans';
+  const leadId = options.leadId || 'CRM';
+  const source = options.source || 'crm';
+  const campaign = options.campaign || 'paisainminutes_crm';
+  const term = options.term || `${partnerSlug}_crm`;
+
+  const isBrowser = typeof window !== 'undefined';
+  const isPimDomain = isBrowser && window.location.hostname.includes('paisainminutes.com');
+  const baseUrl = isPimDomain ? '/redirect.php' : 'https://paisainminutes.com/redirect.php';
+
+  const params = new URLSearchParams({
+    partner: partnerSlug,
+    ref: 'paisainminutes',
+    source: source,
+    lead_id: String(leadId),
+    utm_source: 'paisainminutes',
+    utm_medium: 'affiliate',
+    utm_campaign: campaign,
+    utm_term: term
+  });
+
+  if (options.phone) {
+    params.set('phone', String(options.phone).replace(/\D/g, '').slice(-10));
+  }
+
+  return `${baseUrl}?${params.toString()}`;
+}
+
+/**
+ * Asynchronously logs outbound partner click in background via Beacon or API.
+ */
+export async function trackPartnerClick(partnerOrId, options = {}) {
+  const meta = getPartnerMeta(partnerOrId);
+  const partnerSlug = meta?.id || 'jhatpatloans';
+  const payload = {
+    partner: partnerSlug,
+    ref: 'paisainminutes',
+    source: options.source || 'crm',
+    lead_id: String(options.leadId || 'CRM'),
+    phone: options.phone ? String(options.phone).replace(/\D/g, '').slice(-10) : '',
+    utm_source: 'paisainminutes',
+    utm_medium: 'affiliate',
+    utm_campaign: options.campaign || 'paisainminutes_crm',
+    utm_term: options.term || `${partnerSlug}_crm`,
+    format: 'json'
+  };
+
+  try {
+    if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+      navigator.sendBeacon('/crm/api/track-click.php', blob);
+      navigator.sendBeacon('/redirect.php?format=json', blob);
+    }
+  } catch (e) {
+    // ignore beacon error
+  }
+
+  try {
+    fetch('/crm/api/track-click.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {
+      fetch('https://paisainminutes.com/redirect.php?format=json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+    });
+  } catch (e) {
+    // ignore
+  }
+}
+
+/**
+ * Returns direct destination URL with pre-baked UTMs for fallback or direct preview.
+ */
+export function getPartnerDirectUtmUrl(partnerOrId, options = {}) {
+  const meta = getPartnerMeta(partnerOrId);
+  if (!meta || !meta.applyUrl) {
+    return meta?.website || 'https://paisainminutes.com';
+  }
+  let url = meta.applyUrl;
+  if (options.leadId) {
+    url = url.replace(/sub_id=CRM/g, `sub_id=${encodeURIComponent(options.leadId)}`);
+    url = url.replace(/utm_term=[^&]*/g, `utm_term=${encodeURIComponent(options.leadId)}`);
+  }
+  if (options.campaign) {
+    url = url.replace(/utm_campaign=[^&]*/g, `utm_campaign=${encodeURIComponent(options.campaign)}`);
+  }
+  return url;
+}
+

@@ -216,12 +216,22 @@ $rootPath = dirname(__DIR__, 2);
 $leadsCandidates = array_unique([
     $rootPath . '/data/leads.json',
     $rootPath . '/crm/leads_store.json',
+    $rootPath . '/admin/leads_store.json',
+    $rootPath . '/admin/data/leads.json',
+    $rootPath . '/crm/crm_subdomain_update/leads_store.json',
+    $rootPath . '/deploy_update/data/leads.json',
+    $rootPath . '/deploy_update/crm/leads_store.json',
     dirname(__DIR__, 1) . '/leads_store.json',
     dirname(__DIR__, 2) . '/crm/leads_store.json',
+    dirname(__DIR__, 2) . '/admin/leads_store.json',
+    dirname(__DIR__, 2) . '/data/leads.json',
     dirname(__DIR__, 3) . '/public_html/data/leads.json',
     dirname(__DIR__, 3) . '/public_html/crm/leads_store.json',
+    dirname(__DIR__, 3) . '/public_html/admin/leads_store.json',
     __DIR__ . '/../leads_store.json',
-    __DIR__ . '/../../data/leads.json'
+    __DIR__ . '/../../data/leads.json',
+    __DIR__ . '/../../crm/leads_store.json',
+    __DIR__ . '/../../admin/leads_store.json'
 ]);
 
 $leadsLogCandidates = array_unique([
@@ -237,7 +247,14 @@ $deletedMap = [];
 $deletedStoreCandidates = array_unique([
     $rootPath . '/crm/deleted_leads.json',
     $rootPath . '/data/deleted_leads.json',
+    $rootPath . '/admin/deleted_leads.json',
+    $rootPath . '/admin/api/deleted_leads.json',
+    $rootPath . '/crm/api/deleted_leads.json',
     dirname(__DIR__, 1) . '/deleted_leads.json',
+    dirname(__DIR__, 2) . '/crm/deleted_leads.json',
+    dirname(__DIR__, 2) . '/admin/deleted_leads.json',
+    dirname(__DIR__, 3) . '/public_html/crm/deleted_leads.json',
+    dirname(__DIR__, 3) . '/public_html/data/deleted_leads.json',
     __DIR__ . '/../../crm/deleted_leads.json',
     __DIR__ . '/../deleted_leads.json',
     __DIR__ . '/deleted_leads.json'
@@ -272,15 +289,17 @@ foreach ($leadsCandidates as $lf) {
                 $lPhone = preg_replace('/\D/', '', (string)($row['phone'] ?? $row['mobile'] ?? ''));
                 if (strlen($lPhone) > 10) $lPhone = substr($lPhone, -10);
 
-                // Check deleted map by lead ID
+                // Check deleted map by lead ID or phone
                 if ($lIdLower && !empty($deletedMap[$lIdLower])) continue;
+                if ($lPhone && !empty($deletedMap[$lPhone])) continue;
 
-                // If lead has phone, un-blacklist that phone so fresh website submission is visible
-                $rowStatus = strtolower(trim((string)($row['status'] ?? 'fresh')));
-                if ($rowStatus === 'fresh' && $lPhone) {
-                    unset($deletedMap[$lPhone]);
-                } elseif ($lPhone && !empty($deletedMap[$lPhone])) {
-                    continue;
+                // Live Launch Cutoff: exclude pre-launch testing records created before 12 Sep 2026 IST
+                $rowCreated = $row['created_at'] ?? $row['created'] ?? $row['date'] ?? '';
+                if (!empty($rowCreated)) {
+                    $rowTs = strtotime($rowCreated);
+                    if ($rowTs !== false && $rowTs > 0 && $rowTs < 1789151400) {
+                        continue;
+                    }
                 }
 
                 if ($leadId && !empty($seenIds[$leadId])) continue;
@@ -327,6 +346,15 @@ if (function_exists('curl_init')) {
                 if (!empty($deletedMap[$rIdLower])) continue;
                 if (!empty($deletedMap[$rPhone])) continue;
                 if (!empty($seenIds[$rId])) continue;
+
+                // Live Launch Cutoff: exclude pre-launch testing records created before 12 Sep 2026 IST
+                $rCreatedAt = $rItem['createdAt'] ?? $rItem['created_at'] ?? '';
+                if (!empty($rCreatedAt)) {
+                    $rTs = strtotime($rCreatedAt);
+                    if ($rTs !== false && $rTs > 0 && $rTs < 1789151400) {
+                        continue;
+                    }
+                }
                 
                 $rName = trim((string)($rItem['name'] ?? 'Applicant'));
                 $cleanLoan = (int)($rItem['amount'] ?? 0);
@@ -398,7 +426,6 @@ foreach ($leadsLogCandidates as $leadsLogCsv) {
                     }
 
                     if (!$cleanPhone) continue;
-                    if (!empty($deletedMap[$cleanPhone])) continue;
                     if (!empty($seenPhones[$cleanPhone])) continue;
 
                     $isIdFirst = (strpos((string)$row[0], 'PIM-') === 0);
@@ -411,7 +438,16 @@ foreach ($leadsLogCandidates as $leadsLogCsv) {
 
                     $rIdLower = strtolower($rowId);
                     if (!empty($deletedMap[$rIdLower])) continue;
+                    if (!empty($deletedMap[$cleanPhone])) continue;
                     if (!empty($seenIds[$rowId])) continue;
+
+                    // Live Launch Cutoff: exclude pre-launch testing records
+                    if (!empty($rowTimestamp)) {
+                        $csvTs = strtotime($rowTimestamp);
+                        if ($csvTs !== false && $csvTs > 0 && $csvTs < 1789151400) {
+                            continue;
+                        }
+                    }
 
                     $allLeads[] = [
                         'id'              => $rowId,
@@ -461,13 +497,17 @@ foreach ($allLeads as $index => $lead) {
         $phone = substr($phone, -10);
     }
 
-    // Skip leads that were deleted by admin (by specific Lead ID)
+    // Skip leads that were deleted by admin (by specific Lead ID or phone)
     if (!empty($deletedBlacklistMap[$lIdClean])) {
         continue;
     }
-    // Only check phone if status is not Fresh
-    $leadStatus = strtolower(trim((string)($lead['status'] ?? 'fresh')));
-    if ($leadStatus !== 'fresh' && $phone && !empty($deletedBlacklistMap[$phone])) {
+    if ($phone && !empty($deletedBlacklistMap[$phone])) {
+        continue;
+    }
+
+    // Live Launch Cutoff: exclude pre-launch testing records
+    $leadTimestamp = strtotime($lead['created_at'] ?? $lead['created'] ?? $lead['date'] ?? '');
+    if ($leadTimestamp !== false && $leadTimestamp > 0 && $leadTimestamp < 1789151400) {
         continue;
     }
     
@@ -577,14 +617,49 @@ foreach ($allLeads as $index => $lead) {
             $existing['cibil'] = $item['cibil'];
             $existing['cibilScore'] = $item['cibilScore'];
         }
-        if ($existing['loanAmount'] === 50000 && $item['loanAmount'] !== 50000) {
-            $existing['loanAmount'] = $item['loanAmount'];
-            $existing['applied'] = $item['applied'];
+        if ($existing['salary'] === 0 && $item['salary'] > 0) {
+            $existing['salary'] = $item['salary'];
+            $existing['monthlySalary'] = $item['monthlySalary'];
         }
+        if ($existing['email'] === '—' && $item['email'] !== '—') {
+            $existing['email'] = $item['email'];
+            $existing['emailAddress'] = $item['emailAddress'];
+        }
+        if ($existing['pincode'] === '—' && $item['pincode'] !== '—') {
+            $existing['pincode'] = $item['pincode'];
+        }
+
+        // If the incoming submission is newer, update timestamps and ID to show at top
         if ($item['timestamp_num'] >= $existing['timestamp_num']) {
+            $existing['id'] = $item['id'];
+            $existing['loanNo'] = $item['loanNo'];
+            $existing['lead_id'] = $item['lead_id'];
             $existing['created'] = $item['created'];
             $existing['created_at'] = $item['created_at'];
+            $existing['date'] = $item['date'];
             $existing['timestamp_num'] = $item['timestamp_num'];
+            if (!empty($item['status'])) $existing['status'] = $item['status'];
+            if ($item['source'] !== 'Apply Now (Phone Only)') {
+                $existing['source'] = $item['source'];
+            }
+            if ($item['name'] !== 'Applicant' && !empty($item['name'])) {
+                $existing['name'] = $item['name'];
+                $existing['fullName'] = $item['fullName'];
+            }
+            if ($item['loanAmount'] > 0) {
+                $existing['loanAmount'] = $item['loanAmount'];
+                $existing['applied'] = $item['applied'];
+            }
+            if ($item['salary'] > 0) {
+                $existing['salary'] = $item['salary'];
+                $existing['monthlySalary'] = $item['monthlySalary'];
+            }
+            if (!empty($item['assignedCompany']) && $item['assignedCompany'] !== 'Pending Details') {
+                $existing['assignedCompany'] = $item['assignedCompany'];
+            }
+            if (!empty($item['eligibilityStatus']) && $item['eligibilityStatus'] !== 'Incomplete / Phone Only') {
+                $existing['eligibilityStatus'] = $item['eligibilityStatus'];
+            }
         }
         $leadsByPhone[$groupKey] = $existing;
     }

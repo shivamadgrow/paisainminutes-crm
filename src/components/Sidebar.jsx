@@ -256,8 +256,10 @@ export default function Sidebar({
                   <Send className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
                   <span>Payout Requests</span>
                 </div>
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-50 text-amber-700">
-                  {commissionCounts?.payoutRequests ?? 3}
+                <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full transition ${
+                  (commissionCounts?.payoutRequests || 0) > 0 ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {commissionCounts?.payoutRequests ?? 0}
                 </span>
               </button>
 
@@ -266,8 +268,10 @@ export default function Sidebar({
                   <CheckCircle2 className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
                   <span>Settlements</span>
                 </div>
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700">
-                  {commissionCounts?.settlements ?? 5}
+                <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full transition ${
+                  (commissionCounts?.settlements || 0) > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {commissionCounts?.settlements ?? 0}
                 </span>
               </button>
 
@@ -276,8 +280,10 @@ export default function Sidebar({
                   <Receipt className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
                   <span>Invoices Raised</span>
                 </div>
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-indigo-50 text-indigo-700">
-                  {commissionCounts?.invoices ?? 5}
+                <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded-full transition ${
+                  (commissionCounts?.invoices || 0) > 0 ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-100 text-slate-500'
+                }`}>
+                  {commissionCounts?.invoices ?? 0}
                 </span>
               </button>
 

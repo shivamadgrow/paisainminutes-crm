@@ -4,7 +4,7 @@ import { getLiveSecurityDetails } from './geoService';
 
 export const STAFF_STORAGE_KEY = 'paisa_crm_staff_list';
 export const SESSION_STORAGE_KEY = 'paisa_crm_user';
-export const AUTH_VERSION = 'v9_super_admin_permanently_active';
+export const AUTH_VERSION = 'v10_clear_all_demo_transactions';
 
 /**
  * Purge all stale, duplicate, and unused client-side caches and storage keys
@@ -18,6 +18,10 @@ export function purgeAllClientCaches() {
       localStorage.removeItem('pim_jwt_token');
       localStorage.removeItem(STAFF_STORAGE_KEY);
       localStorage.removeItem('paisa_crm_active_tab');
+      localStorage.removeItem('paisa_crm_payout_requests');
+      localStorage.removeItem('paisa_crm_settlements');
+      localStorage.removeItem('paisa_crm_invoices');
+      localStorage.removeItem('paisa_crm_activity_log');
     }
     if (typeof sessionStorage !== 'undefined') {
       sessionStorage.clear();

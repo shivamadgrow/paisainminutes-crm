@@ -36,8 +36,6 @@ if (file_exists($dataFile)) {
 
 echo json_encode([
     'success' => true,
-    'invoices' => [
-        ['invoiceNo' => 'INV-2026-089', 'partnerName' => 'Insta Rupees', 'totalPayable' => 145000, 'status' => 'Unpaid'],
-        ['invoiceNo' => 'INV-2026-074', 'partnerName' => 'Rupay91', 'totalPayable' => 284000, 'status' => 'Paid']
-    ]
+    'invoices' => []
 ]);
+

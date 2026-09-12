@@ -15,7 +15,7 @@ import {
   Layers,
   ArrowRight
 } from 'lucide-react';
-import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
+import { AFFILIATE_PARTNERS, getPartnerTrackingUrl, trackPartnerClick } from '../data/affiliatePartners';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
 import { cleanLoanAmount } from '../utils/amountHelpers';
 
@@ -196,9 +196,19 @@ export default function PartnerHubView({ leads = [], onSelectCompany, onOpenTest
                   <div className={`px-2.5 py-1 rounded-xl text-xs font-black tracking-wider uppercase ${partner.badgeClass}`}>
                     {partner.name}
                   </div>
-                  <span className="w-7 h-7 rounded-lg bg-slate-100 group-hover:bg-[#0A3977] group-hover:text-white text-slate-500 flex items-center justify-center transition">
+                  <a
+                    href={getPartnerTrackingUrl(partner.id, { source: 'crm_partner_hub' })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      trackPartnerClick(partner.id, { source: 'crm_partner_hub' });
+                    }}
+                    className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-[#0A3977] text-slate-500 hover:text-white flex items-center justify-center transition shadow-2xs cursor-pointer z-10"
+                    title={`Visit ${partner.name} Website (Attribution & UTM Tracked)`}
+                  >
                     <ArrowUpRight className="w-4 h-4" />
-                  </span>
+                  </a>
                 </div>
 
                 <p className="text-[11px] text-slate-500 line-clamp-2 min-h-[32px]">

@@ -143,13 +143,12 @@ export function getDeletedLeadBlacklist() {
     if (!raw) return [];
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return [];
-    // If legacy '*' wildcard is found, clear it so new leads are not permanently blocked
-    if (arr.includes('*')) {
-      const filtered = arr.filter(x => x !== '*');
+    // Remove legacy '*' wildcard and 10-digit phone numbers so re-submissions are never blocked
+    const filtered = arr.filter(x => x !== '*' && !/^[6-9]\d{9}$/.test(String(x).trim()));
+    if (filtered.length !== arr.length) {
       localStorage.setItem('pim_deleted_leads', JSON.stringify(filtered));
-      return filtered;
     }
-    return arr;
+    return filtered;
   } catch (e) {
     return [];
   }
@@ -161,21 +160,35 @@ export function addToDeletedLeadBlacklist(idsOrPhones) {
     const newItems = Array.isArray(idsOrPhones) ? idsOrPhones : [idsOrPhones];
     const cleanList = newItems
       .filter(Boolean)
-      .filter(i => i !== '*')
+      .filter(i => i !== '*' && !/^[6-9]\d{9}$/.test(String(i).trim())) // Do not blacklist raw phone numbers
       .map(i => String(i).trim().toLowerCase());
     const combined = Array.from(new Set([...current, ...cleanList]));
     localStorage.setItem('pim_deleted_leads', JSON.stringify(combined));
   } catch (e) {}
 }
 
+export const LIVE_LAUNCH_TIMESTAMP = 1789151400000; // 2026-09-12T00:00:00+05:30
+
 export function isLeadDeletedLocally(lead, deletedList) {
-  if (!deletedList || deletedList.length === 0) return false;
+  if (!lead) return true;
 
   const id = String(lead.id || lead.lead_id || lead.loanNo || '').trim().toLowerCase();
-  const rawPhone = String(lead.phone || lead.mobile || lead.phoneNumber || '').replace(/\D/g, '').slice(-10);
+  const phone = String(lead.phone || lead.mobile || lead.phoneNumber || '').replace(/\D/g, '').slice(-10);
 
-  if (id && deletedList.includes(id)) return true;
-  if (rawPhone && deletedList.includes(rawPhone)) return true;
+  // 1. If lead ID or phone is in deleted blacklist, it is deleted
+  if (id && deletedList && deletedList.includes(id)) {
+    return true;
+  }
+  if (phone && deletedList && deletedList.includes(phone)) {
+    return true;
+  }
+
+  // 2. Pre-launch testing leads filter: Any lead created before 12 Sep 2026 IST is a test lead
+  const leadTime = new Date(lead.created_at || lead.createdAt || lead.created || lead.date || 0).getTime();
+  if (leadTime > 0 && leadTime < LIVE_LAUNCH_TIMESTAMP) {
+    return true;
+  }
+
   return false;
 }
 
@@ -233,14 +246,23 @@ export function applyLeadOverrides(lead) {
  * Fetch Leads from Backend (Local stores + Render API)
  */
 export async function getLeadsFromBackend() {
-  const endpoints = [
-    '/admin/api/get-leads.php',
-    '/admin/api/get-leads',
-    '/crm/api/get-leads.php',
-    '/api/get-leads.php',
-    '/api/get-leads',
-    '/crm.php?action=fetch_realtime'
-  ];
+  const isSubdomain = typeof window !== 'undefined' && window.location.hostname.startsWith('crm.');
+  const endpoints = isSubdomain
+    ? [
+        '/api/get-leads.php',
+        '/api/get-leads',
+        '/crm/api/get-leads.php',
+        '/admin/api/get-leads.php',
+        '/crm.php?action=fetch_realtime'
+      ]
+    : [
+        '/admin/api/get-leads.php',
+        '/admin/api/get-leads',
+        '/crm/api/get-leads.php',
+        '/api/get-leads.php',
+        '/api/get-leads',
+        '/crm.php?action=fetch_realtime'
+      ];
 
   const deletedBlacklist = getDeletedLeadBlacklist();
 
@@ -265,6 +287,9 @@ export async function getLeadsFromBackend() {
 
     if (phoneKey && leadsByPhone.has(phoneKey)) {
       const existing = leadsByPhone.get(phoneKey);
+      const newTime = new Date(l.created_at || l.created || l.date || 0).getTime() || 0;
+      const oldTime = new Date(existing.created_at || existing.created || existing.date || 0).getTime() || 0;
+
       // Merge best fields: keep non-generic name, non-default amounts, richest source
       if ((existing.name === 'Applicant' || !existing.name) && l.name && l.name !== 'Applicant') {
         existing.name = l.name;
@@ -305,6 +330,18 @@ export async function getLeadsFromBackend() {
       if ((!existing.status || existing.status === 'Fresh') && l.status && l.status !== 'Fresh') {
         existing.status = l.status;
       }
+
+      // If newer submission, update timestamps and ID so it displays at the top
+      if (newTime >= oldTime) {
+        existing.id = l.id || existing.id;
+        existing.loanNo = l.loanNo || existing.loanNo;
+        existing.lead_id = l.lead_id || existing.lead_id;
+        existing.created = l.created || existing.created;
+        existing.created_at = l.created_at || existing.created_at;
+        existing.created_time = l.created_time || existing.created_time;
+        existing.date = l.date || existing.date;
+        if (l.status) existing.status = l.status;
+      }
       return;
     }
 
@@ -321,6 +358,9 @@ export async function getLeadsFromBackend() {
     const res = await fetchApi(ep);
     if (res && res.ok && res.data) {
       const data = res.data;
+      if (data && Array.isArray(data.deleted_blacklist)) {
+        addToDeletedLeadBlacklist(data.deleted_blacklist);
+      }
       const leads = Array.isArray(data.leads) 
         ? data.leads 
         : (data.data && Array.isArray(data.data.leads) ? data.data.leads : null);
@@ -348,6 +388,10 @@ export async function getLeadsFromBackend() {
       const rList = Array.isArray(rData) ? rData : (rData.applications || rData.leads || []);
       if (Array.isArray(rList)) {
         rList.forEach((item, idx) => {
+          const itemTime = new Date(item.createdAt || 0).getTime();
+          if (itemTime > 0 && itemTime < LIVE_LAUNCH_TIMESTAMP) {
+            return; // Exclude pre-launch test applications
+          }
           const mapped = mapRenderLead(item, idx);
           if (mapped) {
             mergeOrAddLead(mapped);
@@ -364,6 +408,13 @@ export async function getLeadsFromBackend() {
     new Set([...leadsByPhone.values(), ...leadsById.values()])
   ).filter(l => !isLeadDeletedLocally(l, deletedBlacklist))
    .map(applyLeadOverrides);
+
+  // Sort newest first by created_at / created timestamp
+  combinedLeads.sort((a, b) => {
+    const timeA = new Date(a.created_at || a.created || a.date || 0).getTime() || 0;
+    const timeB = new Date(b.created_at || b.created || b.date || 0).getTime() || 0;
+    return timeB - timeA;
+  });
 
   return { success: true, count: combinedLeads.length, leads: combinedLeads };
 }
@@ -445,28 +496,9 @@ export async function deleteLeadsApi(payload) {
     payload.ids.forEach(i => { if (i && i !== '*') targetIds.push(String(i)); });
   }
 
-  if (isClearAll) {
-    const toAdd = [];
-    if (payload.ids && Array.isArray(payload.ids)) {
-      payload.ids.forEach(i => { if (i && i !== '*') toAdd.push(String(i).toLowerCase()); });
-    }
-    if (payload.phones && Array.isArray(payload.phones)) {
-      payload.phones.forEach(p => {
-        const clean = String(p).replace(/\D/g, '').slice(-10);
-        if (clean) toAdd.push(clean);
-      });
-    }
-    if (toAdd.length > 0) addToDeletedLeadBlacklist(toAdd);
-  } else {
-    const toAdd = targetIds.map(i => i.toLowerCase());
-    if (payload.phone) {
-      const p = String(payload.phone).replace(/\D/g, '').slice(-10);
-      if (p) toAdd.push(p);
-    }
-    if (payload.mobile) {
-      const m = String(payload.mobile).replace(/\D/g, '').slice(-10);
-      if (m) toAdd.push(m);
-    }
+  // Only blacklist lead IDs, NEVER phone numbers
+  const toAdd = targetIds.map(i => i.toLowerCase());
+  if (toAdd.length > 0) {
     addToDeletedLeadBlacklist(toAdd);
   }
 

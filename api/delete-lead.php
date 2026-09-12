@@ -206,25 +206,18 @@ $deletedStores = array_unique([
 ]);
 
 $newDeletedEntries = array_keys($idsMap);
-foreach (array_keys($cleanPhones) as $p) {
-    $newDeletedEntries[] = $p;
-}
 
 foreach ($deletedStores as $df) {
     $dir = dirname($df);
     if (!is_dir($dir)) @mkdir($dir, 0777, true);
 
-    if ($isClearAll) {
-        @file_put_contents($df, "[]\n");
-    } else {
-        $existing = [];
-        if (file_exists($df)) {
-            $raw = file_get_contents($df);
-            $existing = json_decode($raw, true) ?: [];
-        }
-        $merged = array_unique(array_merge($existing, $newDeletedEntries));
-        @file_put_contents($df, json_encode(array_values($merged), JSON_PRETTY_PRINT));
+    $existing = [];
+    if (file_exists($df)) {
+        $raw = file_get_contents($df);
+        $existing = json_decode($raw, true) ?: [];
     }
+    $merged = array_unique(array_merge($existing, $newDeletedEntries));
+    @file_put_contents($df, json_encode(array_values($merged), JSON_PRETTY_PRINT));
 }
 
 echo json_encode([

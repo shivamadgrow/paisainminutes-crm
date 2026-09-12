@@ -15,8 +15,10 @@ import { INITIAL_SETTLEMENTS } from '../data/settlementsData';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
 
-export default function SettlementsView() {
-  const [settlements, setSettlements] = useState(INITIAL_SETTLEMENTS);
+export default function SettlementsView({ settlements: propSettlements, setSettlements: propSetSettlements }) {
+  const [localSettlements, setLocalSettlements] = useState(INITIAL_SETTLEMENTS);
+  const settlements = propSettlements !== undefined ? propSettlements : localSettlements;
+  const setSettlements = propSetSettlements !== undefined ? propSetSettlements : setLocalSettlements;
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isRecordOpen, setIsRecordOpen] = useState(false);
@@ -142,7 +144,9 @@ export default function SettlementsView() {
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Reconciliation Match Rate</div>
-          <div className="text-2xl font-black text-indigo-600 mt-1">96.8%</div>
+          <div className="text-2xl font-black text-indigo-600 mt-1">
+            {settlements.length > 0 ? `${((settlements.filter(s => s.reconciledStatus === 'Matched').length / settlements.length) * 100).toFixed(1)}%` : '—'}
+          </div>
           <div className="text-[10px] text-slate-500 mt-0.5">Perfect match against invoice MIS</div>
         </div>
       </div>

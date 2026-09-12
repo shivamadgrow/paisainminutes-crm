@@ -33,9 +33,22 @@ import {
   Sparkles,
   TrendingUp
 } from 'lucide-react';
+import { 
+  AFFILIATE_PARTNERS, 
+  getPartnerMeta, 
+  getEligibilityMatrix,
+  getPartnerTrackingUrl,
+  trackPartnerClick
+} from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
-import { AFFILIATE_PARTNERS, getPartnerMeta, getEligibilityMatrix } from '../data/affiliatePartners';
-import { cleanLoanAmount, cleanSalary, formatToIST } from '../utils/amountHelpers';
+import { 
+  cleanLoanAmount, 
+  cleanSalary, 
+  formatToIST, 
+  isDateInRange, 
+  DATE_RANGE_PRESETS,
+  getISTDateKey 
+} from '../utils/amountHelpers';
 import { fetchApi, deleteLeadsApi, saveLeadOverride } from '../utils/apiConfig';
 
 const INITIAL_FULL_LEADS = [];
@@ -210,6 +223,10 @@ export default function LeadsView({
   const [openStatusDropdownId, setOpenStatusDropdownId] = useState(null);
   const [selectedLeadForOverview, setSelectedLeadForOverview] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
+  const [selectedDatePreset, setSelectedDatePreset] = useState('ALL');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [isCustomDatePickerOpen, setIsCustomDatePickerOpen] = useState(false);
 
   // Close custom popovers when clicking outside
   useEffect(() => {
@@ -302,7 +319,38 @@ export default function LeadsView({
     return counts;
   }, [leads]);
 
-  // Filter Leads based on Search, Status, Partner Company & My Leads
+  // Multi-lead date counts across presets
+  const dateCounts = useMemo(() => {
+    const counts = {
+      ALL: leads.length,
+      TODAY: 0,
+      YESTERDAY: 0,
+      LAST_7_DAYS: 0,
+      THIS_MONTH: 0,
+      LAST_MONTH: 0,
+      CUSTOM: 0
+    };
+
+    leads.forEach(l => {
+      const d = l.created_at || l.createdAt || l.created || l.date;
+      if (isDateInRange(d, 'TODAY')) counts.TODAY++;
+      if (isDateInRange(d, 'YESTERDAY')) counts.YESTERDAY++;
+      if (isDateInRange(d, 'LAST_7_DAYS')) counts.LAST_7_DAYS++;
+      if (isDateInRange(d, 'THIS_MONTH')) counts.THIS_MONTH++;
+      if (isDateInRange(d, 'LAST_MONTH')) counts.LAST_MONTH++;
+    });
+
+    if (customStartDate || customEndDate) {
+      counts.CUSTOM = leads.filter(l => {
+        const d = l.created_at || l.createdAt || l.created || l.date;
+        return isDateInRange(d, 'CUSTOM', customStartDate, customEndDate);
+      }).length;
+    }
+
+    return counts;
+  }, [leads, customStartDate, customEndDate]);
+
+  // Filter Leads based on Search, Status, Partner Company, Date Range & My Leads
   const filteredLeads = useMemo(() => {
     return leads.filter((item, idx) => {
       if (!item) return false;
@@ -321,10 +369,11 @@ export default function LeadsView({
         }
       }
 
-      // 2. Partner Filter (ALL vs Rupay91)
-      if (selectedPartnerFilter !== 'ALL') {
+      // 2. Partner Filter
+      if (selectedPartnerFilter && selectedPartnerFilter !== 'ALL') {
+        const targetClean = selectedPartnerFilter.toLowerCase().replace(/[\s\-_]/g, '');
         const c = (item.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
-        if (c !== selectedPartnerFilter.toLowerCase().replace(/[\s\-_]/g, '')) {
+        if (c !== targetClean && !c.includes(targetClean) && !targetClean.includes(c)) {
           return false;
         }
       }
@@ -372,9 +421,17 @@ export default function LeadsView({
         if (!tele.includes(me) && !cred.includes(me)) return false;
       }
 
+      // 5. Date Range Filter
+      if (selectedDatePreset !== 'ALL') {
+        const leadDate = item.created_at || item.createdAt || item.created || item.date;
+        if (!isDateInRange(leadDate, selectedDatePreset, customStartDate, customEndDate)) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [leads, searchQuery, selectedPartnerFilter, activeFilter, isMyLeadsOnly, currentUser, phoneCounts, panCounts]);
+  }, [leads, searchQuery, selectedPartnerFilter, activeFilter, isMyLeadsOnly, currentUser, phoneCounts, panCounts, selectedDatePreset, customStartDate, customEndDate]);
 
   const handleExportExcel = () => {
     if (!filteredLeads || filteredLeads.length === 0) {
@@ -947,25 +1004,151 @@ export default function LeadsView({
             })}
           </div>
 
-          {/* Search Bar */}
-          <div className="relative w-full lg:w-80 shrink-0">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search applicant, phone, ID, city..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-9 py-2.5 text-xs bg-slate-50 border border-slate-200/90 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#0A3977] focus:bg-white transition-all placeholder-slate-400 font-semibold"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 cursor-pointer"
+          {/* Controls: Quick Date Selector & Search Bar */}
+          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto shrink-0">
+            {/* Quick Date Dropdown */}
+            <div className="relative flex items-center gap-1.5 px-3 py-2 bg-slate-50 border border-slate-200/90 rounded-2xl text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 transition shrink-0">
+              <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+              <select
+                value={selectedDatePreset}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedDatePreset(val);
+                  if (val === 'CUSTOM') {
+                    setIsCustomDatePickerOpen(true);
+                  }
+                }}
+                className="bg-transparent border-none outline-none font-bold text-slate-800 cursor-pointer text-xs pr-1"
+                title="Quick Date Range Selector"
               >
-                <X className="w-3.5 h-3.5" />
-              </button>
+                {DATE_RANGE_PRESETS.map(p => (
+                  <option key={p.id} value={p.id}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Search Bar */}
+            <div className="relative flex-1 lg:w-72">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search applicant, phone, ID, city..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-9 py-2 text-xs bg-slate-50 border border-slate-200/90 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#0A3977] focus:bg-white transition-all placeholder-slate-400 font-semibold"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-200 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Row 2: Dedicated Date Range Filter Bar */}
+        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+            <span className="text-[11px] font-black text-slate-400 uppercase tracking-wider shrink-0 flex items-center gap-1.5 px-1">
+              <Calendar className="w-3.5 h-3.5 text-blue-600" />
+              <span>Date Range:</span>
+            </span>
+
+            {DATE_RANGE_PRESETS.map(preset => {
+              const isSel = selectedDatePreset === preset.id;
+              const count = dateCounts[preset.id] ?? 0;
+
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedDatePreset(preset.id);
+                    if (preset.id === 'CUSTOM') {
+                      setIsCustomDatePickerOpen(true);
+                    }
+                  }}
+                  className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
+                    isSel
+                      ? 'bg-[#0A3977] text-white shadow-sm ring-2 ring-blue-400/40'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 border border-slate-200/80'
+                  }`}
+                >
+                  <span>{preset.label}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition ${
+                    isSel ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+
+            {/* Custom Range Date Pickers */}
+            {selectedDatePreset === 'CUSTOM' && (
+              <div className="flex items-center gap-2 bg-blue-50/80 p-1.5 rounded-2xl border border-blue-200/90 shadow-2xs shrink-0 animate-fade-in">
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">From:</span>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="px-2 py-0.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0A3977] cursor-pointer"
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase">To:</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="px-2 py-0.5 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#0A3977] cursor-pointer"
+                  />
+                </div>
+                {(customStartDate || customEndDate) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustomStartDate('');
+                      setCustomEndDate('');
+                    }}
+                    className="p-1 text-slate-400 hover:text-rose-600 rounded-full hover:bg-rose-50 cursor-pointer"
+                    title="Clear Custom Date Range"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             )}
           </div>
+
+          {/* Active Date Tag */}
+          {selectedDatePreset !== 'ALL' && (
+            <div className="flex items-center gap-2 text-xs font-bold text-blue-700 bg-blue-50/80 px-3 py-1 rounded-xl border border-blue-200 shrink-0">
+              <Clock className="w-3.5 h-3.5" />
+              <span>
+                Filtered by: {DATE_RANGE_PRESETS.find(p => p.id === selectedDatePreset)?.label}
+                {selectedDatePreset === 'CUSTOM' && (customStartDate || customEndDate) && (
+                  ` (${customStartDate || 'Start'} to ${customEndDate || 'Today'})`
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedDatePreset('ALL');
+                  setCustomStartDate('');
+                  setCustomEndDate('');
+                }}
+                className="text-blue-500 hover:text-blue-900 ml-1 cursor-pointer font-extrabold"
+                title="Reset Date Filter"
+              >
+                ✕
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Row 2: Lending Partner Badges & Realtime Summary */}
@@ -995,21 +1178,35 @@ export default function LeadsView({
                 const c = (l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
                 return c === p.id || c === p.name.toLowerCase().replace(/[\s\-_]/g, '');
               }).length;
-              const isSel = selectedPartnerFilter.toLowerCase() === p.id;
+
+              const cleanSelected = (selectedPartnerFilter || '').toLowerCase().replace(/[\s\-_]/g, '');
+              const cleanId = (p.id || '').toLowerCase().replace(/[\s\-_]/g, '');
+              const cleanName = (p.name || '').toLowerCase().replace(/[\s\-_]/g, '');
+              const isSel = (cleanSelected !== 'all') && (cleanSelected === cleanId || cleanSelected === cleanName);
+
               return (
                 <button
                   key={p.id}
-                  onClick={() => setSelectedPartnerFilter(p.name)}
-                  className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer border ${
+                  type="button"
+                  onClick={() => setSelectedPartnerFilter(isSel ? 'ALL' : p.name)}
+                  style={isSel ? {
+                    backgroundColor: p.accentColor || '#4F46E5',
+                    borderColor: p.accentColor || '#4F46E5',
+                    boxShadow: `0 4px 14px -1px ${p.accentColor || '#4F46E5'}66`
+                  } : {}}
+                  className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition-all duration-200 flex items-center gap-2 shrink-0 cursor-pointer border ${
                     isSel 
-                      ? `${p.pillClass} shadow-md border-transparent ring-2 ring-indigo-300` 
+                      ? 'text-white border-transparent' 
                       : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
                   }`}
                 >
-                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.accentColor }}></span>
-                  <span>{p.name}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                    isSel ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                  <span 
+                    className={`w-2.5 h-2.5 rounded-full transition-all shrink-0 ${isSel ? 'bg-white/30 shadow-2xs' : ''}`}
+                    style={isSel ? {} : { backgroundColor: p.accentColor }}
+                  ></span>
+                  <span className={`font-bold ${isSel ? 'text-white' : 'text-slate-800'}`}>{p.name}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-colors ${
+                    isSel ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {count}
                   </span>
@@ -1446,6 +1643,9 @@ export default function LeadsView({
                         setSelectedPartnerFilter('ALL');
                         setActiveFilter('All Leads');
                         setSearchQuery('');
+                        setSelectedDatePreset('ALL');
+                        setCustomStartDate('');
+                        setCustomEndDate('');
                       }}
                       className="mt-4 px-4 py-2 text-xs font-extrabold bg-[#0A3977] hover:bg-blue-900 text-white rounded-2xl shadow transition cursor-pointer"
                     >
@@ -1957,6 +2157,39 @@ export default function LeadsView({
                     </select>
                   </div>
                 </div>
+
+                {/* Outbound Partner Portal Action with UTM Tracking */}
+                <div className="pt-2.5 border-t border-blue-200/50 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[11px] text-slate-600 font-medium">
+                    Outbound Partner Portal (Attribution & UTM Tracked):
+                  </span>
+                  <a
+                    href={getPartnerTrackingUrl(
+                      activeOverviewLead.assignedCompany || overviewElig?.partner || 'Rupay91', 
+                      { 
+                        leadId: getLeadId(activeOverviewLead), 
+                        phone: activeOverviewLead.mobile || activeOverviewLead.phone, 
+                        source: 'crm_lead_overview' 
+                      }
+                    )}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => trackPartnerClick(
+                      activeOverviewLead.assignedCompany || overviewElig?.partner || 'Rupay91', 
+                      { 
+                        leadId: getLeadId(activeOverviewLead), 
+                        phone: activeOverviewLead.mobile || activeOverviewLead.phone, 
+                        source: 'crm_lead_overview' 
+                      }
+                    )}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0A3977] hover:bg-blue-900 text-white rounded-xl text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
+                    title="Open Partner Application with Lead ID & UTMs Tracked"
+                  >
+                    <span>Visit {activeOverviewLead.assignedCompany || overviewElig?.partner || 'Partner'}</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+
               </div>
 
             </div>
