@@ -423,80 +423,45 @@ function syncToRenderBackend($phone, $name, $email, $loanAmount, $monthlyIncome,
     $baseUrl = getEnvVal('RENDER_API_URL', 'https://paisainminutes.onrender.com');
     $token = $clientToken;
     
-    // If client token not provided, try OTP verification flow
-    if (empty($token)) {
-        // 1. Send OTP
-        $ch = curl_init($baseUrl . '/api/auth/send-otp');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['phone' => $phone]));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        $otpRes = curl_exec($ch);
-        curl_close($ch);
-
-        $otpData = json_decode($otpRes, true);
-        $otpCode = $otpData['debug']['code'] ?? $otpData['code'] ?? '1234';
-
-        // 2. Verify OTP & get token
-        $ch = curl_init($baseUrl . '/api/auth/verify-otp');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['phone' => $phone, 'code' => (string)$otpCode, 'otp' => (string)$otpCode]));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        $verifyRes = curl_exec($ch);
-        curl_close($ch);
-
-        $verifyData = json_decode($verifyRes, true);
-        $token = $verifyData['token'] ?? $verifyData['accessToken'] ?? null;
-    }
-
-    if ($token) {
-        // 3. Update Name and Email on user profile
+    // Direct creation of Loan Application on Render Backend API without duplicate server-side OTP
+    $headers = ['Content-Type: application/json'];
+    if (!empty($token)) {
+        // Update user profile if authenticated
         $ch = curl_init($baseUrl . '/api/users/me');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['name' => $name, 'email' => $email]));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . $token
-        ]);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($headers, ['Authorization: Bearer ' . $token]));
         curl_setopt($ch, CURLOPT_TIMEOUT, 2);
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_exec($ch);
-        curl_close($ch);
+        @curl_exec($ch);
+        @curl_close($ch);
 
-        // 4. Create Loan Application with Phone Number on Render Database
-        $ch = curl_init($baseUrl . '/api/loan-applications');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
-            'amount'        => (int)$loanAmount,
-            'tenureMonths'  => 12,
-            'purpose'       => 'Personal Loan',
-            'monthlyIncome' => (int)$monthlyIncome,
-            'phone'         => (string)$phone,
-            'phoneNumber'   => (string)$phone,
-            'mobile'        => (string)$phone,
-            'name'          => (string)$name,
-            'email'         => (string)$email
-        ]));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . $token
-        ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 2);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        $appRes = curl_exec($ch);
-        curl_close($ch);
-
-        return json_decode($appRes, true);
+        $headers[] = 'Authorization: Bearer ' . $token;
     }
 
-    return null;
+    // Create Loan Application with Phone Number on Render Database
+    $ch = curl_init($baseUrl . '/api/loan-applications');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+        'amount'        => (int)$loanAmount,
+        'tenureMonths'  => 12,
+        'purpose'       => 'Personal Loan',
+        'monthlyIncome' => (int)$monthlyIncome,
+        'phone'         => (string)$phone,
+        'phoneNumber'   => (string)$phone,
+        'mobile'        => (string)$phone,
+        'name'          => (string)$name,
+        'email'         => (string)$email
+    ]));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 2);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    $appRes = @curl_exec($ch);
+    @curl_close($ch);
+
+    return json_decode($appRes, true);
 }
 
 // Trigger background sync to Render
