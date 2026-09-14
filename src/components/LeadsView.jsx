@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Plus, 
   FileSpreadsheet, 
@@ -220,7 +221,9 @@ export default function LeadsView({
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const [selectedLeadIds, setSelectedLeadIds] = useState([]);
   const [openPartnerDropdownId, setOpenPartnerDropdownId] = useState(null);
+  const [partnerDropdownAnchor, setPartnerDropdownAnchor] = useState(null);
   const [openStatusDropdownId, setOpenStatusDropdownId] = useState(null);
+  const [statusDropdownAnchor, setStatusDropdownAnchor] = useState(null);
   const [selectedLeadForOverview, setSelectedLeadForOverview] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
   const [selectedDatePreset, setSelectedDatePreset] = useState('ALL');
@@ -228,17 +231,48 @@ export default function LeadsView({
   const [customEndDate, setCustomEndDate] = useState('');
   const [isCustomDatePickerOpen, setIsCustomDatePickerOpen] = useState(false);
 
-  // Close custom popovers when clicking outside
+  // Close custom popovers when clicking outside, scrolling, or pressing Escape
   useEffect(() => {
-    const handleGlobalClick = (e) => {
-      if (!e.target.closest('[data-dropdown-container]')) {
+    if (!openPartnerDropdownId && !openStatusDropdownId) return;
+
+    const handleScrollOrResize = () => {
+      setOpenPartnerDropdownId(null);
+      setPartnerDropdownAnchor(null);
+      setOpenStatusDropdownId(null);
+      setStatusDropdownAnchor(null);
+    };
+
+    const handleClickOutside = (e) => {
+      if (e.target.closest('[data-popover-portal]') || e.target.closest('[data-popover-trigger]')) {
+        return;
+      }
+      setOpenPartnerDropdownId(null);
+      setPartnerDropdownAnchor(null);
+      setOpenStatusDropdownId(null);
+      setStatusDropdownAnchor(null);
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
         setOpenPartnerDropdownId(null);
+        setPartnerDropdownAnchor(null);
         setOpenStatusDropdownId(null);
+        setStatusDropdownAnchor(null);
       }
     };
-    document.addEventListener('click', handleGlobalClick);
-    return () => document.removeEventListener('click', handleGlobalClick);
-  }, []);
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openPartnerDropdownId, openStatusDropdownId]);
 
   // Compute live stats for top KPI cards
   const leadStats = useMemo(() => {
@@ -1297,7 +1331,6 @@ export default function LeadsView({
                 const currentPartner = item.assignedCompany || eligInfo.partner || 'Pending Details';
                 const companyBadge = getCompanyBadge(currentPartner);
                 const statusBadge = getStatusBadge(item.status || 'Fresh');
-                const isNearBottom = idx >= Math.max(0, filteredLeads.length - 2);
 
                 return (
                   <tr 
@@ -1364,15 +1397,24 @@ export default function LeadsView({
                       </div>
                     </td>
 
-                    {/* ASSIGNED LENDING PARTNER (Custom React Popover - ZERO clipping, ZERO native select!) */}
-                    <td className="py-4 px-4" data-dropdown-container>
+                    {/* ASSIGNED LENDING PARTNER (Custom React Popover Portal - ZERO clipping!) */}
+                    <td className="py-4 px-4">
                       <div className="relative inline-block">
                         <button
                           type="button"
+                          data-popover-trigger="partner"
                           onClick={(e) => {
                             e.stopPropagation();
                             setOpenStatusDropdownId(null);
-                            setOpenPartnerDropdownId(prev => prev === itemId ? null : itemId);
+                            setStatusDropdownAnchor(null);
+                            if (openPartnerDropdownId === itemId) {
+                              setOpenPartnerDropdownId(null);
+                              setPartnerDropdownAnchor(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setPartnerDropdownAnchor({ rect, itemId, item });
+                              setOpenPartnerDropdownId(itemId);
+                            }
                           }}
                           className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs font-black border transition-all ${companyBadge.classes} shadow-2xs hover:shadow-sm cursor-pointer`}
                           title="Click to route to a different lending partner"
@@ -1381,50 +1423,6 @@ export default function LeadsView({
                           <span>{companyBadge.name}</span>
                           <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openPartnerDropdownId === itemId ? 'rotate-180 text-slate-800' : 'opacity-60'}`} />
                         </button>
-
-                        {/* Custom Luxury Floating Popover */}
-                        {openPartnerDropdownId === itemId && (
-                          <div 
-                            className={`absolute left-0 ${
-                              isNearBottom ? 'bottom-full mb-2' : 'top-full mt-2'
-                            } w-60 bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-200/90 p-2 z-50 animate-fade-in divide-y divide-slate-100`}
-                          >
-                            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                              <span>Route Lending Partner</span>
-                              <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                            </div>
-                            <div className="pt-1.5 space-y-1">
-                              {AFFILIATE_PARTNERS.map(p => {
-                                const isCurrent = (companyBadge.name || '').toLowerCase() === p.name.toLowerCase();
-                                return (
-                                  <button
-                                    key={p.id}
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleReassignCompany(itemId, p.name);
-                                      setOpenPartnerDropdownId(null);
-                                    }}
-                                    className={`w-full px-3 py-2 rounded-2xl text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
-                                      isCurrent 
-                                        ? 'bg-blue-50 text-[#0A3977] font-black ring-1 ring-blue-200 shadow-2xs' 
-                                        : 'hover:bg-slate-50 text-slate-700 font-bold'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2.5 truncate">
-                                      <span className="w-3 h-3 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: p.accentColor }}></span>
-                                      <div className="truncate text-left">
-                                        <div className="font-black leading-tight">{p.name}</div>
-                                        <div className="text-[10px] text-slate-400 font-normal truncate">{p.tagline || 'Lending Partner'}</div>
-                                      </div>
-                                    </div>
-                                    {isCurrent && <Check className="w-4 h-4 text-[#0A3977] shrink-0 font-bold" />}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </td>
 
@@ -1494,15 +1492,24 @@ export default function LeadsView({
                       </span>
                     </td>
 
-                    {/* STATUS (Custom React Popover - ZERO clipping, ZERO native select!) */}
-                    <td className="py-4 px-4" data-dropdown-container>
+                    {/* STATUS (Custom React Popover Portal - ZERO clipping!) */}
+                    <td className="py-4 px-4">
                       <div className="relative inline-block">
                         <button
                           type="button"
+                          data-popover-trigger="status"
                           onClick={(e) => {
                             e.stopPropagation();
                             setOpenPartnerDropdownId(null);
-                            setOpenStatusDropdownId(prev => prev === itemId ? null : itemId);
+                            setPartnerDropdownAnchor(null);
+                            if (openStatusDropdownId === itemId) {
+                              setOpenStatusDropdownId(null);
+                              setStatusDropdownAnchor(null);
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setStatusDropdownAnchor({ rect, itemId, item });
+                              setOpenStatusDropdownId(itemId);
+                            }
                           }}
                           className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs font-black border transition-all ${statusBadge.classes} shadow-2xs hover:shadow-sm cursor-pointer`}
                           title="Click to update workflow status"
@@ -1511,55 +1518,6 @@ export default function LeadsView({
                           <span>{item.status || 'Fresh'}</span>
                           <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openStatusDropdownId === itemId ? 'rotate-180 text-slate-800' : 'opacity-60'}`} />
                         </button>
-
-                        {/* Custom Luxury Floating Status Popover */}
-                        {openStatusDropdownId === itemId && (
-                          <div 
-                            className={`absolute left-0 ${
-                              isNearBottom ? 'bottom-full mb-2' : 'top-full mt-2'
-                            } w-52 bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-200/90 p-2 z-50 animate-fade-in divide-y divide-slate-100`}
-                          >
-                            <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between">
-                              <span>Update Status</span>
-                              <GitMerge className="w-3.5 h-3.5 text-slate-400" />
-                            </div>
-                            <div className="pt-1.5 space-y-1">
-                              {[
-                                { id: 'Fresh', label: 'Fresh', dot: 'bg-sky-500', bg: 'hover:bg-sky-50 text-sky-800' },
-                                { id: 'Callback', label: 'Callback', dot: 'bg-amber-500', bg: 'hover:bg-amber-50 text-amber-800' },
-                                { id: 'Interested', label: 'Interested', dot: 'bg-purple-500', bg: 'hover:bg-purple-50 text-purple-800' },
-                                { id: 'Docs received', label: 'Docs Received', dot: 'bg-indigo-500', bg: 'hover:bg-indigo-50 text-indigo-800' },
-                                { id: 'Approved', label: 'Approved', dot: 'bg-emerald-500', bg: 'hover:bg-emerald-50 text-emerald-800' },
-                                { id: 'Disbursed', label: 'Disbursed', dot: 'bg-teal-500', bg: 'hover:bg-teal-50 text-teal-800' },
-                                { id: 'Rejected', label: 'Rejected', dot: 'bg-rose-500', bg: 'hover:bg-rose-50 text-rose-800' },
-                              ].map(st => {
-                                const isCurrent = (item.status || 'Fresh').toLowerCase() === st.id.toLowerCase();
-                                return (
-                                  <button
-                                    key={st.id}
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleStatusChange(itemId, st.id);
-                                      setOpenStatusDropdownId(null);
-                                    }}
-                                    className={`w-full px-3 py-2 rounded-2xl text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
-                                      isCurrent 
-                                        ? 'bg-slate-100 text-slate-900 font-black ring-1 ring-slate-300 shadow-2xs' 
-                                        : `${st.bg} font-bold`
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2.5">
-                                      <span className={`w-2.5 h-2.5 rounded-full ${st.dot}`}></span>
-                                      <span>{st.label}</span>
-                                    </div>
-                                    {isCurrent && <Check className="w-4 h-4 text-slate-900 shrink-0 font-black" />}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     </td>
 
@@ -2210,6 +2168,152 @@ export default function LeadsView({
 
           </div>
         </div>
+      )}
+
+      {/* Floating Portal: Partner Popover (Completely escapes table overflow and header) */}
+      {openPartnerDropdownId && partnerDropdownAnchor && createPortal(
+        (() => {
+          const { rect, itemId, item } = partnerDropdownAnchor;
+          const currentLead = leads.find((l, i) => getLeadId(l, i) === itemId) || item;
+          const spaceBelow = window.innerHeight - rect.bottom;
+          const spaceAbove = rect.top;
+          const openUp = spaceBelow < 280 && spaceAbove > spaceBelow;
+          const width = 256;
+          const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 16));
+          const eligInfo = getEligibilityInfo(currentLead);
+          const currentPartner = currentLead.assignedCompany || eligInfo.partner || 'Pending Details';
+          const companyBadge = getCompanyBadge(currentPartner);
+          const maxHeight = Math.max(200, Math.min(380, openUp ? spaceAbove - 20 : spaceBelow - 20));
+
+          return (
+            <div
+              data-popover-portal="partner"
+              style={{
+                position: 'fixed',
+                left: `${left}px`,
+                ...(openUp
+                  ? { bottom: `${window.innerHeight - rect.top + 6}px` }
+                  : { top: `${rect.bottom + 6}px` }),
+                maxHeight: `${maxHeight}px`,
+                zIndex: 99999
+              }}
+              className="w-64 bg-white/98 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-200/90 p-2 animate-fade-in flex flex-col overflow-hidden ring-1 ring-black/5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-slate-100 shrink-0">
+                <span>Route Lending Partner</span>
+                <Building2 className="w-3.5 h-3.5 text-slate-400" />
+              </div>
+              <div className="pt-1.5 space-y-1 overflow-y-auto grow pr-0.5">
+                {AFFILIATE_PARTNERS.map(p => {
+                  const isCurrent = (companyBadge.name || '').toLowerCase() === p.name.toLowerCase();
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleReassignCompany(itemId, p.name);
+                        setOpenPartnerDropdownId(null);
+                        setPartnerDropdownAnchor(null);
+                      }}
+                      className={`w-full px-3 py-2 rounded-2xl text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
+                        isCurrent 
+                          ? 'bg-blue-50 text-[#0A3977] font-black ring-1 ring-blue-200 shadow-2xs' 
+                          : 'hover:bg-slate-50 text-slate-700 font-bold'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <span className="w-3 h-3 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: p.accentColor }}></span>
+                        <div className="truncate text-left">
+                          <div className="font-black leading-tight">{p.name}</div>
+                          <div className="text-[10px] text-slate-400 font-normal truncate">{p.tagline || 'Lending Partner'}</div>
+                        </div>
+                      </div>
+                      {isCurrent && <Check className="w-4 h-4 text-[#0A3977] shrink-0 font-bold" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })(),
+        document.body
+      )}
+
+      {/* Floating Portal: Status Popover (Completely escapes table overflow and header) */}
+      {openStatusDropdownId && statusDropdownAnchor && createPortal(
+        (() => {
+          const { rect, itemId, item } = statusDropdownAnchor;
+          const currentLead = leads.find((l, i) => getLeadId(l, i) === itemId) || item;
+          const spaceBelow = window.innerHeight - rect.bottom;
+          const spaceAbove = rect.top;
+          const openUp = spaceBelow < 280 && spaceAbove > spaceBelow;
+          const width = 224;
+          const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 16));
+          const maxHeight = Math.max(200, Math.min(380, openUp ? spaceAbove - 20 : spaceBelow - 20));
+
+          const statusOptions = [
+            { id: 'Fresh', label: 'Fresh', dot: 'bg-sky-500', bg: 'hover:bg-sky-50 text-sky-800' },
+            { id: 'Callback', label: 'Callback', dot: 'bg-amber-500', bg: 'hover:bg-amber-50 text-amber-800' },
+            { id: 'Interested', label: 'Interested', dot: 'bg-purple-500', bg: 'hover:bg-purple-50 text-purple-800' },
+            { id: 'Docs received', label: 'Docs Received', dot: 'bg-indigo-500', bg: 'hover:bg-indigo-50 text-indigo-800' },
+            { id: 'Approved', label: 'Approved', dot: 'bg-emerald-500', bg: 'hover:bg-emerald-50 text-emerald-800' },
+            { id: 'Disbursed', label: 'Disbursed', dot: 'bg-teal-500', bg: 'hover:bg-teal-50 text-teal-800' },
+            { id: 'Rejected', label: 'Rejected', dot: 'bg-rose-500', bg: 'hover:bg-rose-50 text-rose-800' },
+          ];
+
+          return (
+            <div
+              data-popover-portal="status"
+              style={{
+                position: 'fixed',
+                left: `${left}px`,
+                ...(openUp
+                  ? { bottom: `${window.innerHeight - rect.top + 6}px` }
+                  : { top: `${rect.bottom + 6}px` }),
+                maxHeight: `${maxHeight}px`,
+                zIndex: 99999
+              }}
+              className="w-56 bg-white/98 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-200/90 p-2 animate-fade-in flex flex-col overflow-hidden ring-1 ring-black/5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-slate-100 shrink-0">
+                <span>Update Status</span>
+                <GitMerge className="w-3.5 h-3.5 text-slate-400" />
+              </div>
+              <div className="pt-1.5 space-y-1 overflow-y-auto grow pr-0.5">
+                {statusOptions.map(st => {
+                  const isCurrent = (currentLead.status || 'Fresh').toLowerCase() === st.id.toLowerCase();
+                  return (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleStatusChange(itemId, st.id);
+                        setOpenStatusDropdownId(null);
+                        setStatusDropdownAnchor(null);
+                      }}
+                      className={`w-full px-3 py-2 rounded-2xl text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
+                        isCurrent 
+                          ? 'bg-slate-100 text-slate-900 font-black ring-1 ring-slate-300 shadow-2xs' 
+                          : `${st.bg} font-bold`
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${st.dot}`}></span>
+                        <span>{st.label}</span>
+                      </div>
+                      {isCurrent && <Check className="w-4 h-4 text-slate-700 shrink-0 font-bold" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })(),
+        document.body
       )}
 
     </div>

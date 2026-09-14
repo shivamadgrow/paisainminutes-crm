@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Building2, 
   Search, 
@@ -43,6 +44,44 @@ export default function CompanyLeadsView({
   const [customEndDate, setCustomEndDate] = useState('');
   const [selectedLeadIds, setSelectedLeadIds] = useState([]);
   const [reassigningLeadId, setReassigningLeadId] = useState(null);
+  const [reassignAnchor, setReassignAnchor] = useState(null);
+
+  // Close reassign popover on click outside, scroll, resize, or Escape
+  useEffect(() => {
+    if (!reassigningLeadId) return;
+
+    const handleScrollOrResize = () => {
+      setReassigningLeadId(null);
+      setReassignAnchor(null);
+    };
+
+    const handleClickOutside = (e) => {
+      if (e.target.closest('[data-popover-portal]') || e.target.closest('[data-popover-trigger]')) {
+        return;
+      }
+      setReassigningLeadId(null);
+      setReassignAnchor(null);
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setReassigningLeadId(null);
+        setReassignAnchor(null);
+      }
+    };
+
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [reassigningLeadId]);
 
   // Filter leads assigned to this company
   const companyLeads = useMemo(() => {
@@ -433,36 +472,25 @@ export default function CompanyLeadsView({
                       <td className="p-3.5">
                         <div className="relative">
                           <button
-                            onClick={() => setReassigningLeadId(isReassignOpen ? null : itemId)}
+                            type="button"
+                            data-popover-trigger="company-reassign"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (reassigningLeadId === itemId) {
+                                setReassigningLeadId(null);
+                                setReassignAnchor(null);
+                              } else {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setReassignAnchor({ rect, itemId, item });
+                                setReassigningLeadId(itemId);
+                              }
+                            }}
                             className={`px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer border ${partner.badgeClass} hover:ring-2 hover:ring-indigo-300`}
                             title="Click to re-assign to another affiliate partner"
                           >
                             <span>{item.assignedCompany || partner.name}</span>
-                            <ChevronDown className="w-3 h-3 opacity-60" />
+                            <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${reassigningLeadId === itemId ? 'rotate-180' : 'opacity-60'}`} />
                           </button>
-
-                          {/* Reassign Dropdown Popover */}
-                          {isReassignOpen && (
-                            <div className="absolute left-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 animate-fade-in">
-                              <div className="px-2.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                Re-assign Partner:
-                              </div>
-                              {AFFILIATE_PARTNERS.map(p => (
-                                <button
-                                  key={p.id}
-                                  onClick={() => handleReassign(itemId, p.name)}
-                                  className={`w-full text-left px-3 py-1.5 text-xs font-semibold hover:bg-slate-100 flex items-center justify-between cursor-pointer ${
-                                    (item.assignedCompany || partner.name) === p.name ? 'text-[#0A3977] font-bold bg-blue-50' : 'text-slate-700'
-                                  }`}
-                                >
-                                  <span>{p.name}</span>
-                                  {(item.assignedCompany || partner.name) === p.name && (
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-[#0A3977]" />
-                                  )}
-                                </button>
-                              ))}
-                            </div>
-                          )}
                         </div>
                       </td>
 
@@ -552,6 +580,67 @@ export default function CompanyLeadsView({
           </table>
         </div>
       </div>
+
+      {/* Floating Reassign Portal */}
+      {reassigningLeadId && reassignAnchor && createPortal(
+        (() => {
+          const { rect, itemId, item } = reassignAnchor;
+          const currentLead = leads.find((l, i) => (l.id || `lead-${i}`) === itemId) || item;
+          const spaceBelow = window.innerHeight - rect.bottom;
+          const spaceAbove = rect.top;
+          const openUp = spaceBelow < 280 && spaceAbove > spaceBelow;
+          const width = 220;
+          const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 16));
+          const maxHeight = Math.max(200, Math.min(380, openUp ? spaceAbove - 20 : spaceBelow - 20));
+
+          return (
+            <div
+              data-popover-portal="reassign"
+              style={{
+                position: 'fixed',
+                left: `${left}px`,
+                ...(openUp
+                  ? { bottom: `${window.innerHeight - rect.top + 6}px` }
+                  : { top: `${rect.bottom + 6}px` }),
+                maxHeight: `${maxHeight}px`,
+                zIndex: 99999
+              }}
+              className="w-56 bg-white/98 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/90 py-2 px-1 animate-fade-in flex flex-col overflow-hidden ring-1 ring-black/5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 shrink-0">
+                Re-assign Partner:
+              </div>
+              <div className="pt-1.5 space-y-1 overflow-y-auto grow pr-0.5">
+                {AFFILIATE_PARTNERS.map(p => {
+                  const isCurrent = (currentLead.assignedCompany || partner.name) === p.name;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleReassign(itemId, p.name);
+                        setReassigningLeadId(null);
+                        setReassignAnchor(null);
+                      }}
+                      className={`w-full text-left px-3 py-1.5 text-xs font-semibold rounded-xl hover:bg-slate-100 flex items-center justify-between cursor-pointer transition ${
+                        isCurrent ? 'text-[#0A3977] font-bold bg-blue-50 ring-1 ring-blue-200' : 'text-slate-700'
+                      }`}
+                    >
+                      <span>{p.name}</span>
+                      {isCurrent && (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#0A3977]" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })(),
+        document.body
+      )}
 
     </div>
   );
