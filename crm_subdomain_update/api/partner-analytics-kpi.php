@@ -46,7 +46,8 @@ $PARTNERS_CONFIG = [
     ['id' => 'loanwithin', 'name' => 'LoanWithin', 'rateStr' => '2.6%', 'ratePct' => 0.026, 'status' => 'Pending'],
     ['id' => 'shubhcash', 'name' => 'ShubhCash', 'rateStr' => '2.3%', 'ratePct' => 0.023, 'status' => 'Paid'],
     ['id' => 'borrowera', 'name' => 'Borrowera', 'rateStr' => '2.7%', 'ratePct' => 0.027, 'status' => 'Pending'],
-    ['id' => 'easyfincare', 'name' => 'Easy Fincare', 'rateStr' => '2.4%', 'ratePct' => 0.024, 'status' => 'Paid']
+    ['id' => 'easyfincare', 'name' => 'Easy Fincare', 'rateStr' => '2.4%', 'ratePct' => 0.024, 'status' => 'Paid'],
+    ['id' => 'ticket2loan', 'name' => 'Ticket 2 Loan', 'rateStr' => '2.5%', 'ratePct' => 0.025, 'status' => 'Pending']
 ];
 
 function cleanLoanAmount($amt) {

@@ -115,5 +115,19 @@ export const INITIAL_RATE_CARDS = [
     history: [
       { effectiveFrom: '2026-04-01', effectiveTo: 'Present', rate: '2.4%', model: 'flat_pct', updatedBy: 'Super Admin' }
     ]
+  },
+  {
+    id: 'rc-ticket2loan',
+    partnerId: 'ticket2loan',
+    partnerName: 'Ticket 2 Loan',
+    model: 'flat_pct',
+    defaultRate: '2.5%',
+    effectiveFrom: '2026-04-01',
+    slabs: [
+      { minVolume: 0, maxVolume: null, ratePct: 2.5, label: 'Flat 2.5% on all Disbursals' }
+    ],
+    history: [
+      { effectiveFrom: '2026-04-01', effectiveTo: 'Present', rate: '2.5%', model: 'flat_pct', updatedBy: 'Super Admin' }
+    ]
   }
 ];

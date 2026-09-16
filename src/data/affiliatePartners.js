@@ -160,6 +160,26 @@ export const AFFILIATE_PARTNERS = [
     commissionRate: '2.4%',
     commissionPct: 0.024,
     paymentStatus: 'Paid'
+  },
+  {
+    id: 'ticket2loan',
+    name: 'Ticket 2 Loan',
+    code: 'TICKET2LOAN',
+    tagline: 'Smart • Simple • Secure (CIBIL 500+)',
+    badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+    pillClass: 'bg-amber-600 text-white',
+    accentColor: '#F59E0B',
+    accentBg: 'bg-amber-50',
+    gradient: 'from-amber-500 to-orange-600',
+    minCibil: 500,
+    minSalary: 25000,
+    maxLoan: 100000,
+    description: 'Smart, simple and secure personal loans with 100% digital process and quick disbursal.',
+    website: 'https://ticket2loan.com',
+    applyUrl: 'https://www.ticket2loan.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=ticket2loan_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
+    commissionRate: '2.5%',
+    commissionPct: 0.025,
+    paymentStatus: 'Pending'
   }
 ];
 

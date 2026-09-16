@@ -2003,8 +2003,23 @@ export default function LeadsView({
                     </div>
 
                     <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Date of Birth:</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.dob || activeOverviewLead.dateOfBirth || '—'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Gender:</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.gender || '—'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">PAN Card:</span>
                       <span className="font-bold font-mono text-slate-900">{activeOverviewLead.pan && activeOverviewLead.pan !== '—' ? activeOverviewLead.pan : '—'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Address Type:</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.addressType || activeOverviewLead.address_type || '—'}</span>
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -2033,6 +2048,38 @@ export default function LeadsView({
                       <span className="text-slate-400 font-medium">Employment:</span>
                       <span className="font-bold text-slate-900">{activeOverviewLead.employmentType || 'Salaried'}</span>
                     </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Salary Mode:</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.salaryMode || activeOverviewLead.modeOfSalary || activeOverviewLead.mode_of_salary || '—'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Company Name:</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.companyName || activeOverviewLead.company_name || '—'}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Has Credit Card:</span>
+                      <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${
+                        String(activeOverviewLead.haveCreditCard || activeOverviewLead.have_credit_card).toLowerCase() === 'yes'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-slate-100 text-slate-700'
+                      }`}>
+                        {activeOverviewLead.haveCreditCard || activeOverviewLead.have_credit_card || 'No'}
+                      </span>
+                    </div>
+
+                    {String(activeOverviewLead.haveCreditCard || activeOverviewLead.have_credit_card).toLowerCase() === 'yes' && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-medium">Credit Card Limit:</span>
+                        <span className="font-bold text-slate-900">
+                          {(activeOverviewLead.creditCardLimit || activeOverviewLead.credit_card_limit)
+                            ? `₹${Number(activeOverviewLead.creditCardLimit || activeOverviewLead.credit_card_limit).toLocaleString('en-IN')}`
+                            : '—'}
+                        </span>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Loan Purpose:</span>

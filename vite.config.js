@@ -305,7 +305,8 @@ function crmApiPlugin() {
             { id: 'loanwithin', name: 'LoanWithin', rateStr: '2.6%', ratePct: 0.026, status: 'Pending' },
             { id: 'shubhcash', name: 'ShubhCash', rateStr: '2.3%', ratePct: 0.023, status: 'Paid' },
             { id: 'borrowera', name: 'Borrowera', rateStr: '2.7%', ratePct: 0.027, status: 'Pending' },
-            { id: 'easyfincare', name: 'Easy Fincare', rateStr: '2.4%', ratePct: 0.024, status: 'Paid' }
+            { id: 'easyfincare', name: 'Easy Fincare', rateStr: '2.4%', ratePct: 0.024, status: 'Paid' },
+            { id: 'ticket2loan', name: 'Ticket 2 Loan', rateStr: '2.5%', ratePct: 0.025, status: 'Pending' }
           ];
 
           const partnerStats = PARTNERS_CONFIG.map(p => {
@@ -648,7 +649,8 @@ function crmApiPlugin() {
               { id: 'loanwithin', name: 'LoanWithin', rateStr: '2.6%', ratePct: 0.026, badgeClass: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
               { id: 'shubhcash', name: 'ShubhCash', rateStr: '2.3%', ratePct: 0.023, badgeClass: 'bg-teal-50 text-teal-700 border-teal-200' },
               { id: 'borrowera', name: 'Borrowera', rateStr: '2.7%', ratePct: 0.027, badgeClass: 'bg-rose-50 text-rose-700 border-rose-200' },
-              { id: 'easyfincare', name: 'Easy Fincare', rateStr: '2.4%', ratePct: 0.024, badgeClass: 'bg-orange-50 text-orange-700 border-orange-200' }
+              { id: 'easyfincare', name: 'Easy Fincare', rateStr: '2.4%', ratePct: 0.024, badgeClass: 'bg-orange-50 text-orange-700 border-orange-200' },
+              { id: 'ticket2loan', name: 'Ticket 2 Loan', rateStr: '2.5%', ratePct: 0.025, badgeClass: 'bg-yellow-50 text-yellow-700 border-yellow-200' }
             ];
 
             const partnerMap = {};

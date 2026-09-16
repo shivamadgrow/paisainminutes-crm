@@ -94,5 +94,17 @@ export const INITIAL_INTEGRATIONS = [
     lastSync: '6 hours ago',
     method: 'REST JSON POST',
     authType: 'Bearer Token'
+  },
+  {
+    partnerId: 'ticket2loan',
+    partnerName: 'Ticket 2 Loan',
+    apiEndpoint: 'https://api.ticket2loan.com/v1/leads/apply',
+    webhookUrl: 'https://crm.paisainminutes.com/api/webhooks/ticket2loan/status',
+    apiKey: 't2l_live_839201948291',
+    secretKey: 't2l_sec_938102948201',
+    status: 'Connected',
+    lastSync: '10 minutes ago',
+    method: 'REST JSON POST',
+    authType: 'Bearer Token'
   }
 ];

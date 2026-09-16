@@ -110,5 +110,19 @@ export const INITIAL_AGREEMENTS = [
     agreementFile: 'easyfincare_mou_executed.pdf',
     fileSize: '2.0 MB',
     contactPerson: 'Gaurav Patel (Director)'
+  },
+  {
+    id: 'agr-ticket2loan',
+    partnerId: 'ticket2loan',
+    partnerName: 'Ticket 2 Loan',
+    agreementNumber: 'PIM-AGR-2026-009',
+    signedDate: '2026-03-01',
+    validUntil: '2028-02-29',
+    status: 'Active',
+    rateSheet: '2.5% Flat Disbursal',
+    paymentTerms: 'Monthly within 10 days',
+    agreementFile: 'ticket2loan_affiliate_agreement.pdf',
+    fileSize: '2.1 MB',
+    contactPerson: 'Adarsh Gupta (Partnerships)'
   }
 ];
