@@ -12,9 +12,11 @@ export const AFFILIATE_PARTNERS = [
     accentBg: 'bg-indigo-50',
     gradient: 'from-indigo-600 to-violet-700',
     minCibil: 750,
-    minSalary: 70000,
-    maxLoan: 500000,
-    description: 'Fast digital approvals for prime applicants with CIBIL >= 750 (Slabs 6, 7, 8).',
+    minSalary: 50000,
+    maxLoan: 100000,
+    interestRate: 'Up to 1.0% / day',
+    tenure: '30 - 45 Days',
+    description: 'Fast digital approvals for prime applicants with salary >= ₹50,000.',
     website: 'https://rupay91.com',
     applyUrl: 'https://www.rupay91.com/applynow.php?source=paisainminutes&utm_source=paisainminutes&ref=paisainminutes&affiliate=paisainminutes&sub_id=CRM&channel=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=rupay91_crm',
     commissionRate: '2.8%',
@@ -22,118 +24,20 @@ export const AFFILIATE_PARTNERS = [
     paymentStatus: 'Paid'
   },
   {
-    id: 'jhatpatloans',
-    name: 'Jhatpat Loans',
-    code: 'JHATPAT',
-    tagline: 'Quick Personal Loans (CIBIL < 750)',
-    badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-    pillClass: 'bg-emerald-600 text-white',
-    accentColor: '#059669',
-    accentBg: 'bg-emerald-50',
-    gradient: 'from-emerald-600 to-teal-700',
-    minCibil: 500,
-    minSalary: 20000,
-    maxLoan: 300000,
-    description: 'Flexible personal loans for applicants with CIBIL 500–749 (Slabs 1 to 5).',
-    website: 'https://jhatpatloans.com',
-    applyUrl: 'https://www.jhatpatloans.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=jhatpatloans_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '2.4%',
-    commissionPct: 0.024,
-    paymentStatus: 'Paid'
-  },
-  {
-    id: 'instarupees',
-    name: 'Insta Rupees',
-    code: 'INSTARUPEES',
-    tagline: 'Fast Cash Loans (CIBIL 550+)',
-    badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
-    pillClass: 'bg-amber-600 text-white',
-    accentColor: '#D97706',
-    accentBg: 'bg-amber-50',
-    gradient: 'from-amber-600 to-orange-700',
-    minCibil: 550,
-    minSalary: 20000,
-    maxLoan: 100000,
-    description: 'Paperless instant sanction & high approval online credit line.',
-    website: 'https://instarupees.com',
-    applyUrl: 'https://www.instarupees.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=instarupees_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '2.5%',
-    commissionPct: 0.025,
-    paymentStatus: 'Pending'
-  },
-  {
-    id: 'udhaarnow',
-    name: 'UdhaarNow',
-    code: 'UDHAARNOW',
-    tagline: 'Flexible Pre-Approved Credit (CIBIL 500+)',
-    badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',
-    pillClass: 'bg-blue-600 text-white',
-    accentColor: '#2563EB',
-    accentBg: 'bg-blue-50',
-    gradient: 'from-blue-600 to-cyan-700',
-    minCibil: 500,
-    minSalary: 20000,
-    maxLoan: 100000,
-    description: 'Instant pre-matched credit limit with minimal KYC required.',
-    website: 'https://udhaarnow.com',
-    applyUrl: 'https://www.udhaarnow.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=udhaarnow_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '2.2%',
-    commissionPct: 0.022,
-    paymentStatus: 'Paid'
-  },
-  {
-    id: 'loanwithin',
-    name: 'LoanWithin',
-    code: 'LOANWITHIN',
-    tagline: 'Verified Partner Credit (CIBIL 550+)',
-    badgeClass: 'bg-teal-50 text-teal-700 border border-teal-200',
-    pillClass: 'bg-teal-600 text-white',
-    accentColor: '#0D9488',
-    accentBg: 'bg-teal-50',
-    gradient: 'from-teal-600 to-emerald-700',
-    minCibil: 550,
-    minSalary: 25000,
-    maxLoan: 100000,
-    description: 'Paperless fast-track disbursals with zero collateral needed.',
-    website: 'https://loanwithin.com',
-    applyUrl: 'https://www.loanwithin.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=loanwithin_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '2.6%',
-    commissionPct: 0.026,
-    paymentStatus: 'Pending'
-  },
-  {
-    id: 'shubhcash',
-    name: 'ShubhCash',
-    code: 'SHUBHCASH',
-    tagline: 'Instant Credit (CIBIL 500+)',
-    badgeClass: 'bg-rose-50 text-rose-700 border border-rose-200',
-    pillClass: 'bg-rose-600 text-white',
-    accentColor: '#E11D48',
-    accentBg: 'bg-rose-50',
-    gradient: 'from-rose-600 to-pink-700',
-    minCibil: 500,
-    minSalary: 20000,
-    maxLoan: 100000,
-    description: '100% online application with direct bank credit on same day.',
-    website: 'https://shubhcash.com',
-    applyUrl: 'https://www.shubhcash.com/apply-now?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=shubhcash_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '2.3%',
-    commissionPct: 0.023,
-    paymentStatus: 'Paid'
-  },
-  {
     id: 'borrowera',
     name: 'Borrowera',
     code: 'BORROWERA',
-    tagline: 'Speedy Digital Lending (CIBIL 600+)',
+    tagline: 'Speedy Digital Lending',
     badgeClass: 'bg-purple-50 text-purple-700 border border-purple-200',
     pillClass: 'bg-purple-600 text-white',
     accentColor: '#9333EA',
     accentBg: 'bg-purple-50',
     gradient: 'from-purple-600 to-fuchsia-700',
     minCibil: 600,
-    minSalary: 25000,
+    minSalary: 45000,
     maxLoan: 100000,
+    interestRate: 'Up to 1.0% / day',
+    tenure: '30 - 45 Days',
     description: 'Direct account credit in minutes with speedy digital verification.',
     website: 'https://borrowera.com',
     applyUrl: 'https://www.borrowera.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=borrowera_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
@@ -145,15 +49,17 @@ export const AFFILIATE_PARTNERS = [
     id: 'easyfincare',
     name: 'Easy Fincare',
     code: 'EASYFINCARE',
-    tagline: 'Simplifying Finance (CIBIL 550+)',
+    tagline: 'Simplifying Finance',
     badgeClass: 'bg-cyan-50 text-cyan-700 border border-cyan-200',
     pillClass: 'bg-cyan-600 text-white',
     accentColor: '#0891B2',
     accentBg: 'bg-cyan-50',
     gradient: 'from-cyan-600 to-blue-700',
     minCibil: 550,
-    minSalary: 20000,
+    minSalary: 45000,
     maxLoan: 100000,
+    interestRate: 'Up to 1.0% / day',
+    tenure: '30 - 45 Days',
     description: 'Fast personal loan process with minimal documentation.',
     website: 'https://easyfincare.com',
     applyUrl: 'https://www.easyfincare.com/apply-now?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=easyfincare_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
@@ -162,10 +68,120 @@ export const AFFILIATE_PARTNERS = [
     paymentStatus: 'Paid'
   },
   {
+    id: 'loanwithin',
+    name: 'LoanWithin',
+    code: 'LOANWITHIN',
+    tagline: 'Verified Partner Credit',
+    badgeClass: 'bg-teal-50 text-teal-700 border border-teal-200',
+    pillClass: 'bg-teal-600 text-white',
+    accentColor: '#0D9488',
+    accentBg: 'bg-teal-50',
+    gradient: 'from-teal-600 to-emerald-700',
+    minCibil: 550,
+    minSalary: 45000,
+    maxLoan: 100000,
+    interestRate: 'Up to 1.0% / day',
+    tenure: '30 - 45 Days',
+    description: 'Paperless fast-track disbursals with zero collateral needed.',
+    website: 'https://loanwithin.com',
+    applyUrl: 'https://www.loanwithin.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=loanwithin_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
+    commissionRate: '2.6%',
+    commissionPct: 0.026,
+    paymentStatus: 'Pending'
+  },
+  {
+    id: 'instarupees',
+    name: 'Insta Rupees',
+    code: 'INSTARUPEES',
+    tagline: 'Fast Cash Loans',
+    badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
+    pillClass: 'bg-amber-600 text-white',
+    accentColor: '#D97706',
+    accentBg: 'bg-amber-50',
+    gradient: 'from-amber-600 to-orange-700',
+    minCibil: 550,
+    minSalary: 40000,
+    maxLoan: 100000,
+    interestRate: 'Up to 1.0% / day',
+    tenure: '30 - 45 Days',
+    description: 'Paperless instant sanction & high approval online credit line.',
+    website: 'https://instarupees.com',
+    applyUrl: 'https://www.instarupees.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=instarupees_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
+    commissionRate: '2.5%',
+    commissionPct: 0.025,
+    paymentStatus: 'Pending'
+  },
+  {
+    id: 'shubhcash',
+    name: 'ShubhCash',
+    code: 'SHUBHCASH',
+    tagline: 'Instant Credit Online',
+    badgeClass: 'bg-rose-50 text-rose-700 border border-rose-200',
+    pillClass: 'bg-rose-600 text-white',
+    accentColor: '#E11D48',
+    accentBg: 'bg-rose-50',
+    gradient: 'from-rose-600 to-pink-700',
+    minCibil: 500,
+    minSalary: 35000,
+    maxLoan: 100000,
+    interestRate: 'Up to 1.0% / day',
+    tenure: '30 - 45 Days',
+    description: '100% online application with direct bank credit on same day.',
+    website: 'https://shubhcash.com',
+    applyUrl: 'https://www.shubhcash.com/apply-now?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=shubhcash_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
+    commissionRate: '2.3%',
+    commissionPct: 0.023,
+    paymentStatus: 'Paid'
+  },
+  {
+    id: 'udhaarnow',
+    name: 'UdhaarNow',
+    code: 'UDHAARNOW',
+    tagline: 'Flexible Pre-Approved Credit',
+    badgeClass: 'bg-blue-50 text-blue-700 border border-blue-200',
+    pillClass: 'bg-blue-600 text-white',
+    accentColor: '#2563EB',
+    accentBg: 'bg-blue-50',
+    gradient: 'from-blue-600 to-cyan-700',
+    minCibil: 500,
+    minSalary: 35000,
+    maxLoan: 100000,
+    interestRate: 'Up to 1.0% / day',
+    tenure: '30 - 45 Days',
+    description: 'Instant pre-matched credit limit with minimal KYC required.',
+    website: 'https://udhaarnow.com',
+    applyUrl: 'https://www.udhaarnow.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=udhaarnow_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
+    commissionRate: '2.2%',
+    commissionPct: 0.022,
+    paymentStatus: 'Paid'
+  },
+  {
+    id: 'jhatpatloans',
+    name: 'Jhatpat Loans',
+    code: 'JHATPAT',
+    tagline: 'Quick Personal Loans',
+    badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    pillClass: 'bg-emerald-600 text-white',
+    accentColor: '#059669',
+    accentBg: 'bg-emerald-50',
+    gradient: 'from-emerald-600 to-teal-700',
+    minCibil: 500,
+    minSalary: 30000,
+    maxLoan: 100000,
+    interestRate: 'Up to 1.0% / day',
+    tenure: '30 - 45 Days',
+    description: 'Flexible personal loans for applicants with salary >= ₹30,000.',
+    website: 'https://jhatpatloans.com',
+    applyUrl: 'https://www.jhatpatloans.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=jhatpatloans_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
+    commissionRate: '2.4%',
+    commissionPct: 0.024,
+    paymentStatus: 'Paid'
+  },
+  {
     id: 'ticket2loan',
     name: 'Ticket 2 Loan',
     code: 'TICKET2LOAN',
-    tagline: 'Smart • Simple • Secure (CIBIL 500+)',
+    tagline: 'Smart • Simple • Secure',
     badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
     pillClass: 'bg-amber-600 text-white',
     accentColor: '#F59E0B',
@@ -174,7 +190,9 @@ export const AFFILIATE_PARTNERS = [
     minCibil: 500,
     minSalary: 25000,
     maxLoan: 100000,
-    description: 'Smart, simple and secure personal loans with 100% digital process and quick disbursal.',
+    interestRate: 'Up to 1.0% / day',
+    tenure: '30 - 45 Days',
+    description: 'Smart, simple and secure personal loans with salary >= ₹25,000.',
     website: 'https://ticket2loan.com',
     applyUrl: 'https://www.ticket2loan.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=ticket2loan_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '2.5%',
@@ -349,6 +367,47 @@ export function recommendPartner(lead) {
   return {
     partner: result.partner,
     eligibilityStatus: result.eligibilityStatus
+  };
+}
+
+/**
+ * Categorizes all lending partners into Eligible and Ineligible offers
+ * strictly based on the applicant's monthly salary.
+ */
+export function getSalaryMatchedOffers(salaryInput) {
+  let salNum = 0;
+  if (typeof salaryInput === 'number' && salaryInput > 0) {
+    salNum = salaryInput;
+  } else if (salaryInput) {
+    const str = String(salaryInput).trim();
+    if (/(\d+(?:\.\d+)?)\s*k/i.test(str)) {
+      const m = str.match(/(\d+(?:\.\d+)?)\s*k/i);
+      salNum = Math.round(parseFloat(m[1]) * 1000);
+    } else if (/(\d+(?:\.\d+)?)\s*lakh/i.test(str)) {
+      const m = str.match(/(\d+(?:\.\d+)?)\s*lakh/i);
+      salNum = Math.round(parseFloat(m[1]) * 100000);
+    } else {
+      const clean = parseInt(str.replace(/\D/g, ''), 10);
+      salNum = !isNaN(clean) && clean > 0 ? clean : 0;
+    }
+  }
+
+  const eligible = [];
+  const ineligible = [];
+
+  AFFILIATE_PARTNERS.forEach(partner => {
+    const minSal = Number(partner.minSalary || 25000);
+    if (salNum >= minSal) {
+      eligible.push(partner);
+    } else {
+      ineligible.push(partner);
+    }
+  });
+
+  return {
+    salary: salNum,
+    eligible,
+    ineligible
   };
 }
 

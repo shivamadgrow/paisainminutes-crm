@@ -32,14 +32,16 @@ import {
   Users,
   Clock,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  Lock
 } from 'lucide-react';
 import { 
   AFFILIATE_PARTNERS, 
   getPartnerMeta, 
   getEligibilityMatrix,
   getPartnerTrackingUrl,
-  trackPartnerClick
+  trackPartnerClick,
+  getSalaryMatchedOffers
 } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
 import { 
@@ -2115,6 +2117,148 @@ export default function LeadsView({
                 </div>
 
               </div>
+
+              {/* Salary-Based Matched Loan Offers Section */}
+              {(() => {
+                const salaryOffers = getSalaryMatchedOffers(
+                  activeOverviewLead.salary || activeOverviewLead.monthlySalary || activeOverviewLead.monthly_salary || activeOverviewLead.sal_val
+                );
+                return (
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+                        <div>
+                          <h4 className="text-xs font-extrabold text-[#0A3977] uppercase tracking-wider">
+                            Matched Lending Offers by Monthly Salary
+                          </h4>
+                          <p className="text-[11px] text-slate-500">
+                            Based on applicant monthly income of <strong className="text-slate-800">₹{Number(salaryOffers.salary || 0).toLocaleString('en-IN')}</strong>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          {salaryOffers.eligible.length} Eligible
+                        </span>
+                        {salaryOffers.ineligible.length > 0 && (
+                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                            {salaryOffers.ineligible.length} Locked
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Eligible Lending Partners Grid */}
+                    <div>
+                      <div className="text-[11px] font-extrabold text-emerald-800 flex items-center gap-1.5 mb-2.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>Eligible Pre-Approved Lenders ({salaryOffers.eligible.length})</span>
+                      </div>
+
+                      {salaryOffers.eligible.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                          {salaryOffers.eligible.map(p => {
+                            const isAssigned = (activeOverviewLead.assignedCompany === p.name);
+                            return (
+                              <div 
+                                key={p.id} 
+                                className={`p-3 rounded-xl border transition flex flex-col justify-between ${
+                                  isAssigned 
+                                    ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-500/20 shadow-xs' 
+                                    : 'bg-emerald-50/30 border-emerald-200/80 hover:bg-emerald-50/70'
+                                }`}
+                              >
+                                <div>
+                                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                                    <span className="font-extrabold text-xs text-slate-900">{p.name}</span>
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                      Min ₹{(p.minSalary/1000).toFixed(0)}k
+                                    </span>
+                                  </div>
+                                  <div className="text-[10.5px] text-slate-600 space-y-0.5 mb-2">
+                                    <div>Interest: <strong className="text-emerald-700">{p.interestRate || 'Up to 1.0% / day'}</strong></div>
+                                    <div>Tenure: <span className="font-medium text-slate-700">{p.tenure || '30 - 45 Days'}</span></div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 pt-2 border-t border-emerald-200/60">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleReassignCompanyInModal(getLeadId(activeOverviewLead), p.name)}
+                                    className={`text-[11px] font-bold px-2 py-1 rounded-lg transition cursor-pointer grow text-center ${
+                                      isAssigned
+                                        ? 'bg-emerald-600 text-white shadow-2xs'
+                                        : 'bg-white hover:bg-emerald-600 hover:text-white text-emerald-800 border border-emerald-300'
+                                    }`}
+                                  >
+                                    {isAssigned ? '✓ Assigned' : 'Assign to this'}
+                                  </button>
+                                  <a
+                                    href={getPartnerTrackingUrl(p, { leadId: getLeadId(activeOverviewLead), phone: activeOverviewLead.phone })}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-1 rounded-lg bg-white border border-emerald-200 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-900 cursor-pointer"
+                                    title={`Open ${p.name} application`}
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 font-medium">
+                          No lenders matched for current salary. Minimum requirement across all partners is ₹25,000/month.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Ineligible / Locked Lenders */}
+                    {salaryOffers.ineligible.length > 0 && (
+                      <div className="pt-3 border-t border-slate-100">
+                        <div className="text-[11px] font-extrabold text-slate-600 flex items-center gap-1.5 mb-2.5">
+                          <Lock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <span>Ineligible Lending Partners ({salaryOffers.ineligible.length} • Higher Income Required)</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                          {salaryOffers.ineligible.map(p => {
+                            const shortfall = Math.max(0, p.minSalary - (salaryOffers.salary || 0));
+                            return (
+                              <div 
+                                key={p.id} 
+                                className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/60 text-slate-500 opacity-85 flex flex-col justify-between"
+                              >
+                                <div>
+                                  <div className="flex items-center justify-between gap-1 mb-1.5">
+                                    <span className="font-bold text-xs text-slate-700">{p.name}</span>
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200">
+                                      Min ₹{(p.minSalary/1000).toFixed(0)}k Req.
+                                    </span>
+                                  </div>
+                                  <div className="text-[10.5px] text-slate-500 space-y-0.5 mb-2">
+                                    <div className="text-rose-600 font-semibold">Shortfall: -₹{shortfall.toLocaleString('en-IN')}/mo</div>
+                                    <div>Rate: {p.interestRate || 'Up to 1.0% / day'} • {p.tenure || '30 - 45 Days'}</div>
+                                  </div>
+                                </div>
+
+                                <div className="pt-2 border-t border-slate-200 text-center">
+                                  <span className="text-[10.5px] font-bold text-slate-400 flex items-center justify-center gap-1">
+                                    <Lock className="w-3 h-3" />
+                                    <span>Income criteria not met</span>
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Interactive Assignment & Status Control Card */}
               <div className="bg-gradient-to-r from-blue-50/70 to-indigo-50/70 border border-blue-200/80 rounded-2xl p-4 space-y-3">
