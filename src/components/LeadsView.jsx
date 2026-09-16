@@ -2177,13 +2177,14 @@ export default function LeadsView({
           const currentLead = leads.find((l, i) => getLeadId(l, i) === itemId) || item;
           const spaceBelow = window.innerHeight - rect.bottom;
           const spaceAbove = rect.top;
-          const openUp = spaceBelow < 280 && spaceAbove > spaceBelow;
+          const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
           const width = 256;
           const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 16));
           const eligInfo = getEligibilityInfo(currentLead);
           const currentPartner = currentLead.assignedCompany || eligInfo.partner || 'Pending Details';
           const companyBadge = getCompanyBadge(currentPartner);
-          const maxHeight = Math.max(200, Math.min(380, openUp ? spaceAbove - 20 : spaceBelow - 20));
+          const availableSpace = openUp ? Math.max(120, spaceAbove - 16) : Math.max(120, spaceBelow - 16);
+          const maxHeight = Math.min(380, availableSpace);
 
           return (
             <div
@@ -2204,7 +2205,7 @@ export default function LeadsView({
                 <span>Route Lending Partner</span>
                 <Building2 className="w-3.5 h-3.5 text-slate-400" />
               </div>
-              <div className="pt-1.5 space-y-1 overflow-y-auto grow pr-0.5">
+              <div className="pt-1.5 space-y-1 overflow-y-auto grow pr-0.5 overscroll-contain">
                 {AFFILIATE_PARTNERS.map(p => {
                   const isCurrent = (companyBadge.name || '').toLowerCase() === p.name.toLowerCase();
                   return (
@@ -2248,10 +2249,11 @@ export default function LeadsView({
           const currentLead = leads.find((l, i) => getLeadId(l, i) === itemId) || item;
           const spaceBelow = window.innerHeight - rect.bottom;
           const spaceAbove = rect.top;
-          const openUp = spaceBelow < 280 && spaceAbove > spaceBelow;
+          const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
           const width = 224;
           const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 16));
-          const maxHeight = Math.max(200, Math.min(380, openUp ? spaceAbove - 20 : spaceBelow - 20));
+          const availableSpace = openUp ? Math.max(120, spaceAbove - 16) : Math.max(120, spaceBelow - 16);
+          const maxHeight = Math.min(380, availableSpace);
 
           const statusOptions = [
             { id: 'Fresh', label: 'Fresh', dot: 'bg-sky-500', bg: 'hover:bg-sky-50 text-sky-800' },
@@ -2282,7 +2284,7 @@ export default function LeadsView({
                 <span>Update Status</span>
                 <GitMerge className="w-3.5 h-3.5 text-slate-400" />
               </div>
-              <div className="pt-1.5 space-y-1 overflow-y-auto grow pr-0.5">
+              <div className="pt-1.5 space-y-1 overflow-y-auto grow pr-0.5 overscroll-contain">
                 {statusOptions.map(st => {
                   const isCurrent = (currentLead.status || 'Fresh').toLowerCase() === st.id.toLowerCase();
                   return (

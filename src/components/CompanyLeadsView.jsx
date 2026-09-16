@@ -588,10 +588,11 @@ export default function CompanyLeadsView({
           const currentLead = leads.find((l, i) => (l.id || `lead-${i}`) === itemId) || item;
           const spaceBelow = window.innerHeight - rect.bottom;
           const spaceAbove = rect.top;
-          const openUp = spaceBelow < 280 && spaceAbove > spaceBelow;
+          const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
           const width = 220;
           const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 16));
-          const maxHeight = Math.max(200, Math.min(380, openUp ? spaceAbove - 20 : spaceBelow - 20));
+          const availableSpace = openUp ? Math.max(120, spaceAbove - 16) : Math.max(120, spaceBelow - 16);
+          const maxHeight = Math.min(380, availableSpace);
 
           return (
             <div
@@ -611,7 +612,7 @@ export default function CompanyLeadsView({
               <div className="px-3 py-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 shrink-0">
                 Re-assign Partner:
               </div>
-              <div className="pt-1.5 space-y-1 overflow-y-auto grow pr-0.5">
+              <div className="pt-1.5 space-y-1 overflow-y-auto grow pr-0.5 overscroll-contain">
                 {AFFILIATE_PARTNERS.map(p => {
                   const isCurrent = (currentLead.assignedCompany || partner.name) === p.name;
                   return (
