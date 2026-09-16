@@ -288,69 +288,64 @@ export function getEligibilityMatrix(lead) {
   let cibilRange = '—';
   let salaryRange = 'Under ₹20,000';
   let eligibilityStatus = 'Eligible';
-  let partner = 'Jhatpat Loans';
 
   if (cibilVal >= 850 || (cibilVal === 0 && salNum >= 90000)) {
     slab = 8;
     cibilRange = '850–900';
     salaryRange = '₹90,000+';
     eligibilityStatus = 'Eligible – Premium';
-    partner = 'Rupay91';
   } else if (cibilVal >= 800 || (cibilVal === 0 && salNum >= 80000)) {
     slab = 7;
     cibilRange = '800–849';
     salaryRange = '₹80,000–₹89,999';
     eligibilityStatus = 'Eligible – Premium';
-    partner = 'Rupay91';
   } else if (cibilVal >= 750 || (cibilVal === 0 && salNum >= 70000)) {
     slab = 6;
     cibilRange = '750–799';
     salaryRange = '₹70,000–₹79,999';
     eligibilityStatus = 'Eligible – Preferred';
-    partner = 'Rupay91';
   } else if (cibilVal >= 700 || (cibilVal === 0 && salNum >= 60000)) {
     slab = 5;
     cibilRange = '700–749';
     salaryRange = '₹60,000–₹69,999';
     eligibilityStatus = 'Eligible – Good';
-    partner = 'Jhatpat Loans';
   } else if (cibilVal >= 650 || (cibilVal === 0 && salNum >= 50000)) {
     slab = 4;
     cibilRange = '650–699';
     salaryRange = '₹50,000–₹59,999';
     eligibilityStatus = 'Eligible';
-    partner = 'Jhatpat Loans';
   } else if (cibilVal >= 600 || (cibilVal === 0 && salNum >= 40000)) {
     slab = 3;
     cibilRange = '600–649';
     salaryRange = '₹40,000–₹49,999';
     eligibilityStatus = 'Eligible';
-    partner = 'Jhatpat Loans';
   } else if (cibilVal >= 550 || (cibilVal === 0 && salNum >= 30000)) {
     slab = 2;
     cibilRange = '550–599';
     salaryRange = '₹30,000–₹39,999';
     eligibilityStatus = 'Eligible';
-    partner = 'Jhatpat Loans';
   } else if (cibilVal >= 500 || (cibilVal === 0 && salNum >= 20000)) {
     slab = 1;
     cibilRange = '500–549';
     salaryRange = '₹20,000–₹29,999';
     eligibilityStatus = 'Eligible – Base';
-    partner = 'Jhatpat Loans';
   } else {
     slab = 0;
     cibilRange = (cibilStr && cibilStr !== '—') ? cibilStr : '—';
     salaryRange = 'Under ₹20,000';
     eligibilityStatus = (cibilVal === 0 && salNum === 0) ? 'Incomplete / Phone Only' : 'Below Minimum Threshold';
-    partner = (cibilVal === 0 && salNum === 0) ? 'Pending Details' : 'Jhatpat Loans';
   }
 
-  // Exact routing rule: 750+ CIBIL -> Rupay91, below 750 -> Jhatpat Loans
-  if (cibilVal >= 750) {
-    partner = 'Rupay91';
-  } else if (cibilVal > 0) {
-    partner = 'Jhatpat Loans';
+  // Partner Assignment: prioritize tracked outbound click or explicit partner assignment
+  let partner = 'Pending Selection';
+  if (lead && lead.assignedCompany && 
+      lead.assignedCompany !== '—' && 
+      lead.assignedCompany !== 'AUTO' && 
+      lead.assignedCompany !== 'Pending Details' &&
+      lead.assignedCompany !== 'Pending Selection') {
+    partner = lead.assignedCompany;
+  } else if (cibilVal === 0 && salNum === 0) {
+    partner = 'Pending Details';
   }
 
   return {

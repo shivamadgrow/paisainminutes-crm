@@ -183,22 +183,9 @@ function getSlabAndPartner($cibilStr, $salaryNum = 0, $explicitCompany = '') {
         $eligibility = ($cibilVal === 0 && $salaryNum === 0) ? 'Incomplete / Phone Only' : 'Below Minimum Threshold';
     }
 
-    // 750 se upar CIBIL: Rupay91. Below 750: Jhatpat Loans
-    if ($cibilVal >= 750) {
-        $partner = 'Rupay91';
-    } elseif ($cibilVal > 0) {
-        $partner = 'Jhatpat Loans';
-    } else {
-        if ($salaryNum >= 70000) {
-            $partner = 'Rupay91';
-        } elseif ($salaryNum > 0) {
-            $partner = 'Jhatpat Loans';
-        } else {
-            $partner = 'Pending Details';
-        }
-    }
-
-    if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO' && $explicitCompany !== 'Pending Details') {
+    // If not selected/tracked yet, mark as Pending Selection
+    $partner = 'Pending Selection';
+    if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO' && $explicitCompany !== 'Pending Details' && $explicitCompany !== 'Pending Selection') {
         $partner = trim($explicitCompany);
     }
 
@@ -267,6 +254,57 @@ foreach ($deletedStoreCandidates as $df) {
             foreach ($dArr as $dItem) {
                 $cleanD = trim(strtolower((string)$dItem));
                 if ($cleanD !== '' && $cleanD !== '*') $deletedMap[$cleanD] = true;
+            }
+        }
+    }
+}
+
+// Load Real-time Outbound Click Tracking by Phone Number
+$phoneClicks = [];
+$phoneClicksCandidates = array_unique([
+    $rootPath . '/data/phone_clicks.json',
+    $rootPath . '/crm/data/phone_clicks.json',
+    $rootPath . '/deploy_update/data/phone_clicks.json',
+    dirname(__DIR__, 1) . '/data/phone_clicks.json',
+    dirname(__DIR__, 2) . '/data/phone_clicks.json',
+    __DIR__ . '/../../data/phone_clicks.json',
+    __DIR__ . '/../data/phone_clicks.json',
+    __DIR__ . '/data/phone_clicks.json'
+]);
+foreach ($phoneClicksCandidates as $pcf) {
+    if (file_exists($pcf)) {
+        $pData = json_decode(@file_get_contents($pcf), true);
+        if (is_array($pData)) {
+            foreach ($pData as $pNum => $pInfo) {
+                $cleanP = substr(preg_replace('/\D/', '', (string)$pNum), -10);
+                if (strlen($cleanP) === 10) {
+                    $phoneClicks[$cleanP] = is_array($pInfo) ? ($pInfo['partner'] ?? '') : (string)$pInfo;
+                }
+            }
+        }
+    }
+}
+
+// Also read from data/clicks.json if phoneClicks has missing entries
+$clicksJsonCandidates = array_unique([
+    $rootPath . '/data/clicks.json',
+    $rootPath . '/deploy_update/data/clicks.json',
+    dirname(__DIR__, 1) . '/data/clicks.json',
+    dirname(__DIR__, 2) . '/data/clicks.json',
+    __DIR__ . '/../../data/clicks.json',
+    __DIR__ . '/../data/clicks.json'
+]);
+foreach ($clicksJsonCandidates as $cjf) {
+    if (file_exists($cjf)) {
+        $cData = json_decode(@file_get_contents($cjf), true);
+        if (is_array($cData)) {
+            foreach ($cData as $cItem) {
+                if (is_array($cItem) && !empty($cItem['phone']) && !empty($cItem['partner_name'])) {
+                    $cleanP = substr(preg_replace('/\D/', '', (string)$cItem['phone']), -10);
+                    if (strlen($cleanP) === 10 && empty($phoneClicks[$cleanP])) {
+                        $phoneClicks[$cleanP] = $cItem['partner_name'];
+                    }
+                }
             }
         }
     }
@@ -377,7 +415,7 @@ if (function_exists('curl_init')) {
                     'cibil'             => $rItem['cibil'] ?? '—',
                     'source'            => $isPhoneOnly ? 'Apply Now (Phone Only)' : 'Render API / Loan App',
                     'status'            => $rItem['status'] ?? 'Fresh',
-                    'assignedCompany'   => $isPhoneOnly ? 'Pending Details' : ($cleanSalary >= 30000 ? 'Rupay91' : 'Rupaysure'),
+                    'assignedCompany'   => $isPhoneOnly ? 'Pending Details' : (!empty($phoneClicks[$rPhone]) ? $phoneClicks[$rPhone] : 'Pending Selection'),
                     'eligibilityStatus' => $isPhoneOnly ? 'Incomplete / Phone Only' : 'Eligible',
                     'created_at'        => (function() use ($rItem) {
                         if (!empty($rItem['createdAt'])) {
@@ -529,16 +567,29 @@ foreach ($allLeads as $index => $lead) {
 
     $isPhoneOnly = ($name === 'Applicant' || empty($lead['name'])) && ($cleanedLoan === 0) && ($cleanedSalary === 0) && ($cibil === '—');
     
+    $slabInfo = getSlabAndPartner($cibil, $cleanedSalary, $explicitCompany);
+    $eligibilityStatus = $isPhoneOnly ? 'Incomplete / Phone Only' : $slabInfo['eligibility'];
+    if (empty($cibil) || $cibil === '—') {
+        $cibil = $slabInfo['cibil_range'];
+    }
+
+    // Resolve Assigned Partner strictly via Phone Outbound Click or Manual Selection
     if ($isPhoneOnly) {
-        $assignedCompany = (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO') ? $explicitCompany : 'Pending Details';
-        $eligibilityStatus = 'Incomplete / Phone Only';
+        $assignedCompany = 'Pending Details';
+    } elseif (!empty($phone) && !empty($phoneClicks[$phone])) {
+        // Customer clicked an offer on loan-offers.php / redirect.php
+        $assignedCompany = $phoneClicks[$phone];
+    } elseif (!empty($explicitCompany) && 
+              $explicitCompany !== '—' && 
+              $explicitCompany !== 'AUTO' && 
+              $explicitCompany !== 'Pending Details' && 
+              $explicitCompany !== 'Pending Selection' &&
+              $explicitCompany !== 'Jhatpat Loans') {
+        $assignedCompany = $explicitCompany;
+    } elseif (!empty($explicitCompany) && $explicitCompany === 'Jhatpat Loans' && !empty($phoneClicks[$phone]) && $phoneClicks[$phone] === 'Jhatpat Loans') {
+        $assignedCompany = 'Jhatpat Loans';
     } else {
-        $slabInfo = getSlabAndPartner($cibil, $cleanedSalary);
-        $assignedCompany = $slabInfo['partner'];
-        $eligibilityStatus = $slabInfo['eligibility'];
-        if (empty($cibil) || $cibil === '—') {
-            $cibil = $slabInfo['cibil_range'];
-        }
+        $assignedCompany = 'Pending Selection';
     }
 
     $createdAt = $lead['created_at'] ?? $lead['created'] ?? $lead['date'] ?? $lead['timestamp'] ?? date('Y-m-d H:i:s');

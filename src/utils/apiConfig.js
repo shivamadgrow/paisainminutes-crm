@@ -59,7 +59,7 @@ function mapRenderLead(item, index) {
     state: item.state || '—',
     pincode: item.pincode || '—',
     employmentType: item.employmentType || 'Salaried',
-    assignedCompany: item.assignedCompany || (isPhoneOnly ? 'Pending Details' : 'Rupay91'),
+    assignedCompany: item.assignedCompany || (isPhoneOnly ? 'Pending Details' : 'Pending Selection'),
     eligibilityStatus: isPhoneOnly ? 'Incomplete / Phone Only' : (item.eligibilityStatus || 'Eligible'),
     source: item.source || (isPhoneOnly ? 'Apply Now (Phone Only)' : 'Render API / Apply Now'),
     purpose: item.purpose || 'Personal Loan',
@@ -324,7 +324,7 @@ export async function getLeadsFromBackend() {
       if (l.eligibilityStatus && l.eligibilityStatus !== 'Incomplete / Phone Only') {
         existing.eligibilityStatus = l.eligibilityStatus;
       }
-      if ((!existing.assignedCompany || existing.assignedCompany === 'Pending Details' || existing.assignedCompany === 'Unassigned') && l.assignedCompany && l.assignedCompany !== 'Pending Details') {
+      if ((!existing.assignedCompany || existing.assignedCompany === 'Pending Details' || existing.assignedCompany === 'Pending Selection' || existing.assignedCompany === 'Unassigned') && l.assignedCompany && l.assignedCompany !== 'Pending Details' && l.assignedCompany !== 'Pending Selection') {
         existing.assignedCompany = l.assignedCompany;
       }
       if ((!existing.status || existing.status === 'Fresh') && l.status && l.status !== 'Fresh') {

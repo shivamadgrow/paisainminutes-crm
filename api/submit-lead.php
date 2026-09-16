@@ -137,8 +137,7 @@ if ($isPhoneOnly) {
     $salNumber = 0;
 } else {
     $slabData = getSlabInfo($monthlySalary, $cibil);
-    $salNumber = $slabData['sal_val'];
-    $assignedCompany = (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO') ? $explicitCompany : ($salNumber >= 30000 ? 'Rupay91' : 'Rupaysure');
+    $assignedCompany = (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO' && $explicitCompany !== 'Pending Details' && $explicitCompany !== 'Pending Selection') ? $explicitCompany : 'Pending Selection';
 }
 
 $initials = 'AP';
