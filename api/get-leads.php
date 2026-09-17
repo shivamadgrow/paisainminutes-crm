@@ -781,9 +781,18 @@ foreach ($allLeads as $index => $lead) {
 
 // Load persistent overrides (status and company re-assignments)
 $overrideCandidates = array_unique([
+    __DIR__ . '/leads_overrides.json',
     __DIR__ . '/../leads_overrides.json',
+    __DIR__ . '/../data/leads_overrides.json',
+    __DIR__ . '/../crm/leads_overrides.json',
+    __DIR__ . '/../admin/leads_overrides.json',
     __DIR__ . '/../../data/leads_overrides.json',
     __DIR__ . '/../../crm/leads_overrides.json',
+    $rootPath . '/data/leads_overrides.json',
+    $rootPath . '/crm/leads_overrides.json',
+    $rootPath . '/admin/leads_overrides.json',
+    dirname(__DIR__, 1) . '/data/leads_overrides.json',
+    dirname(__DIR__, 1) . '/crm/leads_overrides.json',
     dirname(__DIR__, 2) . '/data/leads_overrides.json',
     dirname(__DIR__, 2) . '/crm/leads_overrides.json',
     dirname(__DIR__, 3) . '/public_html/data/leads_overrides.json',
@@ -792,7 +801,7 @@ $overrideCandidates = array_unique([
 $mergedOverrides = [];
 foreach ($overrideCandidates as $of) {
     if (file_exists($of)) {
-        $ovData = json_decode(file_get_contents($of), true);
+        $ovData = json_decode(@file_get_contents($of), true);
         if (is_array($ovData)) {
             foreach ($ovData as $k => $v) {
                 $mergedOverrides[strtolower(trim((string)$k))] = $v;
@@ -818,6 +827,15 @@ foreach ($leadsByPhone as $lead) {
         }
         if (!empty($ov['eligibilityStatus'])) {
             $lead['eligibilityStatus'] = $ov['eligibilityStatus'];
+        }
+        if (!empty($ov['created_at'])) {
+            $lead['created_at'] = $ov['created_at'];
+        }
+        if (!empty($ov['created'])) {
+            $lead['created'] = $ov['created'];
+        }
+        if (!empty($ov['date'])) {
+            $lead['date'] = $ov['date'];
         }
     }
 

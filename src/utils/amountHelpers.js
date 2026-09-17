@@ -114,8 +114,8 @@ export function formatToIST(dateInput) {
     } else if (str.includes('T') && !str.includes('+') && !str.endsWith('Z')) {
       dateObj = new Date(str + 'Z');
     } else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(str)) {
-      // SQL datetime without tz e.g. 2026-09-07 05:45:05 (written in UTC)
-      dateObj = new Date(str.replace(' ', 'T') + 'Z');
+      // SQL datetime without tz e.g. 2026-09-17 10:24:49 (written in IST by PHP backend)
+      dateObj = new Date(str.replace(' ', 'T') + '+05:30');
     } else if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
       dateObj = new Date(str + 'T00:00:00+05:30');
     } else if (/^\d{1,2}\s+[A-Za-z]{3,4}\s+\d{4},\s+\d{1,2}:\d{2}\s+(AM|PM)/i.test(str)) {
