@@ -1,0 +1,22 @@
+{
+    "by_phone": {
+        "7838056998": {
+            "partner": "Ticket 2 Loan",
+            "partner_slug": "ticket2loan",
+            "timestamp": "2026-09-17 06:37:04",
+            "lead_id": "b2ea30f7-d05e-4786-b08e-586fcb1fe4b6",
+            "phone": "7838056998",
+            "source": "crm"
+        }
+    },
+    "by_lead": {
+        "b2ea30f7-d05e-4786-b08e-586fcb1fe4b6": {
+            "partner": "Ticket 2 Loan",
+            "partner_slug": "ticket2loan",
+            "timestamp": "2026-09-17 06:37:04",
+            "lead_id": "b2ea30f7-d05e-4786-b08e-586fcb1fe4b6",
+            "phone": "7838056998",
+            "source": "crm"
+        }
+    }
+}

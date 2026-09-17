@@ -73,6 +73,35 @@ foreach ($overrideFiles as $of) {
     file_put_contents($of, json_encode($existingOverrides, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 }
 
+// 1B. Sync to partner_assignments.json if company updated
+if (isset($updates['assignedCompany']) && !empty($updates['assignedCompany'])) {
+    $assignedCompanyVal = trim((string)$updates['assignedCompany']);
+    $assignmentFiles = array_unique([
+        dirname(__DIR__, 2) . '/data/partner_assignments.json',
+        dirname(__DIR__, 2) . '/crm/partner_assignments.json',
+        __DIR__ . '/partner_assignments.json',
+        __DIR__ . '/../partner_assignments.json'
+    ]);
+    $assignEntry = [
+        'partner'      => $assignedCompanyVal,
+        'partner_slug' => strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $assignedCompanyVal)),
+        'timestamp'    => date('Y-m-d H:i:s'),
+        'lead_id'      => $targetId,
+        'phone'        => $cleanPhone,
+        'source'       => 'crm_manual_assign'
+    ];
+    foreach ($assignmentFiles as $af) {
+        $pDir = dirname($af);
+        if (!is_dir($pDir)) @mkdir($pDir, 0755, true);
+        $existingA = file_exists($af) ? (json_decode(file_get_contents($af), true) ?: []) : [];
+        if (!isset($existingA['by_phone'])) $existingA['by_phone'] = [];
+        if (!isset($existingA['by_lead'])) $existingA['by_lead'] = [];
+        if ($cleanPhone) $existingA['by_phone'][$cleanPhone] = $assignEntry;
+        if ($targetId) $existingA['by_lead'][$targetId] = $assignEntry;
+        @file_put_contents($af, json_encode($existingA, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+}
+
 // 2. Update existing leads in candidate files
 $candidateFiles = array_unique([
     __DIR__ . '/../leads_store.json',

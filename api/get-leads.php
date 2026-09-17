@@ -183,10 +183,11 @@ function getSlabAndPartner($cibilStr, $salaryNum = 0, $explicitCompany = '') {
         $eligibility = ($cibilVal === 0 && $salaryNum === 0) ? 'Incomplete / Phone Only' : 'Below Minimum Threshold';
     }
 
-    // If not selected/tracked yet, mark as Pending Selection
-    $partner = 'Pending Selection';
-    if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO' && $explicitCompany !== 'Pending Details' && $explicitCompany !== 'Pending Selection') {
+    // Partner Determination: if explicitCompany is valid, use it; otherwise default to Pending Selection / Pending Details
+    if (!empty($explicitCompany) && !in_array(strtolower(trim($explicitCompany)), ['auto', '—', '', 'null', 'pending details', 'pending selection'])) {
         $partner = trim($explicitCompany);
+    } else {
+        $partner = ($cibilVal === 0 && $salaryNum === 0) ? 'Pending Details' : 'Pending Selection';
     }
 
     return [
@@ -259,50 +260,100 @@ foreach ($deletedStoreCandidates as $df) {
     }
 }
 
-// Load Real-time Outbound Click Tracking by Phone Number
-$phoneClicks = [];
-$phoneClicksCandidates = array_unique([
-    $rootPath . '/data/phone_clicks.json',
-    $rootPath . '/crm/data/phone_clicks.json',
-    $rootPath . '/deploy_update/data/phone_clicks.json',
-    dirname(__DIR__, 1) . '/data/phone_clicks.json',
-    dirname(__DIR__, 2) . '/data/phone_clicks.json',
-    __DIR__ . '/../../data/phone_clicks.json',
-    __DIR__ . '/../data/phone_clicks.json',
-    __DIR__ . '/data/phone_clicks.json'
+// Load leads overrides from leads_overrides.json
+$overrideCandidates = array_unique([
+    $rootPath . '/data/leads_overrides.json',
+    $rootPath . '/crm/leads_overrides.json',
+    $rootPath . '/admin/leads_overrides.json',
+    dirname(__DIR__, 1) . '/leads_overrides.json',
+    dirname(__DIR__, 2) . '/crm/leads_overrides.json',
+    dirname(__DIR__, 2) . '/data/leads_overrides.json',
+    dirname(__DIR__, 3) . '/public_html/data/leads_overrides.json',
+    dirname(__DIR__, 3) . '/public_html/crm/leads_overrides.json',
+    __DIR__ . '/../leads_overrides.json',
+    __DIR__ . '/../../data/leads_overrides.json',
+    __DIR__ . '/../../crm/leads_overrides.json'
 ]);
-foreach ($phoneClicksCandidates as $pcf) {
-    if (file_exists($pcf)) {
-        $pData = json_decode(@file_get_contents($pcf), true);
-        if (is_array($pData)) {
-            foreach ($pData as $pNum => $pInfo) {
-                $cleanP = substr(preg_replace('/\D/', '', (string)$pNum), -10);
-                if (strlen($cleanP) === 10) {
-                    $phoneClicks[$cleanP] = is_array($pInfo) ? ($pInfo['partner'] ?? '') : (string)$pInfo;
+$leadsOverridesMap = [];
+foreach ($overrideCandidates as $of) {
+    if (file_exists($of)) {
+        $oData = json_decode(@file_get_contents($of), true);
+        if (is_array($oData)) {
+            foreach ($oData as $k => $v) {
+                $cleanK = strtolower(trim((string)$k));
+                if ($cleanK !== '') {
+                    $leadsOverridesMap[$cleanK] = array_merge($leadsOverridesMap[$cleanK] ?? [], (array)$v);
                 }
             }
         }
     }
 }
 
-// Also read from data/clicks.json if phoneClicks has missing entries
+// Load dynamic partner click assignments by phone & lead_id
+$assignmentCandidates = array_unique([
+    $rootPath . '/data/partner_assignments.json',
+    $rootPath . '/crm/partner_assignments.json',
+    $rootPath . '/admin/partner_assignments.json',
+    dirname(__DIR__, 1) . '/partner_assignments.json',
+    dirname(__DIR__, 2) . '/crm/partner_assignments.json',
+    dirname(__DIR__, 2) . '/data/partner_assignments.json',
+    dirname(__DIR__, 3) . '/public_html/data/partner_assignments.json',
+    dirname(__DIR__, 3) . '/public_html/crm/partner_assignments.json',
+    __DIR__ . '/../data/partner_assignments.json',
+    __DIR__ . '/../../data/partner_assignments.json'
+]);
+$partnerAssignmentsByPhone = [];
+$partnerAssignmentsByLeadId = [];
+foreach ($assignmentCandidates as $af) {
+    if (file_exists($af)) {
+        $aData = json_decode(@file_get_contents($af), true);
+        if (is_array($aData)) {
+            if (isset($aData['by_phone']) && is_array($aData['by_phone'])) {
+                foreach ($aData['by_phone'] as $pKey => $pEntry) {
+                    $cleanP = preg_replace('/\D/', '', (string)$pKey);
+                    if (strlen($cleanP) > 10) $cleanP = substr($cleanP, -10);
+                    if ($cleanP && !empty($pEntry['partner'])) {
+                        $partnerAssignmentsByPhone[$cleanP] = trim($pEntry['partner']);
+                    }
+                }
+            }
+            if (isset($aData['by_lead']) && is_array($aData['by_lead'])) {
+                foreach ($aData['by_lead'] as $lKey => $lEntry) {
+                    $cleanL = strtolower(trim((string)$lKey));
+                    if ($cleanL && !empty($lEntry['partner'])) {
+                        $partnerAssignmentsByLeadId[$cleanL] = trim($lEntry['partner']);
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Fallback lookup from clicks.json
 $clicksJsonCandidates = array_unique([
     $rootPath . '/data/clicks.json',
-    $rootPath . '/deploy_update/data/clicks.json',
     dirname(__DIR__, 1) . '/data/clicks.json',
     dirname(__DIR__, 2) . '/data/clicks.json',
-    __DIR__ . '/../../data/clicks.json',
-    __DIR__ . '/../data/clicks.json'
+    dirname(__DIR__, 3) . '/public_html/data/clicks.json',
+    __DIR__ . '/../data/clicks.json',
+    __DIR__ . '/../../data/clicks.json'
 ]);
-foreach ($clicksJsonCandidates as $cjf) {
-    if (file_exists($cjf)) {
-        $cData = json_decode(@file_get_contents($cjf), true);
+foreach ($clicksJsonCandidates as $cf) {
+    if (file_exists($cf)) {
+        $cData = json_decode(@file_get_contents($cf), true);
         if (is_array($cData)) {
-            foreach ($cData as $cItem) {
-                if (is_array($cItem) && !empty($cItem['phone']) && !empty($cItem['partner_name'])) {
-                    $cleanP = substr(preg_replace('/\D/', '', (string)$cItem['phone']), -10);
-                    if (strlen($cleanP) === 10 && empty($phoneClicks[$cleanP])) {
-                        $phoneClicks[$cleanP] = $cItem['partner_name'];
+            foreach ($cData as $cRow) {
+                if (!is_array($cRow)) continue;
+                $cP = preg_replace('/\D/', '', (string)($cRow['phone'] ?? ''));
+                if (strlen($cP) > 10) $cP = substr($cP, -10);
+                $cL = strtolower(trim((string)($cRow['lead_id'] ?? '')));
+                $cPartner = trim((string)($cRow['partner_name'] ?? ''));
+                if (!empty($cPartner) && $cPartner !== 'Paisa in Minutes') {
+                    if ($cP && empty($partnerAssignmentsByPhone[$cP])) {
+                        $partnerAssignmentsByPhone[$cP] = $cPartner;
+                    }
+                    if ($cL && $cL !== 'crm' && $cL !== 'direct' && empty($partnerAssignmentsByLeadId[$cL])) {
+                        $partnerAssignmentsByLeadId[$cL] = $cPartner;
                     }
                 }
             }
@@ -415,7 +466,7 @@ if (function_exists('curl_init')) {
                     'cibil'             => $rItem['cibil'] ?? '—',
                     'source'            => $isPhoneOnly ? 'Apply Now (Phone Only)' : 'Render API / Loan App',
                     'status'            => $rItem['status'] ?? 'Fresh',
-                    'assignedCompany'   => $isPhoneOnly ? 'Pending Details' : (!empty($phoneClicks[$rPhone]) ? $phoneClicks[$rPhone] : 'Pending Selection'),
+                    'assignedCompany'   => $isPhoneOnly ? 'Pending Details' : (!empty($rItem['assignedCompany']) && !in_array($rItem['assignedCompany'], ['Rupay91', 'Jhatpat Loans', 'Rupaysure']) ? $rItem['assignedCompany'] : 'Pending Selection'),
                     'eligibilityStatus' => $isPhoneOnly ? 'Incomplete / Phone Only' : 'Eligible',
                     'created_at'        => (function() use ($rItem) {
                         if (!empty($rItem['createdAt'])) {
@@ -497,7 +548,7 @@ foreach ($leadsLogCandidates as $leadsLogCsv) {
                         'loanAmount'      => $rowAmount ?: 50000,
                         'salary'          => 35000,
                         'cibil'           => '750+',
-                        'assignedCompany' => $rowPartner ?: 'Rupay91',
+                        'assignedCompany' => $rowPartner ?: 'Pending Selection',
                         'created'         => $rowTimestamp ?: date('d M Y, h:i A'),
                         'created_at'      => $rowTimestamp ?: date('Y-m-d H:i:s'),
                         'status'          => $rowStatus ?: 'Fresh',
@@ -567,29 +618,41 @@ foreach ($allLeads as $index => $lead) {
 
     $isPhoneOnly = ($name === 'Applicant' || empty($lead['name'])) && ($cleanedLoan === 0) && ($cleanedSalary === 0) && ($cibil === '—');
     
-    $slabInfo = getSlabAndPartner($cibil, $cleanedSalary, $explicitCompany);
+    // Resolve Assigned Partner:
+    // 1. Check if admin manually updated lead in leads_overrides.json
+    $resolvedPartner = '';
+    if (!empty($lIdClean) && !empty($leadsOverridesMap[$lIdClean]['assignedCompany'])) {
+        $resolvedPartner = trim($leadsOverridesMap[$lIdClean]['assignedCompany']);
+    } elseif (!empty($phone) && !empty($leadsOverridesMap[$phone]['assignedCompany'])) {
+        $resolvedPartner = trim($leadsOverridesMap[$phone]['assignedCompany']);
+    }
+
+    // 2. Check if customer clicked on an offer partner on the website (tracked by phone or lead_id)
+    if (empty($resolvedPartner) || $resolvedPartner === 'Pending Details' || $resolvedPartner === 'Pending Selection' || $resolvedPartner === 'AUTO') {
+        if (!empty($phone) && !empty($partnerAssignmentsByPhone[$phone])) {
+            $resolvedPartner = $partnerAssignmentsByPhone[$phone];
+        } elseif (!empty($lIdClean) && !empty($partnerAssignmentsByLeadId[$lIdClean])) {
+            $resolvedPartner = $partnerAssignmentsByLeadId[$lIdClean];
+        }
+    }
+
+    // 3. Check explicitCompany stored in the lead record (if valid partner)
+    if (empty($resolvedPartner) || $resolvedPartner === 'Pending Details' || $resolvedPartner === 'Pending Selection' || $resolvedPartner === 'AUTO') {
+        if (!empty($explicitCompany) && !in_array(strtolower(trim($explicitCompany)), ['auto', '—', '', 'null', 'pending details', 'pending selection'])) {
+            $resolvedPartner = trim($explicitCompany);
+        }
+    }
+
+    // 4. Default: If phone-only -> 'Pending Details', otherwise if applicant has NOT clicked an offer -> 'Pending Selection'
+    if (empty($resolvedPartner) || $resolvedPartner === 'AUTO' || $resolvedPartner === '—') {
+        $resolvedPartner = $isPhoneOnly ? 'Pending Details' : 'Pending Selection';
+    }
+
+    $slabInfo = getSlabAndPartner($cibil, $cleanedSalary, $resolvedPartner);
+    $assignedCompany = $resolvedPartner;
     $eligibilityStatus = $isPhoneOnly ? 'Incomplete / Phone Only' : $slabInfo['eligibility'];
     if (empty($cibil) || $cibil === '—') {
         $cibil = $slabInfo['cibil_range'];
-    }
-
-    // Resolve Assigned Partner strictly via Phone Outbound Click or Manual Selection
-    if ($isPhoneOnly) {
-        $assignedCompany = 'Pending Details';
-    } elseif (!empty($phone) && !empty($phoneClicks[$phone])) {
-        // Customer clicked an offer on loan-offers.php / redirect.php
-        $assignedCompany = $phoneClicks[$phone];
-    } elseif (!empty($explicitCompany) && 
-              $explicitCompany !== '—' && 
-              $explicitCompany !== 'AUTO' && 
-              $explicitCompany !== 'Pending Details' && 
-              $explicitCompany !== 'Pending Selection' &&
-              $explicitCompany !== 'Jhatpat Loans') {
-        $assignedCompany = $explicitCompany;
-    } elseif (!empty($explicitCompany) && $explicitCompany === 'Jhatpat Loans' && !empty($phoneClicks[$phone]) && $phoneClicks[$phone] === 'Jhatpat Loans') {
-        $assignedCompany = 'Jhatpat Loans';
-    } else {
-        $assignedCompany = 'Pending Selection';
     }
 
     $createdAt = $lead['created_at'] ?? $lead['created'] ?? $lead['date'] ?? $lead['timestamp'] ?? date('Y-m-d H:i:s');

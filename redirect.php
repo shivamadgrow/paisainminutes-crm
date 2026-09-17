@@ -134,12 +134,7 @@ if ($file) {
     @fclose($file);
 }
 
-$cleanPhone = preg_replace('/\D/', '', (string)$userPhone);
-if (strlen($cleanPhone) > 10) {
-    $cleanPhone = substr($cleanPhone, -10);
-}
-
-// 6. Save to data/clicks.json and data/phone_clicks.json
+// 6. Save to data/clicks.json for Admin/CRM Dashboard
 $dataDir = __DIR__ . '/data';
 if (!is_dir($dataDir)) {
     @mkdir($dataDir, 0755, true);
@@ -154,51 +149,117 @@ if (file_exists($jsonFile)) {
 $clicksList[] = $clickData;
 @file_put_contents($jsonFile, json_encode($clicksList, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
-// Fast Phone-to-Partner Click Map for Real-time CRM Assignment
-if (strlen($cleanPhone) === 10 && !empty($partnerName)) {
-    $phoneClicksFile = $dataDir . '/phone_clicks.json';
-    $phoneClicks = file_exists($phoneClicksFile) ? (json_decode(file_get_contents($phoneClicksFile), true) ?: []) : [];
-    $phoneClicks[$cleanPhone] = [
-        'partner'    => $partnerName,
-        'slug'       => $matchedSlug ?: $partnerSlug,
-        'lead_id'    => $leadId,
-        'timestamp'  => $timestamp,
-        'click_id'   => $clickId,
-        'target_url' => $targetUrl
-    ];
-    @file_put_contents($phoneClicksFile, json_encode($phoneClicks, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+// 7. Dynamic Partner Assignment Engine: Update persistent assignment records by phone & lead_id
+$cleanPhone = preg_replace('/\D/', '', (string)$userPhone);
+if (strlen($cleanPhone) > 10) {
+    $cleanPhone = substr($cleanPhone, -10);
 }
 
-// 7. Update assignedCompany across lead stores by Phone or Lead ID
-if (!empty($partnerName) && (!empty($cleanPhone) || (!empty($leadId) && $leadId !== 'CRM' && $leadId !== 'DIRECT'))) {
-    $leadStoreFiles = [
-        $dataDir . '/leads.json',
-        __DIR__ . '/crm/leads_store.json',
-        __DIR__ . '/admin/leads_store.json',
-        __DIR__ . '/deploy_update/data/leads.json'
+if (!empty($matchedSlug) && (!empty($cleanPhone) || (!empty($leadId) && $leadId !== 'CRM' && $leadId !== 'DIRECT'))) {
+    // 7A. Save to partner_assignments.json across all directory candidates
+    $assignmentFiles = array_unique([
+        $dataDir . '/partner_assignments.json',
+        __DIR__ . '/data/partner_assignments.json',
+        __DIR__ . '/crm/partner_assignments.json',
+        __DIR__ . '/admin/partner_assignments.json',
+        dirname(__DIR__) . '/data/partner_assignments.json',
+        dirname(__DIR__) . '/crm/partner_assignments.json'
+    ]);
+
+    $assignEntry = [
+        'partner'      => $partnerName,
+        'partner_slug' => $matchedSlug,
+        'timestamp'    => $timestamp,
+        'lead_id'      => $leadId,
+        'phone'        => $cleanPhone,
+        'source'       => $source
     ];
 
-    foreach ($leadStoreFiles as $storePath) {
-        if (file_exists($storePath)) {
-            $leadsData = json_decode(@file_get_contents($storePath), true);
-            if (is_array($leadsData)) {
-                $leadUpdated = false;
-                foreach ($leadsData as &$ld) {
-                    $ldPhone = substr(preg_replace('/\D/', '', (string)($ld['phone'] ?? $ld['mobile'] ?? '')), -10);
-                    $ldId = (string)($ld['lead_id'] ?? $ld['id'] ?? '');
+    foreach ($assignmentFiles as $af) {
+        $pDir = dirname($af);
+        if (!is_dir($pDir)) @mkdir($pDir, 0755, true);
+        $assignments = [];
+        if (file_exists($af)) {
+            $assignments = json_decode(@file_get_contents($af), true) ?: [];
+        }
+        if (!isset($assignments['by_phone'])) $assignments['by_phone'] = [];
+        if (!isset($assignments['by_lead'])) $assignments['by_lead'] = [];
 
-                    if ((!empty($cleanPhone) && $ldPhone === $cleanPhone) ||
-                        (!empty($leadId) && $leadId !== 'CRM' && $leadId !== 'DIRECT' && $ldId === $leadId)) {
-                        $ld['assignedCompany'] = $partnerName;
-                        $ld['partner_name'] = $partnerName;
-                        $leadUpdated = true;
-                        break;
+        if (!empty($cleanPhone)) {
+            $assignments['by_phone'][$cleanPhone] = $assignEntry;
+        }
+        if (!empty($leadId) && $leadId !== 'CRM' && $leadId !== 'DIRECT') {
+            $assignments['by_lead'][$leadId] = $assignEntry;
+        }
+        @file_put_contents($af, json_encode($assignments, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+
+    // 7B. Save to leads_overrides.json so CRM and update-lead systems treat this as confirmed assignment
+    $overrideFiles = array_unique([
+        $dataDir . '/leads_overrides.json',
+        __DIR__ . '/leads_overrides.json',
+        __DIR__ . '/crm/leads_overrides.json',
+        __DIR__ . '/admin/leads_overrides.json',
+        dirname(__DIR__) . '/data/leads_overrides.json',
+        dirname(__DIR__) . '/crm/leads_overrides.json'
+    ]);
+
+    foreach ($overrideFiles as $of) {
+        $oDir = dirname($of);
+        if (!is_dir($oDir)) continue;
+        $overrides = [];
+        if (file_exists($of)) {
+            $overrides = json_decode(@file_get_contents($of), true) ?: [];
+        }
+        $leadPatch = [
+            'assignedCompany' => $partnerName,
+            'partner_name'    => $partnerName,
+            'updated_at'      => $timestamp
+        ];
+        if (!empty($cleanPhone)) {
+            $overrides[$cleanPhone] = array_merge($overrides[$cleanPhone] ?? [], $leadPatch);
+        }
+        if (!empty($leadId) && $leadId !== 'CRM' && $leadId !== 'DIRECT') {
+            $overrides[$leadId] = array_merge($overrides[$leadId] ?? [], $leadPatch);
+        }
+        @file_put_contents($of, json_encode($overrides, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+
+    // 7C. Update existing lead stores (leads.json, leads_store.json)
+    $leadStores = array_unique([
+        $dataDir . '/leads.json',
+        __DIR__ . '/data/leads.json',
+        __DIR__ . '/crm/leads_store.json',
+        __DIR__ . '/admin/leads_store.json',
+        __DIR__ . '/leads_store.json',
+        dirname(__DIR__) . '/data/leads.json',
+        dirname(__DIR__) . '/crm/leads_store.json'
+    ]);
+
+    foreach ($leadStores as $storeFile) {
+        if (file_exists($storeFile)) {
+            $leadsArr = json_decode(@file_get_contents($storeFile), true);
+            if (is_array($leadsArr)) {
+                $fileModified = false;
+                foreach ($leadsArr as &$leadRow) {
+                    if (!is_array($leadRow)) continue;
+                    $rowId = trim((string)($leadRow['id'] ?? $leadRow['lead_id'] ?? $leadRow['loanNo'] ?? ''));
+                    $rowPhone = preg_replace('/\D/', '', (string)($leadRow['phone'] ?? $leadRow['mobile'] ?? ''));
+                    if (strlen($rowPhone) > 10) $rowPhone = substr($rowPhone, -10);
+
+                    $match = false;
+                    if (!empty($cleanPhone) && $rowPhone === $cleanPhone) $match = true;
+                    if (!empty($leadId) && $leadId !== 'CRM' && $leadId !== 'DIRECT' && $rowId === $leadId) $match = true;
+
+                    if ($match) {
+                        $leadRow['assignedCompany'] = $partnerName;
+                        $leadRow['partner_name'] = $partnerName;
+                        $fileModified = true;
                     }
                 }
-                unset($ld);
-
-                if ($leadUpdated) {
-                    @file_put_contents($storePath, json_encode($leadsData, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+                unset($leadRow);
+                if ($fileModified) {
+                    @file_put_contents($storeFile, json_encode($leadsArr, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
                 }
             }
         }

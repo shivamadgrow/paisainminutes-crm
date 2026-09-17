@@ -324,7 +324,7 @@ export async function getLeadsFromBackend() {
       if (l.eligibilityStatus && l.eligibilityStatus !== 'Incomplete / Phone Only') {
         existing.eligibilityStatus = l.eligibilityStatus;
       }
-      if ((!existing.assignedCompany || existing.assignedCompany === 'Pending Details' || existing.assignedCompany === 'Pending Selection' || existing.assignedCompany === 'Unassigned') && l.assignedCompany && l.assignedCompany !== 'Pending Details' && l.assignedCompany !== 'Pending Selection') {
+      if ((!existing.assignedCompany || existing.assignedCompany === 'Pending Details' || existing.assignedCompany === 'Unassigned') && l.assignedCompany && l.assignedCompany !== 'Pending Details') {
         existing.assignedCompany = l.assignedCompany;
       }
       if ((!existing.status || existing.status === 'Fresh') && l.status && l.status !== 'Fresh') {

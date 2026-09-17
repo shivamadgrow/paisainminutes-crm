@@ -115,12 +115,10 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
 
     if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO' && $explicitCompany !== 'Pending Details') {
         $clean = strtolower(trim($explicitCompany));
-        if (strpos($clean, 'rupay91') !== false || strpos($clean, 'rupay 91') !== false) {
-            if ($salaryNum >= 30000 && $cibilNum >= 700) {
-                return 'Rupay91';
-            }
-            return 'Jhatpat Loans';
+        if ($clean === 'pending selection' || $clean === 'pendingselection') {
+            return 'Pending Selection';
         }
+        if (strpos($clean, 'rupay91') !== false || strpos($clean, 'rupay 91') !== false) return 'Rupay91';
         if (strpos($clean, 'jhatpat') !== false) return 'Jhatpat Loans';
         if (strpos($clean, 'borrowera') !== false) return 'Borrowera';
         if (strpos($clean, 'easyfincare') !== false || strpos($clean, 'easy fincare') !== false) return 'Easy Fincare';
@@ -136,17 +134,8 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
         return 'Pending Details';
     }
 
-    // 750 se upr cibil vale ko rupay 91 dikhaao baaki sbb ko uske niche vala
-    if ($cibilNum >= 750) {
-        return 'Rupay91';
-    } elseif ($cibilNum > 0) {
-        return 'Jhatpat Loans';
-    }
-
-    if ($salaryNum >= 70000) {
-        return 'Rupay91';
-    }
-    return 'Jhatpat Loans';
+    // If customer has filled lead details but not clicked an offer partner yet, do not auto-assign:
+    return 'Pending Selection';
 }
 
 // 2. Calculate Eligibility Slab & Status strictly per User Matrix

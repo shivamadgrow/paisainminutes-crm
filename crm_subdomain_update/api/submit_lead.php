@@ -67,7 +67,18 @@ $pincode       = trim((string)($data['pincode'] ?? $data['pin_code'] ?? '—'));
 $city          = trim((string)($data['city'] ?? '—'));
 $state         = trim((string)($data['state'] ?? 'India'));
 $employmentType= trim((string)($data['employmentType'] ?? $data['employment_type'] ?? 'Salaried'));
-$pageSource    = trim((string)($data['source'] ?? ($cibil !== '—' ? 'Check Eligibility Website' : 'Apply Now (Phone Only)')));
+$dob           = trim((string)($data['dob'] ?? $data['dateOfBirth'] ?? $data['date_of_birth'] ?? '—'));
+$gender        = trim((string)($data['gender'] ?? '—'));
+$addressType   = trim((string)($data['addressType'] ?? $data['address_type'] ?? 'Rented'));
+$salaryMode    = trim((string)($data['modeOfSalary'] ?? $data['salaryMode'] ?? $data['salary_mode'] ?? $data['mode_of_salary'] ?? 'Bank Transfer'));
+$companyName   = trim((string)($data['companyName'] ?? $data['company_name'] ?? $data['employer'] ?? '—'));
+$pan           = strtoupper(trim((string)($data['pan'] ?? $data['panNumber'] ?? $data['pan_number'] ?? '—')));
+$haveCreditCard= trim((string)($data['haveCreditCard'] ?? $data['have_credit_card'] ?? $data['creditCard'] ?? 'No'));
+$creditCardLimit = isset($data['creditCardLimit']) && $data['creditCardLimit'] !== null && $data['creditCardLimit'] !== '' 
+    ? (int)$data['creditCardLimit'] 
+    : (isset($data['credit_card_limit']) && $data['credit_card_limit'] !== null && $data['credit_card_limit'] !== '' 
+        ? (int)$data['credit_card_limit'] : null);
+$pageSource    = trim((string)($data['source'] ?? ($cibil !== '—' ? 'Check Eligibility Website' : 'Apply Now (Website)')));
 $explicitCompany = trim((string)($data['assignedCompany'] ?? $data['company'] ?? $data['partner'] ?? ''));
 
 // Detect if this is a Step-1 Phone-Only lead or full eligibility submission
@@ -104,12 +115,10 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
 
     if (!empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'AUTO' && $explicitCompany !== 'Pending Details') {
         $clean = strtolower(trim($explicitCompany));
-        if (strpos($clean, 'rupay91') !== false || strpos($clean, 'rupay 91') !== false) {
-            if ($salaryNum >= 30000 && $cibilNum >= 700) {
-                return 'Rupay91';
-            }
-            return 'Jhatpat Loans';
+        if ($clean === 'pending selection' || $clean === 'pendingselection') {
+            return 'Pending Selection';
         }
+        if (strpos($clean, 'rupay91') !== false || strpos($clean, 'rupay 91') !== false) return 'Rupay91';
         if (strpos($clean, 'jhatpat') !== false) return 'Jhatpat Loans';
         if (strpos($clean, 'borrowera') !== false) return 'Borrowera';
         if (strpos($clean, 'easyfincare') !== false || strpos($clean, 'easy fincare') !== false) return 'Easy Fincare';
@@ -117,6 +126,7 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
         if (strpos($clean, 'udhaar') !== false || strpos($clean, 'dhanar') !== false) return 'UdhaarNow';
         if (strpos($clean, 'loanwithin') !== false || strpos($clean, 'loan within') !== false) return 'LoanWithin';
         if (strpos($clean, 'shubh') !== false) return 'ShubhCash';
+        if (strpos($clean, 'ticket') !== false || strpos($clean, 'ticket2loan') !== false) return 'Ticket 2 Loan';
         return trim($explicitCompany);
     }
 
@@ -124,17 +134,8 @@ function determineCompany($cibilStr, $salaryNum, $amountNum, $explicitCompany) {
         return 'Pending Details';
     }
 
-    // 750 se upr cibil vale ko rupay 91 dikhaao baaki sbb ko uske niche vala
-    if ($cibilNum >= 750) {
-        return 'Rupay91';
-    } elseif ($cibilNum > 0) {
-        return 'Jhatpat Loans';
-    }
-
-    if ($salaryNum >= 70000) {
-        return 'Rupay91';
-    }
-    return 'Jhatpat Loans';
+    // If customer has filled lead details but not clicked an offer partner yet, do not auto-assign:
+    return 'Pending Selection';
 }
 
 // 2. Calculate Eligibility Slab & Status strictly per User Matrix
@@ -297,7 +298,21 @@ $leadRecord = [
     'email'             => $email,
     'emailAddress'      => $email,
     'creditManager'     => 'Unassigned',
-    'pan'               => '—',
+    'pan'               => $pan ?: '—',
+    'dob'               => $dob ?: '—',
+    'dateOfBirth'       => $dob ?: '—',
+    'gender'            => $gender ?: '—',
+    'addressType'       => $addressType ?: 'Rented',
+    'address_type'      => $addressType ?: 'Rented',
+    'salaryMode'        => $salaryMode ?: 'Bank Transfer',
+    'modeOfSalary'      => $salaryMode ?: 'Bank Transfer',
+    'mode_of_salary'    => $salaryMode ?: 'Bank Transfer',
+    'companyName'       => $companyName ?: '—',
+    'company_name'      => $companyName ?: '—',
+    'haveCreditCard'    => $haveCreditCard ?: 'No',
+    'have_credit_card'  => $haveCreditCard ?: 'No',
+    'creditCardLimit'   => $creditCardLimit,
+    'credit_card_limit' => $creditCardLimit,
     'loan_amount'       => $loanAmt,
     'loanAmount'        => $cleanLoan,
     'applied'           => $cleanLoan,
