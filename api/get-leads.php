@@ -199,8 +199,15 @@ function getSlabAndPartner($cibilStr, $salaryNum = 0, $explicitCompany = '') {
     ];
 }
 
-// 4. Load from Primary Data Files across possible host configurations
-$rootPath = dirname(__DIR__, 2);
+// 4. Load from Primary Data Files across possible host configurations (strictly within public_html)
+$rootPath = __DIR__;
+if (strpos(__DIR__, 'public_html') !== false) {
+    $parts = explode('public_html', __DIR__);
+    $rootPath = rtrim($parts[0] . 'public_html', '/\\');
+} elseif (in_array(basename(__DIR__), ['api', 'crm', 'admin'])) {
+    $rootPath = dirname(__DIR__);
+}
+
 $leadsCandidates = array_unique([
     $rootPath . '/data/leads.json',
     $rootPath . '/crm/leads_store.json',
@@ -209,25 +216,12 @@ $leadsCandidates = array_unique([
     $rootPath . '/crm/crm_subdomain_update/leads_store.json',
     $rootPath . '/deploy_update/data/leads.json',
     $rootPath . '/deploy_update/crm/leads_store.json',
-    dirname(__DIR__, 1) . '/leads_store.json',
-    dirname(__DIR__, 2) . '/crm/leads_store.json',
-    dirname(__DIR__, 2) . '/admin/leads_store.json',
-    dirname(__DIR__, 2) . '/data/leads.json',
-    dirname(__DIR__, 3) . '/public_html/data/leads.json',
-    dirname(__DIR__, 3) . '/public_html/crm/leads_store.json',
-    dirname(__DIR__, 3) . '/public_html/admin/leads_store.json',
-    __DIR__ . '/../leads_store.json',
-    __DIR__ . '/../../data/leads.json',
-    __DIR__ . '/../../crm/leads_store.json',
-    __DIR__ . '/../../admin/leads_store.json'
+    $rootPath . '/leads_store.json'
 ]);
 
 $leadsLogCandidates = array_unique([
     $rootPath . '/leads_log.csv',
-    dirname(__DIR__, 1) . '/leads_log.csv',
-    dirname(__DIR__, 2) . '/leads_log.csv',
-    dirname(__DIR__, 3) . '/public_html/leads_log.csv',
-    __DIR__ . '/../../leads_log.csv'
+    $rootPath . '/data/leads_log.csv'
 ]);
 
 // Load deleted leads blacklist
@@ -238,14 +232,10 @@ $deletedStoreCandidates = array_unique([
     $rootPath . '/admin/deleted_leads.json',
     $rootPath . '/admin/api/deleted_leads.json',
     $rootPath . '/crm/api/deleted_leads.json',
-    dirname(__DIR__, 1) . '/deleted_leads.json',
-    dirname(__DIR__, 2) . '/crm/deleted_leads.json',
-    dirname(__DIR__, 2) . '/admin/deleted_leads.json',
-    dirname(__DIR__, 3) . '/public_html/crm/deleted_leads.json',
-    dirname(__DIR__, 3) . '/public_html/data/deleted_leads.json',
-    __DIR__ . '/../../crm/deleted_leads.json',
-    __DIR__ . '/../deleted_leads.json',
-    __DIR__ . '/deleted_leads.json'
+    $rootPath . '/crm/crm_subdomain_update/deleted_leads.json',
+    $rootPath . '/deploy_update/data/deleted_leads.json',
+    $rootPath . '/deploy_update/crm/deleted_leads.json',
+    $rootPath . '/deleted_leads.json'
 ]);
 foreach ($deletedStoreCandidates as $df) {
     if (file_exists($df)) {
@@ -265,14 +255,10 @@ $overrideCandidates = array_unique([
     $rootPath . '/data/leads_overrides.json',
     $rootPath . '/crm/leads_overrides.json',
     $rootPath . '/admin/leads_overrides.json',
-    dirname(__DIR__, 1) . '/leads_overrides.json',
-    dirname(__DIR__, 2) . '/crm/leads_overrides.json',
-    dirname(__DIR__, 2) . '/data/leads_overrides.json',
-    dirname(__DIR__, 3) . '/public_html/data/leads_overrides.json',
-    dirname(__DIR__, 3) . '/public_html/crm/leads_overrides.json',
-    __DIR__ . '/../leads_overrides.json',
-    __DIR__ . '/../../data/leads_overrides.json',
-    __DIR__ . '/../../crm/leads_overrides.json'
+    $rootPath . '/crm/crm_subdomain_update/leads_overrides.json',
+    $rootPath . '/deploy_update/data/leads_overrides.json',
+    $rootPath . '/deploy_update/crm/leads_overrides.json',
+    $rootPath . '/leads_overrides.json'
 ]);
 $leadsOverridesMap = [];
 foreach ($overrideCandidates as $of) {
@@ -781,22 +767,13 @@ foreach ($allLeads as $index => $lead) {
 
 // Load persistent overrides (status and company re-assignments)
 $overrideCandidates = array_unique([
-    __DIR__ . '/leads_overrides.json',
-    __DIR__ . '/../leads_overrides.json',
-    __DIR__ . '/../data/leads_overrides.json',
-    __DIR__ . '/../crm/leads_overrides.json',
-    __DIR__ . '/../admin/leads_overrides.json',
-    __DIR__ . '/../../data/leads_overrides.json',
-    __DIR__ . '/../../crm/leads_overrides.json',
     $rootPath . '/data/leads_overrides.json',
     $rootPath . '/crm/leads_overrides.json',
     $rootPath . '/admin/leads_overrides.json',
-    dirname(__DIR__, 1) . '/data/leads_overrides.json',
-    dirname(__DIR__, 1) . '/crm/leads_overrides.json',
-    dirname(__DIR__, 2) . '/data/leads_overrides.json',
-    dirname(__DIR__, 2) . '/crm/leads_overrides.json',
-    dirname(__DIR__, 3) . '/public_html/data/leads_overrides.json',
-    dirname(__DIR__, 3) . '/public_html/crm/leads_overrides.json'
+    $rootPath . '/crm/crm_subdomain_update/leads_overrides.json',
+    $rootPath . '/deploy_update/data/leads_overrides.json',
+    $rootPath . '/deploy_update/crm/leads_overrides.json',
+    $rootPath . '/leads_overrides.json'
 ]);
 $mergedOverrides = [];
 foreach ($overrideCandidates as $of) {

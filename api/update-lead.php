@@ -46,15 +46,24 @@ if (isset($updates['assignedCompany'])) {
     }
 }
 
-// 1. Save to leads_overrides.json across possible paths
+// Determine web root safely (never escape public_html)
+$rootPath = __DIR__;
+if (strpos(__DIR__, 'public_html') !== false) {
+    $parts = explode('public_html', __DIR__);
+    $rootPath = rtrim($parts[0] . 'public_html', '/\\');
+} elseif (in_array(basename(__DIR__), ['api', 'crm', 'admin'])) {
+    $rootPath = dirname(__DIR__);
+}
+
+// 1. Save to leads_overrides.json strictly within public_html
 $overrideFiles = array_unique([
-    __DIR__ . '/../leads_overrides.json',
-    __DIR__ . '/../../data/leads_overrides.json',
-    __DIR__ . '/../../crm/leads_overrides.json',
-    dirname(__DIR__, 2) . '/data/leads_overrides.json',
-    dirname(__DIR__, 2) . '/crm/leads_overrides.json',
-    dirname(__DIR__, 3) . '/public_html/data/leads_overrides.json',
-    dirname(__DIR__, 3) . '/public_html/crm/leads_overrides.json'
+    $rootPath . '/data/leads_overrides.json',
+    $rootPath . '/crm/leads_overrides.json',
+    $rootPath . '/admin/leads_overrides.json',
+    $rootPath . '/crm/crm_subdomain_update/leads_overrides.json',
+    $rootPath . '/deploy_update/data/leads_overrides.json',
+    $rootPath . '/deploy_update/crm/leads_overrides.json',
+    $rootPath . '/leads_overrides.json'
 ]);
 
 foreach ($overrideFiles as $of) {
@@ -73,14 +82,17 @@ foreach ($overrideFiles as $of) {
     file_put_contents($of, json_encode($existingOverrides, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 }
 
-// 1B. Sync to partner_assignments.json if company updated
+// 1B. Sync to partner_assignments.json strictly within public_html
 if (isset($updates['assignedCompany']) && !empty($updates['assignedCompany'])) {
     $assignedCompanyVal = trim((string)$updates['assignedCompany']);
     $assignmentFiles = array_unique([
-        dirname(__DIR__, 2) . '/data/partner_assignments.json',
-        dirname(__DIR__, 2) . '/crm/partner_assignments.json',
-        __DIR__ . '/partner_assignments.json',
-        __DIR__ . '/../partner_assignments.json'
+        $rootPath . '/data/partner_assignments.json',
+        $rootPath . '/crm/partner_assignments.json',
+        $rootPath . '/admin/partner_assignments.json',
+        $rootPath . '/crm/crm_subdomain_update/partner_assignments.json',
+        $rootPath . '/deploy_update/data/partner_assignments.json',
+        $rootPath . '/deploy_update/crm/partner_assignments.json',
+        $rootPath . '/partner_assignments.json'
     ]);
     $assignEntry = [
         'partner'      => $assignedCompanyVal,
@@ -102,16 +114,15 @@ if (isset($updates['assignedCompany']) && !empty($updates['assignedCompany'])) {
     }
 }
 
-// 2. Update existing leads in candidate files
+// 2. Update existing leads in candidate files strictly within public_html
 $candidateFiles = array_unique([
-    __DIR__ . '/../leads_store.json',
-    __DIR__ . '/../../data/leads.json',
-    __DIR__ . '/../../crm/leads_store.json',
-    __DIR__ . '/leads_store.json',
-    dirname(__DIR__, 2) . '/data/leads.json',
-    dirname(__DIR__, 2) . '/crm/leads_store.json',
-    dirname(__DIR__, 3) . '/public_html/data/leads.json',
-    dirname(__DIR__, 3) . '/public_html/crm/leads_store.json'
+    $rootPath . '/data/leads.json',
+    $rootPath . '/crm/leads_store.json',
+    $rootPath . '/admin/leads_store.json',
+    $rootPath . '/crm/crm_subdomain_update/leads_store.json',
+    $rootPath . '/deploy_update/data/leads.json',
+    $rootPath . '/deploy_update/crm/leads_store.json',
+    $rootPath . '/leads_store.json'
 ]);
 
 $updatedCount = 0;

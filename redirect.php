@@ -159,14 +159,23 @@ if (strlen($cleanPhone) > 10) {
 }
 
 if (!empty($matchedSlug) && (!empty($cleanPhone) || (!empty($leadId) && $leadId !== 'CRM' && $leadId !== 'DIRECT'))) {
-    // 7A. Save to partner_assignments.json across all directory candidates
+    // Resolve Web Root safely (never escape above public_html)
+    $webRoot = __DIR__;
+    if (strpos(__DIR__, 'public_html') !== false) {
+        $parts = explode('public_html', __DIR__);
+        $webRoot = rtrim($parts[0] . 'public_html', '/\\');
+    } elseif (in_array(basename(__DIR__), ['crm', 'admin', 'api'])) {
+        $webRoot = dirname(__DIR__);
+    }
+
+    // 7A. Save to partner_assignments.json strictly within public_html
     $assignmentFiles = array_unique([
-        $dataDir . '/partner_assignments.json',
-        __DIR__ . '/data/partner_assignments.json',
-        __DIR__ . '/crm/partner_assignments.json',
-        __DIR__ . '/admin/partner_assignments.json',
-        dirname(__DIR__) . '/data/partner_assignments.json',
-        dirname(__DIR__) . '/crm/partner_assignments.json'
+        $webRoot . '/data/partner_assignments.json',
+        $webRoot . '/crm/partner_assignments.json',
+        $webRoot . '/admin/partner_assignments.json',
+        $webRoot . '/crm/crm_subdomain_update/partner_assignments.json',
+        $webRoot . '/deploy_update/data/partner_assignments.json',
+        $webRoot . '/deploy_update/crm/partner_assignments.json'
     ]);
 
     $assignEntry = [
@@ -197,19 +206,19 @@ if (!empty($matchedSlug) && (!empty($cleanPhone) || (!empty($leadId) && $leadId 
         @file_put_contents($af, json_encode($assignments, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
-    // 7B. Save to leads_overrides.json so CRM and update-lead systems treat this as confirmed assignment
+    // 7B. Save to leads_overrides.json strictly within public_html
     $overrideFiles = array_unique([
-        $dataDir . '/leads_overrides.json',
-        __DIR__ . '/leads_overrides.json',
-        __DIR__ . '/crm/leads_overrides.json',
-        __DIR__ . '/admin/leads_overrides.json',
-        dirname(__DIR__) . '/data/leads_overrides.json',
-        dirname(__DIR__) . '/crm/leads_overrides.json'
+        $webRoot . '/data/leads_overrides.json',
+        $webRoot . '/crm/leads_overrides.json',
+        $webRoot . '/admin/leads_overrides.json',
+        $webRoot . '/crm/crm_subdomain_update/leads_overrides.json',
+        $webRoot . '/deploy_update/data/leads_overrides.json',
+        $webRoot . '/deploy_update/crm/leads_overrides.json'
     ]);
 
     foreach ($overrideFiles as $of) {
         $oDir = dirname($of);
-        if (!is_dir($oDir)) continue;
+        if (!is_dir($oDir)) @mkdir($oDir, 0755, true);
         $overrides = [];
         if (file_exists($of)) {
             $overrides = json_decode(@file_get_contents($of), true) ?: [];
@@ -228,15 +237,14 @@ if (!empty($matchedSlug) && (!empty($cleanPhone) || (!empty($leadId) && $leadId 
         @file_put_contents($of, json_encode($overrides, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
-    // 7C. Update existing lead stores (leads.json, leads_store.json)
+    // 7C. Update existing lead stores strictly within public_html
     $leadStores = array_unique([
-        $dataDir . '/leads.json',
-        __DIR__ . '/data/leads.json',
-        __DIR__ . '/crm/leads_store.json',
-        __DIR__ . '/admin/leads_store.json',
-        __DIR__ . '/leads_store.json',
-        dirname(__DIR__) . '/data/leads.json',
-        dirname(__DIR__) . '/crm/leads_store.json'
+        $webRoot . '/data/leads.json',
+        $webRoot . '/crm/leads_store.json',
+        $webRoot . '/admin/leads_store.json',
+        $webRoot . '/crm/crm_subdomain_update/leads_store.json',
+        $webRoot . '/deploy_update/data/leads.json',
+        $webRoot . '/deploy_update/crm/leads_store.json'
     ]);
 
     foreach ($leadStores as $storeFile) {
