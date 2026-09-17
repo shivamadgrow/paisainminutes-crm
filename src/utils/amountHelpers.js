@@ -108,26 +108,28 @@ export function formatToIST(dateInput) {
   let dateObj = null;
 
   if (typeof dateInput === 'string') {
-    let str = dateInput.trim();
-    if (str.endsWith('Z') || (str.includes('T') && (str.includes('+') || str.includes('Z')))) {
+    // 1. If string is already formatted like "17 Sep 2026, 10:24 AM"
+    if (/^\d{1,2}\s+[A-Za-z]{3,4}\s+\d{4},\s+\d{1,2}:\d{2}\s+(AM|PM)/i.test(str)) {
+      if (/UTC|GMT/i.test(str)) {
+        dateObj = new Date(str);
+      } else {
+        const parts = str.split(',');
+        return {
+          date: parts[0].trim(),
+          time: (parts[1] || '').trim(),
+          full: str
+        };
+      }
+    } else if (str.endsWith('Z') || (str.includes('T') && (str.includes('+') || (str.includes('-') && str.lastIndexOf('-') > 10)))) {
       dateObj = new Date(str);
-    } else if (str.includes('T') && !str.includes('+') && !str.endsWith('Z')) {
-      dateObj = new Date(str + 'Z');
     } else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(str)) {
       // SQL datetime without tz e.g. 2026-09-17 10:24:49 (written in IST by PHP backend)
       dateObj = new Date(str.replace(' ', 'T') + '+05:30');
     } else if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
       dateObj = new Date(str + 'T00:00:00+05:30');
-    } else if (/^\d{1,2}\s+[A-Za-z]{3,4}\s+\d{4},\s+\d{1,2}:\d{2}\s+(AM|PM)/i.test(str)) {
-      if (/UTC|GMT/i.test(str)) {
-        dateObj = new Date(str);
-      } else {
-        return {
-          date: str.split(',')[0].trim(),
-          time: (str.split(',')[1] || '').trim(),
-          full: str
-        };
-      }
+    } else if (str.includes('T') && !str.includes('+') && !str.endsWith('Z')) {
+      // ISO-like datetime without explicit timezone - pin to IST
+      dateObj = new Date(str + '+05:30');
     } else {
       dateObj = new Date(str);
     }

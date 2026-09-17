@@ -1582,7 +1582,7 @@ export default function LeadsView({
                     {/* CREATED */}
                     <td className="py-4 px-4 text-slate-500 text-[11px] whitespace-nowrap">
                       {(() => {
-                        const ist = formatToIST(item.created_at || item.createdAt || item.created || item.date);
+                        const ist = formatToIST(item.created || item.created_at || item.createdAt || item.date);
                         return (
                           <>
                             <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs">
@@ -2166,7 +2166,7 @@ export default function LeadsView({
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Submission Date:</span>
                       <span className="font-bold text-slate-700">
-                        {formatToIST(activeOverviewLead.created_at || activeOverviewLead.createdAt || activeOverviewLead.created || activeOverviewLead.date).full}
+                        {formatToIST(activeOverviewLead.created || activeOverviewLead.created_at || activeOverviewLead.createdAt || activeOverviewLead.date).full}
                       </span>
                     </div>
                   </div>

@@ -513,7 +513,7 @@ export default function CompanyLeadsView({
 
                       {/* Created */}
                       <td className="p-3.5 text-slate-500 text-[11px] whitespace-nowrap">
-                        {formatToIST(item.created_at || item.createdAt || item.created || item.date).full}
+                        {formatToIST(item.created || item.created_at || item.createdAt || item.date).full}
                       </td>
 
                       {/* Actions */}
