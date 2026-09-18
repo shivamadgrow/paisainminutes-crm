@@ -12,7 +12,7 @@ export const INITIAL_STAFF_MEMBERS = [
     username: 'info@adgrowmedia.com',
     email: 'info@adgrowmedia.com',
     mobile: '9990666578',
-    password: 'Jazz@123',
+    password: 'EepAVV@*#1!oo$9',
     initials: 'SA',
     role: 'Super Admin',
     roles: ['Super Admin', 'Admin'],

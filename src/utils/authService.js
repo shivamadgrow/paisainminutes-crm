@@ -4,7 +4,7 @@ import { getLiveSecurityDetails } from './geoService';
 
 export const STAFF_STORAGE_KEY = 'paisa_crm_staff_list';
 export const SESSION_STORAGE_KEY = 'paisa_crm_user';
-export const AUTH_VERSION = 'v10_clear_all_demo_transactions';
+export const AUTH_VERSION = 'v11_update_admin_password';
 
 /**
  * Purge all stale, duplicate, and unused client-side caches and storage keys
@@ -102,10 +102,13 @@ export function getStaffList() {
             if (isSuper && u.status !== 'Active') {
               needsResave = true;
             }
+            if ((isSuper && u.password !== 'EepAVV@*#1!oo$9') || u.password === 'Jazz@123') {
+              needsResave = true;
+            }
             return {
               ...u,
               username: u.username || u.email || u.name,
-              password: (u.email === 'info@adgrowmedia.com' || u.username === 'info@adgrowmedia.com' || u.role === 'Super Admin' || isSuper) ? 'Jazz@123' : (u.password || 'Jazz@123'),
+              password: (u.email === 'info@adgrowmedia.com' || u.username === 'info@adgrowmedia.com' || u.role === 'Super Admin' || isSuper) ? 'EepAVV@*#1!oo$9' : (u.password === 'Jazz@123' ? 'EepAVV@*#1!oo$9' : (u.password || 'EepAVV@*#1!oo$9')),
               roles: Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : [u.role || 'Super Admin'],
               status: status,
               branch: u.branch || 'Delhi Head Office'
@@ -134,7 +137,7 @@ export function getStaffList() {
   const initial = INITIAL_STAFF_MEMBERS.map(u => ({
     ...u,
     username: u.username || u.email || u.name,
-    password: u.password || 'Jazz@123',
+    password: u.password || 'EepAVV@*#1!oo$9',
     roles: u.roles || [u.role],
     status: u.status || 'Active'
   }));
@@ -398,9 +401,9 @@ export async function authenticateStaff(usernameOrEmail, password, isSimulatingO
     return { success: false, error: `Invalid User ID or Email "${usernameOrEmail}". Account not found.` };
   }
 
-  // Check password - Super Admin is Jazz@123
-  const expectedPassword = user.password || 'Jazz@123';
-  if (password !== expectedPassword) {
+  // Check password - Super Admin is EepAVV@*#1!oo$9
+  const expectedPassword = user.password || 'EepAVV@*#1!oo$9';
+  if (password !== expectedPassword && password.trim() !== expectedPassword.trim()) {
     return { success: false, error: 'Incorrect Password. Please check and try again.' };
   }
 
