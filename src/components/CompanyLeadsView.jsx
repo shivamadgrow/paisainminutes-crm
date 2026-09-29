@@ -31,7 +31,7 @@ import {
 } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
 import { cleanLoanAmount, cleanSalary, formatToIST, isDateInRange, DATE_RANGE_PRESETS } from '../utils/amountHelpers';
-import { fetchApi } from '../utils/apiConfig';
+import { updateLoanApplication, normalizeStatus, formatStatusLabel } from '../utils/apiConfig';
 
 export default function CompanyLeadsView({ 
   companyId, 
@@ -121,7 +121,7 @@ export default function CompanyLeadsView({
 
       // Status
       if (statusFilter !== 'all') {
-        const leadStatus = (l.status || 'Fresh').toLowerCase().replace(/\s+/g, '-');
+        const leadStatus = normalizeStatus(l.status);
         if (leadStatus !== statusFilter) return false;
       }
 
@@ -138,13 +138,17 @@ export default function CompanyLeadsView({
   // Partner specific statistics
   const stats = useMemo(() => {
     const total = companyLeads.length;
-    const fresh = companyLeads.filter(l => l.status === 'Fresh').length;
-    const approved = companyLeads.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length;
-    const rejected = companyLeads.filter(l => l.status === 'Rejected').length;
-    const volume = companyLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied), 0);
+    const fresh = companyLeads.filter(l => normalizeStatus(l.status) === 'FRESH').length;
+    const callback = companyLeads.filter(l => normalizeStatus(l.status) === 'CALLBACK').length;
+    const approved = companyLeads.filter(l => {
+      const s = normalizeStatus(l.status);
+      return s === 'APPROVED' || s === 'DISBURSED';
+    }).length;
+    const rejected = companyLeads.filter(l => normalizeStatus(l.status) === 'REJECTED').length;
+    const volume = companyLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied || l.amount), 0);
     const avgTicket = total > 0 ? Math.round(volume / total) : 0;
 
-    return { total, fresh, approved, rejected, volume, avgTicket };
+    return { total, fresh, callback, approved, rejected, volume, avgTicket };
   }, [companyLeads]);
 
   // Export CSV
@@ -199,19 +203,13 @@ export default function CompanyLeadsView({
       if (setLeads) {
         setLeads(prev => prev.map(l => {
           if (l.id === leadId || l.loanNo === leadId) {
-            return { ...l, assignedCompany: newCompany };
+            return { ...l, assignedCompany: newCompany, partner_name: newCompany, selectedLenderId: newCompany };
           }
           return l;
         }));
       }
 
-      await fetchApi('/admin/api/update-lead', {
-        method: 'POST',
-        body: JSON.stringify({
-          id: leadId,
-          updates: { assignedCompany: newCompany }
-        })
-      });
+      await updateLoanApplication(leadId, { selectedLenderId: newCompany });
       setReassigningLeadId(null);
     } catch (e) {
       setReassigningLeadId(null);
@@ -220,23 +218,19 @@ export default function CompanyLeadsView({
 
   // Update lead status
   const handleStatusChange = async (leadId, newStatus) => {
+    const canonicalStatus = normalizeStatus(newStatus);
+    const displayLabel = formatStatusLabel(newStatus);
     try {
       if (setLeads) {
         setLeads(prev => prev.map(l => {
           if (l.id === leadId || l.loanNo === leadId) {
-            return { ...l, status: newStatus };
+            return { ...l, status: canonicalStatus, statusLabel: displayLabel };
           }
           return l;
         }));
       }
 
-      await fetchApi('/admin/api/update-lead', {
-        method: 'POST',
-        body: JSON.stringify({
-          id: leadId,
-          updates: { status: newStatus }
-        })
-      });
+      await updateLoanApplication(leadId, { status: canonicalStatus });
     } catch (e) {}
   };
 
@@ -381,11 +375,13 @@ export default function CompanyLeadsView({
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
           {[
             { id: 'all', label: `All Status (${companyLeads.length})` },
-            { id: 'fresh', label: `Fresh (${stats.fresh})` },
-            { id: 'callback', label: 'Callback' },
-            { id: 'docs-received', label: 'Docs Received' },
-            { id: 'approved', label: `Approved (${stats.approved})` },
-            { id: 'rejected', label: `Rejected (${stats.rejected})` },
+            { id: 'FRESH', label: `Fresh (${stats.fresh})` },
+            { id: 'CALLBACK', label: `Callback (${stats.callback})` },
+            { id: 'INTERESTED', label: 'Interested' },
+            { id: 'DOCS_RECEIVED', label: 'Docs Received' },
+            { id: 'APPROVED', label: `Approved (${stats.approved})` },
+            { id: 'DISBURSED', label: 'Disbursed' },
+            { id: 'REJECTED', label: `Rejected (${stats.rejected})` },
           ].map(btn => (
             <button
               key={btn.id}
@@ -436,10 +432,10 @@ export default function CompanyLeadsView({
                             {item.initials || 'AP'}
                           </div>
                           <div>
-                            <div className="font-bold text-slate-900 text-xs">{item.name || 'Applicant'}</div>
-                            <div className="text-[10px] text-slate-400 font-mono">{item.loanNo || itemId}</div>
+                            <div className="font-bold text-slate-900 text-xs">{item.applicantName || item.name || 'Applicant'}</div>
+                            <div className="text-[10px] text-slate-400 font-mono">{item.displayId || item.loanNo || itemId}</div>
                             <div className="text-[11px] text-blue-900 font-mono font-semibold mt-0.5">
-                              {item.mobile}
+                              {item.mobile || item.phone}
                             </div>
                             {item.email && <div className="text-[10px] text-slate-400">{item.email}</div>}
                           </div>
@@ -454,22 +450,26 @@ export default function CompanyLeadsView({
                           </span>
                         </div>
                         <div className="text-[10px] text-slate-500 mt-1">
-                          CIBIL: <span className="font-bold text-slate-700">{item.cibil || '—'}</span>
+                          CIBIL: <span className="font-bold text-slate-700">
+                            {(item.cibilScore && Number(item.cibilScore) > 0) 
+                              ? item.cibilScore 
+                              : (item.cibil && !item.cibil.includes('Estimated') && !item.cibil.includes('300') ? item.cibil : 'Not Available')}
+                          </span>
                         </div>
                       </td>
 
                       {/* Applied Amount */}
                       <td className="p-3.5 font-bold text-slate-900">
-                        ₹{Number(cleanLoanAmount(item.applied || item.loanAmount) || 0).toLocaleString('en-IN')}
+                        ₹{Number(cleanLoanAmount(item.applied || item.loanAmount || item.amount) || 0).toLocaleString('en-IN')}
                       </td>
 
                       {/* Salary / City */}
                       <td className="p-3.5">
                         <div className="font-semibold text-slate-800">
-                          ₹{Number(cleanSalary(item.salary, item.sal_val, item.salary_range) || 0).toLocaleString('en-IN')}/mo
+                          ₹{Number(cleanSalary(item.salary, item.sal_val, item.salary_range, item.monthlyIncome) || 0).toLocaleString('en-IN')}/mo
                         </div>
                         <div className="text-[10px] text-slate-400">
-                          {item.city || 'Online'} · {item.pincode || '110001'}
+                          {item.location || (item.city ? `${item.city}${item.pincode ? ` · ${item.pincode}` : ''}` : 'Online')}
                         </div>
                       </td>
 
@@ -480,12 +480,12 @@ export default function CompanyLeadsView({
                           (item.lead_source && item.lead_source.toLowerCase().includes('whatsapp'))) ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                            {item.source || item.utm_source || 'Whatsapp-AGM'}
+                            {item.source || item.utm_source || 'WhatsApp'}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-lg bg-blue-50 text-blue-800 border border-blue-200/60">
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
-                            {item.source || 'Apply Now (Website)'}
+                            {item.source || 'Website Application'}
                           </span>
                         )}
                       </td>
@@ -520,17 +520,17 @@ export default function CompanyLeadsView({
                       {/* Status */}
                       <td className="p-3.5">
                         <select
-                          value={item.status || 'Fresh'}
+                          value={normalizeStatus(item.status) || 'FRESH'}
                           onChange={(e) => handleStatusChange(itemId, e.target.value)}
                           className="px-2 py-1 rounded-lg text-xs font-semibold border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0A3977] cursor-pointer"
                         >
-                          <option value="Fresh">Fresh</option>
-                          <option value="Callback">Callback</option>
-                          <option value="Interested">Interested</option>
-                          <option value="Docs received">Docs Received</option>
-                          <option value="Approved">Approved</option>
-                          <option value="Disbursed">Disbursed</option>
-                          <option value="Rejected">Rejected</option>
+                          <option value="FRESH">Fresh</option>
+                          <option value="CALLBACK">Callback</option>
+                          <option value="INTERESTED">Interested</option>
+                          <option value="DOCS_RECEIVED">Docs Received</option>
+                          <option value="APPROVED">Approved</option>
+                          <option value="DISBURSED">Disbursed</option>
+                          <option value="REJECTED">Rejected</option>
                         </select>
                       </td>
 

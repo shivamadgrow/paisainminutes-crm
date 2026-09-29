@@ -36,7 +36,7 @@ import ReportsView from './components/ReportsView';
 import { isOffHours, isUserExempt, logSecurityIncident } from './utils/shiftSecurity';
 import { getLiveSecurityDetails } from './utils/geoService';
 import { sanitizeLead } from './utils/amountHelpers';
-import { getLeadsFromBackend } from './utils/apiConfig';
+import { getLeadsFromBackend, normalizeStatus } from './utils/apiConfig';
 import { 
   getCurrentUser, 
   setCurrentUserSession, 
@@ -230,12 +230,15 @@ export default function App() {
 
   // Compute live counts and stats dynamically from leads array
   const leadCounts = useMemo(() => {
-    const fresh = leads.filter(l => l.status === 'Fresh').length;
-    const callback = leads.filter(l => l.status === 'Callback').length;
-    const interested = leads.filter(l => l.status === 'Interested').length;
-    const docsReceived = leads.filter(l => l.status === 'Docs received' || l.status === 'Docs Received').length;
-    const approved = leads.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length;
-    const rejected = leads.filter(l => l.status === 'Rejected').length;
+    const fresh = leads.filter(l => normalizeStatus(l.status) === 'FRESH').length;
+    const callback = leads.filter(l => normalizeStatus(l.status) === 'CALLBACK').length;
+    const interested = leads.filter(l => normalizeStatus(l.status) === 'INTERESTED').length;
+    const docsReceived = leads.filter(l => normalizeStatus(l.status) === 'DOCS_RECEIVED').length;
+    const approved = leads.filter(l => {
+      const s = normalizeStatus(l.status);
+      return s === 'APPROVED' || s === 'DISBURSED';
+    }).length;
+    const rejected = leads.filter(l => normalizeStatus(l.status) === 'REJECTED').length;
 
     // Mobile-only mini-form dropoffs
     const mobileOnly = leads.filter(l => 

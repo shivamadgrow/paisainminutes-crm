@@ -1,49 +1,57 @@
 import React from 'react';
 import { ListFilter } from 'lucide-react';
+import { normalizeStatus } from '../utils/apiConfig';
 
 export default function PipelineView({ onSwitchToList, leads = [] }) {
   const columns = [
     {
-      title: 'New',
+      title: 'Fresh',
       subtext: 'Fresh, not yet contacted',
-      dotColor: 'bg-blue-600',
-      count: leads.filter(l => l.status === 'Fresh').length,
-      leads: leads.filter(l => l.status === 'Fresh')
+      dotColor: 'bg-sky-500',
+      count: leads.filter(l => normalizeStatus(l.status) === 'FRESH').length,
+      leads: leads.filter(l => normalizeStatus(l.status) === 'FRESH')
     },
     {
-      title: 'Contacted',
-      subtext: 'Reached out — callback / no answer',
-      dotColor: 'bg-blue-600',
-      count: leads.filter(l => l.status === 'Callback' || l.status === 'No answer').length,
-      leads: leads.filter(l => l.status === 'Callback' || l.status === 'No answer')
+      title: 'Callback',
+      subtext: 'Callback scheduled / follow-up',
+      dotColor: 'bg-amber-500',
+      count: leads.filter(l => normalizeStatus(l.status) === 'CALLBACK').length,
+      leads: leads.filter(l => normalizeStatus(l.status) === 'CALLBACK')
     },
     {
       title: 'Interested',
-      subtext: 'Interested, collecting documents',
-      dotColor: 'bg-purple-600',
-      count: leads.filter(l => l.status === 'Interested').length,
-      leads: leads.filter(l => l.status === 'Interested')
+      subtext: 'Interested, discussing loan offers',
+      dotColor: 'bg-purple-500',
+      count: leads.filter(l => normalizeStatus(l.status) === 'INTERESTED').length,
+      leads: leads.filter(l => normalizeStatus(l.status) === 'INTERESTED')
     },
     {
-      title: 'Documents',
-      subtext: 'Docs received / incomplete',
-      dotColor: 'bg-amber-600',
-      count: leads.filter(l => l.status === 'Docs received' || l.status === 'Incomplete docs').length,
-      leads: leads.filter(l => l.status === 'Docs received' || l.status === 'Incomplete docs')
+      title: 'Docs Received',
+      subtext: 'Docs received & in verification',
+      dotColor: 'bg-indigo-500',
+      count: leads.filter(l => normalizeStatus(l.status) === 'DOCS_RECEIVED').length,
+      leads: leads.filter(l => normalizeStatus(l.status) === 'DOCS_RECEIVED')
     },
     {
       title: 'Approved',
       subtext: 'Credit approved, pending disbursal',
-      dotColor: 'bg-emerald-600',
-      count: leads.filter(l => l.status === 'Approved').length,
-      leads: leads.filter(l => l.status === 'Approved')
+      dotColor: 'bg-emerald-500',
+      count: leads.filter(l => normalizeStatus(l.status) === 'APPROVED').length,
+      leads: leads.filter(l => normalizeStatus(l.status) === 'APPROVED')
     },
     {
       title: 'Disbursed',
-      subtext: 'Funded & repaying / closed',
-      dotColor: 'bg-emerald-600',
-      count: leads.filter(l => l.status === 'Disbursed').length,
-      leads: leads.filter(l => l.status === 'Disbursed')
+      subtext: 'Funded & disbursed to borrower',
+      dotColor: 'bg-teal-500',
+      count: leads.filter(l => normalizeStatus(l.status) === 'DISBURSED').length,
+      leads: leads.filter(l => normalizeStatus(l.status) === 'DISBURSED')
+    },
+    {
+      title: 'Rejected',
+      subtext: 'Application rejected / declined',
+      dotColor: 'bg-rose-500',
+      count: leads.filter(l => normalizeStatus(l.status) === 'REJECTED').length,
+      leads: leads.filter(l => normalizeStatus(l.status) === 'REJECTED')
     }
   ];
 
@@ -97,21 +105,23 @@ export default function PipelineView({ onSwitchToList, leads = [] }) {
             <div className="space-y-3">
               {col.leads.length > 0 ? (
                 col.leads.map((item, idx) => (
-                  <div key={idx} className="crm-card p-3.5 bg-white space-y-2 hover:shadow-md transition">
+                  <div key={item.id || idx} className="crm-card p-3.5 bg-white space-y-2 hover:shadow-md transition">
                     <div className="flex items-start justify-between gap-2">
-                      <h4 className="text-xs font-bold text-slate-900">{item.name}</h4>
-                      <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${item.badgeBg}`}>
-                        {item.badge}
+                      <h4 className="text-xs font-bold text-slate-900 truncate">
+                        {item.applicantName || item.name || 'Applicant'}
+                      </h4>
+                      <span className="px-2 py-0.5 text-[10px] font-mono font-semibold rounded bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
+                        {item.displayId || item.loanNo || (item.id ? String(item.id).slice(0, 8) : 'PIM')}
                       </span>
                     </div>
 
                     <div className="text-[11px] font-bold text-[#0A3977]">
-                      {item.applied}
+                      {item.applied || (item.amount ? `₹${Number(item.amount).toLocaleString('en-IN')}` : '—')}
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-50 font-mono">
-                      <span>{item.phone}</span>
-                      <span>{item.date}</span>
+                    <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-50">
+                      <span className="font-mono">{item.phone || item.mobile || '—'}</span>
+                      <span className="truncate max-w-[100px] text-right">{item.location || 'Online'}</span>
                     </div>
                   </div>
                 ))

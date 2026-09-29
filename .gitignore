@@ -24,9 +24,3 @@ dist-ssr
 *.sw?
 *.zip
 node_modules
-
-# Local fallback data caches
-*leads_store.json
-*leads.json
-*deleted_leads.json
-*leads_overrides.json

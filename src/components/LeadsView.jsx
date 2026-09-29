@@ -56,7 +56,17 @@ import {
   DATE_RANGE_PRESETS,
   getISTDateKey
 } from '../utils/amountHelpers';
-import { fetchApi, deleteLeadsApi, saveLeadOverride } from '../utils/apiConfig';
+import {
+  fetchApi,
+  deleteLeadsApi,
+  saveLeadOverride,
+  updateLoanApplication,
+  normalizeStatus,
+  formatStatusLabel,
+  CRM_STATUS_MAP,
+  CRM_STATUS_STAGES,
+  mapBackendLead
+} from '../utils/apiConfig';
 
 const INITIAL_FULL_LEADS = [];
 
@@ -79,60 +89,19 @@ const mapTabToFilterName = (tab) => {
   return tab;
 };
 
-// Modern workflow status styling helper
+// Modern workflow status styling helper using canonical CRM status stages
 export const getStatusBadge = (status) => {
-  const s = String(status || 'Fresh').toLowerCase().replace(/[\s\-_]/g, '');
-  if (s.includes('fresh')) {
+  const norm = normalizeStatus(status);
+  const cfg = CRM_STATUS_MAP[norm];
+  if (cfg) {
     return {
-      label: 'Fresh',
-      classes: 'bg-sky-50 text-sky-700 border-sky-200/80 hover:bg-sky-100/80',
-      dot: 'bg-sky-500'
-    };
-  }
-  if (s.includes('callback')) {
-    return {
-      label: 'Callback',
-      classes: 'bg-amber-50 text-amber-700 border-amber-200/80 hover:bg-amber-100/80',
-      dot: 'bg-amber-500'
-    };
-  }
-  if (s.includes('interest')) {
-    return {
-      label: 'Interested',
-      classes: 'bg-purple-50 text-purple-700 border-purple-200/80 hover:bg-purple-100/80',
-      dot: 'bg-purple-500'
-    };
-  }
-  if (s.includes('doc')) {
-    return {
-      label: 'Docs Received',
-      classes: 'bg-indigo-50 text-indigo-700 border-indigo-200/80 hover:bg-indigo-100/80',
-      dot: 'bg-indigo-500'
-    };
-  }
-  if (s.includes('approv')) {
-    return {
-      label: 'Approved',
-      classes: 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/80',
-      dot: 'bg-emerald-500'
-    };
-  }
-  if (s.includes('disburs')) {
-    return {
-      label: 'Disbursed',
-      classes: 'bg-teal-50 text-teal-700 border-teal-200/80 hover:bg-teal-100/80',
-      dot: 'bg-teal-500'
-    };
-  }
-  if (s.includes('reject')) {
-    return {
-      label: 'Rejected',
-      classes: 'bg-rose-50 text-rose-700 border-rose-200/80 hover:bg-rose-100/80',
-      dot: 'bg-rose-500'
+      label: cfg.label,
+      classes: cfg.classes,
+      dot: cfg.dot
     };
   }
   return {
-    label: status || 'Fresh',
+    label: formatStatusLabel(status) || 'Fresh',
     classes: 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200',
     dot: 'bg-slate-400'
   };
@@ -218,14 +187,14 @@ export const getCompanyBadge = (company) => {
   };
 };
 
-// Eligibility and CIBIL display helper mapped strictly to 8-slab matrix & routing rules
+// Eligibility and CIBIL display helper
 export const getEligibilityInfo = (item) => {
   if (!item) {
     return {
       label: 'Eligible',
       isPhoneOnly: false,
-      cibilDisplay: '—',
-      partner: 'Pending Details',
+      cibilDisplay: 'Not Available',
+      partner: 'Pending Selection',
       slab: 0
     };
   }
@@ -234,38 +203,29 @@ export const getEligibilityInfo = (item) => {
     return {
       label: 'Incomplete / Phone Only',
       isPhoneOnly: true,
-      cibilDisplay: '—',
-      partner: 'Pending Details',
+      cibilDisplay: 'Not Available',
+      partner: 'Pending Selection',
       slab: 0
     };
   }
 
-  const matrix = getEligibilityMatrix(item);
-
-  // Label: prioritize verified backend eligibility status if already set to standard slab
-  let label = matrix.eligibilityStatus;
-  if (item.eligibilityStatus &&
-    item.eligibilityStatus !== 'Eligible' &&
-    item.eligibilityStatus !== 'High Approval' &&
-    item.eligibilityStatus !== 'Pending') {
-    label = item.eligibilityStatus;
+  // CIBIL Score display: only display when valid number > 0, never guess from salary
+  let cibilDisplay = 'Not Available';
+  if (item.cibilScore !== null && item.cibilScore !== undefined && Number(item.cibilScore) > 0) {
+    cibilDisplay = String(item.cibilScore);
+  } else if (item.cibil && item.cibil !== '—' && item.cibil !== 'Not Available' && !isNaN(Number(item.cibil)) && Number(item.cibil) > 0) {
+    cibilDisplay = String(item.cibil);
   }
 
-  // CIBIL Score display string
-  let cibilDisplay = (item.cibil && item.cibil !== '—') ? item.cibil : (matrix.cibilRange !== '—' ? matrix.cibilRange : '');
-
-  // Assigned partner determination: priority on item.assignedCompany
-  let assignedPartner = item.assignedCompany;
-  if (!assignedPartner || assignedPartner === 'AUTO' || assignedPartner === '—') {
-    assignedPartner = matrix.partner || 'Pending Selection';
-  }
+  // Assigned partner determination: Show Pending Selection when selectedLenderId is null. Otherwise show selected lender.
+  const assignedPartner = item.selectedLenderId || item.assignedCompany || 'Pending Selection';
 
   return {
-    label,
-    isPhoneOnly: false,
+    label: item.eligibilityStatus || 'Eligible',
+    isPhoneOnly: Boolean(item.isPhoneOnly),
     cibilDisplay,
     partner: assignedPartner,
-    slab: matrix.slab
+    slab: 0
   };
 };
 
@@ -412,9 +372,12 @@ export default function LeadsView({
   // Compute live stats for top KPI cards
   const leadStats = useMemo(() => {
     const total = leads.length;
-    const fresh = leads.filter(l => (l.status || 'Fresh') === 'Fresh').length;
-    const callbacks = leads.filter(l => l.status === 'Callback').length;
-    const approved = leads.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length;
+    const fresh = leads.filter(l => normalizeStatus(l.status) === 'FRESH').length;
+    const callbacks = leads.filter(l => normalizeStatus(l.status) === 'CALLBACK').length;
+    const approved = leads.filter(l => {
+      const s = normalizeStatus(l.status);
+      return s === 'APPROVED' || s === 'DISBURSED';
+    }).length;
     const highCibil = leads.filter(l => {
       const c = String(l.cibil || '');
       const num = parseInt(c.replace(/\D/g, '').slice(0, 3), 10);
@@ -552,7 +515,7 @@ export default function LeadsView({
 
       // 3. Status Tab Filter
       if (activeFilter !== 'All Leads') {
-        const itemStatus = (item.status || 'Fresh').toLowerCase().replace(/[-_]/g, ' ');
+        const normStatus = normalizeStatus(item.status);
         const filterKey = activeFilter.toLowerCase().replace(/[-_]/g, ' ');
 
         // Check if filter is a partner name
@@ -560,17 +523,19 @@ export default function LeadsView({
         if (isPartnerName) {
           const c = (item.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
           if (c !== filterKey.replace(/[\s\-_]/g, '')) return false;
-        } else if (filterKey === 'fresh' && itemStatus !== 'fresh') {
+        } else if (filterKey === 'fresh' && normStatus !== 'FRESH') {
           return false;
-        } else if (filterKey === 'callback' && itemStatus !== 'callback') {
+        } else if (filterKey === 'callback' && normStatus !== 'CALLBACK') {
           return false;
-        } else if (filterKey === 'interested' && itemStatus !== 'interested') {
+        } else if (filterKey === 'interested' && normStatus !== 'INTERESTED') {
           return false;
-        } else if (filterKey === 'docs received' && itemStatus !== 'docs received') {
+        } else if (filterKey === 'docs received' && normStatus !== 'DOCS_RECEIVED') {
           return false;
-        } else if (filterKey === 'approved' && itemStatus !== 'approved' && itemStatus !== 'disbursed') {
+        } else if (filterKey === 'approved' && normStatus !== 'APPROVED' && normStatus !== 'DISBURSED') {
           return false;
-        } else if (filterKey === 'rejected' && itemStatus !== 'rejected') {
+        } else if (filterKey === 'disbursed' && normStatus !== 'DISBURSED') {
+          return false;
+        } else if (filterKey === 'rejected' && normStatus !== 'REJECTED') {
           return false;
         } else if (filterKey === 'mobile only') {
           const isMobile = item.isPhoneOnly ||
@@ -761,18 +726,21 @@ export default function LeadsView({
     console.log(`%c[CRM REASSIGN] 🔀 Reassigning lead ${leadId} -> ${newCompany}`, 'color: #7c3aed; font-weight: bold;');
     try {
       const targetLead = leads.find((l, i) => getLeadId(l, i) === leadId);
+      const backendId = targetLead?.id || leadId;
       const phone = targetLead ? String(targetLead.phone || targetLead.mobile || '').replace(/\D/g, '').slice(-10) : '';
+      const selectedLenderId = (!newCompany || newCompany === 'Pending Selection') ? null : newCompany;
 
-      // 1. Immediately save to persistent client overrides so polling doesn't overwrite it
-      saveLeadOverride(leadId, { assignedCompany: newCompany });
-      if (phone) saveLeadOverride(phone, { assignedCompany: newCompany });
-
-      // 2. Instantly update React state
+      // 1. Instantly update React state for responsive UX
       if (setLeads) {
         setLeads(prev => prev.map((l, i) => {
           const lPhone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
           if (getLeadId(l, i) === leadId || (phone && lPhone === phone)) {
-            return { ...l, assignedCompany: newCompany, partner_name: newCompany };
+            return {
+              ...l,
+              assignedCompany: newCompany,
+              partner_name: newCompany,
+              selectedLenderId: selectedLenderId
+            };
           }
           return l;
         }));
@@ -780,19 +748,16 @@ export default function LeadsView({
 
       setReassigningLeadId(null);
 
-      // 3. Post to backend endpoints
-      const updatePayload = {
-        id: leadId,
-        leadId: leadId,
-        phone: phone,
-        updates: { assignedCompany: newCompany }
-      };
+      // 2. Call PATCH /api/loan-applications/{id}
+      const patchRes = await updateLoanApplication(backendId, { selectedLenderId });
+      console.log('[CRM REASSIGN] 📥 Server PATCH response:', patchRes);
 
-      const res = await fetchApi('/admin/api/update-lead', {
-        method: 'POST',
-        body: JSON.stringify(updatePayload)
-      });
-      console.log('[CRM REASSIGN] 📥 Server response:', res?.data);
+      if (patchRes && patchRes.success && patchRes.data) {
+        const updated = mapBackendLead(patchRes.data);
+        if (updated && setLeads) {
+          setLeads(prev => prev.map((l, i) => (getLeadId(l, i) === leadId ? { ...l, ...updated } : l)));
+        }
+      }
     } catch (e) {
       console.error('[CRM REASSIGN] ❌ Error:', e);
       setReassigningLeadId(null);
@@ -801,38 +766,39 @@ export default function LeadsView({
 
   // Quick Status Change
   const handleStatusChange = async (leadId, newStatus) => {
-    console.log(`%c[CRM STATUS CHANGE] 🔄 Changing lead ${leadId} status -> ${newStatus}`, 'color: #2563eb; font-weight: bold;');
+    const canonicalStatus = normalizeStatus(newStatus);
+    const displayLabel = formatStatusLabel(newStatus);
+    console.log(`%c[CRM STATUS CHANGE] 🔄 Changing lead ${leadId} status -> ${canonicalStatus} (${displayLabel})`, 'color: #2563eb; font-weight: bold;');
     try {
       const targetLead = leads.find((l, i) => getLeadId(l, i) === leadId);
+      const backendId = targetLead?.id || leadId;
       const phone = targetLead ? String(targetLead.phone || targetLead.mobile || '').replace(/\D/g, '').slice(-10) : '';
 
-      // 1. Immediately save to persistent client overrides so polling doesn't overwrite it
-      saveLeadOverride(leadId, { status: newStatus });
-      if (phone) saveLeadOverride(phone, { status: newStatus });
-
-      // 2. Instantly update React state
+      // 1. Instantly update React state
       if (setLeads) {
         setLeads(prev => prev.map((l, i) => {
           const lPhone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
           if (getLeadId(l, i) === leadId || (phone && lPhone === phone)) {
-            return { ...l, status: newStatus };
+            return {
+              ...l,
+              status: canonicalStatus,
+              statusLabel: displayLabel
+            };
           }
           return l;
         }));
       }
 
-      // 3. Post to backend endpoints
-      const updatePayload = {
-        id: leadId,
-        leadId: leadId,
-        phone: phone,
-        updates: { status: newStatus }
-      };
+      // 2. Call PATCH /api/loan-applications/{id}
+      const patchRes = await updateLoanApplication(backendId, { status: canonicalStatus });
+      console.log('[CRM STATUS CHANGE] 📥 Server PATCH response:', patchRes);
 
-      const res = await fetchApi('/admin/api/update-lead', {
-        method: 'POST',
-        body: JSON.stringify(updatePayload)
-      });
+      if (patchRes && patchRes.success && patchRes.data) {
+        const updated = mapBackendLead(patchRes.data);
+        if (updated && setLeads) {
+          setLeads(prev => prev.map((l, i) => (getLeadId(l, i) === leadId ? { ...l, ...updated } : l)));
+        }
+      }
     } catch (e) {
       console.error('[CRM STATUS CHANGE] ❌ Error:', e);
     }
@@ -1149,12 +1115,13 @@ export default function LeadsView({
                 label: 'Mobile-only',
                 count: leads.filter(l => l.isPhoneOnly || (l.eligibilityStatus && l.eligibilityStatus.includes('Phone Only')) || ((!l.name || l.name === 'Applicant') && (!l.loanAmount || Number(l.loanAmount) === 0))).length
               },
-              { id: 'Fresh', label: 'Fresh', count: leads.filter(l => (l.status || 'Fresh') === 'Fresh').length },
-              { id: 'Callback', label: 'Callback', count: leads.filter(l => l.status === 'Callback').length },
-              { id: 'Interested', label: 'Interested', count: leads.filter(l => l.status === 'Interested').length },
-              { id: 'Docs Received', label: 'Docs Received', count: leads.filter(l => l.status === 'Docs received' || l.status === 'Docs Received').length },
-              { id: 'Approved', label: 'Approved', count: leads.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length },
-              { id: 'Rejected', label: 'Rejected', count: leads.filter(l => l.status === 'Rejected').length },
+              { id: 'Fresh', label: 'Fresh', count: leads.filter(l => normalizeStatus(l.status) === 'FRESH').length },
+              { id: 'Callback', label: 'Callback', count: leads.filter(l => normalizeStatus(l.status) === 'CALLBACK').length },
+              { id: 'Interested', label: 'Interested', count: leads.filter(l => normalizeStatus(l.status) === 'INTERESTED').length },
+              { id: 'Docs Received', label: 'Docs Received', count: leads.filter(l => normalizeStatus(l.status) === 'DOCS_RECEIVED').length },
+              { id: 'Approved', label: 'Approved', count: leads.filter(l => normalizeStatus(l.status) === 'APPROVED').length },
+              { id: 'Disbursed', label: 'Disbursed', count: leads.filter(l => normalizeStatus(l.status) === 'DISBURSED').length },
+              { id: 'Rejected', label: 'Rejected', count: leads.filter(l => normalizeStatus(l.status) === 'REJECTED').length },
               {
                 id: 'Duplicate Leads',
                 label: 'Duplicate Leads',
@@ -1527,12 +1494,12 @@ export default function LeadsView({
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="font-extrabold text-slate-900 text-sm group-hover:text-[#0A3977] group-hover:underline transition-colors flex items-center gap-1.5 truncate">
-                            <span className="truncate">{item.name || 'Applicant'}</span>
+                            <span className="truncate">{item.applicantName || item.name || 'Applicant'}</span>
                             <Eye className="w-3.5 h-3.5 text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5">
-                            <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md border border-slate-200">
-                              {item.loanNo || itemId}
+                            <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200" title={`ID: ${item.id}`}>
+                              {item.displayId || item.loanNo || itemId}
                             </span>
                           </div>
                           <div className="text-xs font-bold text-slate-700 flex items-center gap-1.5 mt-1 font-mono">
@@ -1540,10 +1507,15 @@ export default function LeadsView({
                             <span>{item.mobile || (item.phone ? `+91 ${item.phone}` : '—')}</span>
                           </div>
                           {item.email && item.email !== '—' && !item.email.includes('@paisainminutes.com') && (
-                            <div className="text-[11px] text-slate-400 truncate max-w-[180px] flex items-center gap-1 mt-0.5">
-                              <Mail className="w-3 h-3 text-slate-300 shrink-0" />
+                            <a
+                              href={`mailto:${item.email}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[11px] text-slate-500 hover:text-blue-600 truncate max-w-[180px] flex items-center gap-1 mt-0.5 transition-colors"
+                              title={`Send email to ${item.email}`}
+                            >
+                              <Mail className="w-3 h-3 text-slate-400 shrink-0" />
                               <span className="truncate">{item.email}</span>
-                            </div>
+                            </a>
                           )}
                         </div>
                       </div>
@@ -1626,14 +1598,14 @@ export default function LeadsView({
                           </span>
                         )}
                       </div>
-                      {eligInfo.cibilDisplay && eligInfo.cibilDisplay !== '—' ? (
+                      {item.cibilScore && Number(item.cibilScore) > 0 ? (
                         <div className="text-[10px] font-black text-indigo-700 bg-indigo-50/90 px-2.5 py-1 rounded-xl border border-indigo-200/80 mt-1.5 inline-flex items-center gap-1.5 shadow-2xs">
                           <CreditCard className="w-3 h-3 text-indigo-500" />
-                          <span>CIBIL: {eligInfo.cibilDisplay}</span>
+                          <span>CIBIL: {item.cibilScore}</span>
                         </div>
                       ) : (
                         <div className="text-[11px] text-slate-400 font-medium mt-1">
-                          CIBIL: —
+                          CIBIL: Not Available
                         </div>
                       )}
                     </td>
@@ -1665,13 +1637,13 @@ export default function LeadsView({
                       )}
                       <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-1 font-semibold">
                         <MapPin className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span>{item.city && item.city !== '—' ? item.city : 'Online'}{item.pincode && item.pincode !== '—' ? ` · ${item.pincode}` : ''}</span>
+                        <span>{item.location || (item.city && item.city !== '—' ? item.city : 'Online')}</span>
                       </div>
                     </td>
 
                     {/* SOURCE */}
                     <td className="py-4 px-4">
-                      {(!item.source || item.source.toLowerCase().includes('whatsapp') || item.source.toLowerCase().includes('apply now') || item.source.toLowerCase().includes('website') || (item.utm_source && item.utm_source.toLowerCase().includes('whatsapp'))) ? (
+                      {((item.source && item.source.toLowerCase().includes('whatsapp')) || (item.utm_source && item.utm_source.toLowerCase().includes('whatsapp')) || (item.lead_source && item.lead_source.toLowerCase().includes('whatsapp'))) ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
                           <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                           <span className="truncate max-w-[130px]" title="WhatsApp">
@@ -1681,8 +1653,8 @@ export default function LeadsView({
                       ) : (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-xl bg-blue-50 text-blue-800 border border-blue-200/80 shadow-2xs">
                           <ExternalLink className="w-3 h-3 text-blue-500 shrink-0" />
-                          <span className="truncate max-w-[130px]" title={item.source}>
-                            {item.source}
+                          <span className="truncate max-w-[130px]" title={item.source || 'Website Application'}>
+                            {item.source || 'Website Application'}
                           </span>
                         </span>
                       )}
@@ -1711,7 +1683,7 @@ export default function LeadsView({
                           title="Click to update workflow status"
                         >
                           <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${statusBadge.dot} animate-pulse`}></span>
-                          <span>{item.status || 'Fresh'}</span>
+                          <span>{formatStatusLabel(item.status) || statusBadge.label || 'Fresh'}</span>
                           <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openStatusDropdownId === itemId ? 'rotate-180 text-slate-800' : 'opacity-60'}`} />
                         </button>
                       </div>
@@ -2062,17 +2034,17 @@ export default function LeadsView({
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h2 className="text-xl font-bold tracking-tight text-white">
-                        {activeOverviewLead.name || 'Applicant'}
+                        {activeOverviewLead.applicantName || activeOverviewLead.name || 'Applicant'}
                       </h2>
                       <span className="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-white/20 text-blue-100 border border-white/20">
-                        {activeOverviewLead.status || 'Fresh'}
+                        {formatStatusLabel(activeOverviewLead.status) || activeOverviewLead.statusLabel || 'Fresh'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mt-1 text-xs text-blue-100/80 font-mono">
-                      <span>ID: {activeOverviewLead.loanNo || activeOverviewLead.id}</span>
+                      <span>ID: {activeOverviewLead.displayId || activeOverviewLead.loanNo || activeOverviewLead.id}</span>
                       <button
                         type="button"
-                        onClick={() => handleCopy(activeOverviewLead.loanNo || activeOverviewLead.id, 'id')}
+                        onClick={() => handleCopy(activeOverviewLead.displayId || activeOverviewLead.loanNo || activeOverviewLead.id, 'id')}
                         className="p-1 hover:bg-white/10 rounded transition text-blue-200 hover:text-white cursor-pointer"
                         title="Copy Lead ID"
                       >
@@ -2121,8 +2093,8 @@ export default function LeadsView({
                   </div>
                   <div className="text-base sm:text-lg font-extrabold text-slate-900">
                     {cleanLoanAmount(activeOverviewLead.applied || activeOverviewLead.loanAmount) > 0
-                      ? `₹${Number(cleanLoanAmount(activeOverviewLead.applied || activeOverviewLead.loanAmount) || 0).toLocaleString('en-IN')}`
-                      : '₹50,000'}
+                      ? `₹${Number(cleanLoanAmount(activeOverviewLead.applied || activeOverviewLead.loanAmount)).toLocaleString('en-IN')}`
+                      : '—'}
                   </div>
                 </div>
 
@@ -2133,8 +2105,8 @@ export default function LeadsView({
                   </div>
                   <div className="text-base sm:text-lg font-extrabold text-slate-900">
                     {cleanSalary(activeOverviewLead.salary, activeOverviewLead.sal_val, activeOverviewLead.salary_range) > 0
-                      ? `₹${Number(cleanSalary(activeOverviewLead.salary, activeOverviewLead.sal_val, activeOverviewLead.salary_range) || 0).toLocaleString('en-IN')}/mo`
-                      : '₹30,000/mo'}
+                      ? `₹${Number(cleanSalary(activeOverviewLead.salary, activeOverviewLead.sal_val, activeOverviewLead.salary_range)).toLocaleString('en-IN')}/mo`
+                      : '—'}
                   </div>
                 </div>
 
@@ -2144,7 +2116,7 @@ export default function LeadsView({
                     <span>CIBIL Score</span>
                   </div>
                   <div className="text-base sm:text-lg font-extrabold text-emerald-700">
-                    {overviewElig?.cibilDisplay && overviewElig.cibilDisplay !== '—' ? overviewElig.cibilDisplay : '—'}
+                    {activeOverviewLead.cibilScore && Number(activeOverviewLead.cibilScore) > 0 ? activeOverviewLead.cibilScore : 'Not Available'}
                   </div>
                 </div>
 
@@ -2154,7 +2126,7 @@ export default function LeadsView({
                     <span>Company</span>
                   </div>
                   <div className="text-base sm:text-lg font-extrabold text-[#0A3977]">
-                    {activeOverviewLead.assignedCompany || overviewElig?.partner || 'Pending Details'}
+                    {activeOverviewLead.selectedLenderId || activeOverviewLead.assignedCompany || 'Pending Selection'}
                   </div>
                 </div>
               </div>
@@ -2172,7 +2144,7 @@ export default function LeadsView({
                   <div className="space-y-2.5 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Full Name:</span>
-                      <span className="font-bold text-slate-900">{activeOverviewLead.name || 'Applicant'}</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.applicantName || activeOverviewLead.name || 'Applicant'}</span>
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -2220,13 +2192,13 @@ export default function LeadsView({
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">City / State:</span>
                       <span className="font-bold text-slate-900">
-                        {activeOverviewLead.city && activeOverviewLead.city !== '—' ? activeOverviewLead.city : 'Delhi NCR'}, {activeOverviewLead.state || 'India'}
+                        {activeOverviewLead.city || activeOverviewLead.state ? `${activeOverviewLead.city || ''}${activeOverviewLead.city && activeOverviewLead.state ? ', ' : ''}${activeOverviewLead.state || ''}` : 'Online'}
                       </span>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Pincode:</span>
-                      <span className="font-bold font-mono text-slate-900">{activeOverviewLead.pincode && activeOverviewLead.pincode !== '—' ? activeOverviewLead.pincode : '110001'}</span>
+                      <span className="font-bold font-mono text-slate-900">{activeOverviewLead.pincode && activeOverviewLead.pincode !== '—' ? activeOverviewLead.pincode : '—'}</span>
                     </div>
                   </div>
                 </div>
@@ -2282,10 +2254,17 @@ export default function LeadsView({
 
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Source / Channel:</span>
-                      <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-bold text-[11px] border border-emerald-300 flex items-center gap-1">
-                        <MessageCircle className="w-3 h-3 text-emerald-600" />
-                        <span>WhatsApp</span>
-                      </span>
+                      {((activeOverviewLead.source && activeOverviewLead.source.toLowerCase().includes('whatsapp')) || (activeOverviewLead.utm_source && activeOverviewLead.utm_source.toLowerCase().includes('whatsapp')) || (activeOverviewLead.lead_source && activeOverviewLead.lead_source.toLowerCase().includes('whatsapp'))) ? (
+                        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-bold text-[11px] border border-emerald-300 flex items-center gap-1">
+                          <MessageCircle className="w-3 h-3 text-emerald-600" />
+                          <span>WhatsApp</span>
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 font-bold text-[11px] border border-blue-200 flex items-center gap-1">
+                          <ExternalLink className="w-3 h-3 text-blue-500" />
+                          <span>{activeOverviewLead.source || 'Website Application'}</span>
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -2484,17 +2463,17 @@ export default function LeadsView({
                       Current Lead Status:
                     </label>
                     <select
-                      value={activeOverviewLead.status || 'Fresh'}
+                      value={normalizeStatus(activeOverviewLead.status) || 'FRESH'}
                       onChange={(e) => handleStatusChangeInModal(getLeadId(activeOverviewLead), e.target.value)}
                       className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0A3977] cursor-pointer shadow-2xs"
                     >
-                      <option value="Fresh">Fresh</option>
-                      <option value="Callback">Callback</option>
-                      <option value="Interested">Interested</option>
-                      <option value="Docs received">Docs Received</option>
-                      <option value="Approved">Approved</option>
-                      <option value="Disbursed">Disbursed</option>
-                      <option value="Rejected">Rejected</option>
+                      <option value="FRESH">Fresh</option>
+                      <option value="CALLBACK">Callback</option>
+                      <option value="INTERESTED">Interested</option>
+                      <option value="DOCS_RECEIVED">Docs Received</option>
+                      <option value="APPROVED">Approved</option>
+                      <option value="DISBURSED">Disbursed</option>
+                      <option value="REJECTED">Rejected</option>
                     </select>
                   </div>
                 </div>
@@ -2884,14 +2863,13 @@ export default function LeadsView({
           const maxHeight = Math.min(460, availableSpace);
 
           const statusOptions = [
-            { id: 'Fresh', label: 'Fresh', dot: 'bg-sky-500', bg: 'hover:bg-sky-50 text-sky-800' },
-            { id: 'Callback', label: 'Callback', dot: 'bg-amber-500', bg: 'hover:bg-amber-50 text-amber-800' },
-            { id: 'Interested', label: 'Interested', dot: 'bg-purple-500', bg: 'hover:bg-purple-50 text-purple-800' },
-            { id: 'Docs received', label: 'Docs Received', dot: 'bg-indigo-500', bg: 'hover:bg-indigo-50 text-indigo-800' },
-            { id: 'Approved', label: 'Approved', dot: 'bg-emerald-500', bg: 'hover:bg-emerald-50 text-emerald-800' },
-            { id: 'Disbursed', label: 'Disbursed', dot: 'bg-teal-500', bg: 'hover:bg-teal-50 text-teal-800' },
-            { id: 'Not Interested', label: 'Not Interested', dot: 'bg-slate-500', bg: 'hover:bg-slate-100 text-slate-800' },
-            { id: 'Rejected', label: 'Rejected', dot: 'bg-rose-500', bg: 'hover:bg-rose-50 text-rose-800' },
+            { id: 'FRESH', label: 'Fresh', dot: 'bg-sky-500', bg: 'hover:bg-sky-50 text-sky-800' },
+            { id: 'CALLBACK', label: 'Callback', dot: 'bg-amber-500', bg: 'hover:bg-amber-50 text-amber-800' },
+            { id: 'INTERESTED', label: 'Interested', dot: 'bg-purple-500', bg: 'hover:bg-purple-50 text-purple-800' },
+            { id: 'DOCS_RECEIVED', label: 'Docs Received', dot: 'bg-indigo-500', bg: 'hover:bg-indigo-50 text-indigo-800' },
+            { id: 'APPROVED', label: 'Approved', dot: 'bg-emerald-500', bg: 'hover:bg-emerald-50 text-emerald-800' },
+            { id: 'DISBURSED', label: 'Disbursed', dot: 'bg-teal-500', bg: 'hover:bg-teal-50 text-teal-800' },
+            { id: 'REJECTED', label: 'Rejected', dot: 'bg-rose-500', bg: 'hover:bg-rose-50 text-rose-800' },
           ];
 
           return (
@@ -2921,7 +2899,7 @@ export default function LeadsView({
                 }}
               >
                 {statusOptions.map(st => {
-                  const isCurrent = (currentLead.status || 'Fresh').toLowerCase() === st.id.toLowerCase();
+                  const isCurrent = normalizeStatus(currentLead.status) === st.id;
                   return (
                     <button
                       key={st.id}
