@@ -44,22 +44,6 @@ import {
 } from './utils/authService';
 import { AFFILIATE_PARTNERS } from './data/affiliatePartners';
 
-// Local storage key for instant stale-while-revalidate leads hydration
-const CACHED_LEADS_KEY = 'paisa_crm_cached_leads';
-
-function getInitialCachedLeads() {
-  try {
-    const raw = localStorage.getItem(CACHED_LEADS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map(sanitizeLead);
-      }
-    }
-  } catch (e) {}
-  return [];
-}
-
 export default function App() {
   const [activeTab, setActiveTabState] = useState(() => {
     const user = getCurrentUser();
@@ -81,9 +65,18 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-  // Instant load: Hydrate directly from persistent cache so UI loads in 0ms upon login
-  const [leads, setLeads] = useState(() => getInitialCachedLeads());
+  // Live state: Always fetched directly from the backend API, never cached locally
+  const [leads, setLeads] = useState([]);
   const isFetchingRef = useRef(false);
+
+  // Clean slate on startup: clear any old stale cached leads and local overrides
+  useEffect(() => {
+    try {
+      localStorage.removeItem('paisa_crm_cached_leads');
+      localStorage.removeItem('paisa_crm_lead_overrides');
+      localStorage.removeItem('pim_deleted_leads');
+    } catch (e) {}
+  }, []);
 
   // Financial transactions state initialized clean (0 records for live marketing)
   const [payoutRequests, setPayoutRequests] = useState(() => {
@@ -206,9 +199,6 @@ export default function App() {
         if (isMounted && result && result.success && Array.isArray(result.leads)) {
           const cleanLeads = result.leads.map(sanitizeLead);
           setLeads(cleanLeads);
-          try {
-            localStorage.setItem(CACHED_LEADS_KEY, JSON.stringify(cleanLeads));
-          } catch (e) {}
         }
       } catch (e) {
         console.warn('[CRM LIVE STATE SYNC] ⚠️ Fetch error during polling:', e);

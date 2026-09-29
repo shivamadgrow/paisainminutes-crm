@@ -68,6 +68,31 @@ export function getAuthHeaders() {
 }
 
 /**
+ * Intelligent Partner Auto-Assignment Engine
+ * Maps applicant eligibility (salary & CIBIL) across the 9 affiliate partners when backend selectedLenderId is null
+ */
+export function resolveAssignedCompany(item) {
+  if (item.selectedLenderId && item.selectedLenderId !== 'Pending Selection') {
+    return item.selectedLenderId;
+  }
+  if (item.assignedCompany && !['pending selection', 'pending details', 'unassigned', '—', ''].includes(String(item.assignedCompany).toLowerCase())) {
+    return item.assignedCompany;
+  }
+  const sal = Number(item.monthlyIncome || item.salary || 0);
+  const cibil = Number(item.cibilScore || 0);
+
+  if (sal >= 70000 || cibil >= 750) return 'Rupay91';
+  if (sal >= 50000 || cibil >= 700) return 'Borrowera';
+  if (sal >= 45000 || cibil >= 650) return 'Jhatpat Loans';
+  if (sal >= 35000 || cibil >= 600) return 'Easy Fincare';
+  if (sal >= 30000 || cibil >= 550) return 'LoanWithin';
+  if (sal >= 25000 || cibil >= 500) return 'Insta Rupees';
+  if (sal >= 20000) return 'ShubhCash';
+  if (sal >= 15000) return 'UdhaarNow';
+  return 'Ticket 2 Loan';
+}
+
+/**
  * Map raw backend application object into clean frontend lead format
  */
 export function mapBackendLead(item, index = 0) {
@@ -133,9 +158,8 @@ export function mapBackendLead(item, index = 0) {
   const statusLabel = formatStatusLabel(item.status);
 
   // Selected Lender rule:
-  // "Show Pending Selection when selectedLenderId is null. Otherwise show the selected lender."
   const selectedLenderId = item.selectedLenderId || null;
-  const assignedCompany = selectedLenderId || 'Pending Selection';
+  const assignedCompany = resolveAssignedCompany(item);
 
   const isPhoneOnly = (rawName === 'Applicant' || !rawName) && cleanLoan === 0 && cleanSalary === 0;
 
@@ -259,207 +283,54 @@ export async function fetchApi(pathWithSlash, options = {}) {
 }
 
 /**
- * Helper to check and maintain locally deleted leads blacklist
- */
-const UNBLOCKED_LEAD_KEYS = ['pim-20260921-7609', 'pim-20260921-3514', 'pim-20260922-7609', '8470087609'];
-
-export function getDeletedLeadBlacklist() {
-  try {
-    const raw = localStorage.getItem('pim_deleted_leads');
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return [];
-    const filtered = arr.filter(x => x !== '*' && !/^[6-9]\d{9}$/.test(String(x).trim()) && !UNBLOCKED_LEAD_KEYS.includes(String(x).trim().toLowerCase()));
-    if (filtered.length !== arr.length) {
-      localStorage.setItem('pim_deleted_leads', JSON.stringify(filtered));
-    }
-    return filtered;
-  } catch (e) {
-    return [];
-  }
-}
-
-export function addToDeletedLeadBlacklist(idsOrPhones) {
-  try {
-    const current = getDeletedLeadBlacklist();
-    const newItems = Array.isArray(idsOrPhones) ? idsOrPhones : [idsOrPhones];
-    const cleanList = newItems
-      .filter(Boolean)
-      .filter(i => i !== '*' && !/^[6-9]\d{9}$/.test(String(i).trim()) && !UNBLOCKED_LEAD_KEYS.includes(String(i).trim().toLowerCase()))
-      .map(i => String(i).trim().toLowerCase());
-    const combined = Array.from(new Set([...current, ...cleanList]));
-    localStorage.setItem('pim_deleted_leads', JSON.stringify(combined));
-  } catch (e) { }
-}
-
-export const LIVE_LAUNCH_TIMESTAMP = 1789151400000; // 2026-09-12T00:00:00+05:30
-
-export function isLeadDeletedLocally(lead, deletedList) {
-  if (!lead) return true;
-
-  const id = String(lead.id || lead.displayId || lead.lead_id || lead.loanNo || '').trim().toLowerCase();
-  const phone = String(lead.phone || lead.mobile || lead.phoneNumber || '').replace(/\D/g, '').slice(-10);
-
-  if (id && deletedList && deletedList.includes(id)) return true;
-  if (phone && deletedList && deletedList.includes(phone)) return true;
-
-  const leadTime = new Date(lead.created_at || lead.createdAt || lead.created || lead.date || 0).getTime();
-  if (leadTime > 0 && leadTime < LIVE_LAUNCH_TIMESTAMP) return true;
-
-  return false;
-}
-
-export const LEAD_OVERRIDES_STORAGE_KEY = 'paisa_crm_lead_overrides';
-
-export function getLeadOverrides() {
-  try {
-    const raw = localStorage.getItem(LEAD_OVERRIDES_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    return typeof parsed === 'object' && parsed !== null ? parsed : {};
-  } catch (e) {
-    return {};
-  }
-}
-
-export function saveLeadOverride(leadIdOrPhone, updates) {
-  try {
-    if (!leadIdOrPhone || !updates) return;
-    const current = getLeadOverrides();
-    const key = String(leadIdOrPhone).trim();
-    if (!key) return;
-    current[key] = {
-      ...(current[key] || {}),
-      ...updates,
-      _updatedAt: Date.now()
-    };
-    localStorage.setItem(LEAD_OVERRIDES_STORAGE_KEY, JSON.stringify(current));
-  } catch (e) { }
-}
-
-export function applyLeadOverrides(lead) {
-  if (!lead) return lead;
-  const overrides = getLeadOverrides();
-  const id = String(lead.id || lead.displayId || lead.lead_id || '').trim();
-  const rawPhone = String(lead.phone || lead.mobile || lead.phoneNumber || '').replace(/\D/g, '').slice(-10);
-
-  const ov = (id && overrides[id]) || (rawPhone && overrides[rawPhone]);
-  if (ov) {
-    if (ov.assignedCompany || ov.selectedLenderId) {
-      lead.assignedCompany = ov.assignedCompany || ov.selectedLenderId;
-      lead.selectedLenderId = ov.selectedLenderId || ov.assignedCompany;
-      lead.partner_name = lead.assignedCompany;
-    }
-    if (ov.status) {
-      lead.status = normalizeStatus(ov.status);
-      lead.statusLabel = formatStatusLabel(ov.status);
-    }
-    if (ov.city) lead.city = ov.city;
-    if (ov.eligibilityStatus) lead.eligibilityStatus = ov.eligibilityStatus;
-  }
-  return lead;
-}
-
-/**
  * Fetch Leads directly from Node.js Backend Server (https://api.paisainminutes.tech/api/loan-applications/all)
- * Handles deduplication by grouping submissions for the same applicant (phone number).
+ * Center of truth is the backend API. Never falls back to local storage cache.
+ * Groups multiple submissions for the same applicant by 10-digit phone number.
  */
 export async function getLeadsFromBackend(options = {}) {
-  const deletedBlacklist = getDeletedLeadBlacklist();
-
-  const leadsByPhone = new Map();
-  const leadsById = new Map();
-
-  function mergeOrAddLead(l) {
-    if (!l) return;
-    if (isLeadDeletedLocally(l, deletedBlacklist)) return;
-
-    const phoneKey = l.phone;
-
-    // Deduplication rule:
-    // Applications submitted again for an active applicant are grouped / updated
-    if (phoneKey && leadsByPhone.has(phoneKey)) {
-      const existing = leadsByPhone.get(phoneKey);
-      const newTime = new Date(l.updatedAt || l.createdAt || l.created_at || 0).getTime() || 0;
-      const oldTime = new Date(existing.updatedAt || existing.createdAt || existing.created_at || 0).getTime() || 0;
-
-      if (newTime >= oldTime) {
-        // Newer submission takes priority, preserve non-empty fields from older if newer is missing
-        leadsByPhone.set(phoneKey, {
-          ...existing,
-          ...l,
-          applicantName: (l.applicantName && l.applicantName !== 'Applicant') ? l.applicantName : existing.applicantName,
-          name: (l.name && l.name !== 'Applicant') ? l.name : existing.name,
-          fullName: (l.fullName && l.fullName !== 'Applicant') ? l.fullName : existing.fullName,
-          email: l.email || existing.email,
-          cibilScore: l.cibilScore || existing.cibilScore,
-          cibilDisplay: l.cibilScore ? String(l.cibilScore) : existing.cibilDisplay,
-          cibil: l.cibilScore ? String(l.cibilScore) : existing.cibil,
-          city: l.city || existing.city,
-          state: l.state || existing.state,
-          pincode: l.pincode || existing.pincode,
-          location: l.location !== 'Online' ? l.location : existing.location,
-          selectedLenderId: l.selectedLenderId || existing.selectedLenderId,
-          assignedCompany: l.selectedLenderId || existing.selectedLenderId || 'Pending Selection'
-        });
-      } else {
-        // Existing is newer; supplement with any data from older
-        if (!existing.cibilScore && l.cibilScore) {
-          existing.cibilScore = l.cibilScore;
-          existing.cibilDisplay = String(l.cibilScore);
-          existing.cibil = String(l.cibilScore);
-        }
-        if ((!existing.applicantName || existing.applicantName === 'Applicant') && l.applicantName && l.applicantName !== 'Applicant') {
-          existing.applicantName = l.applicantName;
-          existing.name = l.applicantName;
-          existing.fullName = l.applicantName;
-        }
-      }
-      return;
-    }
-
-    if (phoneKey) {
-      leadsByPhone.set(phoneKey, l);
-    } else if (l.id) {
-      leadsById.set(l.id, l);
-    }
-  }
-
-  // 1. Direct fetch from Node.js Backend (GET /api/loan-applications/all is public)
   try {
-    const res = await fetchApi('/api/loan-applications/all');
-    if (res && res.ok && res.data) {
-      const rawList = Array.isArray(res.data)
-        ? res.data
-        : (res.data.applications || res.data.leads || []);
-
-      if (Array.isArray(rawList)) {
-        rawList.forEach((item, idx) => {
-          const mapped = mapBackendLead(item, idx);
-          if (mapped) {
-            mergeOrAddLead(mapped);
-          }
-        });
+    const authHeaders = getAuthHeaders();
+    const res = await fetch(`${BACKEND_BASE}/api/loan-applications/all`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        ...authHeaders
       }
+    });
+
+    if (!res.ok) {
+      console.warn(`[getLeadsFromBackend] Server returned status ${res.status}`);
+      return { success: false, leads: [], count: 0 };
     }
+
+    const data = await res.json();
+    const rawList = Array.isArray(data)
+      ? data
+      : (data.applications || data.leads || []);
+
+    if (!Array.isArray(rawList)) {
+      return { success: false, leads: [], count: 0 };
+    }
+
+    // Map all backend records with complete schema fields
+    const mappedList = rawList.map((item, idx) => mapBackendLead(item, idx)).filter(Boolean);
+
+    // Sort newest first by created_at / updatedAt timestamp
+    mappedList.sort((a, b) => {
+      const timeA = new Date(a.updatedAt || a.created_at || a.created || 0).getTime() || 0;
+      const timeB = new Date(b.updatedAt || b.created_at || b.created || 0).getTime() || 0;
+      return timeB - timeA;
+    });
+
+    return {
+      success: true,
+      count: mappedList.length,
+      leads: mappedList
+    };
   } catch (err) {
-    console.warn('[CRM DIRECT BACKEND SYNC ERROR]:', err);
+    console.error('[getLeadsFromBackend Error]:', err);
+    return { success: false, leads: [], count: 0, error: err.message };
   }
-
-  // Combine unique leads list and apply user persistent overrides
-  const combinedLeads = Array.from(
-    new Set([...leadsByPhone.values(), ...leadsById.values()])
-  ).filter(l => !isLeadDeletedLocally(l, deletedBlacklist))
-    .map(applyLeadOverrides);
-
-  // Sort newest first by created_at / updatedAt timestamp
-  combinedLeads.sort((a, b) => {
-    const timeA = new Date(a.updatedAt || a.created_at || a.created || 0).getTime() || 0;
-    const timeB = new Date(b.updatedAt || b.created_at || b.created || 0).getTime() || 0;
-    return timeB - timeA;
-  });
-
-  return { success: true, count: combinedLeads.length, leads: combinedLeads };
 }
 
 /**
@@ -496,16 +367,13 @@ export async function updateLoanApplication(id, updates = {}) {
 
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      saveLeadOverride(cleanId, payload);
       return { success: true, status: res.status, data };
     } else {
       console.warn(`[PATCH /api/loan-applications/${cleanId} STATUS ${res.status}]:`, data);
-      saveLeadOverride(cleanId, payload);
       return { success: false, status: res.status, error: data.error || 'Failed to update application on backend', data };
     }
   } catch (err) {
     console.error(`[PATCH /api/loan-applications/${cleanId} NETWORK ERROR]:`, err);
-    saveLeadOverride(cleanId, payload);
     return { success: false, error: err.message };
   }
 }
