@@ -38,6 +38,7 @@ export function isUserExempt(userOrName) {
     clean.includes('admin') ||
     clean.includes('shivam') ||
     clean.includes('super') ||
+    clean.includes('partner') ||
     clean.includes('info@')
   ) {
     return true;

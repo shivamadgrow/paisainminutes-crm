@@ -198,6 +198,23 @@ if ($updatedCount === 0) {
     }
 }
 
+// Log status update or remarks to lead_partner_events
+require_once $rootPath . '/includes/partner_tracking_service.php';
+if (isset($updates['status']) || isset($updates['remarks'])) {
+    $updater = $data['updated_by'] ?? ($data['currentUser']['name'] ?? 'CRM User');
+    logPartnerEvent(
+        $targetId ?: $cleanPhone,
+        $updates['partner_id'] ?? ($updates['assignedCompany'] ?? 'partner'),
+        $updates['assignedCompany'] ?? 'Partner',
+        'status_updated',
+        [
+            'status' => $updates['status'] ?? '',
+            'remarks' => $updates['remarks'] ?? '',
+            'updated_by' => $updater
+        ]
+    );
+}
+
 echo json_encode([
     'success'      => true,
     'message'      => "Lead {$targetId} updated successfully",

@@ -37,6 +37,28 @@
   background: #94a3b8;
 }
 
+/* Specific visible scrollbar for dropdown menus */
+.dropdown-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
+  -webkit-overflow-scrolling: touch;
+}
+.dropdown-scrollbar::-webkit-scrollbar {
+  width: 8px !important;
+}
+.dropdown-scrollbar::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 8px !important;
+}
+.dropdown-scrollbar::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important;
+  border-radius: 8px !important;
+}
+.dropdown-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+}
+
+
 /* Card hover animation */
 .crm-card {
   background: #ffffff;

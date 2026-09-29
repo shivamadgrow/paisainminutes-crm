@@ -28,7 +28,9 @@ import {
   Bell, 
   Settings, 
   ChevronDown,
-  FileSpreadsheet
+  FileSpreadsheet,
+  UserCheck,
+  FileDown
 } from 'lucide-react';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 
@@ -42,7 +44,8 @@ export default function Sidebar({
   commissionCounts = {},
   onOpenOnboarding,
   isMobileOpen, 
-  setIsMobileOpen 
+  setIsMobileOpen,
+  currentUser = null
 }) {
   const [collapsedSections, setCollapsedSections] = useState(() => {
     try {
@@ -92,6 +95,92 @@ export default function Sidebar({
         : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
     }`;
   };
+
+  // 🛡️ ROLE ISOLATION: Dedicated scoped navigation for Partner role
+  if (currentUser && currentUser.role === 'Partner') {
+    const partnerId = currentUser.partnerId || 'rupay91';
+    const partnerName = currentUser.partnerName || 'Partner Portal';
+    const myLeadCount = partnerCounts[partnerId] ?? (leadCounts?.total ?? 0);
+
+    return (
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-auto ${
+        isMobileOpen ? 'translate-x-0' : '-translate-x-full'
+      } flex flex-col h-screen overflow-hidden shadow-sm select-none`}>
+        
+        {/* Brand Header with Partner badge */}
+        <div className="flex flex-col justify-center px-5 h-20 border-b border-slate-100 bg-white shrink-0">
+          <img 
+            src={paisaLogo} 
+            alt="Paisa in Minutes" 
+            className="h-8 w-auto max-w-[160px] object-contain cursor-pointer"
+            onClick={() => handleNavClick('partner-leads')}
+          />
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200 truncate">
+              {partnerName} Portal
+            </span>
+          </div>
+        </div>
+
+        {/* Scoped Partner Navigation */}
+        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-2 text-slate-700 text-xs">
+          <div className="px-2 pb-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+            Partner Workspace
+          </div>
+
+          <button 
+            onClick={() => handleNavClick('partner-leads')}
+            className={getNavItemClass('partner-leads')}
+          >
+            <div className="flex items-center gap-2.5">
+              <Users className={`w-4 h-4 ${isSelected('partner-leads') ? 'text-[#0A3977]' : 'text-slate-400 group-hover:text-slate-600'}`} />
+              <span className="font-bold">My Leads</span>
+            </div>
+            <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-blue-100 text-[#0A3977]">
+              {myLeadCount}
+            </span>
+          </button>
+
+          <a 
+            href={`/crm/api/export-partner-leads.php?partner_id=${encodeURIComponent(partnerId)}`}
+            download
+            className="group flex items-center justify-between px-3 py-2 text-xs font-medium rounded-xl text-slate-600 hover:bg-emerald-50 hover:text-emerald-900 transition-all cursor-pointer"
+            title="Export all assigned and redirected leads as CSV"
+          >
+            <div className="flex items-center gap-2.5">
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span className="font-semibold text-emerald-800">Export Leads CSV</span>
+            </div>
+            <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-emerald-100 text-emerald-800">
+              CSV
+            </span>
+          </a>
+
+          <div className="pt-4 px-2 pb-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
+            Account & Security
+          </div>
+
+          <button 
+            onClick={() => handleNavClick('profile')}
+            className={getNavItemClass('profile')}
+          >
+            <div className="flex items-center gap-2.5">
+              <UserCheck className={`w-4 h-4 ${isSelected('profile') ? 'text-[#0A3977]' : 'text-slate-400 group-hover:text-slate-600'}`} />
+              <span>Partner Profile</span>
+            </div>
+          </button>
+        </div>
+
+        {/* Footer info */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50 text-[11px] text-slate-500 text-center shrink-0">
+          <p className="font-medium text-slate-600">Paisa in Minutes</p>
+          <p className="text-[10px] text-slate-400">Scoped Partner API Gateway</p>
+        </div>
+
+      </aside>
+    );
+  }
 
   return (
     <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-slate-200 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-auto ${
@@ -220,6 +309,17 @@ export default function Sidebar({
                 <div className="flex items-center gap-2.5">
                   <FileText className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
                   <span>Partner Agreements</span>
+                </div>
+              </button>
+
+              {/* [NEW] API Delivery Logs */}
+              <button 
+                onClick={() => handleNavClick('delivery-logs')} 
+                className={getNavItemClass('delivery-logs')}
+              >
+                <div className="flex items-center gap-2.5 text-emerald-700 font-semibold">
+                  <Send className={`w-4 h-4 ${isSelected('delivery-logs') ? 'text-emerald-700' : 'text-emerald-600'}`} />
+                  <span>API Delivery Logs</span>
                 </div>
               </button>
             </div>

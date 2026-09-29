@@ -335,9 +335,6 @@ foreach ($clicksJsonCandidates as $cf) {
                 $cL = strtolower(trim((string)($cRow['lead_id'] ?? '')));
                 $cPartner = trim((string)($cRow['partner_name'] ?? ''));
                 if (!empty($cPartner) && $cPartner !== 'Paisa in Minutes') {
-                    if ($cP && empty($partnerAssignmentsByPhone[$cP])) {
-                        $partnerAssignmentsByPhone[$cP] = $cPartner;
-                    }
                     if ($cL && $cL !== 'crm' && $cL !== 'direct' && empty($partnerAssignmentsByLeadId[$cL])) {
                         $partnerAssignmentsByLeadId[$cL] = $cPartner;
                     }
@@ -406,7 +403,8 @@ if (function_exists('curl_init')) {
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     $renderJson = curl_exec($ch);
     curl_close($ch);
-    if ($renderJson) {
+
+if ($renderJson) {
         $renderData = json_decode($renderJson, true);
         $renderList = is_array($renderData) ? ($renderData['applications'] ?? $renderData['leads'] ?? $renderData) : [];
         if (is_array($renderList)) {
@@ -604,7 +602,7 @@ foreach ($allLeads as $index => $lead) {
 
     $isPhoneOnly = ($name === 'Applicant' || empty($lead['name'])) && ($cleanedLoan === 0) && ($cleanedSalary === 0) && ($cibil === '—');
     
-    // Resolve Assigned Partner:
+    // Resolve Assigned Partner (Internal assignment for follow-up):
     // 1. Check if admin manually updated lead in leads_overrides.json
     $resolvedPartner = '';
     if (!empty($lIdClean) && !empty($leadsOverridesMap[$lIdClean]['assignedCompany'])) {
@@ -613,25 +611,44 @@ foreach ($allLeads as $index => $lead) {
         $resolvedPartner = trim($leadsOverridesMap[$phone]['assignedCompany']);
     }
 
-    // 2. Check if customer clicked on an offer partner on the website (tracked by phone or lead_id)
-    if (empty($resolvedPartner) || $resolvedPartner === 'Pending Details' || $resolvedPartner === 'Pending Selection' || $resolvedPartner === 'AUTO') {
-        if (!empty($phone) && !empty($partnerAssignmentsByPhone[$phone])) {
-            $resolvedPartner = $partnerAssignmentsByPhone[$phone];
-        } elseif (!empty($lIdClean) && !empty($partnerAssignmentsByLeadId[$lIdClean])) {
-            $resolvedPartner = $partnerAssignmentsByLeadId[$lIdClean];
-        }
-    }
-
-    // 3. Check explicitCompany stored in the lead record (if valid partner)
+    // 2. Check explicitCompany stored in the lead record (if valid partner)
     if (empty($resolvedPartner) || $resolvedPartner === 'Pending Details' || $resolvedPartner === 'Pending Selection' || $resolvedPartner === 'AUTO') {
         if (!empty($explicitCompany) && !in_array(strtolower(trim($explicitCompany)), ['auto', '—', '', 'null', 'pending details', 'pending selection'])) {
             $resolvedPartner = trim($explicitCompany);
         }
     }
 
-    // 4. Default: If phone-only -> 'Pending Details', otherwise if applicant has NOT clicked an offer -> 'Pending Selection'
+    // 3. Default: If phone-only -> 'Pending Details', otherwise if applicant has not been assigned -> 'Pending Selection'
     if (empty($resolvedPartner) || $resolvedPartner === 'AUTO' || $resolvedPartner === '—') {
         $resolvedPartner = $isPhoneOnly ? 'Pending Details' : 'Pending Selection';
+    }
+
+    // Resolve Source & UTM tracking (support overrides & proper attribution)
+    $overrideSource     = !empty($lIdClean) && !empty($leadsOverridesMap[$lIdClean]['source']) ? $leadsOverridesMap[$lIdClean]['source'] : (!empty($phone) && !empty($leadsOverridesMap[$phone]['source']) ? $leadsOverridesMap[$phone]['source'] : null);
+    $overrideUtm        = !empty($lIdClean) && !empty($leadsOverridesMap[$lIdClean]['utm_source']) ? $leadsOverridesMap[$lIdClean]['utm_source'] : (!empty($phone) && !empty($leadsOverridesMap[$phone]['utm_source']) ? $leadsOverridesMap[$phone]['utm_source'] : null);
+    $overrideLeadSource = !empty($lIdClean) && !empty($leadsOverridesMap[$lIdClean]['lead_source']) ? $leadsOverridesMap[$lIdClean]['lead_source'] : (!empty($phone) && !empty($leadsOverridesMap[$phone]['lead_source']) ? $leadsOverridesMap[$phone]['lead_source'] : null);
+
+    $rawSource     = $overrideSource ?: ($lead['source'] ?? $lead['page_source'] ?? null);
+    $rawUtm        = $overrideUtm ?: ($lead['utm_source'] ?? null);
+    $rawLeadSource = $overrideLeadSource ?: ($lead['lead_source'] ?? null);
+
+    // Source resolution: check if lead genuinely originated from WhatsApp or Direct Website
+    $isWhatsAppLead = false;
+    if ((!empty($rawUtm) && stripos($rawUtm, 'whatsapp') !== false) ||
+        (!empty($rawSource) && stripos($rawSource, 'whatsapp') !== false) ||
+        (!empty($rawLeadSource) && stripos($rawLeadSource, 'whatsapp') !== false)) {
+        $isWhatsAppLead = true;
+    }
+
+    if ($isWhatsAppLead) {
+        $resolvedSource     = 'WhatsApp';
+        $resolvedLeadSource = 'WhatsApp';
+        $resolvedUtmSource  = !empty($rawUtm) && $rawUtm !== 'Direct' ? $rawUtm : 'Whatsapp-AGM';
+    } else {
+        // Direct / Website Application fallback - NEVER default to WhatsApp
+        $resolvedSource     = (!empty($rawSource) && !in_array($rawSource, ['WhatsApp', 'Whatsapp-AGM'])) ? $rawSource : 'Direct/Website';
+        $resolvedUtmSource  = (!empty($rawUtm) && $rawUtm !== 'Whatsapp-AGM') ? $rawUtm : 'Direct';
+        $resolvedLeadSource = (!empty($rawLeadSource) && $rawLeadSource !== 'WhatsApp') ? $rawLeadSource : 'Direct Website';
     }
 
     $slabInfo = getSlabAndPartner($cibil, $cleanedSalary, $resolvedPartner);
@@ -659,6 +676,11 @@ foreach ($allLeads as $index => $lead) {
     $today = date('Y-m-d');
 
     $status = trim($lead['status'] ?? 'Fresh');
+    if (!empty($lIdClean) && !empty($leadsOverridesMap[$lIdClean]['status'])) {
+        $status = trim($leadsOverridesMap[$lIdClean]['status']);
+    } elseif (!empty($phone) && !empty($leadsOverridesMap[$phone]['status'])) {
+        $status = trim($leadsOverridesMap[$phone]['status']);
+    }
     if (empty($status)) $status = 'Fresh';
 
     $leadEmail = trim((string)($lead['email'] ?? $lead['emailAddress'] ?? '—'));
@@ -678,6 +700,20 @@ foreach ($allLeads as $index => $lead) {
         'emailAddress'      => $leadEmail,
         'creditManager'     => $lead['creditManager'] ?? $lead['credit_manager'] ?? 'Unassigned',
         'pan'               => strtoupper(trim($lead['pan'] ?? '—')),
+        'dob'               => trim((string)($lead['dob'] ?? $lead['dateOfBirth'] ?? $lead['date_of_birth'] ?? '—')),
+        'dateOfBirth'       => trim((string)($lead['dateOfBirth'] ?? $lead['dob'] ?? $lead['date_of_birth'] ?? '—')),
+        'gender'            => trim((string)($lead['gender'] ?? '—')),
+        'addressType'       => trim((string)($lead['addressType'] ?? $lead['address_type'] ?? 'Rented')),
+        'address_type'      => trim((string)($lead['address_type'] ?? $lead['addressType'] ?? 'Rented')),
+        'salaryMode'        => trim((string)($lead['salaryMode'] ?? $lead['modeOfSalary'] ?? $lead['mode_of_salary'] ?? 'Bank Transfer')),
+        'modeOfSalary'      => trim((string)($lead['modeOfSalary'] ?? $lead['salaryMode'] ?? $lead['mode_of_salary'] ?? 'Bank Transfer')),
+        'mode_of_salary'    => trim((string)($lead['mode_of_salary'] ?? $lead['salaryMode'] ?? $lead['modeOfSalary'] ?? 'Bank Transfer')),
+        'companyName'       => trim((string)($lead['companyName'] ?? $lead['company_name'] ?? $lead['employer'] ?? '—')),
+        'company_name'      => trim((string)($lead['company_name'] ?? $lead['companyName'] ?? $lead['employer'] ?? '—')),
+        'haveCreditCard'    => trim((string)($lead['haveCreditCard'] ?? $lead['have_credit_card'] ?? 'No')),
+        'have_credit_card'  => trim((string)($lead['have_credit_card'] ?? $lead['haveCreditCard'] ?? 'No')),
+        'creditCardLimit'   => isset($lead['creditCardLimit']) && $lead['creditCardLimit'] !== null && $lead['creditCardLimit'] !== '' ? (int)$lead['creditCardLimit'] : (isset($lead['credit_card_limit']) && $lead['credit_card_limit'] !== null && $lead['credit_card_limit'] !== '' ? (int)$lead['credit_card_limit'] : null),
+        'credit_card_limit' => isset($lead['credit_card_limit']) && $lead['credit_card_limit'] !== null && $lead['credit_card_limit'] !== '' ? (int)$lead['credit_card_limit'] : (isset($lead['creditCardLimit']) && $lead['creditCardLimit'] !== null && $lead['creditCardLimit'] !== '' ? (int)$lead['creditCardLimit'] : null),
         'cibil'             => $cibil,
         'cibilScore'        => $cibil,
         'applied'           => $cleanedLoan,
@@ -686,13 +722,21 @@ foreach ($allLeads as $index => $lead) {
         'monthlySalary'     => $cleanedSalary,
         'sal_val'           => $salVal ?: $cleanedSalary,
         'salary_range'      => $salRange,
-        'city'              => !empty($lead['city']) && $lead['city'] !== 'Delhi NCR' ? $lead['city'] : '—',
-        'state'             => !empty($lead['state']) && $lead['state'] !== 'India' ? $lead['state'] : '—',
+        'city'              => !empty($lead['city']) && $lead['city'] !== 'Delhi NCR' ? $lead['city'] : (!empty($leadsOverridesMap[$phone]['city']) ? $leadsOverridesMap[$phone]['city'] : (!empty($leadsOverridesMap[$lIdClean]['city']) ? $leadsOverridesMap[$lIdClean]['city'] : '—')),
+        'state'             => !empty($lead['state']) && $lead['state'] !== 'India' ? $lead['state'] : (!empty($leadsOverridesMap[$phone]['state']) ? $leadsOverridesMap[$phone]['state'] : (!empty($leadsOverridesMap[$lIdClean]['state']) ? $leadsOverridesMap[$lIdClean]['state'] : 'India')),
         'pincode'           => !empty($lead['pincode']) && $lead['pincode'] !== '110001' ? $lead['pincode'] : '—',
         'employmentType'    => $lead['employmentType'] ?? $lead['employment_type'] ?? 'Salaried',
         'assignedCompany'   => $assignedCompany,
+        'partner_name'      => $assignedCompany,
+        'appliedTo'         => $lead['appliedTo'] ?? $lead['applied_to'] ?? 'Not Applied Yet',
+        'applied_to'        => $lead['applied_to'] ?? $lead['appliedTo'] ?? 'Not Applied Yet',
+        'applied_at'        => $lead['applied_at'] ?? null,
+        'clicked_partner'   => $lead['clicked_partner'] ?? null,
+        'delivery_status'   => $lead['delivery_status'] ?? 'none',
         'eligibilityStatus' => $eligibilityStatus,
-        'source'            => $lead['source'] ?? $lead['page_source'] ?? ($isPhoneOnly ? 'Apply Now (Phone Only)' : 'Check Eligibility Website'),
+        'source'            => $resolvedSource,
+        'utm_source'        => $resolvedUtmSource,
+        'lead_source'       => $resolvedLeadSource,
         'purpose'           => $lead['purpose'] ?? 'Personal Loan',
         'status'            => $status,
         'created'           => $formattedDate,
@@ -710,8 +754,14 @@ foreach ($allLeads as $index => $lead) {
             $existing['name'] = $item['name'];
             $existing['fullName'] = $item['fullName'];
         }
-        if (($existing['source'] === 'Website Application' || $existing['source'] === 'Apply Now Website') && $item['source'] === 'Check Eligibility Website') {
-            $existing['source'] = $item['source'];
+        if (!empty($item['utm_source']) && $item['utm_source'] !== 'Direct') {
+            $existing['utm_source']  = $item['utm_source'];
+            $existing['source']      = $item['source'];
+            $existing['lead_source'] = $item['lead_source'];
+        } elseif ($item['timestamp_num'] >= $existing['timestamp_num']) {
+            $existing['utm_source']  = $item['utm_source'];
+            $existing['source']      = $item['source'];
+            $existing['lead_source'] = $item['lead_source'];
         }
         if ($existing['cibil'] === '—' && $item['cibil'] !== '—') {
             $existing['cibil'] = $item['cibil'];
@@ -729,6 +779,16 @@ foreach ($allLeads as $index => $lead) {
             $existing['pincode'] = $item['pincode'];
         }
 
+        // Merge personal and application details if existing had empty / dash and incoming has real values
+        $detailFields = ['dob', 'dateOfBirth', 'gender', 'addressType', 'address_type', 'salaryMode', 'modeOfSalary', 'mode_of_salary', 'companyName', 'company_name', 'haveCreditCard', 'have_credit_card', 'creditCardLimit', 'credit_card_limit', 'pan'];
+        foreach ($detailFields as $df) {
+            if ((empty($existing[$df]) || $existing[$df] === '—' || $existing[$df] === 'null') && !empty($item[$df]) && $item[$df] !== '—' && $item[$df] !== 'null') {
+                $existing[$df] = $item[$df];
+            } elseif (!empty($item[$df]) && $item[$df] !== '—' && $item[$df] !== 'null' && $item['timestamp_num'] >= $existing['timestamp_num']) {
+                $existing[$df] = $item[$df];
+            }
+        }
+
         // If the incoming submission is newer, update timestamps and ID to show at top
         if ($item['timestamp_num'] >= $existing['timestamp_num']) {
             $existing['id'] = $item['id'];
@@ -739,9 +799,9 @@ foreach ($allLeads as $index => $lead) {
             $existing['date'] = $item['date'];
             $existing['timestamp_num'] = $item['timestamp_num'];
             if (!empty($item['status'])) $existing['status'] = $item['status'];
-            if ($item['source'] !== 'Apply Now (Phone Only)') {
-                $existing['source'] = $item['source'];
-            }
+            $existing['source'] = $item['source'];
+            $existing['utm_source'] = $item['utm_source'];
+            $existing['lead_source'] = $item['lead_source'];
             if ($item['name'] !== 'Applicant' && !empty($item['name'])) {
                 $existing['name'] = $item['name'];
                 $existing['fullName'] = $item['fullName'];
@@ -756,10 +816,16 @@ foreach ($allLeads as $index => $lead) {
             }
             if (!empty($item['assignedCompany']) && $item['assignedCompany'] !== 'Pending Details') {
                 $existing['assignedCompany'] = $item['assignedCompany'];
+                $existing['partner_name'] = $item['assignedCompany'];
             }
             if (!empty($item['eligibilityStatus']) && $item['eligibilityStatus'] !== 'Incomplete / Phone Only') {
                 $existing['eligibilityStatus'] = $item['eligibilityStatus'];
             }
+            // Preserve real appliedTo from the latest submission
+            $existing['appliedTo'] = $item['appliedTo'] ?? 'Not Applied Yet';
+            $existing['applied_to'] = $item['applied_to'] ?? 'Not Applied Yet';
+            $existing['applied_at'] = $item['applied_at'] ?? null;
+            $existing['clicked_partner'] = $item['clicked_partner'] ?? null;
         }
         $leadsByPhone[$groupKey] = $existing;
     }
@@ -811,9 +877,45 @@ foreach ($leadsByPhone as $lead) {
         if (!empty($ov['created'])) {
             $lead['created'] = $ov['created'];
         }
-        if (!empty($ov['date'])) {
-            $lead['date'] = $ov['date'];
+        // ONLY allow appliedTo override if explicitly set on this specific LEAD ID
+        if (!empty($mergedOverrides[$flId]['appliedTo'])) {
+            $lead['appliedTo'] = $mergedOverrides[$flId]['appliedTo'];
+            $lead['applied_to'] = $mergedOverrides[$flId]['appliedTo'];
         }
+        if (!empty($mergedOverrides[$flId]['clicked_partner'])) {
+            $lead['clicked_partner'] = $mergedOverrides[$flId]['clicked_partner'];
+        }
+        if (!empty($ov['delivery_status'])) {
+            $lead['delivery_status'] = $ov['delivery_status'];
+        }
+        if (!empty($ov['delivery_partner'])) {
+            $lead['delivery_partner'] = $ov['delivery_partner'];
+        }
+        if (!empty($ov['remarks'])) {
+            $lead['remarks'] = $ov['remarks'];
+        }
+        if (!empty($ov['notes'])) {
+            $lead['remarks'] = $ov['notes'];
+        }
+    }
+
+    // Determine Applied To: ONLY when customer genuinely clicked "Apply Now" on this lead
+    // Checked strictly by lead_id, NEVER by phone history!
+    $actualAppliedTo = null;
+    if (!empty($lead['appliedTo']) && $lead['appliedTo'] !== 'Not Applied Yet' && $lead['appliedTo'] !== 'Pending Selection') {
+        $actualAppliedTo = $lead['appliedTo'];
+    } elseif (!empty($lead['applied_to']) && $lead['applied_to'] !== 'Not Applied Yet' && $lead['applied_to'] !== 'Pending Selection') {
+        $actualAppliedTo = $lead['applied_to'];
+    } elseif (!empty($flId) && !empty($partnerAssignmentsByLeadId[$flId])) {
+        $actualAppliedTo = $partnerAssignmentsByLeadId[$flId];
+    } elseif (!empty($flId) && !empty($mergedOverrides[$flId]['appliedTo'])) {
+        $actualAppliedTo = $mergedOverrides[$flId]['appliedTo'];
+    }
+
+    $lead['appliedTo'] = $actualAppliedTo ?: 'Not Applied Yet';
+    $lead['applied_to'] = $actualAppliedTo ?: 'Not Applied Yet';
+    if (empty($lead['delivery_status'])) {
+        $lead['delivery_status'] = 'none';
     }
 
     $name = $lead['name'];
@@ -829,6 +931,38 @@ foreach ($leadsByPhone as $lead) {
     $lead['avatarBg'] = $avatarColors[abs(crc32($name)) % count($avatarColors)];
     unset($lead['timestamp_num']);
     $formattedLeads[] = $lead;
+}
+
+// Strict Partner Scoping (Requirement 2: Partner sirf apni assigned/clicked leads dekhe, query hamesha partner_id se scoped, koi bypass nahi)
+$requestedPartner = isset($_GET['partner_id']) ? trim($_GET['partner_id']) : (isset($_GET['partner']) ? trim($_GET['partner']) : '');
+if (!empty($requestedPartner) && $requestedPartner !== 'all' && $requestedPartner !== 'super_admin') {
+    $cleanReq = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $requestedPartner));
+    $scopedLeads = [];
+    foreach ($formattedLeads as $l) {
+        $assigned = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', (string)($l['assignedCompany'] ?? '')));
+        $applied = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', (string)($l['appliedTo'] ?? '')));
+        $clicked = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', (string)($l['clicked_partner'] ?? '')));
+
+        $isPartnerMatch = ($assigned === $cleanReq || strpos($assigned, $cleanReq) !== false)
+                       || ($applied === $cleanReq || strpos($applied, $cleanReq) !== false)
+                       || ($clicked === $cleanReq || strpos($clicked, $cleanReq) !== false);
+
+        if ($isPartnerMatch) {
+            // Mask Phone number jab tak actually applied na ho:
+            // "Columns: Name, Phone (masked jab tak applied na ho), Applied Amount, Salary, City/Pincode, CIBIL, Status, Date."
+            $hasActuallyApplied = ($applied === $cleanReq || strpos($applied, $cleanReq) !== false || $clicked === $cleanReq);
+            if (!$hasActuallyApplied) {
+                $rawP = (string)($l['phone'] ?? '');
+                $l['phone'] = strlen($rawP) >= 4 ? ('XXXXXX' . substr($rawP, -4)) : 'XXXXXXXXXX';
+                $l['mobile'] = '+91 ' . $l['phone'];
+                $l['is_phone_masked'] = true;
+            } else {
+                $l['is_phone_masked'] = false;
+            }
+            $scopedLeads[] = $l;
+        }
+    }
+    $formattedLeads = $scopedLeads;
 }
 
 // Sort newest first

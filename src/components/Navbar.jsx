@@ -91,7 +91,7 @@ export default function Navbar({
     {
       id: 2,
       type: 'system',
-      title: 'Render Cloud DB Sync',
+      title: 'Backend API Sync (api.paisainminutes.tech)',
       desc: 'Real-time database polling active (3s interval)',
       time: '2m ago',
       unread: false,

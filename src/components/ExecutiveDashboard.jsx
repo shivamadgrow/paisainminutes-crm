@@ -115,14 +115,17 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
     try {
       setIsLoadingApi(true);
       const endpoints = [
-        `/api/dashboard/executive-overview?period=${period}&startDate=${customStart}&endDate=${customEnd}`,
+        `/api/executive-overview.php?period=${period}&startDate=${customStart}&endDate=${customEnd}`,
         `/crm/api/executive-overview.php?period=${period}&startDate=${customStart}&endDate=${customEnd}`,
         `/admin/api/executive-overview.php?period=${period}&startDate=${customStart}&endDate=${customEnd}`
       ];
 
       for (const ep of endpoints) {
         try {
-          const res = await fetch(ep, { cache: 'no-store' });
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          const res = await fetch(ep, { cache: 'no-store', signal: controller.signal });
+          clearTimeout(timeoutId);
           if (res.ok) {
             const json = await res.json();
             if (json && json.success) {

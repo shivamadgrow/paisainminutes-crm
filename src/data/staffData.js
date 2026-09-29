@@ -3,6 +3,7 @@ export const INITIAL_ROLES = [
   { id: 'AD', code: 'AD', name: 'Admin', color: 'bg-indigo-600', desc: 'Full administrative access and operational management' },
   { id: 'CR', code: 'CR', name: 'Credit Manager', color: 'bg-blue-600', desc: 'Underwriting, credit assessment & loan approvals' },
   { id: 'TE', code: 'TE', name: 'Telecaller', color: 'bg-blue-600', desc: 'Inbound/outbound lead calls, callbacks & verification' },
+  { id: 'PA', code: 'PA', name: 'Partner', color: 'bg-emerald-600', desc: 'Partner portal login with scoped leads access' },
 ];
 
 export const INITIAL_STAFF_MEMBERS = [

@@ -26,7 +26,7 @@ export default function PartnerAgreementsView({ onOpenOnboarding }) {
     agreementNumber: '',
     signedDate: new Date().toISOString().slice(0, 10),
     validUntil: '2027-03-31',
-    rateSheet: '2.5% Flat',
+    rateSheet: '6.0% Flat',
     paymentTerms: 'Bi-monthly',
     fileName: ''
   });

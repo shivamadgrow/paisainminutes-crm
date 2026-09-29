@@ -8,7 +8,7 @@ export const INITIAL_GENERAL_SETTINGS = {
   supportEmail: 'info@paisainminutes.com',
   supportMobile: '+91 9990666578',
   headOffice: '3rd Floor, Adgrow Plaza, Barakhamba Road, Connaught Place, New Delhi - 110001',
-  defaultCommissionRate: 2.5, // 2.5%
+  defaultCommissionRate: 6.0, // 6.0%
   defaultGstRate: 18, // 18%
   currency: 'INR (₹)',
   shiftStartTime: '09:00',

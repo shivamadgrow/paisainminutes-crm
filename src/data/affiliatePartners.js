@@ -19,8 +19,8 @@ export const AFFILIATE_PARTNERS = [
     description: 'Fast digital approvals for prime applicants with salary >= ₹50,000.',
     website: 'https://rupay91.com',
     applyUrl: 'https://www.rupay91.com/applynow.php?source=paisainminutes&utm_source=paisainminutes&ref=paisainminutes&affiliate=paisainminutes&sub_id=CRM&channel=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=rupay91_crm',
-    commissionRate: '2.8%',
-    commissionPct: 0.028,
+    commissionRate: '6.0%',
+    commissionPct: 0.06,
     paymentStatus: 'Paid'
   },
   {
@@ -41,8 +41,8 @@ export const AFFILIATE_PARTNERS = [
     description: 'Direct account credit in minutes with speedy digital verification.',
     website: 'https://borrowera.com',
     applyUrl: 'https://www.borrowera.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=borrowera_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '2.7%',
-    commissionPct: 0.027,
+    commissionRate: '6.0%',
+    commissionPct: 0.06,
     paymentStatus: 'Pending'
   },
   {
@@ -63,8 +63,8 @@ export const AFFILIATE_PARTNERS = [
     description: 'Fast personal loan process with minimal documentation.',
     website: 'https://easyfincare.com',
     applyUrl: 'https://www.easyfincare.com/apply-now?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=easyfincare_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '2.4%',
-    commissionPct: 0.024,
+    commissionRate: '6.0%',
+    commissionPct: 0.06,
     paymentStatus: 'Paid'
   },
   {
@@ -85,8 +85,8 @@ export const AFFILIATE_PARTNERS = [
     description: 'Paperless fast-track disbursals with zero collateral needed.',
     website: 'https://loanwithin.com',
     applyUrl: 'https://www.loanwithin.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=loanwithin_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '2.6%',
-    commissionPct: 0.026,
+    commissionRate: '6.0%',
+    commissionPct: 0.06,
     paymentStatus: 'Pending'
   },
   {
@@ -107,8 +107,8 @@ export const AFFILIATE_PARTNERS = [
     description: 'Paperless instant sanction & high approval online credit line.',
     website: 'https://instarupees.com',
     applyUrl: 'https://www.instarupees.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=instarupees_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '2.5%',
-    commissionPct: 0.025,
+    commissionRate: '6.0%',
+    commissionPct: 0.06,
     paymentStatus: 'Pending'
   },
   {
@@ -129,8 +129,8 @@ export const AFFILIATE_PARTNERS = [
     description: '100% online application with direct bank credit on same day.',
     website: 'https://shubhcash.com',
     applyUrl: 'https://www.shubhcash.com/apply-now?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=shubhcash_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '2.3%',
-    commissionPct: 0.023,
+    commissionRate: '6.0%',
+    commissionPct: 0.06,
     paymentStatus: 'Paid'
   },
   {
@@ -151,8 +151,8 @@ export const AFFILIATE_PARTNERS = [
     description: 'Instant pre-matched credit limit with minimal KYC required.',
     website: 'https://udhaarnow.com',
     applyUrl: 'https://www.udhaarnow.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=udhaarnow_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '2.2%',
-    commissionPct: 0.022,
+    commissionRate: '6.0%',
+    commissionPct: 0.06,
     paymentStatus: 'Paid'
   },
   {
@@ -173,8 +173,8 @@ export const AFFILIATE_PARTNERS = [
     description: 'Flexible personal loans for applicants with salary >= ₹30,000.',
     website: 'https://jhatpatloans.com',
     applyUrl: 'https://www.jhatpatloans.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=jhatpatloans_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '2.4%',
-    commissionPct: 0.024,
+    commissionRate: '6.0%',
+    commissionPct: 0.06,
     paymentStatus: 'Paid'
   },
   {
@@ -195,8 +195,8 @@ export const AFFILIATE_PARTNERS = [
     description: 'Smart, simple and secure personal loans with salary >= ₹25,000.',
     website: 'https://ticket2loan.com',
     applyUrl: 'https://www.ticket2loan.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=ticket2loan_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '2.5%',
-    commissionPct: 0.025,
+    commissionRate: '6.0%',
+    commissionPct: 0.06,
     paymentStatus: 'Pending'
   }
 ];
@@ -245,8 +245,8 @@ export function getPartnerMeta(partnerNameOrId) {
     accentColor: '#7C3AED',
     accentBg: 'bg-purple-50',
     gradient: 'from-purple-600 to-indigo-700',
-    commissionRate: '2.5%',
-    commissionPct: 0.025,
+    commissionRate: '6.0%',
+    commissionPct: 0.06,
     paymentStatus: 'Pending'
   };
 }

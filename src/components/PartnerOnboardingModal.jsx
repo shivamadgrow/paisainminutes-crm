@@ -22,8 +22,8 @@ export default function PartnerOnboardingModal({ isOpen, onClose, onAddPartner }
     email: '',
     mobile: '',
     model: 'flat_pct',
-    commissionRate: '2.5%',
-    commissionPct: 0.025,
+    commissionRate: '6.0%',
+    commissionPct: 0.06,
     perLeadFee: 1500,
     apiEndpoint: '',
     webhookUrl: '',
@@ -264,7 +264,7 @@ export default function PartnerOnboardingModal({ isOpen, onClose, onAddPartner }
                     onChange={(e) => setFormData(p => ({ ...p, commissionPct: Number(e.target.value) / 100 }))}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 outline-none"
                   />
-                  <p className="text-[10px] text-slate-500 mt-0.5">e.g. 2.5% on approved disbursed amount</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">e.g. 6.0% on approved disbursed amount</p>
                 </div>
               ) : (
                 <div>

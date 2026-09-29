@@ -43,7 +43,7 @@ export default function CommissionSummaryView({ leads = [], onSelectCompany }) {
         return sum + cleanLoanAmount(l.loanAmount || l.applied || 50000);
       }, 0);
 
-      const ratePct = partner.commissionPct || 0.025;
+      const ratePct = partner.commissionPct || 0.06;
       const commissionEarned = Math.round(disbursal * ratePct);
 
       return {

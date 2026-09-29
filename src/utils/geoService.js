@@ -31,9 +31,12 @@ export async function getLiveSecurityDetails() {
     else if (ua.includes('Safari')) result.browser = 'Safari';
   } catch (e) {}
 
-  // 2. Fetch Live IP and Location from IP-API
+  // 2. Fetch Live IP and Location from IP-API with strict 1500ms timeout
   try {
-    const response = await fetch('https://ipapi.co/json/', { timeout: 3000 });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 1500);
+    const response = await fetch('https://ipapi.co/json/', { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (response.ok) {
       const data = await response.json();
       if (data.ip) result.ip = data.ip;
@@ -46,7 +49,7 @@ export async function getLiveSecurityDetails() {
       if (data.org) result.isp = data.org;
     }
   } catch (e) {
-    // Fallback if network blocked
+    // Fallback if network blocked or timed out
   }
 
   // 3. Attempt precise browser HTML5 Geolocation (if granted)

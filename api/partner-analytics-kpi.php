@@ -39,15 +39,15 @@ if (file_exists($leadsFile)) {
 }
 
 $PARTNERS_CONFIG = [
-    ['id' => 'rupay91', 'name' => 'Rupay91', 'rateStr' => '2.8%', 'ratePct' => 0.028, 'status' => 'Paid'],
-    ['id' => 'jhatpatloans', 'name' => 'Jhatpat Loans', 'rateStr' => '2.4%', 'ratePct' => 0.024, 'status' => 'Paid'],
-    ['id' => 'instarupees', 'name' => 'Insta Rupees', 'rateStr' => '2.5%', 'ratePct' => 0.025, 'status' => 'Pending'],
-    ['id' => 'udhaarnow', 'name' => 'UdhaarNow', 'rateStr' => '2.2%', 'ratePct' => 0.022, 'status' => 'Paid'],
-    ['id' => 'loanwithin', 'name' => 'LoanWithin', 'rateStr' => '2.6%', 'ratePct' => 0.026, 'status' => 'Pending'],
-    ['id' => 'shubhcash', 'name' => 'ShubhCash', 'rateStr' => '2.3%', 'ratePct' => 0.023, 'status' => 'Paid'],
-    ['id' => 'borrowera', 'name' => 'Borrowera', 'rateStr' => '2.7%', 'ratePct' => 0.027, 'status' => 'Pending'],
-    ['id' => 'easyfincare', 'name' => 'Easy Fincare', 'rateStr' => '2.4%', 'ratePct' => 0.024, 'status' => 'Paid'],
-    ['id' => 'ticket2loan', 'name' => 'Ticket 2 Loan', 'rateStr' => '2.5%', 'ratePct' => 0.025, 'status' => 'Pending']
+    ['id' => 'rupay91', 'name' => 'Rupay91', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'status' => 'Paid'],
+    ['id' => 'jhatpatloans', 'name' => 'Jhatpat Loans', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'status' => 'Paid'],
+    ['id' => 'instarupees', 'name' => 'Insta Rupees', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'status' => 'Pending'],
+    ['id' => 'udhaarnow', 'name' => 'UdhaarNow', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'status' => 'Paid'],
+    ['id' => 'loanwithin', 'name' => 'LoanWithin', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'status' => 'Pending'],
+    ['id' => 'shubhcash', 'name' => 'ShubhCash', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'status' => 'Paid'],
+    ['id' => 'borrowera', 'name' => 'Borrowera', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'status' => 'Pending'],
+    ['id' => 'easyfincare', 'name' => 'Easy Fincare', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'status' => 'Paid'],
+    ['id' => 'ticket2loan', 'name' => 'Ticket 2 Loan', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'status' => 'Pending']
 ];
 
 function cleanLoanAmount($amt) {

@@ -32,10 +32,113 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+require_once __DIR__ . '/config/env.php';
+
+/**
+ * Automatically fetch Credit Score from Credit Bureau Service (http://145.223.23.114:4000)
+ * Uses strict fast timeouts (2s connect, 3s execution) so lead submission is never delayed or blocked.
+ */
+function fetchBureauCreditScore($phone, $name = 'Applicant', $pan = '', $email = '') {
+    if (!function_exists('curl_init')) {
+        return ['success' => false, 'error' => 'cURL not available'];
+    }
+    
+    $cleanPhone = preg_replace('/[^0-9]/', '', (string)$phone);
+    if (strlen($cleanPhone) > 10) {
+        $cleanPhone = substr($cleanPhone, -10);
+    }
+    if (strlen($cleanPhone) !== 10) {
+        return ['success' => false, 'error' => 'Invalid phone number'];
+    }
+
+    $apiUrl = getEnvVal('CREDIT_SCORE_API_URL', 'http://145.223.23.114:4000/api/credit-score/check');
+
+    $payload = [
+        'mobile'  => $cleanPhone,
+        'phone'   => $cleanPhone,
+        'name'    => (!empty($name) && $name !== 'Applicant') ? $name : 'Valued Customer',
+        'consent' => true
+    ];
+    if (!empty($pan) && $pan !== '—' && preg_match('/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i', $pan)) {
+        $payload['pan'] = strtoupper($pan);
+    }
+    if (!empty($email) && $email !== '—' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $payload['email'] = $email;
+    }
+
+    $ch = curl_init($apiUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Accept: application/json'
+    ]);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 3);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+
+    $rawResponse = curl_exec($ch);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    if ($rawResponse === false || !empty($curlErr)) {
+        return [
+            'success' => false,
+            'error'   => 'Bureau server connection timeout: ' . ($curlErr ?: 'timeout')
+        ];
+    }
+
+    $resData = json_decode($rawResponse, true);
+    if (!is_array($resData)) {
+        return ['success' => false, 'error' => 'Invalid bureau response format'];
+    }
+
+    // Check for score across common keys
+    $score = null;
+    if (isset($resData['score']) && is_numeric($resData['score'])) {
+        $score = (int)$resData['score'];
+    } elseif (isset($resData['creditScore']) && is_numeric($resData['creditScore'])) {
+        $score = (int)$resData['creditScore'];
+    } elseif (isset($resData['cibilScore']) && is_numeric($resData['cibilScore'])) {
+        $score = (int)$resData['cibilScore'];
+    } elseif (isset($resData['data']['score']) && is_numeric($resData['data']['score'])) {
+        $score = (int)$resData['data']['score'];
+    } elseif (isset($resData['report']['score']) && is_numeric($resData['report']['score'])) {
+        $score = (int)$resData['report']['score'];
+    }
+
+    if ($score !== null && $score >= 300 && $score <= 900) {
+        return [
+            'success' => true,
+            'score'   => $score,
+            'report'  => $resData
+        ];
+    }
+
+    return [
+        'success'        => false,
+        'error'          => $resData['error'] ?? 'Bureau returned no score',
+        'providerStatus' => $resData['providerStatus'] ?? null,
+        'details'        => $resData
+    ];
+}
+
 // 1. Capture Form Inputs (supports JSON & URL-encoded POST)
 $rawInput = file_get_contents('php://input');
 $jsonInput = json_decode($rawInput, true);
-$data = is_array($jsonInput) ? array_merge($_POST, $jsonInput) : $_POST;
+if (is_array($jsonInput)) {
+    $data = array_merge($_POST, $jsonInput);
+} else {
+    $data = $_POST;
+    if (empty($data) && !empty($rawInput)) {
+        parse_str($rawInput, $parsed);
+        if (is_array($parsed) && !empty($parsed)) {
+            $data = $parsed;
+        }
+    }
+}
+
 
 // Sanitize and extract inputs with fallback keys
 $phone = preg_replace('/[^0-9]/', '', (string)($data['phone'] ?? $data['mobile'] ?? $data['phoneNumber'] ?? $data['mobile_number'] ?? ''));
@@ -55,6 +158,7 @@ if (strlen($phone) !== 10 || !in_array($phone[0], ['6', '7', '8', '9'])) {
     exit;
 }
 
+
 $name          = trim((string)($data['name'] ?? $data['fullName'] ?? $data['full_name'] ?? 'Applicant'));
 if ($name === '') $name = 'Applicant';
 $email         = trim((string)($data['email'] ?? $data['emailAddress'] ?? $data['email_address'] ?? '—'));
@@ -67,18 +171,66 @@ $pincode       = trim((string)($data['pincode'] ?? $data['pin_code'] ?? '—'));
 $city          = trim((string)($data['city'] ?? '—'));
 $state         = trim((string)($data['state'] ?? 'India'));
 $employmentType= trim((string)($data['employmentType'] ?? $data['employment_type'] ?? 'Salaried'));
-$dob           = trim((string)($data['dob'] ?? $data['dateOfBirth'] ?? $data['date_of_birth'] ?? '—'));
-$gender        = trim((string)($data['gender'] ?? '—'));
-$addressType   = trim((string)($data['addressType'] ?? $data['address_type'] ?? 'Rented'));
-$salaryMode    = trim((string)($data['modeOfSalary'] ?? $data['salaryMode'] ?? $data['salary_mode'] ?? $data['mode_of_salary'] ?? 'Bank Transfer'));
-$companyName   = trim((string)($data['companyName'] ?? $data['company_name'] ?? $data['employer'] ?? '—'));
+$dob           = trim((string)($data['dob'] ?? $data['dateOfBirth'] ?? $data['date_of_birth'] ?? ''));
+if ($dob === '') $dob = '—';
+$gender        = trim((string)($data['gender'] ?? ''));
+if ($gender === '') $gender = '—';
+$addressType   = trim((string)($data['addressType'] ?? $data['address_type'] ?? ''));
+if ($addressType === '') $addressType = 'Rented';
+$salaryMode    = trim((string)($data['modeOfSalary'] ?? $data['salaryMode'] ?? $data['salary_mode'] ?? $data['mode_of_salary'] ?? ''));
+if ($salaryMode === '') $salaryMode = 'Bank Transfer';
+$companyName   = trim((string)($data['companyName'] ?? $data['company_name'] ?? $data['employer'] ?? ''));
+if ($companyName === '') $companyName = '—';
 $pan           = strtoupper(trim((string)($data['pan'] ?? $data['panNumber'] ?? $data['pan_number'] ?? '—')));
 $haveCreditCard= trim((string)($data['haveCreditCard'] ?? $data['have_credit_card'] ?? $data['creditCard'] ?? 'No'));
 $creditCardLimit = isset($data['creditCardLimit']) && $data['creditCardLimit'] !== null && $data['creditCardLimit'] !== '' 
     ? (int)$data['creditCardLimit'] 
     : (isset($data['credit_card_limit']) && $data['credit_card_limit'] !== null && $data['credit_card_limit'] !== '' 
         ? (int)$data['credit_card_limit'] : null);
-$pageSource    = trim((string)($data['source'] ?? ($cibil !== '—' ? 'Check Eligibility Website' : 'Apply Now (Website)')));
+
+// Automatically fetch Credit Bureau CIBIL score for this mobile number
+$bureauResult = fetchBureauCreditScore($phone, $name, $pan, $email);
+$cibilAutoFetched = false;
+$bureauScore = null;
+$bureauReport = null;
+
+if (!empty($bureauResult['success']) && !empty($bureauResult['score'])) {
+    $bureauScore = (int)$bureauResult['score'];
+    $bureauReport = $bureauResult['report'] ?? null;
+    $cibil = (string)$bureauScore;
+    $cibilAutoFetched = true;
+    $cibilStatus = 'Bureau Verified (' . $bureauScore . ')';
+} else {
+    $cibilStatus = !empty($bureauResult['error']) ? 'Bureau: ' . $bureauResult['error'] : 'Pending Bureau Whitelist';
+    if (!empty($cibil) && $cibil !== '—') {
+        $cibilStatus = 'Self-reported (' . $cibil . ') [' . $cibilStatus . ']';
+    }
+}
+
+// Extract UTM Source and Lead Source (Differentiate WhatsApp vs Direct Website)
+$utmSource = trim((string)($data['utm_source'] ?? $_GET['utm_source'] ?? $_SESSION['pim_utm_source'] ?? $_COOKIE['pim_utm_source'] ?? ''));
+
+if (empty($utmSource) && !empty($_SERVER['HTTP_REFERER'])) {
+    if (stripos($_SERVER['HTTP_REFERER'], 'whatsapp') !== false) {
+        $utmSource = 'Whatsapp-AGM';
+    }
+}
+
+$incomingSource = trim((string)($data['source'] ?? ''));
+
+if (!empty($utmSource) && $utmSource !== 'Direct') {
+    $finalSource = $utmSource;
+    $leadSource  = 'WhatsApp';
+} elseif (!empty($incomingSource) && !in_array($incomingSource, ['Apply Now (Website)', 'Check Eligibility Website', 'Modal Quick Apply', 'Website Application'])) {
+    $finalSource = $incomingSource;
+    $leadSource  = (stripos($incomingSource, 'whatsapp') !== false) ? 'WhatsApp' : $incomingSource;
+} else {
+    // Current primary campaign: WhatsApp
+    $finalSource = 'WhatsApp';
+    $leadSource  = 'WhatsApp';
+    $utmSource   = 'Whatsapp-AGM';
+}
+$pageSource    = $finalSource;
 $explicitCompany = trim((string)($data['assignedCompany'] ?? $data['company'] ?? $data['partner'] ?? ''));
 
 // Detect if this is a Step-1 Phone-Only lead or full eligibility submission
@@ -213,9 +365,15 @@ function getSlabInfo($salaryStr, $cibilStr) {
 
 if ($isPhoneOnly) {
     $cleanLoan = 0;
-    $slabData = ['slab' => 0, 'cibil_range' => '—', 'salary_range' => '—', 'eligibility' => 'Incomplete / Phone Only', 'sal_val' => 0];
+    if ($cibilAutoFetched && $bureauScore) {
+        $slabData = getSlabInfo('', (string)$bureauScore);
+    } else {
+        $slabData = ['slab' => 0, 'cibil_range' => '—', 'salary_range' => '—', 'eligibility' => 'Incomplete / Phone Only', 'sal_val' => 0];
+    }
     $assignedCompany = !empty($explicitCompany) && $explicitCompany !== '—' && $explicitCompany !== 'Pending Details' ? $explicitCompany : 'Pending Details';
-    $cibil = '—';
+    if (!$cibilAutoFetched) {
+        $cibil = '—';
+    }
     $monthlySalary = '—';
 } else {
     $slabData  = getSlabInfo($monthlySalary, $cibil);
@@ -319,6 +477,9 @@ $leadRecord = [
     'cibil_score'       => $cibil,
     'cibil'             => $cibil,
     'cibilScore'        => $cibil,
+    'cibil_auto_fetched'=> $cibilAutoFetched,
+    'cibil_status'      => $cibilStatus,
+    'bureau_score'      => $bureauScore,
     'monthly_salary'    => $monthlySalary,
     'monthlySalary'     => $slabData['sal_val'],
     'salary'            => $slabData['sal_val'],
@@ -336,11 +497,15 @@ $leadRecord = [
     'partner_name'      => $assignedCompany,
     'purpose'           => 'Personal Loan',
     'status'            => 'Fresh',
-    'source'            => $pageSource,
+    'source'            => $finalSource,
+    'utm_source'        => $utmSource,
+    'lead_source'       => $leadSource,
+    'case_type'         => 'Fresh',
     'created'           => $formattedDate,
     'created_at'        => $timestamp,
     'date'              => $isoDate
 ];
+
 
 // 4. Helper to upsert (update or insert) lead uniquely by phone number
 function upsertLeadInList(&$list, $newLead, $phone) {
@@ -372,6 +537,43 @@ function upsertLeadInList(&$list, $newLead, $phone) {
         if (!empty($existing['status']) && $existing['status'] !== 'Fresh' && $newLead['status'] === 'Fresh') {
             $newLead['status'] = $existing['status'];
         }
+
+        // Preserve or update Source & UTM parameters
+        if (!empty($newLead['utm_source']) && $newLead['utm_source'] !== 'Direct') {
+            $newLead['source']      = $newLead['source'];
+            $newLead['utm_source']  = $newLead['utm_source'];
+            $newLead['lead_source'] = $newLead['lead_source'];
+        } elseif (!empty($existing['utm_source']) && $existing['utm_source'] !== 'Direct') {
+            // Keep existing UTM source (e.g. Whatsapp-AGM)
+            $newLead['source']      = $existing['source'];
+            $newLead['utm_source']  = $existing['utm_source'];
+            $newLead['lead_source'] = $existing['lead_source'] ?? 'WhatsApp';
+        }
+
+        // Preserve personal and application fields if existing has valid data and incoming is missing or dash
+        $fieldsToPreserve = [
+            'dob', 'dateOfBirth', 'gender', 'addressType', 'address_type', 
+            'salaryMode', 'modeOfSalary', 'mode_of_salary', 
+            'companyName', 'company_name', 
+            'haveCreditCard', 'have_credit_card', 'creditCardLimit', 'credit_card_limit', 
+            'pan', 'email', 'emailAddress', 'pincode', 'city', 'state', 'employmentType'
+        ];
+        foreach ($fieldsToPreserve as $fp) {
+            if ((empty($newLead[$fp]) || $newLead[$fp] === '—' || $newLead[$fp] === 'null') && !empty($existing[$fp]) && $existing[$fp] !== '—' && $existing[$fp] !== 'null') {
+                $newLead[$fp] = $existing[$fp];
+            }
+        }
+
+        // Preserve existing CIBIL if new lead does not have a fresh auto-fetched bureau score
+        if (empty($newLead['cibil_auto_fetched']) && (!empty($existing['cibil']) && $existing['cibil'] !== '—')) {
+            $newLead['cibil'] = $existing['cibil'];
+            $newLead['cibil_score'] = $existing['cibil_score'] ?? $existing['cibil'];
+            $newLead['cibilScore'] = $existing['cibilScore'] ?? $existing['cibil'];
+            $newLead['cibil_status'] = $existing['cibil_status'] ?? 'Retained existing CIBIL';
+            if (isset($existing['bureau_score'])) {
+                $newLead['bureau_score'] = $existing['bureau_score'];
+            }
+        }
         
         // Remove old position and place updated record at top
         array_splice($list, $foundIndex, 1);
@@ -383,6 +585,7 @@ function upsertLeadInList(&$list, $newLead, $phone) {
 
 // 5. Save IMMEDIATELY to ALL local stores (ultra-fast, under 1ms)
 $allStoreFiles = array_unique([
+    __DIR__ . '/leads_store.json',
     __DIR__ . '/data/leads.json',
     __DIR__ . '/crm/leads_store.json',
     __DIR__ . '/admin/leads_store.json',
@@ -434,8 +637,9 @@ foreach ($unblackDeletedStores as $delStore) {
     }
 }
 
-// 5c. Save accurate submission timestamp to leads_overrides.json so CRM always displays accurate IST time
+// 5c. Save accurate submission timestamp & source to leads_overrides.json
 $overrideFiles = array_unique([
+    __DIR__ . '/leads_overrides.json',
     __DIR__ . '/data/leads_overrides.json',
     __DIR__ . '/crm/leads_overrides.json',
     __DIR__ . '/admin/leads_overrides.json',
@@ -450,16 +654,24 @@ foreach ($overrideFiles as $of) {
     if (file_exists($of)) {
         $overrides = json_decode(@file_get_contents($of), true) ?: [];
     }
-    $timePatch = [
-        'created_at' => $timestamp,
-        'created'    => $formattedDate,
-        'date'       => $isoDate
+    $patchData = [
+        'created_at'        => $timestamp,
+        'created'           => $formattedDate,
+        'date'              => $isoDate,
+        'source'            => $finalSource,
+        'utm_source'        => $utmSource,
+        'lead_source'       => $leadSource,
+        'cibil'             => $cibil,
+        'cibil_score'       => $cibil,
+        'cibil_status'      => $cibilStatus,
+        'cibil_auto_fetched'=> $cibilAutoFetched
     ];
+
     if (!empty($phone)) {
-        $overrides[$phone] = array_merge($overrides[$phone] ?? [], $timePatch);
+        $overrides[$phone] = array_merge($overrides[$phone] ?? [], $patchData);
     }
     if (!empty($leadId)) {
-        $overrides[$leadId] = array_merge($overrides[$leadId] ?? [], $timePatch);
+        $overrides[$leadId] = array_merge($overrides[$leadId] ?? [], $patchData);
     }
     @file_put_contents($of, json_encode($overrides, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 }
@@ -529,36 +741,48 @@ $csvRow = [
     $assignedCompany,
     $slabData['eligibility'],
     $_SERVER['REMOTE_ADDR'] ?? '::1',
-    'Fresh'
+    'Fresh',
+    $finalSource
 ];
 $fp = fopen($csvLog, 'a');
 if ($fp) {
     if (filesize($csvLog) === 0) {
-        fputcsv($fp, ['Timestamp', 'Name', 'Email', 'Phone', 'Amount', 'Partner', 'Eligibility', 'IP', 'Status']);
+        fputcsv($fp, ['Timestamp', 'Name', 'Email', 'Phone', 'Amount', 'Partner', 'Eligibility', 'IP', 'Status', 'Source']);
     }
     fputcsv($fp, $csvRow);
     fclose($fp);
 }
 
-// 7. Construct redirect URL for offers page
+// 8. Construct redirect URL for offers page
 $redirectUrl = 'loan-offers.php?lead_id=' . urlencode($leadId) . 
                '&phone=' . urlencode($phone) . 
                '&salary=' . urlencode($monthlySalary ?: $slabData['salary_range']) . 
                '&cibil=' . urlencode($cibil ?: $slabData['cibil_range']) .
-               '&slab=' . urlencode((string)$slabData['slab']);
+               '&slab=' . urlencode((string)$slabData['slab']) .
+               (!empty($utmSource) && $utmSource !== 'Direct' ? '&utm_source=' . urlencode($utmSource) : '');
 
 // 8. Return JSON response to frontend
 echo json_encode([
-    'status'        => 'success',
-    'success'       => true,
-    'message'       => 'Lead submitted successfully!',
-    'lead_id'       => $leadId,
-    'lead'          => $leadRecord,
-    'slab'          => $slabData['slab'],
-    'eligibility'   => $slabData['eligibility'],
-    'data'          => [
-        'lead_id'      => $leadId,
-        'redirect_url' => $redirectUrl
+    'status'             => 'success',
+    'success'            => true,
+    'message'            => 'Lead submitted successfully!',
+    'lead_id'            => $leadId,
+    'lead'               => $leadRecord,
+    'cibil'              => $cibil,
+    'cibilScore'         => $cibil,
+    'cibil_auto_fetched' => $cibilAutoFetched,
+    'cibil_status'       => $cibilStatus,
+    'bureau_score'       => $bureauScore,
+    'slab'               => $slabData['slab'],
+    'eligibility'        => $slabData['eligibility'],
+    'data'               => [
+        'lead_id'            => $leadId,
+        'cibil'              => $cibil,
+        'cibilScore'         => $cibil,
+        'cibil_auto_fetched' => $cibilAutoFetched,
+        'cibil_status'       => $cibilStatus,
+        'bureau_score'       => $bureauScore,
+        'redirect_url'       => $redirectUrl
     ]
 ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 exit;

@@ -98,15 +98,15 @@ foreach ($potentialPaths as $path) {
 }
 
 $PARTNERS_CONFIG = [
-    ['id' => 'rupay91', 'name' => 'Rupay91', 'rateStr' => '2.8%', 'ratePct' => 0.028, 'badgeClass' => 'bg-blue-50 text-blue-700 border-blue-200'],
-    ['id' => 'jhatpatloans', 'name' => 'Jhatpat Loans', 'rateStr' => '2.4%', 'ratePct' => 0.024, 'badgeClass' => 'bg-emerald-50 text-emerald-700 border-emerald-200'],
-    ['id' => 'instarupees', 'name' => 'Insta Rupees', 'rateStr' => '2.5%', 'ratePct' => 0.025, 'badgeClass' => 'bg-amber-50 text-amber-700 border-amber-200'],
-    ['id' => 'udhaarnow', 'name' => 'UdhaarNow', 'rateStr' => '2.2%', 'ratePct' => 0.022, 'badgeClass' => 'bg-purple-50 text-purple-700 border-purple-200'],
-    ['id' => 'loanwithin', 'name' => 'LoanWithin', 'rateStr' => '2.6%', 'ratePct' => 0.026, 'badgeClass' => 'bg-cyan-50 text-cyan-700 border-cyan-200'],
-    ['id' => 'shubhcash', 'name' => 'ShubhCash', 'rateStr' => '2.3%', 'ratePct' => 0.023, 'badgeClass' => 'bg-teal-50 text-teal-700 border-teal-200'],
-    ['id' => 'borrowera', 'name' => 'Borrowera', 'rateStr' => '2.7%', 'ratePct' => 0.027, 'badgeClass' => 'bg-rose-50 text-rose-700 border-rose-200'],
-    ['id' => 'easyfincare', 'name' => 'Easy Fincare', 'rateStr' => '2.4%', 'ratePct' => 0.024, 'badgeClass' => 'bg-orange-50 text-orange-700 border-orange-200'],
-    ['id' => 'ticket2loan', 'name' => 'Ticket 2 Loan', 'rateStr' => '2.5%', 'ratePct' => 0.025, 'badgeClass' => 'bg-yellow-50 text-yellow-700 border-yellow-200']
+    ['id' => 'rupay91', 'name' => 'Rupay91', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'badgeClass' => 'bg-blue-50 text-blue-700 border-blue-200'],
+    ['id' => 'jhatpatloans', 'name' => 'Jhatpat Loans', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'badgeClass' => 'bg-emerald-50 text-emerald-700 border-emerald-200'],
+    ['id' => 'instarupees', 'name' => 'Insta Rupees', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'badgeClass' => 'bg-amber-50 text-amber-700 border-amber-200'],
+    ['id' => 'udhaarnow', 'name' => 'UdhaarNow', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'badgeClass' => 'bg-purple-50 text-purple-700 border-purple-200'],
+    ['id' => 'loanwithin', 'name' => 'LoanWithin', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'badgeClass' => 'bg-cyan-50 text-cyan-700 border-cyan-200'],
+    ['id' => 'shubhcash', 'name' => 'ShubhCash', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'badgeClass' => 'bg-teal-50 text-teal-700 border-teal-200'],
+    ['id' => 'borrowera', 'name' => 'Borrowera', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'badgeClass' => 'bg-rose-50 text-rose-700 border-rose-200'],
+    ['id' => 'easyfincare', 'name' => 'Easy Fincare', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'badgeClass' => 'bg-orange-50 text-orange-700 border-orange-200'],
+    ['id' => 'ticket2loan', 'name' => 'Ticket 2 Loan', 'rateStr' => '6.0%', 'ratePct' => 0.06, 'badgeClass' => 'bg-yellow-50 text-yellow-700 border-yellow-200']
 ];
 
 function cleanLoanAmount($amt) {

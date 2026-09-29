@@ -105,38 +105,36 @@ export function cleanSalary(raw, salVal, salRange) {
 export function formatToIST(dateInput) {
   if (!dateInput) return { date: 'Today', time: '', full: 'Today' };
 
+  let str = String(dateInput).trim();
   let dateObj = null;
 
-  if (typeof dateInput === 'string') {
-    // 1. If string is already formatted like "17 Sep 2026, 10:24 AM"
-    if (/^\d{1,2}\s+[A-Za-z]{3,4}\s+\d{4},\s+\d{1,2}:\d{2}\s+(AM|PM)/i.test(str)) {
-      if (/UTC|GMT/i.test(str)) {
-        dateObj = new Date(str);
-      } else {
-        const parts = str.split(',');
-        return {
-          date: parts[0].trim(),
-          time: (parts[1] || '').trim(),
-          full: str
-        };
-      }
-    } else if (str.endsWith('Z') || (str.includes('T') && (str.includes('+') || (str.includes('-') && str.lastIndexOf('-') > 10)))) {
+  // 1. If string is already formatted like "18 Sep 2026, 02:55 PM"
+  if (/^\d{1,2}\s+[A-Za-z]{3,4}\s+\d{4},\s+\d{1,2}:\d{2}(\s+(AM|PM))?/i.test(str)) {
+    if (/UTC|GMT/i.test(str)) {
       dateObj = new Date(str);
-    } else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(str)) {
-      // SQL datetime without tz e.g. 2026-09-17 10:24:49 (written in IST by PHP backend)
-      dateObj = new Date(str.replace(' ', 'T') + '+05:30');
-    } else if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-      dateObj = new Date(str + 'T00:00:00+05:30');
-    } else if (str.includes('T') && !str.includes('+') && !str.endsWith('Z')) {
-      // ISO-like datetime without explicit timezone - pin to IST
-      dateObj = new Date(str + '+05:30');
     } else {
-      dateObj = new Date(str);
+      const parts = str.split(',');
+      return {
+        date: parts[0].trim(),
+        time: (parts[1] || '').trim(),
+        full: str
+      };
     }
-  } else if (dateInput instanceof Date) {
-    dateObj = dateInput;
-  } else if (typeof dateInput === 'number') {
-    dateObj = new Date(dateInput < 1e11 ? dateInput * 1000 : dateInput);
+  }
+
+  // 2. ISO with UTC timezone 'Z' or offset like +05:30
+  if (str.endsWith('Z') || (str.includes('T') && (str.includes('+') || (str.includes('-') && str.lastIndexOf('-') > 10)))) {
+    dateObj = new Date(str);
+  } else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(str)) {
+    // SQL datetime without tz e.g. 2026-09-18 14:55:44 (written in IST by PHP backend)
+    dateObj = new Date(str.replace(' ', 'T') + '+05:30');
+  } else if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    dateObj = new Date(str + 'T00:00:00+05:30');
+  } else if (str.includes('T') && !str.includes('+') && !str.endsWith('Z')) {
+    // ISO-like datetime without explicit timezone - pin to IST
+    dateObj = new Date(str + '+05:30');
+  } else {
+    dateObj = new Date(str);
   }
 
   if (!dateObj || isNaN(dateObj.getTime())) {
@@ -173,8 +171,8 @@ export function sanitizeLead(lead) {
   const rawSalary = lead.salary || lead.monthlySalary || lead.monthly_salary || lead.income;
   const cleanedSalary = cleanSalary(rawSalary, lead.sal_val, lead.salary_range);
 
-  // Normalize creation date to Indian Standard Time (IST)
-  const istTime = formatToIST(lead.created_at || lead.createdAt || lead.created || lead.timestamp || lead.date);
+  // Normalize creation date to Indian Standard Time (IST) - prioritize lead.created if already IST
+  const istTime = formatToIST(lead.created || lead.created_at || lead.createdAt || lead.timestamp || lead.date);
 
   return {
     ...lead,
@@ -209,14 +207,22 @@ export function getISTDateKey(dateInput) {
 
   if (typeof dateInput === 'string') {
     let str = dateInput.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+      return str;
+    }
+    const match = str.match(/^(\d{1,2})\s+([A-Za-z]{3,4})\s+(\d{4})/);
+    if (match) {
+      const monthMap = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', sept: '09', oct: '10', nov: '11', dec: '12' };
+      const mStr = monthMap[match[2].toLowerCase().slice(0, 3)] || '01';
+      const dStr = match[1].padStart(2, '0');
+      return `${match[3]}-${mStr}-${dStr}`;
+    }
     if (str.endsWith('Z') || (str.includes('T') && (str.includes('+') || str.includes('Z')))) {
       dateObj = new Date(str);
     } else if (str.includes('T') && !str.includes('+') && !str.endsWith('Z')) {
-      dateObj = new Date(str + 'Z');
+      dateObj = new Date(str + '+05:30');
     } else if (/^\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}/.test(str)) {
-      dateObj = new Date(str.replace(' ', 'T') + 'Z');
-    } else if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-      return str;
+      dateObj = new Date(str.replace(' ', 'T') + '+05:30');
     } else {
       dateObj = new Date(str);
     }

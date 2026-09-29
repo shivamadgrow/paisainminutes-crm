@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import ExecutiveDashboard from './components/ExecutiveDashboard';
@@ -13,6 +13,8 @@ import StaffView from './components/StaffView';
 import AuditLogView from './components/AuditLogView';
 import MyProfileView from './components/MyProfileView';
 import LoginModal from './components/LoginModal';
+import PartnerPortalView from './components/PartnerPortalView';
+import DeliveryLogView from './components/DeliveryLogView';
 
 // New Affiliate CRM Components
 import PartnerOnboardingModal from './components/PartnerOnboardingModal';
@@ -42,11 +44,26 @@ import {
 } from './utils/authService';
 import { AFFILIATE_PARTNERS } from './data/affiliatePartners';
 
-// Initial clean slate leads array
-const INITIAL_LEADS = [];
+// Local storage key for instant stale-while-revalidate leads hydration
+const CACHED_LEADS_KEY = 'paisa_crm_cached_leads';
+
+function getInitialCachedLeads() {
+  try {
+    const raw = localStorage.getItem(CACHED_LEADS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map(sanitizeLead);
+      }
+    }
+  } catch (e) {}
+  return [];
+}
 
 export default function App() {
   const [activeTab, setActiveTabState] = useState(() => {
+    const user = getCurrentUser();
+    if (user && user.role === 'Partner') return 'partner-leads';
     try {
       const saved = localStorage.getItem('paisa_crm_active_tab');
       if (saved) return saved;
@@ -64,7 +81,9 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-  const [leads, setLeads] = useState(INITIAL_LEADS);
+  // Instant load: Hydrate directly from persistent cache so UI loads in 0ms upon login
+  const [leads, setLeads] = useState(() => getInitialCachedLeads());
+  const isFetchingRef = useRef(false);
 
   // Financial transactions state initialized clean (0 records for live marketing)
   const [payoutRequests, setPayoutRequests] = useState(() => {
@@ -121,7 +140,11 @@ export default function App() {
   // Listen to session changes
   useEffect(() => {
     const handleSessionChange = (e) => {
-      setCurrentUser(e.detail || getCurrentUser());
+      const user = e.detail || getCurrentUser();
+      setCurrentUser(user);
+      if (user && user.role === 'Partner') {
+        setActiveTab('partner-leads');
+      }
     };
     window.addEventListener('paisa_session_changed', handleSessionChange);
     return () => window.removeEventListener('paisa_session_changed', handleSessionChange);
@@ -168,27 +191,40 @@ export default function App() {
     setIsLoginModalOpen(false);
   };
 
-  // Real-time API Sync: Fetch incoming leads every 3 seconds
+  // Real-time API Sync: In-flight locked polling with non-overlapping scheduling
   useEffect(() => {
     if (!currentUser) return; // Don't fetch if locked
     let isMounted = true;
+    let pollTimeout = null;
+
     const fetchLeadsFromApi = async () => {
+      if (isFetchingRef.current) return;
+      isFetchingRef.current = true;
       try {
-        const result = await getLeadsFromBackend();
-        if (isMounted && result.success && Array.isArray(result.leads)) {
+        const partnerScope = currentUser?.role === 'Partner' ? currentUser.partnerId : undefined;
+        const result = await getLeadsFromBackend({ partnerId: partnerScope });
+        if (isMounted && result && result.success && Array.isArray(result.leads)) {
           const cleanLeads = result.leads.map(sanitizeLead);
           setLeads(cleanLeads);
+          try {
+            localStorage.setItem(CACHED_LEADS_KEY, JSON.stringify(cleanLeads));
+          } catch (e) {}
         }
       } catch (e) {
         console.warn('[CRM LIVE STATE SYNC] ⚠️ Fetch error during polling:', e);
+      } finally {
+        isFetchingRef.current = false;
+        if (isMounted) {
+          pollTimeout = setTimeout(fetchLeadsFromApi, 3000);
+        }
       }
     };
 
     fetchLeadsFromApi();
-    const timer = setInterval(fetchLeadsFromApi, 3000);
+
     return () => {
       isMounted = false;
-      clearInterval(timer);
+      if (pollTimeout) clearTimeout(pollTimeout);
     };
   }, [currentUser]);
 
@@ -294,7 +330,35 @@ export default function App() {
 
   // Render main content area according to activeTab
   const renderMainContent = () => {
+    // 🛡️ STRICT ROLE-BASED ACCESS CONTROL FOR PARTNER USERS
+    if (currentUser?.role === 'Partner') {
+      if (activeTab === 'profile') {
+        return <MyProfileView currentUser={currentUser} />;
+      }
+      return (
+        <PartnerPortalView 
+          currentUser={currentUser} 
+          leads={leads} 
+          setLeads={setLeads} 
+        />
+      );
+    }
+
     switch (activeTab) {
+      case 'partner-leads':
+        return (
+          <PartnerPortalView 
+            currentUser={currentUser} 
+            leads={leads} 
+            setLeads={setLeads} 
+          />
+        );
+
+      case 'delivery-logs':
+        return (
+          <DeliveryLogView />
+        );
+
       case 'executive':
         return (
           <ExecutiveDashboard 
@@ -512,6 +576,7 @@ export default function App() {
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
         isMobileOpen={isMobileOpen} 
         setIsMobileOpen={setIsMobileOpen} 
+        currentUser={currentUser}
       />
 
       {/* Main Container */}

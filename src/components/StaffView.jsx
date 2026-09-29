@@ -23,10 +23,12 @@ import {
   Wifi, 
   ExternalLink,
   Eye,
-  EyeOff
+  EyeOff,
+  Building2
 } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
 import { INITIAL_ROLES } from '../data/staffData';
+import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { getLiveSecurityDetails } from '../utils/geoService';
 import { getSecurityIncidents } from '../utils/shiftSecurity';
 import { 
@@ -37,7 +39,10 @@ import {
   deleteStaffUser, 
   toggleUserStatus,
   isSuperAdmin,
-  setCurrentUserSession 
+  setCurrentUserSession,
+  getPartnerAccounts,
+  createPartnerAccount,
+  togglePartnerAccountStatus
 } from '../utils/authService';
 
 export default function StaffView({ onSwitchUser, currentUser }) {
@@ -61,6 +66,67 @@ export default function StaffView({ onSwitchUser, currentUser }) {
   }, []);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Partner Accounts state
+  const [partnerAccounts, setPartnerAccounts] = useState(() => getPartnerAccounts());
+  const [isAddPartnerOpen, setIsAddPartnerOpen] = useState(false);
+  const [partnerForm, setPartnerForm] = useState({
+    partnerId: (AFFILIATE_PARTNERS[0] && AFFILIATE_PARTNERS[0].id) || 'rupay91',
+    name: '',
+    username: '',
+    email: '',
+    password: 'Partner@2026',
+    mobile: ''
+  });
+  const [partnerFormError, setPartnerFormError] = useState('');
+
+  const refreshPartnerAccounts = () => {
+    setPartnerAccounts(getPartnerAccounts());
+  };
+
+  const handleCreatePartnerAccountSubmit = (e) => {
+    e.preventDefault();
+    setPartnerFormError('');
+    if (!partnerForm.username.trim()) {
+      setPartnerFormError('Please enter a username for the partner account');
+      return;
+    }
+    const partnerObj = AFFILIATE_PARTNERS.find(p => p.id === partnerForm.partnerId) || { name: 'Partner' };
+    const res = createPartnerAccount({
+      partnerId: partnerForm.partnerId,
+      partnerName: partnerObj.name,
+      name: partnerForm.name.trim() || `${partnerObj.name} Portal`,
+      username: partnerForm.username.trim(),
+      email: partnerForm.email.trim() || `${partnerForm.username.trim()}@paisainminutes.com`,
+      password: partnerForm.password.trim() || 'Partner@2026',
+      mobile: partnerForm.mobile.trim()
+    });
+
+    if (!res.success) {
+      setPartnerFormError(res.error || 'Failed to create partner account');
+      return;
+    }
+
+    refreshPartnerAccounts();
+    setIsAddPartnerOpen(false);
+    setPartnerForm({
+      partnerId: (AFFILIATE_PARTNERS[0] && AFFILIATE_PARTNERS[0].id) || 'rupay91',
+      name: '',
+      username: '',
+      email: '',
+      password: 'Partner@2026',
+      mobile: ''
+    });
+    showToast(`✅ Partner account created for ${partnerObj.name}! Login: ${res.user.username}`);
+  };
+
+  const handleTogglePartnerStatus = (account) => {
+    const res = togglePartnerAccountStatus(account.id);
+    if (res.success) {
+      refreshPartnerAccounts();
+      showToast(`⚡ Account ${account.username} is now ${res.status}`);
+    }
+  };
 
   // Live Location / Geo-Security state
   const [liveGeo, setLiveGeo] = useState({
@@ -414,7 +480,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
 
       {/* Sub-tabs */}
       <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl w-fit text-xs font-semibold text-slate-600">
-        {['Users', 'Roles', 'Login History'].map(tab => (
+        {['Users', 'Roles', 'Partner Accounts', 'Login History'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -618,6 +684,215 @@ export default function StaffView({ onSwitchUser, currentUser }) {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB: PARTNER ACCOUNTS (Super Admin control) */}
+      {activeTab === 'Partner Accounts' && (
+        <div className="space-y-4 animate-fade-in">
+          {/* Header Action Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-emerald-600" />
+                <span>Partner Portal Accounts</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Every partner user is strictly linked to a <code className="font-mono text-blue-700 bg-blue-50 px-1 py-0.5 rounded">partner_id</code>. Partners only see their assigned & clicked leads with masked phones.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsAddPartnerOpen(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create Partner Account</span>
+            </button>
+          </div>
+
+          {/* Partner Accounts Table */}
+          <div className="crm-card bg-white overflow-hidden shadow-xs border border-slate-200/80 rounded-2xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 text-slate-400 font-bold tracking-wider text-[10px] uppercase border-b border-slate-200">
+                    <th className="p-3.5">PARTNER</th>
+                    <th className="p-3.5">USERNAME / LOGIN</th>
+                    <th className="p-3.5">PASSWORD</th>
+                    <th className="p-3.5">SCOPED PARTNER ID</th>
+                    <th className="p-3.5">STATUS</th>
+                    <th className="p-3.5 text-right">SUPER ADMIN ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-700">
+                  {partnerAccounts.map((account) => {
+                    const isActive = account.status === 'Active';
+                    return (
+                      <tr key={account.id} className="hover:bg-slate-50/80 transition">
+                        <td className="p-3.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-8 h-8 rounded-xl ${account.avatarBg || 'bg-emerald-600'} text-white font-bold flex items-center justify-center text-xs shadow-xs shrink-0`}>
+                              {account.initials || 'PT'}
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900 text-xs">{account.name}</div>
+                              <div className="text-[11px] text-slate-500 font-mono">{account.email}</div>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="p-3.5 font-mono text-xs font-semibold text-slate-900">
+                          {account.username}
+                        </td>
+
+                        <td className="p-3.5 font-mono text-xs text-slate-600">
+                          <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            {account.password}
+                          </span>
+                        </td>
+
+                        <td className="p-3.5">
+                          <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                            {account.partnerId}
+                          </span>
+                        </td>
+
+                        <td className="p-3.5">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold rounded-full ${
+                            isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                            {isActive ? 'Active' : 'Disabled'}
+                          </span>
+                        </td>
+
+                        <td className="p-3.5 text-right space-x-2">
+                          <button
+                            onClick={() => handleTogglePartnerStatus(account)}
+                            className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                              isActive 
+                                ? 'text-amber-700 hover:bg-amber-50 border border-amber-200' 
+                                : 'text-emerald-700 hover:bg-emerald-50 border border-emerald-200'
+                            }`}
+                          >
+                            {isActive ? 'Disable Account' : 'Enable Account'}
+                          </button>
+                          {onSwitchUser && (
+                            <button
+                              onClick={() => {
+                                onSwitchUser(account);
+                                showToast(`🚀 Switched to Partner Portal as ${account.name}`);
+                              }}
+                              className="px-2.5 py-1 text-xs font-bold text-[#0A3977] bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition cursor-pointer"
+                            >
+                              Login As Partner
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Modal to Create Partner Account */}
+          {isAddPartnerOpen && (
+            <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+              <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200">
+                <div className="flex items-center justify-between p-4 bg-slate-50 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-emerald-600" />
+                    <h3 className="font-bold text-slate-900 text-sm">Create Partner Account</h3>
+                  </div>
+                  <button onClick={() => setIsAddPartnerOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleCreatePartnerAccountSubmit} className="p-5 space-y-4">
+                  {partnerFormError && (
+                    <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                      {partnerFormError}
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Select Partner Entity *</label>
+                    <select
+                      value={partnerForm.partnerId}
+                      onChange={(e) => {
+                        const pid = e.target.value;
+                        const pObj = AFFILIATE_PARTNERS.find(p => p.id === pid);
+                        setPartnerForm(prev => ({
+                          ...prev,
+                          partnerId: pid,
+                          name: pObj ? `${pObj.name} Portal` : '',
+                          username: `${pid}_partner`
+                        }));
+                      }}
+                      className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-semibold"
+                    >
+                      {AFFILIATE_PARTNERS.map(p => (
+                        <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Username (Login ID) *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. rupay91_partner"
+                      value={partnerForm.username}
+                      onChange={(e) => setPartnerForm(prev => ({ ...prev, username: e.target.value }))}
+                      className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Display Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Rupay91 Team"
+                      value={partnerForm.name}
+                      onChange={(e) => setPartnerForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Portal Password *</label>
+                    <input
+                      type="text"
+                      required
+                      value={partnerForm.password}
+                      onChange={(e) => setPartnerForm(prev => ({ ...prev, password: e.target.value }))}
+                      className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddPartnerOpen(false)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl cursor-pointer shadow-sm"
+                    >
+                      Create Partner Account
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

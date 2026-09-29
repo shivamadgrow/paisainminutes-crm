@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  Plus, 
-  FileSpreadsheet, 
-  GitMerge, 
-  User, 
-  X, 
-  Search, 
-  Trash2, 
-  CheckSquare, 
-  Smartphone, 
-  CheckCircle2, 
+import {
+  Plus,
+  FileSpreadsheet,
+  GitMerge,
+  User,
+  X,
+  Search,
+  Trash2,
+  CheckSquare,
+  Smartphone,
+  CheckCircle2,
   AlertCircle,
   Building2,
   ChevronDown,
@@ -22,6 +22,7 @@ import {
   Eye,
   Copy,
   Check,
+  ChevronRight,
   Mail,
   MapPin,
   Briefcase,
@@ -33,24 +34,27 @@ import {
   Clock,
   Sparkles,
   TrendingUp,
-  Lock
+  Lock,
+  Send,
+  Activity,
+  RotateCw
 } from 'lucide-react';
-import { 
-  AFFILIATE_PARTNERS, 
-  getPartnerMeta, 
+import {
+  AFFILIATE_PARTNERS,
+  getPartnerMeta,
   getEligibilityMatrix,
   getPartnerTrackingUrl,
   trackPartnerClick,
   getSalaryMatchedOffers
 } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
-import { 
-  cleanLoanAmount, 
-  cleanSalary, 
-  formatToIST, 
-  isDateInRange, 
+import {
+  cleanLoanAmount,
+  cleanSalary,
+  formatToIST,
+  isDateInRange,
   DATE_RANGE_PRESETS,
-  getISTDateKey 
+  getISTDateKey
 } from '../utils/amountHelpers';
 import { fetchApi, deleteLeadsApi, saveLeadOverride } from '../utils/apiConfig';
 
@@ -70,6 +74,8 @@ const mapTabToFilterName = (tab) => {
   if (clean === 'rupay91') return 'Rupay91';
   if (clean === 'mobile only') return 'Mobile-only';
   if (clean === 'duplicate leads' || clean === 'duplicates') return 'Duplicate Leads';
+  if (clean === 'whatsapp') return 'WhatsApp';
+  if (clean === 'direct website' || clean === 'direct' || clean === 'website') return 'Direct Website';
   return tab;
 };
 
@@ -238,10 +244,10 @@ export const getEligibilityInfo = (item) => {
 
   // Label: prioritize verified backend eligibility status if already set to standard slab
   let label = matrix.eligibilityStatus;
-  if (item.eligibilityStatus && 
-      item.eligibilityStatus !== 'Eligible' && 
-      item.eligibilityStatus !== 'High Approval' && 
-      item.eligibilityStatus !== 'Pending') {
+  if (item.eligibilityStatus &&
+    item.eligibilityStatus !== 'Eligible' &&
+    item.eligibilityStatus !== 'High Approval' &&
+    item.eligibilityStatus !== 'Pending') {
     label = item.eligibilityStatus;
   }
 
@@ -263,12 +269,12 @@ export const getEligibilityInfo = (item) => {
   };
 };
 
-export default function LeadsView({ 
-  leads: propLeads, 
-  setLeads, 
-  activeFilterTab, 
-  setActiveFilterTab, 
-  currentUser 
+export default function LeadsView({
+  leads: propLeads,
+  setLeads,
+  activeFilterTab,
+  setActiveFilterTab,
+  currentUser
 }) {
   const leads = propLeads || INITIAL_FULL_LEADS;
   const [localFilter, setLocalFilter] = useState(() => mapTabToFilterName(activeFilterTab));
@@ -287,13 +293,84 @@ export default function LeadsView({
   const [selectedDatePreset, setSelectedDatePreset] = useState('ALL');
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  const [isCustomDatePickerOpen, setIsCustomDatePickerOpen] = useState(false);
+  const [partnerFilterQuery, setPartnerFilterQuery] = useState('');
+  const [leadEvents, setLeadEvents] = useState([]);
+  const [isPushingApi, setIsPushingApi] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
 
-  // Close custom popovers when clicking outside, scrolling, or pressing Escape
+  const showToast = (msg, isError = false) => {
+    setToastMessage({ text: msg, isError });
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const fetchLeadEvents = (leadId) => {
+    if (!leadId) return;
+    fetch(`/crm/api/partner-events.php?lead_id=${encodeURIComponent(leadId)}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success && Array.isArray(data.events)) {
+          setLeadEvents(data.events);
+        }
+      })
+      .catch(() => { });
+  };
+
+  useEffect(() => {
+    if (!selectedLeadForOverview) {
+      setLeadEvents([]);
+      return;
+    }
+    const leadId = getLeadId(selectedLeadForOverview);
+    fetchLeadEvents(leadId);
+  }, [selectedLeadForOverview]);
+
+  const handleManualApiPush = async (lead) => {
+    if (!lead) return;
+    setIsPushingApi(true);
+    const targetLeadId = getLeadId(lead);
+    const partnerId = lead.clicked_partner || lead.assignedCompany || 'rupay91';
+
+    try {
+      const res = await fetch('/crm/api/delivery-logs.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'retry',
+          lead_id: targetLeadId,
+          partner_id: partnerId
+        })
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        showToast(`Lead successfully pushed to ${partnerId} API!`);
+        fetchLeadEvents(targetLeadId);
+      } else {
+        showToast(data.error || data.message || 'API push failed. Logged in Delivery Logs.', true);
+        fetchLeadEvents(targetLeadId);
+      }
+    } catch (e) {
+      showToast('Error pushing lead to API', true);
+    } finally {
+      setIsPushingApi(false);
+    }
+  };
+
+  // Close custom popovers when clicking outside, background scrolling, window resizing, or pressing Escape
   useEffect(() => {
     if (!openPartnerDropdownId && !openStatusDropdownId) return;
 
-    const handleScrollOrResize = () => {
+    const handleScroll = (e) => {
+      // If the scroll happened INSIDE any popover portal, allow smooth scrolling and DO NOT close!
+      if (e && e.target && typeof e.target.closest === 'function' && e.target.closest('[data-popover-portal]')) {
+        return;
+      }
+      setOpenPartnerDropdownId(null);
+      setPartnerDropdownAnchor(null);
+      setOpenStatusDropdownId(null);
+      setStatusDropdownAnchor(null);
+    };
+
+    const handleResize = () => {
       setOpenPartnerDropdownId(null);
       setPartnerDropdownAnchor(null);
       setOpenStatusDropdownId(null);
@@ -301,7 +378,7 @@ export default function LeadsView({
     };
 
     const handleClickOutside = (e) => {
-      if (e.target.closest('[data-popover-portal]') || e.target.closest('[data-popover-trigger]')) {
+      if (e.target && typeof e.target.closest === 'function' && (e.target.closest('[data-popover-portal]') || e.target.closest('[data-popover-trigger]'))) {
         return;
       }
       setOpenPartnerDropdownId(null);
@@ -319,14 +396,14 @@ export default function LeadsView({
       }
     };
 
-    window.addEventListener('scroll', handleScrollOrResize, true);
-    window.addEventListener('resize', handleScrollOrResize);
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleResize);
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      window.removeEventListener('scroll', handleScrollOrResize, true);
-      window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleResize);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
@@ -354,7 +431,7 @@ export default function LeadsView({
       navigator.clipboard.writeText(String(text));
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
-    } catch (e) {}
+    } catch (e) { }
   };
   const [testMobile, setTestMobile] = useState('');
   const [testName, setTestName] = useState('');
@@ -456,7 +533,10 @@ export default function LeadsView({
         const matchesId = getLeadId(item, idx).toLowerCase().includes(q);
         const matchesCity = (item.city || '').toLowerCase().includes(q);
         const matchesCompany = (item.assignedCompany || '').toLowerCase().includes(q);
-        if (!matchesName && !matchesMobile && !matchesEmail && !matchesId && !matchesCity && !matchesCompany) {
+        const matchesSource = (item.source || '').toLowerCase().includes(q) ||
+          (item.utm_source || '').toLowerCase().includes(q) ||
+          (item.lead_source || '').toLowerCase().includes(q);
+        if (!matchesName && !matchesMobile && !matchesEmail && !matchesId && !matchesCity && !matchesCompany && !matchesSource) {
           return false;
         }
       }
@@ -493,7 +573,7 @@ export default function LeadsView({
         } else if (filterKey === 'rejected' && itemStatus !== 'rejected') {
           return false;
         } else if (filterKey === 'mobile only') {
-          const isMobile = item.isPhoneOnly || 
+          const isMobile = item.isPhoneOnly ||
             (item.eligibilityStatus && item.eligibilityStatus.includes('Phone Only')) ||
             ((!item.name || item.name === 'Applicant') && (!item.loanAmount || Number(item.loanAmount) === 0));
           if (!isMobile) return false;
@@ -502,6 +582,16 @@ export default function LeadsView({
           const pan = String(item.pan || '').trim().toUpperCase();
           const isDup = (phone && phoneCounts[phone] > 1) || (pan && pan !== '—' && panCounts[pan] > 1);
           if (!isDup) return false;
+        } else if (filterKey === 'whatsapp') {
+          const isWa = (item.source && item.source.toLowerCase().includes('whatsapp')) ||
+            (item.utm_source && item.utm_source.toLowerCase().includes('whatsapp')) ||
+            (item.lead_source && item.lead_source.toLowerCase().includes('whatsapp'));
+          if (!isWa) return false;
+        } else if (filterKey === 'direct website') {
+          const isWa = (item.source && item.source.toLowerCase().includes('whatsapp')) ||
+            (item.utm_source && item.utm_source.toLowerCase().includes('whatsapp')) ||
+            (item.lead_source && item.lead_source.toLowerCase().includes('whatsapp'));
+          if (isWa) return false;
         }
       }
 
@@ -562,7 +652,8 @@ export default function LeadsView({
       l.city || '',
       l.state || 'India',
       l.pincode || '',
-      l.source || 'Website',
+      l.source || 'Apply Now (Website)',
+      l.utm_source || 'Direct',
       l.status || 'Fresh',
       l.created || l.date || ''
     ]);
@@ -584,7 +675,7 @@ export default function LeadsView({
 
   const handleSelectRow = (itemId) => {
     const targetId = String(itemId).trim();
-    setSelectedLeadIds(prev => 
+    setSelectedLeadIds(prev =>
       prev.includes(targetId) ? prev.filter(id => id !== targetId) : [...prev, targetId]
     );
   };
@@ -876,7 +967,7 @@ export default function LeadsView({
 
   return (
     <div className="space-y-6 animate-fade-in pb-16">
-      
+
       {/* Top FinTech Command Strip */}
       <div className="bg-gradient-to-r from-slate-900 via-[#0A3977] to-slate-900 text-white p-4 sm:p-5 rounded-3xl shadow-xl border border-blue-600/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
@@ -909,7 +1000,7 @@ export default function LeadsView({
             <span>Simulate Lead</span>
           </button>
 
-          <button 
+          <button
             onClick={handleExportExcel}
             className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
             title="Download CSV report"
@@ -918,7 +1009,7 @@ export default function LeadsView({
             <span>Export CSV</span>
           </button>
 
-          <button 
+          <button
             onClick={handleClearAllLeads}
             className="px-3.5 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/30 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
             title="Permanently delete all leads"
@@ -939,7 +1030,7 @@ export default function LeadsView({
 
       {/* 4 Luxury KPI Metric Highlight Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
+
         {/* Metric 1: Total Leads */}
         <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-2">
@@ -1045,18 +1136,18 @@ export default function LeadsView({
 
       {/* Unified Smart Control Center */}
       <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-4 space-y-3.5">
-        
+
         {/* Row 1: Workflow Status Tabs & Search Bar */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          
+
           {/* Status Workflow Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
               { id: 'All Leads', label: 'All Status', count: leads.length },
-              { 
-                id: 'Mobile-only', 
-                label: 'Mobile-only', 
-                count: leads.filter(l => l.isPhoneOnly || (l.eligibilityStatus && l.eligibilityStatus.includes('Phone Only')) || ((!l.name || l.name === 'Applicant') && (!l.loanAmount || Number(l.loanAmount) === 0))).length 
+              {
+                id: 'Mobile-only',
+                label: 'Mobile-only',
+                count: leads.filter(l => l.isPhoneOnly || (l.eligibilityStatus && l.eligibilityStatus.includes('Phone Only')) || ((!l.name || l.name === 'Applicant') && (!l.loanAmount || Number(l.loanAmount) === 0))).length
               },
               { id: 'Fresh', label: 'Fresh', count: leads.filter(l => (l.status || 'Fresh') === 'Fresh').length },
               { id: 'Callback', label: 'Callback', count: leads.filter(l => l.status === 'Callback').length },
@@ -1064,14 +1155,24 @@ export default function LeadsView({
               { id: 'Docs Received', label: 'Docs Received', count: leads.filter(l => l.status === 'Docs received' || l.status === 'Docs Received').length },
               { id: 'Approved', label: 'Approved', count: leads.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length },
               { id: 'Rejected', label: 'Rejected', count: leads.filter(l => l.status === 'Rejected').length },
-              { 
-                id: 'Duplicate Leads', 
-                label: 'Duplicate Leads', 
+              {
+                id: 'Duplicate Leads',
+                label: 'Duplicate Leads',
                 count: leads.filter(l => {
                   const phone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
                   const pan = String(l.pan || '').trim().toUpperCase();
                   return (phone && phoneCounts[phone] > 1) || (pan && pan !== '—' && panCounts[pan] > 1);
-                }).length 
+                }).length
+              },
+              {
+                id: 'WhatsApp',
+                label: 'WhatsApp',
+                count: leads.filter(l => (l.source && l.source.toLowerCase().includes('whatsapp')) || (l.utm_source && l.utm_source.toLowerCase().includes('whatsapp')) || (l.lead_source && l.lead_source.toLowerCase().includes('whatsapp'))).length
+              },
+              {
+                id: 'Direct Website',
+                label: 'Direct Website',
+                count: leads.filter(l => !((l.source && l.source.toLowerCase().includes('whatsapp')) || (l.utm_source && l.utm_source.toLowerCase().includes('whatsapp')) || (l.lead_source && l.lead_source.toLowerCase().includes('whatsapp')))).length
               },
             ].map(tab => {
               const isSelected = activeFilter.toLowerCase().replace(/\s+/g, ' ') === tab.id.toLowerCase().replace(/\s+/g, ' ');
@@ -1079,16 +1180,14 @@ export default function LeadsView({
                 <button
                   key={tab.id}
                   onClick={() => handleFilterClick(tab.id)}
-                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
-                    isSelected
-                      ? 'bg-[#0A3977] text-white shadow-md shadow-blue-950/20 ring-2 ring-blue-400/30'
-                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70'
-                  }`}
+                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${isSelected
+                    ? 'bg-[#0A3977] text-white shadow-md shadow-blue-950/20 ring-2 ring-blue-400/30'
+                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70'
+                    }`}
                 >
                   <span>{tab.label}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition ${
-                    isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                    }`}>
                     {tab.count}
                   </span>
                 </button>
@@ -1163,16 +1262,14 @@ export default function LeadsView({
                       setIsCustomDatePickerOpen(true);
                     }
                   }}
-                  className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
-                    isSel
-                      ? 'bg-[#0A3977] text-white shadow-sm ring-2 ring-blue-400/40'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 border border-slate-200/80'
-                  }`}
+                  className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${isSel
+                    ? 'bg-[#0A3977] text-white shadow-sm ring-2 ring-blue-400/40'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 border border-slate-200/80'
+                    }`}
                 >
                   <span>{preset.label}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition ${
-                    isSel ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
-                  }`}>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition ${isSel ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                    }`}>
                     {count}
                   </span>
                 </button>
@@ -1253,11 +1350,10 @@ export default function LeadsView({
 
             <button
               onClick={() => setSelectedPartnerFilter('ALL')}
-              className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${
-                selectedPartnerFilter === 'ALL'
-                  ? 'bg-slate-900 text-white shadow-sm ring-2 ring-slate-400/40'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+              className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer ${selectedPartnerFilter === 'ALL'
+                ? 'bg-slate-900 text-white shadow-sm ring-2 ring-slate-400/40'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
             >
               <span>All Partners</span>
               <span className="px-1.5 py-0.2 rounded-md bg-white/20 text-[10px] font-mono font-bold">
@@ -1286,20 +1382,18 @@ export default function LeadsView({
                     borderColor: p.accentColor || '#4F46E5',
                     boxShadow: `0 4px 14px -1px ${p.accentColor || '#4F46E5'}66`
                   } : {}}
-                  className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition-all duration-200 flex items-center gap-2 shrink-0 cursor-pointer border ${
-                    isSel 
-                      ? 'text-white border-transparent' 
-                      : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
-                  }`}
+                  className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold transition-all duration-200 flex items-center gap-2 shrink-0 cursor-pointer border ${isSel
+                    ? 'text-white border-transparent'
+                    : 'bg-white border-slate-200/90 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                    }`}
                 >
-                  <span 
+                  <span
                     className={`w-2.5 h-2.5 rounded-full transition-all shrink-0 ${isSel ? 'bg-white/30 shadow-2xs' : ''}`}
                     style={isSel ? {} : { backgroundColor: p.accentColor }}
                   ></span>
                   <span className={`font-bold ${isSel ? 'text-white' : 'text-slate-800'}`}>{p.name}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-colors ${
-                    isSel ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black transition-colors ${isSel ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-600'
+                    }`}>
                     {count}
                   </span>
                 </button>
@@ -1350,7 +1444,7 @@ export default function LeadsView({
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="bg-slate-50/90 text-slate-600 font-black tracking-wider text-[11px] uppercase border-b border-slate-200/90 sticky top-0 z-20 backdrop-blur-md">
-              <th 
+              <th
                 className="py-4 px-4 w-12 cursor-pointer hover:bg-slate-100/80 transition-colors select-none"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1359,17 +1453,18 @@ export default function LeadsView({
                 title={isAllSelected ? "Deselect All" : "Select All Leads"}
               >
                 <div className="flex items-center justify-center pointer-events-none">
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={Boolean(isAllSelected)}
                     readOnly
                     tabIndex={-1}
-                    className="rounded-md border-slate-300 text-[#0A3977] focus:ring-[#0A3977] cursor-pointer w-4 h-4 transition" 
+                    className="rounded-md border-slate-300 text-[#0A3977] focus:ring-[#0A3977] cursor-pointer w-4 h-4 transition"
                   />
                 </div>
               </th>
               <th className="py-4 px-4 min-w-[260px]">APPLICANT DETAILS</th>
               <th className="py-4 px-4 min-w-[190px]">ASSIGNED PARTNER</th>
+              <th className="py-4 px-4 min-w-[170px]">APPLIED TO</th>
               <th className="py-4 px-4 min-w-[170px]">ELIGIBILITY & CIBIL</th>
               <th className="py-4 px-4 min-w-[140px]">APPLIED AMOUNT</th>
               <th className="py-4 px-4 min-w-[170px]">SALARY / LOCATION</th>
@@ -1391,17 +1486,16 @@ export default function LeadsView({
                 const statusBadge = getStatusBadge(item.status || 'Fresh');
 
                 return (
-                  <tr 
-                    key={itemId} 
-                    className={`transition-colors duration-150 relative ${
-                      isSelected 
-                        ? 'bg-blue-50/80 border-l-4 border-l-[#0A3977]' 
-                        : 'hover:bg-slate-50/80'
-                    }`}
+                  <tr
+                    key={itemId}
+                    className={`transition-colors duration-150 relative ${isSelected
+                      ? 'bg-blue-50/80 border-l-4 border-l-[#0A3977]'
+                      : 'hover:bg-slate-50/80'
+                      }`}
                   >
-                    
+
                     {/* Checkbox (Full Cell Clickable) */}
-                    <td 
+                    <td
                       className="py-4 px-4 cursor-pointer hover:bg-slate-100/50 transition-colors select-none"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1410,19 +1504,19 @@ export default function LeadsView({
                       title={isSelected ? "Deselect row" : "Select row"}
                     >
                       <div className="flex items-center justify-center pointer-events-none">
-                        <input 
-                          type="checkbox" 
+                        <input
+                          type="checkbox"
                           checked={Boolean(isSelected)}
                           readOnly
                           tabIndex={-1}
-                          className="rounded-md border-slate-300 text-[#0A3977] focus:ring-[#0A3977] cursor-pointer w-4 h-4 transition" 
+                          className="rounded-md border-slate-300 text-[#0A3977] focus:ring-[#0A3977] cursor-pointer w-4 h-4 transition"
                         />
                       </div>
                     </td>
 
                     {/* APPLICANT DETAILS (Clickable Overview Trigger) */}
                     <td className="py-4 px-4">
-                      <div 
+                      <div
                         onClick={() => setSelectedLeadForOverview(item)}
                         className="flex items-start gap-3.5 cursor-pointer group"
                         title="Click to view full lead overview & application dossier"
@@ -1455,7 +1549,7 @@ export default function LeadsView({
                       </div>
                     </td>
 
-                    {/* ASSIGNED LENDING PARTNER (Custom React Popover Portal - ZERO clipping!) */}
+                    {/* ASSIGNED LENDING PARTNER (Premium Custom SaaS Dropdown Trigger) */}
                     <td className="py-4 px-4">
                       <div className="relative inline-block">
                         <button
@@ -1471,17 +1565,50 @@ export default function LeadsView({
                             } else {
                               const rect = e.currentTarget.getBoundingClientRect();
                               setPartnerDropdownAnchor({ rect, itemId, item });
+                              setPartnerFilterQuery('');
                               setOpenPartnerDropdownId(itemId);
                             }
                           }}
-                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs font-black border transition-all ${companyBadge.classes} shadow-2xs hover:shadow-sm cursor-pointer`}
-                          title="Click to route to a different lending partner"
+                          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs font-black border transition-all cursor-pointer shadow-2xs hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${companyBadge.classes} ${openPartnerDropdownId === itemId ? 'ring-2 ring-[#0A3977] shadow-sm' : ''}`}
+                          title="Click to assign lead to any lending partner"
                         >
-                          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${companyBadge.dot}`}></span>
-                          <span>{companyBadge.name}</span>
-                          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${openPartnerDropdownId === itemId ? 'rotate-180 text-slate-800' : 'opacity-60'}`} />
+                          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${companyBadge.dot} shadow-2xs`}></span>
+                          <span className="truncate max-w-[145px]">{companyBadge.name}</span>
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 shrink-0 ${openPartnerDropdownId === itemId ? 'rotate-180 text-slate-800' : 'opacity-60'}`} />
                         </button>
                       </div>
+                    </td>
+
+                    {/* APPLIED TO */}
+                    <td className="py-4 px-4">
+                      {item.appliedTo && item.appliedTo !== 'Not Applied Yet' && item.appliedTo !== 'Pending Details' && item.appliedTo !== 'Pending Selection' ? (
+                        <div>
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black bg-purple-50 text-purple-700 border border-purple-200 shadow-2xs">
+                            <span className="w-2 h-2 rounded-full bg-purple-600 animate-pulse"></span>
+                            <span className="truncate max-w-[130px]">{item.appliedTo}</span>
+                          </div>
+                          {item.delivery_status && item.delivery_status !== 'none' && (
+                            <div className="mt-1 flex items-center gap-1 text-[10px]">
+                              {item.delivery_status === 'delivered' ? (
+                                <span className="inline-flex items-center gap-1 text-emerald-600 font-bold">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                  API Pushed
+                                </span>
+                              ) : item.delivery_status === 'failed' ? (
+                                <span className="inline-flex items-center gap-1 text-rose-600 font-bold">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                                  Push Failed
+                                </span>
+                              ) : null}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                          <span>Not Applied</span>
+                        </span>
+                      )}
                     </td>
 
                     {/* ELIGIBILITY & CIBIL */}
@@ -1544,10 +1671,21 @@ export default function LeadsView({
 
                     {/* SOURCE */}
                     <td className="py-4 px-4">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-xl bg-blue-50 text-blue-800 border border-blue-200/80 shadow-2xs">
-                        <ExternalLink className="w-3 h-3 text-blue-500 shrink-0" />
-                        <span className="truncate max-w-[130px]">{item.source || 'Website Application'}</span>
-                      </span>
+                      {(!item.source || item.source.toLowerCase().includes('whatsapp') || item.source.toLowerCase().includes('apply now') || item.source.toLowerCase().includes('website') || (item.utm_source && item.utm_source.toLowerCase().includes('whatsapp'))) ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span className="truncate max-w-[130px]" title="WhatsApp">
+                            WhatsApp
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-xl bg-blue-50 text-blue-800 border border-blue-200/80 shadow-2xs">
+                          <ExternalLink className="w-3 h-3 text-blue-500 shrink-0" />
+                          <span className="truncate max-w-[130px]" title={item.source}>
+                            {item.source}
+                          </span>
+                        </span>
+                      )}
                     </td>
 
                     {/* STATUS (Custom React Popover Portal - ZERO clipping!) */}
@@ -1689,7 +1827,7 @@ export default function LeadsView({
                   <p className="text-[11px] text-slate-500">Test Apply Now & Eligibility check lead routing</p>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setIsTestModalOpen(false)}
                 className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
               >
@@ -1698,9 +1836,8 @@ export default function LeadsView({
             </div>
 
             {testFeedback && (
-              <div className={`mb-4 p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${
-                testFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
-              }`}>
+              <div className={`mb-4 p-3 rounded-xl text-xs font-bold flex items-center gap-2 ${testFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
+                }`}>
                 {testFeedback.type === 'success' ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
                 <span>{testFeedback.message}</span>
               </div>
@@ -1905,7 +2042,7 @@ export default function LeadsView({
       {activeOverviewLead && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-6 animate-fade-in overflow-y-auto">
           <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col animate-scale-up">
-            
+
             {/* Modal Top Header */}
             <div className="bg-gradient-to-r from-slate-900 via-[#0A3977] to-indigo-950 p-6 text-white shrink-0 relative">
               <button
@@ -1974,7 +2111,7 @@ export default function LeadsView({
 
             {/* Modal Body (Scrollable) */}
             <div className="p-6 space-y-6 overflow-y-auto grow text-slate-800">
-              
+
               {/* Metric Highlights (4 Cards) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl">
@@ -1983,8 +2120,8 @@ export default function LeadsView({
                     <span>Applied Loan</span>
                   </div>
                   <div className="text-base sm:text-lg font-extrabold text-slate-900">
-                    {cleanLoanAmount(activeOverviewLead.applied || activeOverviewLead.loanAmount) > 0 
-                      ? `₹${Number(cleanLoanAmount(activeOverviewLead.applied || activeOverviewLead.loanAmount) || 0).toLocaleString('en-IN')}` 
+                    {cleanLoanAmount(activeOverviewLead.applied || activeOverviewLead.loanAmount) > 0
+                      ? `₹${Number(cleanLoanAmount(activeOverviewLead.applied || activeOverviewLead.loanAmount) || 0).toLocaleString('en-IN')}`
                       : '₹50,000'}
                   </div>
                 </div>
@@ -1995,8 +2132,8 @@ export default function LeadsView({
                     <span>Monthly Salary</span>
                   </div>
                   <div className="text-base sm:text-lg font-extrabold text-slate-900">
-                    {cleanSalary(activeOverviewLead.salary, activeOverviewLead.sal_val, activeOverviewLead.salary_range) > 0 
-                      ? `₹${Number(cleanSalary(activeOverviewLead.salary, activeOverviewLead.sal_val, activeOverviewLead.salary_range) || 0).toLocaleString('en-IN')}/mo` 
+                    {cleanSalary(activeOverviewLead.salary, activeOverviewLead.sal_val, activeOverviewLead.salary_range) > 0
+                      ? `₹${Number(cleanSalary(activeOverviewLead.salary, activeOverviewLead.sal_val, activeOverviewLead.salary_range) || 0).toLocaleString('en-IN')}/mo`
                       : '₹30,000/mo'}
                   </div>
                 </div>
@@ -2024,7 +2161,7 @@ export default function LeadsView({
 
               {/* Grid: Personal Info & Loan Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
+
                 {/* Card: Personal & Contact Information */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
                   <div className="flex items-center gap-2 text-xs font-bold text-[#0A3977] uppercase tracking-wider border-b border-slate-100 pb-2">
@@ -2062,12 +2199,12 @@ export default function LeadsView({
 
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Date of Birth:</span>
-                      <span className="font-bold text-slate-900">{activeOverviewLead.dob || activeOverviewLead.dateOfBirth || '—'}</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.dob || activeOverviewLead.dateOfBirth || activeOverviewLead.date_of_birth || '—'}</span>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Gender:</span>
-                      <span className="font-bold text-slate-900">{activeOverviewLead.gender || '—'}</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.gender || activeOverviewLead.sex || '—'}</span>
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -2109,21 +2246,20 @@ export default function LeadsView({
 
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Salary Mode:</span>
-                      <span className="font-bold text-slate-900">{activeOverviewLead.salaryMode || activeOverviewLead.modeOfSalary || activeOverviewLead.mode_of_salary || '—'}</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.salaryMode || activeOverviewLead.modeOfSalary || activeOverviewLead.mode_of_salary || activeOverviewLead.salary_mode || '—'}</span>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Company Name:</span>
-                      <span className="font-bold text-slate-900">{activeOverviewLead.companyName || activeOverviewLead.company_name || '—'}</span>
+                      <span className="font-bold text-slate-900">{activeOverviewLead.companyName || activeOverviewLead.company_name || activeOverviewLead.employer || '—'}</span>
                     </div>
 
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Has Credit Card:</span>
-                      <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${
-                        String(activeOverviewLead.haveCreditCard || activeOverviewLead.have_credit_card).toLowerCase() === 'yes'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-slate-100 text-slate-700'
-                      }`}>
+                      <span className={`font-bold px-2 py-0.5 rounded text-[11px] ${String(activeOverviewLead.haveCreditCard || activeOverviewLead.have_credit_card).toLowerCase() === 'yes'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-slate-100 text-slate-700'
+                        }`}>
                         {activeOverviewLead.haveCreditCard || activeOverviewLead.have_credit_card || 'No'}
                       </span>
                     </div>
@@ -2146,8 +2282,9 @@ export default function LeadsView({
 
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Source / Channel:</span>
-                      <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 font-bold text-[11px] border border-blue-200/50">
-                        {activeOverviewLead.source || 'Website Application'}
+                      <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-bold text-[11px] border border-emerald-300 flex items-center gap-1">
+                        <MessageCircle className="w-3 h-3 text-emerald-600" />
+                        <span>WhatsApp</span>
                       </span>
                     </div>
 
@@ -2217,19 +2354,18 @@ export default function LeadsView({
                           {salaryOffers.eligible.map(p => {
                             const isAssigned = (activeOverviewLead.assignedCompany === p.name);
                             return (
-                              <div 
-                                key={p.id} 
-                                className={`p-3 rounded-xl border transition flex flex-col justify-between ${
-                                  isAssigned 
-                                    ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-500/20 shadow-xs' 
-                                    : 'bg-emerald-50/30 border-emerald-200/80 hover:bg-emerald-50/70'
-                                }`}
+                              <div
+                                key={p.id}
+                                className={`p-3 rounded-xl border transition flex flex-col justify-between ${isAssigned
+                                  ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-500/20 shadow-xs'
+                                  : 'bg-emerald-50/30 border-emerald-200/80 hover:bg-emerald-50/70'
+                                  }`}
                               >
                                 <div>
                                   <div className="flex items-center justify-between gap-1 mb-1.5">
                                     <span className="font-extrabold text-xs text-slate-900">{p.name}</span>
                                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                      Min ₹{(p.minSalary/1000).toFixed(0)}k
+                                      Min ₹{(p.minSalary / 1000).toFixed(0)}k
                                     </span>
                                   </div>
                                   <div className="text-[10.5px] text-slate-600 space-y-0.5 mb-2">
@@ -2242,11 +2378,10 @@ export default function LeadsView({
                                   <button
                                     type="button"
                                     onClick={() => handleReassignCompanyInModal(getLeadId(activeOverviewLead), p.name)}
-                                    className={`text-[11px] font-bold px-2 py-1 rounded-lg transition cursor-pointer grow text-center ${
-                                      isAssigned
-                                        ? 'bg-emerald-600 text-white shadow-2xs'
-                                        : 'bg-white hover:bg-emerald-600 hover:text-white text-emerald-800 border border-emerald-300'
-                                    }`}
+                                    className={`text-[11px] font-bold px-2 py-1 rounded-lg transition cursor-pointer grow text-center ${isAssigned
+                                      ? 'bg-emerald-600 text-white shadow-2xs'
+                                      : 'bg-white hover:bg-emerald-600 hover:text-white text-emerald-800 border border-emerald-300'
+                                      }`}
                                   >
                                     {isAssigned ? '✓ Assigned' : 'Assign to this'}
                                   </button>
@@ -2283,15 +2418,15 @@ export default function LeadsView({
                           {salaryOffers.ineligible.map(p => {
                             const shortfall = Math.max(0, p.minSalary - (salaryOffers.salary || 0));
                             return (
-                              <div 
-                                key={p.id} 
+                              <div
+                                key={p.id}
                                 className="p-3 rounded-xl border border-slate-200/80 bg-slate-50/60 text-slate-500 opacity-85 flex flex-col justify-between"
                               >
                                 <div>
                                   <div className="flex items-center justify-between gap-1 mb-1.5">
                                     <span className="font-bold text-xs text-slate-700">{p.name}</span>
                                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200">
-                                      Min ₹{(p.minSalary/1000).toFixed(0)}k Req.
+                                      Min ₹{(p.minSalary / 1000).toFixed(0)}k Req.
                                     </span>
                                   </div>
                                   <div className="text-[10.5px] text-slate-500 space-y-0.5 mb-2">
@@ -2322,7 +2457,7 @@ export default function LeadsView({
                   <Zap className="w-4 h-4 text-indigo-600" />
                   <span>Lead Workflow & Partner Management</span>
                 </div>
-                
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Partner Company Selector */}
                   <div>
@@ -2372,21 +2507,21 @@ export default function LeadsView({
                   {activeOverviewLead.assignedCompany && activeOverviewLead.assignedCompany !== 'Pending Selection' && activeOverviewLead.assignedCompany !== 'Pending Details' ? (
                     <a
                       href={getPartnerTrackingUrl(
-                        activeOverviewLead.assignedCompany, 
-                        { 
-                          leadId: getLeadId(activeOverviewLead), 
-                          phone: activeOverviewLead.mobile || activeOverviewLead.phone, 
-                          source: 'crm_lead_overview' 
+                        activeOverviewLead.assignedCompany,
+                        {
+                          leadId: getLeadId(activeOverviewLead),
+                          phone: activeOverviewLead.mobile || activeOverviewLead.phone,
+                          source: 'crm_lead_overview'
                         }
                       )}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={() => trackPartnerClick(
-                        activeOverviewLead.assignedCompany, 
-                        { 
-                          leadId: getLeadId(activeOverviewLead), 
-                          phone: activeOverviewLead.mobile || activeOverviewLead.phone, 
-                          source: 'crm_lead_overview' 
+                        activeOverviewLead.assignedCompany,
+                        {
+                          leadId: getLeadId(activeOverviewLead),
+                          phone: activeOverviewLead.mobile || activeOverviewLead.phone,
+                          source: 'crm_lead_overview'
                         }
                       )}
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#0A3977] hover:bg-blue-900 text-white rounded-xl text-xs font-bold transition shadow-sm active:scale-95 cursor-pointer"
@@ -2402,6 +2537,135 @@ export default function LeadsView({
                   )}
                 </div>
 
+              </div>
+
+              {/* Event Timeline & Partner Delivery Tracking */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3 shadow-xs">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-black text-slate-900 flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-blue-600" />
+                    <span>Partner Lead Tracking & Event Timeline</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleManualApiPush(activeOverviewLead)}
+                    disabled={isPushingApi}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition cursor-pointer border border-indigo-200"
+                  >
+                    <Send className={`w-3.5 h-3.5 ${isPushingApi ? 'animate-pulse text-indigo-500' : ''}`} />
+                    <span>{isPushingApi ? 'Pushing Lead...' : 'Push to Partner API'}</span>
+                  </button>
+                </div>
+
+                <div className="relative pl-6 space-y-4 border-l-2 border-slate-200 ml-2 pt-1 pb-1">
+                  {/* Node 1: Lead Assigned */}
+                  <div className="relative">
+                    <span className="w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white absolute -left-[31px] top-0.5 shadow-xs"></span>
+                    <div className="flex items-center justify-between">
+                      <div className="font-bold text-slate-800 text-xs">
+                        Assigned to {activeOverviewLead.assignedCompany || 'Lending Partner'}
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        {activeOverviewLead.created || activeOverviewLead.created_at || 'Lead Created'}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">
+                      Lead routed based on CIBIL and salary eligibility slab criteria.
+                    </div>
+                  </div>
+
+                  {/* Node 2: Outbound Clicked / Applied */}
+                  {activeOverviewLead.appliedTo && activeOverviewLead.appliedTo !== 'Not Applied Yet' && activeOverviewLead.appliedTo !== 'Pending Details' && activeOverviewLead.appliedTo !== 'Pending Selection' ? (
+                    <div className="relative">
+                      <span className="w-3.5 h-3.5 rounded-full bg-purple-600 border-2 border-white absolute -left-[31px] top-0.5 shadow-xs animate-pulse"></span>
+                      <div className="flex items-center justify-between">
+                        <div className="font-bold text-purple-800 text-xs flex items-center gap-1.5">
+                          <span>User Clicked "Apply Now" → Redirected to {activeOverviewLead.appliedTo}</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {activeOverviewLead.applied_at || 'Clicked'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-600 mt-0.5">
+                        Internal route <code className="bg-slate-100 px-1 rounded text-purple-700 font-mono">/go/{activeOverviewLead.clicked_partner || 'partner'}</code> triggered 302 redirect with <code className="bg-slate-100 px-1 rounded font-mono">sub_id={getLeadId(activeOverviewLead)}</code>.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="relative opacity-60">
+                      <span className="w-3.5 h-3.5 rounded-full bg-slate-300 border-2 border-white absolute -left-[31px] top-0.5"></span>
+                      <div className="font-bold text-slate-600 text-xs">
+                        Awaiting Applicant Click on Partner Offer
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        Applicant has not yet clicked / applied to any partner on the website.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Node 3: API / Webhook Push */}
+                  {activeOverviewLead.delivery_status && activeOverviewLead.delivery_status !== 'none' ? (
+                    <div className="relative">
+                      <span className={`w-3.5 h-3.5 rounded-full border-2 border-white absolute -left-[31px] top-0.5 shadow-xs ${activeOverviewLead.delivery_status === 'delivered' ? 'bg-emerald-500' : 'bg-rose-500'
+                        }`}></span>
+                      <div className="flex items-center justify-between">
+                        <div className={`font-bold text-xs ${activeOverviewLead.delivery_status === 'delivered' ? 'text-emerald-800' : 'text-rose-800'
+                          }`}>
+                          API Delivery: {activeOverviewLead.delivery_status === 'delivered' ? 'Successfully Delivered' : 'Delivery Failed'}
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {activeOverviewLead.delivery_at || 'API Pushed'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5">
+                        Target: {activeOverviewLead.delivery_partner || activeOverviewLead.assignedCompany || 'Partner API'}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {/* Node 4: Dynamic Events from lead_partner_events */}
+                  {leadEvents.length > 0 && leadEvents.map((evt, eIdx) => {
+                    const isPostback = evt.event_type === 'postback';
+                    const isClick = evt.event_type === 'clicked';
+                    const isPush = evt.event_type === 'api_pushed';
+                    const isStatus = evt.event_type === 'status_updated';
+
+                    let dotColor = 'bg-blue-500';
+                    let title = `Event: ${evt.event_type}`;
+                    if (isPostback) {
+                      dotColor = 'bg-emerald-600';
+                      title = `Postback Received: ${evt.status || 'Converted'}`;
+                    } else if (isClick) {
+                      dotColor = 'bg-purple-600';
+                      title = `Outbound Click Tracked (${evt.partner_name || evt.partner_id})`;
+                    } else if (isPush) {
+                      dotColor = evt.status === 'delivered' ? 'bg-emerald-500' : 'bg-rose-500';
+                      title = `API Push ${evt.status === 'delivered' ? 'Delivered' : 'Failed'}`;
+                    } else if (isStatus) {
+                      dotColor = 'bg-amber-500';
+                      title = `Status Updated to "${evt.details?.status || evt.status}"`;
+                    }
+
+                    return (
+                      <div key={evt.id || eIdx} className="relative">
+                        <span className={`w-3.5 h-3.5 rounded-full border-2 border-white absolute -left-[31px] top-0.5 shadow-xs ${dotColor}`}></span>
+                        <div className="flex items-center justify-between">
+                          <div className="font-bold text-slate-800 text-xs">{title}</div>
+                          <span className="text-[10px] text-slate-400 font-mono">{evt.created_at}</span>
+                        </div>
+                        {evt.ip && (
+                          <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                            IP: {evt.ip} {evt.details?.target_url ? `• Destination: ${evt.details.target_url.slice(0, 45)}...` : ''}
+                          </div>
+                        )}
+                        {evt.details?.remarks && (
+                          <div className="text-[11px] text-slate-600 italic mt-0.5">
+                            "{evt.details.remarks}"
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
             </div>
@@ -2431,14 +2695,23 @@ export default function LeadsView({
           const currentLead = leads.find((l, i) => getLeadId(l, i) === itemId) || item;
           const spaceBelow = window.innerHeight - rect.bottom;
           const spaceAbove = rect.top;
-          const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
-          const width = 256;
+          const openUp = spaceBelow < 340 && spaceAbove > spaceBelow;
+          const width = 310;
           const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 16));
           const eligInfo = getEligibilityInfo(currentLead);
           const currentPartner = currentLead.assignedCompany || eligInfo.partner || 'Pending Details';
           const companyBadge = getCompanyBadge(currentPartner);
-          const availableSpace = openUp ? Math.max(120, spaceAbove - 16) : Math.max(120, spaceBelow - 16);
-          const maxHeight = Math.min(380, availableSpace);
+          const availableSpace = openUp ? Math.max(260, spaceAbove - 20) : Math.max(260, spaceBelow - 20);
+          const maxHeight = Math.min(480, availableSpace);
+
+          const q = (partnerFilterQuery || '').toLowerCase().trim();
+          const filteredPartners = AFFILIATE_PARTNERS.filter(p => {
+            if (!q) return true;
+            return (p.name || '').toLowerCase().includes(q) ||
+              (p.tagline || '').toLowerCase().includes(q) ||
+              (p.description || '').toLowerCase().includes(q);
+          });
+          const showPendingSelection = !q || 'pending selection'.includes(q) || 'awaiting'.includes(q) || 'choice'.includes(q) || 'pending'.includes(q);
 
           return (
             <div
@@ -2452,38 +2725,94 @@ export default function LeadsView({
                 maxHeight: `${maxHeight}px`,
                 zIndex: 99999
               }}
-              className="w-64 bg-white/98 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-200/90 p-2 animate-fade-in flex flex-col overflow-hidden ring-1 ring-black/5"
+              className="w-[310px] bg-white/98 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/90 p-2.5 animate-fade-in flex flex-col overflow-hidden ring-1 ring-black/10"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-slate-100 shrink-0">
-                <span>Route Lending Partner</span>
-                <Building2 className="w-3.5 h-3.5 text-slate-400" />
+              {/* Header */}
+              <div className="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-slate-100 shrink-0 select-none">
+                <div className="flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-[#0A3977]" />
+                  <span className="text-slate-700 font-extrabold">Assign Lending Partner</span>
+                </div>
+                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
+                  {AFFILIATE_PARTNERS.length + 1} Options
+                </span>
               </div>
-              <div className="pt-1.5 space-y-1 overflow-y-auto grow pr-0.5 overscroll-contain">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleReassignCompany(itemId, 'Pending Selection');
-                    setOpenPartnerDropdownId(null);
-                    setPartnerDropdownAnchor(null);
-                  }}
-                  className={`w-full px-3 py-2 rounded-2xl text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
-                    companyBadge.name === 'Pending Selection'
-                      ? 'bg-slate-100 text-slate-900 font-black ring-1 ring-slate-300 shadow-2xs' 
+
+              {/* Quick Filter Partner Input */}
+              <div className="pt-2 pb-1.5 px-0.5 shrink-0">
+                <div className="relative flex items-center">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={partnerFilterQuery}
+                    onChange={(e) => setPartnerFilterQuery(e.target.value)}
+                    placeholder="Search partner or scroll..."
+                    className="w-full pl-8 pr-7 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0A3977] focus:bg-white text-slate-800 placeholder:text-slate-400 font-medium transition"
+                    onClick={(e) => e.stopPropagation()}
+                    autoFocus
+                  />
+                  {partnerFilterQuery && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPartnerFilterQuery('');
+                      }}
+                      className="absolute right-2 text-slate-400 hover:text-slate-600 cursor-pointer p-0.5 rounded-full hover:bg-slate-200/60"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Scrollable list container */}
+              <div
+                className="pt-1.5 space-y-1 overflow-y-auto flex-1 min-h-[140px] pr-1 dropdown-scrollbar"
+                style={{
+                  maxHeight: `${Math.min(320, Math.max(160, maxHeight - 95))}px`,
+                  overscrollBehavior: 'contain',
+                  WebkitOverflowScrolling: 'touch'
+                }}
+                onWheel={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                {/* Pending Selection Option */}
+                {showPendingSelection && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleReassignCompany(itemId, 'Pending Selection');
+                      setOpenPartnerDropdownId(null);
+                      setPartnerDropdownAnchor(null);
+                    }}
+                    className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between text-xs transition-all cursor-pointer group ${companyBadge.name === 'Pending Selection'
+                      ? 'bg-amber-50 text-amber-900 font-black ring-1 ring-amber-300 shadow-2xs'
                       : 'hover:bg-slate-50 text-slate-600 font-bold'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 truncate">
-                    <span className="w-3 h-3 rounded-full shrink-0 bg-slate-400"></span>
-                    <div className="truncate text-left">
-                      <div className="font-black leading-tight">Pending Selection</div>
-                      <div className="text-[10px] text-slate-400 font-normal truncate">Awaiting applicant choice</div>
+                      }`}
+                  >
+                    <div className="flex items-center gap-2.5 truncate">
+                      <div className="w-7 h-7 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                      </div>
+                      <div className="truncate text-left">
+                        <div className="font-extrabold leading-tight text-slate-800 group-hover:text-amber-900">Pending Selection</div>
+                        <div className="text-[10px] text-slate-400 font-normal truncate mt-0.5">Awaiting applicant choice</div>
+                      </div>
                     </div>
-                  </div>
-                  {companyBadge.name === 'Pending Selection' && <Check className="w-4 h-4 text-slate-700 shrink-0 font-bold" />}
-                </button>
-                {AFFILIATE_PARTNERS.map(p => {
+                    {companyBadge.name === 'Pending Selection' && (
+                      <div className="w-5 h-5 rounded-full bg-amber-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                        <Check className="w-3 h-3 stroke-[3]" />
+                      </div>
+                    )}
+                  </button>
+                )}
+
+                {/* All Partners */}
+                {filteredPartners.map(p => {
                   const isCurrent = (companyBadge.name || '').toLowerCase() === p.name.toLowerCase();
                   return (
                     <button
@@ -2495,23 +2824,45 @@ export default function LeadsView({
                         setOpenPartnerDropdownId(null);
                         setPartnerDropdownAnchor(null);
                       }}
-                      className={`w-full px-3 py-2 rounded-2xl text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
-                        isCurrent 
-                          ? 'bg-blue-50 text-[#0A3977] font-black ring-1 ring-blue-200 shadow-2xs' 
-                          : 'hover:bg-slate-50 text-slate-700 font-bold'
-                      }`}
+                      className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between text-xs transition-all cursor-pointer group ${isCurrent
+                        ? 'bg-blue-50/90 text-[#0A3977] font-black ring-1 ring-blue-300 shadow-2xs'
+                        : 'hover:bg-slate-50 text-slate-700 font-bold'
+                        }`}
                     >
                       <div className="flex items-center gap-2.5 truncate">
-                        <span className="w-3 h-3 rounded-full shrink-0 shadow-2xs" style={{ backgroundColor: p.accentColor }}></span>
+                        <div
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 shadow-2xs text-white"
+                          style={{ backgroundColor: p.accentColor || '#0A3977' }}
+                        >
+                          {p.name.slice(0, 2).toUpperCase()}
+                        </div>
                         <div className="truncate text-left">
-                          <div className="font-black leading-tight">{p.name}</div>
-                          <div className="text-[10px] text-slate-400 font-normal truncate">{p.tagline || 'Lending Partner'}</div>
+                          <div className="font-extrabold text-slate-900 leading-tight group-hover:text-blue-800 transition-colors">{p.name}</div>
+                          <div className="text-[10px] text-slate-400 font-normal truncate mt-0.5">{p.tagline || p.description || 'Lending Partner'}</div>
                         </div>
                       </div>
-                      {isCurrent && <Check className="w-4 h-4 text-[#0A3977] shrink-0 font-bold" />}
+                      {isCurrent ? (
+                        <div className="w-5 h-5 rounded-full bg-[#0A3977] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </div>
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 opacity-0 group-hover:opacity-100 transition-all shrink-0" />
+                      )}
                     </button>
                   );
                 })}
+
+                {!showPendingSelection && filteredPartners.length === 0 && (
+                  <div className="py-6 text-center text-xs text-slate-400 font-medium">
+                    No lending partner matches "{partnerFilterQuery}"
+                  </div>
+                )}
+              </div>
+
+              {/* Micro-footer tip */}
+              <div className="px-2 pt-2 pb-0.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400 font-medium select-none shrink-0">
+                <span>Scroll or type to search</span>
+                <span className="font-mono text-[9px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">ESC</span>
               </div>
             </div>
           );
@@ -2526,11 +2877,11 @@ export default function LeadsView({
           const currentLead = leads.find((l, i) => getLeadId(l, i) === itemId) || item;
           const spaceBelow = window.innerHeight - rect.bottom;
           const spaceAbove = rect.top;
-          const openUp = spaceBelow < 240 && spaceAbove > spaceBelow;
+          const openUp = spaceBelow < 300 && spaceAbove > spaceBelow;
           const width = 224;
           const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 16));
-          const availableSpace = openUp ? Math.max(120, spaceAbove - 16) : Math.max(120, spaceBelow - 16);
-          const maxHeight = Math.min(380, availableSpace);
+          const availableSpace = openUp ? Math.max(180, spaceAbove - 20) : Math.max(180, spaceBelow - 20);
+          const maxHeight = Math.min(460, availableSpace);
 
           const statusOptions = [
             { id: 'Fresh', label: 'Fresh', dot: 'bg-sky-500', bg: 'hover:bg-sky-50 text-sky-800' },
@@ -2539,6 +2890,7 @@ export default function LeadsView({
             { id: 'Docs received', label: 'Docs Received', dot: 'bg-indigo-500', bg: 'hover:bg-indigo-50 text-indigo-800' },
             { id: 'Approved', label: 'Approved', dot: 'bg-emerald-500', bg: 'hover:bg-emerald-50 text-emerald-800' },
             { id: 'Disbursed', label: 'Disbursed', dot: 'bg-teal-500', bg: 'hover:bg-teal-50 text-teal-800' },
+            { id: 'Not Interested', label: 'Not Interested', dot: 'bg-slate-500', bg: 'hover:bg-slate-100 text-slate-800' },
             { id: 'Rejected', label: 'Rejected', dot: 'bg-rose-500', bg: 'hover:bg-rose-50 text-rose-800' },
           ];
 
@@ -2554,14 +2906,20 @@ export default function LeadsView({
                 maxHeight: `${maxHeight}px`,
                 zIndex: 99999
               }}
-              className="w-56 bg-white/98 backdrop-blur-md rounded-3xl shadow-2xl border border-slate-200/90 p-2 animate-fade-in flex flex-col overflow-hidden ring-1 ring-black/5"
+              className="w-56 bg-white/98 backdrop-blur-md rounded-2xl shadow-2xl border border-slate-200/90 p-2 animate-fade-in flex flex-col overflow-hidden ring-1 ring-black/5"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-slate-100 shrink-0">
+              <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center justify-between border-b border-slate-100 shrink-0 select-none">
                 <span>Update Status</span>
                 <GitMerge className="w-3.5 h-3.5 text-slate-400" />
               </div>
-              <div className="pt-1.5 space-y-1 overflow-y-auto grow pr-0.5 overscroll-contain">
+              <div
+                className="pt-1.5 space-y-1 overflow-y-auto flex-1 min-h-0 pr-1 select-none dropdown-scrollbar"
+                style={{
+                  maxHeight: `${Math.min(320, Math.max(180, maxHeight - 50))}px`,
+                  overscrollBehavior: 'contain'
+                }}
+              >
                 {statusOptions.map(st => {
                   const isCurrent = (currentLead.status || 'Fresh').toLowerCase() === st.id.toLowerCase();
                   return (
@@ -2574,11 +2932,10 @@ export default function LeadsView({
                         setOpenStatusDropdownId(null);
                         setStatusDropdownAnchor(null);
                       }}
-                      className={`w-full px-3 py-2 rounded-2xl text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
-                        isCurrent 
-                          ? 'bg-slate-100 text-slate-900 font-black ring-1 ring-slate-300 shadow-2xs' 
-                          : `${st.bg} font-bold`
-                      }`}
+                      className={`w-full px-3 py-2 rounded-xl text-left flex items-center justify-between text-xs transition-all cursor-pointer ${isCurrent
+                        ? 'bg-slate-100 text-slate-900 font-black ring-1 ring-slate-300 shadow-2xs'
+                        : `${st.bg} font-bold`
+                        }`}
                     >
                       <div className="flex items-center gap-2.5">
                         <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${st.dot}`}></span>

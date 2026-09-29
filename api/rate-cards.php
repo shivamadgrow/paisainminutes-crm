@@ -38,9 +38,9 @@ if (file_exists($dataFile)) {
 echo json_encode([
     'success' => true,
     'rateCards' => [
-        ['id' => 'rc-rupay91', 'partnerName' => 'Rupay91', 'model' => 'tiered', 'defaultRate' => '2.8%', 'effectiveFrom' => '2026-04-01'],
-        ['id' => 'rc-jhatpat', 'partnerName' => 'Jhatpat Loans', 'model' => 'flat_pct', 'defaultRate' => '2.4%', 'effectiveFrom' => '2026-04-01'],
-        ['id' => 'rc-instarupees', 'partnerName' => 'Insta Rupees', 'model' => 'flat_pct', 'defaultRate' => '2.5%', 'effectiveFrom' => '2026-04-01'],
-        ['id' => 'rc-udhaarnow', 'partnerName' => 'UdhaarNow', 'model' => 'per_lead', 'defaultRate' => '₹1,500 / lead', 'effectiveFrom' => '2026-04-01']
+        ['id' => 'rc-rupay91', 'partnerName' => 'Rupay91', 'model' => 'flat_pct', 'defaultRate' => '6.0%', 'effectiveFrom' => '2026-04-01'],
+        ['id' => 'rc-jhatpat', 'partnerName' => 'Jhatpat Loans', 'model' => 'flat_pct', 'defaultRate' => '6.0%', 'effectiveFrom' => '2026-04-01'],
+        ['id' => 'rc-instarupees', 'partnerName' => 'Insta Rupees', 'model' => 'flat_pct', 'defaultRate' => '6.0%', 'effectiveFrom' => '2026-04-01'],
+        ['id' => 'rc-udhaarnow', 'partnerName' => 'UdhaarNow', 'model' => 'flat_pct', 'defaultRate' => '6.0%', 'effectiveFrom' => '2026-04-01']
     ]
 ]);

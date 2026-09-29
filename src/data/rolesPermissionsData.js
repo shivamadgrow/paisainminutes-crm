@@ -62,6 +62,22 @@ export const INITIAL_ROLE_DEFINITIONS = [
       administration: { staffManagement: false, roleConfig: false, securityConfig: false, viewAuditLog: false },
       reports: { buildReports: false, exportData: false }
     }
+  },
+  {
+    id: 'partner',
+    name: 'Partner',
+    badgeColor: 'bg-emerald-600 text-white',
+    description: 'External lending partner portal: view scoped assigned/clicked leads, update status & remarks',
+    userCount: 9,
+    isLocked: true,
+    permissions: {
+      dashboards: { view: true, export: false },
+      partners: { view: false, manage: false, onboard: false },
+      leads: { view: true, edit: true, delete: false, export: true, reassign: false },
+      commissions: { view: false, createRequest: false, recordSettlement: false, manageRateCards: false },
+      administration: { staffManagement: false, roleConfig: false, securityConfig: false, viewAuditLog: false },
+      reports: { buildReports: false, exportData: true }
+    }
   }
 ];
 

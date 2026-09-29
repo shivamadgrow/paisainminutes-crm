@@ -134,124 +134,71 @@ function cleanSalary(raw, salVal, salRange) {
   return num;
 }
 
-let lastLiveFetch = 0;
-const MIN_DATE = '2026-09-01'; // STRICTLY ONLY LEADS FROM TODAY ONWARDS
+const BACKEND_URL = 'https://api.paisainminutes.tech';
 
 async function getOrSyncLeads() {
-  const deletedSet = getDeletedIds();
-  // Filter local store by deleted and date
-  let localLeads = getStoredLeads().filter(l => {
-    const isDeleted = deletedSet.has(String(l.id)) || deletedSet.has(String(l.loanNo));
-    if (isDeleted) return false;
-    const lDate = l.date || (l.created_at ? l.created_at.split(' ')[0] : (l.created ? l.created.split(' ')[0] : ''));
-    if (lDate && lDate < MIN_DATE) return false;
-    return true;
-  }).map(l => {
-    const cleanedLoan = cleanLoanAmount(l.loanAmount || l.applied || l.loan_amount || l.amount);
-    const cleanedSalary = cleanSalary(l.salary || l.monthlySalary || l.monthly_salary || l.income, l.sal_val, l.salary_range);
-    return {
-      ...l,
-      applied: cleanedLoan,
-      loanAmount: cleanedLoan,
-      salary: cleanedSalary,
-      monthlySalary: cleanedSalary
-    };
-  });
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch(`${BACKEND_URL}/api/loan-applications/all`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (res.ok) {
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : (data.applications || data.leads || []);
+      return list.map(l => {
+        const rawName = (l.name || l.fullName || (l.user && l.user.name) || 'Applicant').trim();
+        const initials = l.initials || rawName.split(' ').filter(Boolean).map(n => n[0].toUpperCase()).join('').slice(0, 2) || 'AP';
+        const rawPhone = String(l.phone || l.mobile || l.phoneNumber || (l.user && l.user.phone) || '');
+        const digitsOnly = rawPhone.replace(/\D/g, '').slice(-10);
+        const formattedMobile = digitsOnly ? (digitsOnly.length === 10 ? `+91 ${digitsOnly}` : digitsOnly) : '—';
+        const cleanLoan = cleanLoanAmount(l.amount || l.loanAmount || 0);
+        const cleanSal = cleanSalary(l.monthlyIncome || l.salary || 0);
+        const isPhoneOnly = (rawName === 'Applicant' && cleanLoan === 0 && cleanSal === 0);
 
-  const now = Date.now();
-  // Sync from live server every 2 seconds
-  if (now - lastLiveFetch > 2000 || localLeads.length === 0) {
-    lastLiveFetch = now;
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
-      const res = await fetch('https://paisainminutes.com/admin/api/get-leads', { signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && Array.isArray(data.leads) && data.leads.length > 0) {
-          const liveLeads = data.leads
-            .filter(l => {
-              // 1. Check Deleted / Blacklisted
-              const id1 = String(l.id || '');
-              const id2 = String(l.lead_id || '');
-              const id3 = String(l.loanNo || '');
-              if (deletedSet.has(id1) || deletedSet.has(id2) || deletedSet.has(id3)) return false;
-
-              // 2. PURGE ALL OLD HISTORICAL LEADS (Prior to 25 Aug 2026)
-              const leadDate = l.date || (l.created_at ? l.created_at.split(' ')[0] : (l.created ? l.created.split(' ')[0] : ''));
-              if (leadDate && leadDate < MIN_DATE) return false;
-
-              return true;
-            })
-            .map(l => {
-              const rawName = (l.name || l.fullName || 'Applicant').trim();
-              const initials = l.initials || rawName.split(' ').filter(Boolean).map(n => n[0].toUpperCase()).join('').slice(0, 2) || 'AL';
-              const rawPhone = String(l.mobile || l.phone || l.phoneNumber || '');
-              const digitsOnly = rawPhone.replace(/\D/g, '').slice(-10);
-              const formattedMobile = digitsOnly ? (digitsOnly.length === 10 ? `+91 ${digitsOnly}` : digitsOnly) : '—';
-
-              const rawLoan = l.loanAmount || l.applied || l.loan_amount || l.amount;
-              const loanNum = cleanLoanAmount(rawLoan);
-
-              const rawSalary = l.salary || l.monthlySalary || l.monthly_salary || l.income;
-              const salary = cleanSalary(rawSalary, l.sal_val, l.salary_range);
-
-              const cibil = String(l.cibil || l.cibilScore || l.cibil_score || '—').trim();
-              const assignedCompany = l.assignedCompany || determineAssignedCompany(cibil, salary, loanNum, l.company || l.partner || '');
-
-              return {
-                id: l.id || l.lead_id || l.loanNo,
-                loanNo: l.loanNo || l.lead_id || l.id,
-                name: rawName,
-                initials: initials,
-                avatarBg: l.avatarBg || 'bg-blue-600',
-                mobile: formattedMobile,
-                email: l.email || l.emailAddress || '—',
-                creditManager: l.creditManager || 'Unassigned',
-                pan: l.pan || '—',
-                cibil: cibil,
-                applied: loanNum,
-                loanAmount: loanNum,
-                salary: salary,
-                city: l.city || 'Delhi NCR',
-                state: l.state || 'India',
-                pincode: l.pincode || '110001',
-                employmentType: l.employmentType || 'Salaried',
-                assignedCompany: assignedCompany,
-                eligibilityStatus: l.eligibilityStatus || 'Eligible',
-                source: l.source || 'Check Eligibility Website',
-                purpose: l.purpose || 'Personal Loan',
-                status: l.status || 'Fresh',
-                created: l.created || l.created_at || new Date().toISOString(),
-                date: l.date || (l.created_at ? l.created_at.split(' ')[0] : new Date().toISOString().split('T')[0])
-              };
-            });
-
-          // Merge by 10-digit Phone Number (1 Lead Per Applicant)
-          const leadsByPhone = new Map();
-          for (const l of liveLeads) {
-            const rawPhone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
-            const key = (rawPhone && rawPhone.length === 10) ? rawPhone : String(l.id);
-            if (!leadsByPhone.has(key)) {
-              leadsByPhone.set(key, l);
-            }
-          }
-          for (const loc of localLeads) {
-            const rawPhone = String(loc.phone || loc.mobile || '').replace(/\D/g, '').slice(-10);
-            const key = (rawPhone && rawPhone.length === 10) ? rawPhone : String(loc.id);
-            if (!leadsByPhone.has(key) && !deletedSet.has(String(loc.id)) && !deletedSet.has(String(loc.loanNo))) {
-              leadsByPhone.set(key, loc);
-            }
-          }
-          const uniqueLeads = Array.from(leadsByPhone.values());
-          saveStoredLeads(uniqueLeads);
-          return uniqueLeads;
-        }
-      }
-    } catch (e) {}
+        return {
+          id: String(l.id || l.lead_id || l.loanNo || ''),
+          loanNo: String(l.loanNo || l.lead_id || l.id || ''),
+          name: rawName,
+          fullName: rawName,
+          initials: initials,
+          avatarBg: 'bg-blue-600',
+          mobile: formattedMobile,
+          phone: digitsOnly,
+          phoneNumber: digitsOnly,
+          email: l.email && !l.email.includes('@paisainminutes.com') ? l.email : '—',
+          creditManager: l.creditManager || 'Unassigned',
+          pan: String(l.pan || '—').toUpperCase(),
+          dob: l.dob || '—',
+          gender: l.gender || '—',
+          addressType: l.addressType || 'Rented',
+          salaryMode: l.salaryMode || 'Bank Transfer',
+          companyName: l.companyName || '—',
+          haveCreditCard: l.haveCreditCard || 'No',
+          creditCardLimit: l.creditCardLimit || null,
+          cibil: String(l.cibil || l.cibilScore || '—'),
+          cibilScore: String(l.cibil || l.cibilScore || '—'),
+          applied: cleanLoan,
+          loanAmount: cleanLoan,
+          salary: cleanSal,
+          monthlySalary: cleanSal,
+          city: l.city || 'Delhi NCR',
+          state: l.state || 'India',
+          pincode: l.pincode || '110001',
+          employmentType: l.employmentType || 'Salaried',
+          assignedCompany: l.selectedLenderId || (isPhoneOnly ? 'Pending Details' : 'Pending Selection'),
+          eligibilityStatus: isPhoneOnly ? 'Incomplete / Phone Only' : 'Eligible',
+          source: l.source || (isPhoneOnly ? 'Apply Now (Phone Only)' : 'Apply Now (Website)'),
+          purpose: l.purpose || 'Personal Loan',
+          status: l.status || 'Fresh',
+          created: l.createdAt ? new Date(l.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : new Date().toLocaleString(),
+          date: l.createdAt ? l.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]
+        };
+      });
+    }
+  } catch (e) {
+    console.warn('[Vite Dev Server] Fetch from api.paisainminutes.tech error:', e.message);
   }
-  return localLeads;
+  return [];
 }
 
 // Smart Auto-Assign rule engine for affiliate distribution
@@ -285,28 +232,77 @@ function crmApiPlugin() {
           req.url = '/';
         }
 
-        // 1. GET ALL LEADS (Today Onwards Only)
-        if (url.endsWith('/api/get-leads')) {
-          const leads = await getOrSyncLeads()
+        // 1. GET ALL LEADS (Supports Partner Scoping & Phone Masking)
+        if (url.includes('/api/get-leads')) {
+          const parsedUrl = new URL(req.url, 'http://localhost');
+          const partnerIdParam = (parsedUrl.searchParams.get('partner_id') || '').trim().toLowerCase();
+          let leads = await getOrSyncLeads()
+          if (partnerIdParam) {
+            leads = leads.filter(l => {
+              const assigned = String(l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
+              const applied = String(l.appliedTo || l.clicked_partner || '').toLowerCase().replace(/[\s\-_]/g, '');
+              return assigned === partnerIdParam || applied === partnerIdParam || (assigned && assigned.includes(partnerIdParam)) || (applied && applied.includes(partnerIdParam));
+            }).map(l => {
+              const applied = String(l.appliedTo || l.clicked_partner || '').toLowerCase();
+              const hasApplied = applied === partnerIdParam || applied.includes(partnerIdParam);
+              if (!hasApplied) {
+                const rawPhone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
+                const masked = rawPhone.length === 10 ? `XXXXXX${rawPhone.slice(6)}` : 'XXXXXXXXXX';
+                return { ...l, phone: masked, mobile: masked, phoneNumber: masked };
+              }
+              return l;
+            });
+          }
           res.statusCode = 200
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify({ success: true, count: leads.length, leads }))
           return
         }
 
+        // 1.01 PARTNER EVENTS TIMELINE
+        if (url.includes('/api/partner-events')) {
+          const eventsFile = path.resolve(__dirname, '../data/lead_partner_events.json');
+          let events = [];
+          if (fs.existsSync(eventsFile)) {
+            try { events = JSON.parse(fs.readFileSync(eventsFile, 'utf-8')); } catch(e) {}
+          }
+          const parsedUrl = new URL(req.url, 'http://localhost');
+          const leadId = parsedUrl.searchParams.get('lead_id');
+          if (leadId) {
+            events = events.filter(e => String(e.lead_id) === String(leadId) || String(e.lead_id) === String(leadId).replace(/\D/g, ''));
+          }
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, count: events.length, events }));
+          return;
+        }
+
+        // 1.02 PARTNER DELIVERY LOGS
+        if (url.includes('/api/delivery-logs')) {
+          const logsFile = path.resolve(__dirname, '../data/partner_delivery_logs.json');
+          let logs = [];
+          if (fs.existsSync(logsFile)) {
+            try { logs = JSON.parse(fs.readFileSync(logsFile, 'utf-8')); } catch(e) {}
+          }
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ success: true, count: logs.length, logs }));
+          return;
+        }
+
         // 1.1 GET PARTNER ANALYTICS KPI SUMMARY
         if (url.endsWith('/api/partner-analytics/kpi-summary')) {
           const leads = await getOrSyncLeads()
           const PARTNERS_CONFIG = [
-            { id: 'rupay91', name: 'Rupay91', rateStr: '2.8%', ratePct: 0.028, status: 'Paid' },
-            { id: 'jhatpatloans', name: 'Jhatpat Loans', rateStr: '2.4%', ratePct: 0.024, status: 'Paid' },
-            { id: 'instarupees', name: 'Insta Rupees', rateStr: '2.5%', ratePct: 0.025, status: 'Pending' },
-            { id: 'udhaarnow', name: 'UdhaarNow', rateStr: '2.2%', ratePct: 0.022, status: 'Paid' },
-            { id: 'loanwithin', name: 'LoanWithin', rateStr: '2.6%', ratePct: 0.026, status: 'Pending' },
-            { id: 'shubhcash', name: 'ShubhCash', rateStr: '2.3%', ratePct: 0.023, status: 'Paid' },
-            { id: 'borrowera', name: 'Borrowera', rateStr: '2.7%', ratePct: 0.027, status: 'Pending' },
-            { id: 'easyfincare', name: 'Easy Fincare', rateStr: '2.4%', ratePct: 0.024, status: 'Paid' },
-            { id: 'ticket2loan', name: 'Ticket 2 Loan', rateStr: '2.5%', ratePct: 0.025, status: 'Pending' }
+            { id: 'rupay91', name: 'Rupay91', rateStr: '6.0%', ratePct: 0.06, status: 'Paid' },
+            { id: 'jhatpatloans', name: 'Jhatpat Loans', rateStr: '6.0%', ratePct: 0.06, status: 'Paid' },
+            { id: 'instarupees', name: 'Insta Rupees', rateStr: '6.0%', ratePct: 0.06, status: 'Pending' },
+            { id: 'udhaarnow', name: 'UdhaarNow', rateStr: '6.0%', ratePct: 0.06, status: 'Paid' },
+            { id: 'loanwithin', name: 'LoanWithin', rateStr: '6.0%', ratePct: 0.06, status: 'Pending' },
+            { id: 'shubhcash', name: 'ShubhCash', rateStr: '6.0%', ratePct: 0.06, status: 'Paid' },
+            { id: 'borrowera', name: 'Borrowera', rateStr: '6.0%', ratePct: 0.06, status: 'Pending' },
+            { id: 'easyfincare', name: 'Easy Fincare', rateStr: '6.0%', ratePct: 0.06, status: 'Paid' },
+            { id: 'ticket2loan', name: 'Ticket 2 Loan', rateStr: '6.0%', ratePct: 0.06, status: 'Pending' }
           ];
 
           const partnerStats = PARTNERS_CONFIG.map(p => {
@@ -395,8 +391,8 @@ function crmApiPlugin() {
               const formattedMobile = digitsOnly ? digitsOnly : '9876543210'
 
               const now = new Date()
-              const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-              const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase()
+              const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' })
+              const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }).toUpperCase()
 
               const name = (parsed.name || parsed.fullName || parsed.full_name || 'Applicant').trim()
               const initials = name.split(' ').filter(Boolean).map(n => n[0].toUpperCase()).join('').slice(0, 2) || 'AL'

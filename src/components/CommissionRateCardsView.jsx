@@ -24,7 +24,7 @@ export default function CommissionRateCardsView() {
 
   const [editForm, setEditForm] = useState({
     model: 'tiered',
-    defaultRate: '2.8%',
+    defaultRate: '6.0%',
     effectiveFrom: new Date().toISOString().slice(0, 10),
     slab1Rate: '2.5',
     slab2Rate: '2.8',
@@ -256,7 +256,7 @@ export default function CommissionRateCardsView() {
                     type="text"
                     value={editForm.defaultRate}
                     onChange={(e) => setEditForm(p => ({ ...p, defaultRate: e.target.value }))}
-                    placeholder="e.g. 2.8%"
+                    placeholder="e.g. 6.0%"
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                   />
                 </div>

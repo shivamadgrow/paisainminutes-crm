@@ -1,23 +1,14 @@
 /**
  * Unified API Client for Paisa in Minutes CRM
- * Supports Hostinger Subdomain (crm.paisainminutes.com), Main Domain (paisainminutes.com),
- * Render Cloud Backend API (https://paisainminutes.onrender.com), and Localhost Dev.
+ * Single Source of Truth Backend API: https://api.paisainminutes.tech
  */
 
 import { formatToIST } from './amountHelpers';
 
-const RENDER_BASE = 'https://paisainminutes.onrender.com';
+const BACKEND_BASE = 'https://api.paisainminutes.tech';
+export { BACKEND_BASE };
 
-// Candidate Base URLs in fallback priority
-const API_BASES = [
-  '',                                 // 1. Current Origin (Relative)
-  'https://paisainminutes.com',       // 2. Production Main Domain
-  'https://www.paisainminutes.com',   // 3. Production WWW Main Domain
-  'https://crm.paisainminutes.com',   // 4. Subdomain direct
-  RENDER_BASE                         // 5. Render Backend
-];
-
-function mapRenderLead(item, index) {
+function mapBackendLead(item, index) {
   if (!item) return null;
   const rawPhone = String(item.phone || item.phoneNumber || item.mobile || (item.user && item.user.phone) || '').replace(/\D/g, '').slice(-10);
   if (!rawPhone || rawPhone.length < 10) return null;
@@ -49,6 +40,20 @@ function mapRenderLead(item, index) {
     emailAddress: item.email && !item.email.includes('@paisainminutes.com') ? item.email : '—',
     creditManager: item.creditManager || 'Unassigned',
     pan: (item.pan || (item.user && item.user.pan) || '—').toUpperCase(),
+    dob: item.dob || item.dateOfBirth || item.date_of_birth || '—',
+    dateOfBirth: item.dateOfBirth || item.dob || item.date_of_birth || '—',
+    gender: item.gender || '—',
+    addressType: item.addressType || item.address_type || 'Rented',
+    address_type: item.address_type || item.addressType || 'Rented',
+    salaryMode: item.salaryMode || item.modeOfSalary || item.mode_of_salary || 'Bank Transfer',
+    modeOfSalary: item.modeOfSalary || item.salaryMode || item.mode_of_salary || 'Bank Transfer',
+    mode_of_salary: item.mode_of_salary || item.salaryMode || item.modeOfSalary || 'Bank Transfer',
+    companyName: item.companyName || item.company_name || item.employer || '—',
+    company_name: item.company_name || item.companyName || item.employer || '—',
+    haveCreditCard: item.haveCreditCard || item.have_credit_card || 'No',
+    have_credit_card: item.have_credit_card || item.haveCreditCard || 'No',
+    creditCardLimit: item.creditCardLimit || item.credit_card_limit || null,
+    credit_card_limit: item.credit_card_limit || item.creditCardLimit || null,
     cibil: item.cibil || '—',
     cibilScore: item.cibil || '—',
     applied: cleanLoan,
@@ -59,9 +64,11 @@ function mapRenderLead(item, index) {
     state: item.state || '—',
     pincode: item.pincode || '—',
     employmentType: item.employmentType || 'Salaried',
-    assignedCompany: item.assignedCompany || (isPhoneOnly ? 'Pending Details' : 'Pending Selection'),
+    assignedCompany: item.selectedLenderId || item.assignedCompany || (isPhoneOnly ? 'Pending Details' : 'Pending Selection'),
     eligibilityStatus: isPhoneOnly ? 'Incomplete / Phone Only' : (item.eligibilityStatus || 'Eligible'),
-    source: item.source || (isPhoneOnly ? 'Apply Now (Phone Only)' : 'Render API / Apply Now'),
+    source: item.source || (isPhoneOnly ? 'Apply Now (Phone Only)' : 'Apply Now (Website)'),
+    utm_source: item.utm_source || null,
+    lead_source: item.lead_source || null,
     purpose: item.purpose || 'Personal Loan',
     status: item.status || 'Fresh',
     created: formatToIST(item.createdAt || new Date()).full,
@@ -72,79 +79,79 @@ function mapRenderLead(item, index) {
 }
 
 /**
- * Universal Fetch with Comprehensive Step-by-Step Console Logging
+ * Universal Direct Fetch to Node.js Backend (https://api.paisainminutes.tech)
  */
 export async function fetchApi(pathWithSlash, options = {}) {
-  const method = (options.method || 'GET').toUpperCase();
   const cleanPath = pathWithSlash.startsWith('/') ? pathWithSlash : `/${pathWithSlash}`;
-
-  // Generate candidate URLs in order
-  const candidateUrls = [];
-  for (const base of API_BASES) {
-    const rawUrl = `${base}${cleanPath}`;
-    candidateUrls.push(rawUrl);
-    if (!cleanPath.endsWith('.php') && !cleanPath.includes('?') && !base.includes('onrender.com')) {
-      candidateUrls.push(`${base}${cleanPath}.php`);
-    }
+  
+  // Normalize legacy routes directly to Node.js backend
+  let targetPath = cleanPath;
+  if (cleanPath.startsWith('/admin/api/submit-lead') || cleanPath.startsWith('/api/submit-lead')) {
+    targetPath = '/api/loan-applications';
+  } else if (cleanPath.startsWith('/admin/api/get-leads') || cleanPath.startsWith('/crm/api/get-leads')) {
+    targetPath = '/api/loan-applications/all';
+  } else if (cleanPath.startsWith('/admin/api/update-lead') || cleanPath.startsWith('/crm/api/update-lead')) {
+    targetPath = '/api/loan-applications';
   }
 
-  let lastError = null;
-  for (const url of candidateUrls) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+  const url = `${BACKEND_BASE}${targetPath}`;
+  const token = localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token');
+  const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
 
-      const token = localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token');
-      const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-      const res = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json, text/plain, */*',
-          ...authHeaders,
-          ...(options.headers || {})
-        }
-      });
-      clearTimeout(timeoutId);
-
-      if (res && res.ok) {
-        let responseJson = null;
-        try {
-          const text = await res.text();
-          responseJson = text ? JSON.parse(text) : {};
-        } catch (parseErr) {
-          continue;
-        }
-
-        return {
-          ok: true,
-          status: res.status,
-          url: url,
-          data: responseJson,
-          json: async () => responseJson
-        };
+    const res = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...authHeaders,
+        ...(options.headers || {})
       }
-    } catch (e) {
-      lastError = e;
-    }
-  }
+    });
+    clearTimeout(timeoutId);
 
+    if (res && res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return {
+        ok: true,
+        status: res.status,
+        url: url,
+        data: data,
+        json: async () => data
+      };
+    } else if (res) {
+      const errData = await res.json().catch(() => ({}));
+      return {
+        ok: false,
+        status: res.status,
+        url: url,
+        data: errData,
+        json: async () => errData
+      };
+    }
+  } catch (e) {
+    console.error(`[API ERROR] ${url}:`, e);
+  }
   return null;
 }
 
 /**
  * Helper to check and maintain locally deleted leads blacklist
  */
+const UNBLOCKED_LEAD_KEYS = ['pim-20260921-7609', 'pim-20260921-3514', 'pim-20260922-7609', '8470087609'];
+
 export function getDeletedLeadBlacklist() {
   try {
     const raw = localStorage.getItem('pim_deleted_leads');
     if (!raw) return [];
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return [];
-    // Remove legacy '*' wildcard and 10-digit phone numbers so re-submissions are never blocked
-    const filtered = arr.filter(x => x !== '*' && !/^[6-9]\d{9}$/.test(String(x).trim()));
+    // Remove legacy '*' wildcard, 10-digit phone numbers, and explicitly unblocked IDs
+    const filtered = arr.filter(x => x !== '*' && !/^[6-9]\d{9}$/.test(String(x).trim()) && !UNBLOCKED_LEAD_KEYS.includes(String(x).trim().toLowerCase()));
     if (filtered.length !== arr.length) {
       localStorage.setItem('pim_deleted_leads', JSON.stringify(filtered));
     }
@@ -160,11 +167,11 @@ export function addToDeletedLeadBlacklist(idsOrPhones) {
     const newItems = Array.isArray(idsOrPhones) ? idsOrPhones : [idsOrPhones];
     const cleanList = newItems
       .filter(Boolean)
-      .filter(i => i !== '*' && !/^[6-9]\d{9}$/.test(String(i).trim())) // Do not blacklist raw phone numbers
+      .filter(i => i !== '*' && !/^[6-9]\d{9}$/.test(String(i).trim()) && !UNBLOCKED_LEAD_KEYS.includes(String(i).trim().toLowerCase())) // Do not blacklist raw phone numbers or unblocked keys
       .map(i => String(i).trim().toLowerCase());
     const combined = Array.from(new Set([...current, ...cleanList]));
     localStorage.setItem('pim_deleted_leads', JSON.stringify(combined));
-  } catch (e) {}
+  } catch (e) { }
 }
 
 export const LIVE_LAUNCH_TIMESTAMP = 1789151400000; // 2026-09-12T00:00:00+05:30
@@ -217,7 +224,7 @@ export function saveLeadOverride(leadIdOrPhone, updates) {
       _updatedAt: Date.now()
     };
     localStorage.setItem(LEAD_OVERRIDES_STORAGE_KEY, JSON.stringify(current));
-  } catch (e) {}
+  } catch (e) { }
 }
 
 export function applyLeadOverrides(lead) {
@@ -235,6 +242,9 @@ export function applyLeadOverrides(lead) {
     if (ov.status) {
       lead.status = ov.status;
     }
+    if (ov.city) {
+      lead.city = ov.city;
+    }
     if (ov.eligibilityStatus) {
       lead.eligibilityStatus = ov.eligibilityStatus;
     }
@@ -243,27 +253,9 @@ export function applyLeadOverrides(lead) {
 }
 
 /**
- * Fetch Leads from Backend (Local stores + Render API)
+ * Fetch Leads directly from Node.js Backend Server (https://api.paisainminutes.tech)
  */
-export async function getLeadsFromBackend() {
-  const isSubdomain = typeof window !== 'undefined' && window.location.hostname.startsWith('crm.');
-  const endpoints = isSubdomain
-    ? [
-        '/api/get-leads.php',
-        '/api/get-leads',
-        '/crm/api/get-leads.php',
-        '/admin/api/get-leads.php',
-        '/crm.php?action=fetch_realtime'
-      ]
-    : [
-        '/admin/api/get-leads.php',
-        '/admin/api/get-leads',
-        '/crm/api/get-leads.php',
-        '/api/get-leads.php',
-        '/api/get-leads',
-        '/crm.php?action=fetch_realtime'
-      ];
-
+export async function getLeadsFromBackend(options = {}) {
   const deletedBlacklist = getDeletedLeadBlacklist();
 
   const leadsByPhone = new Map();
@@ -287,62 +279,78 @@ export async function getLeadsFromBackend() {
 
     if (phoneKey && leadsByPhone.has(phoneKey)) {
       const existing = leadsByPhone.get(phoneKey);
-      const newTime = new Date(l.created_at || l.created || l.date || 0).getTime() || 0;
-      const oldTime = new Date(existing.created_at || existing.created || existing.date || 0).getTime() || 0;
+      const isSameLeadId = existing.id === l.id || existing.lead_id === l.lead_id;
+      const isStepUpgrade = (existing.name === 'Applicant' || !existing.name) && l.name && l.name !== 'Applicant';
+      const timeDiff = Math.abs(new Date(l.created_at || l.created || 0).getTime() - new Date(existing.created_at || existing.created || 0).getTime());
+      const isCloseInTime = !isNaN(timeDiff) && timeDiff < 120000; // within 2 minutes
 
-      // Merge best fields: keep non-generic name, non-default amounts, richest source
-      if ((existing.name === 'Applicant' || !existing.name) && l.name && l.name !== 'Applicant') {
-        existing.name = l.name;
-        existing.fullName = l.fullName || l.name;
-        existing.initials = l.initials || existing.initials;
-      }
-      if ((existing.source === 'Website Application' || existing.source === 'Apply Now (Phone Only)') && l.source === 'Check Eligibility Website') {
-        existing.source = l.source;
-      }
-      if ((!existing.cibil || existing.cibil === '—') && l.cibil && l.cibil !== '—') {
-        existing.cibil = l.cibil;
-        existing.cibilScore = l.cibilScore || l.cibil;
-      }
-      if ((!existing.loanAmount || existing.loanAmount === 0) && Number(l.loanAmount) > 0) {
-        existing.loanAmount = Number(l.loanAmount);
-        existing.applied = Number(l.loanAmount);
-      }
-      if ((!existing.salary || existing.salary === 0) && Number(l.salary) > 0) {
-        existing.salary = Number(l.salary);
-        existing.monthlySalary = Number(l.salary);
-      }
-      if (l.email && l.email !== '—' && (!existing.email || existing.email === '—')) {
-        existing.email = l.email;
-        existing.emailAddress = l.email;
-      }
-      if (l.pincode && l.pincode !== '—' && (!existing.pincode || existing.pincode === '—')) {
-        existing.pincode = l.pincode;
-      }
-      if (l.city && l.city !== '—' && (!existing.city || existing.city === '—')) {
-        existing.city = l.city;
-      }
-      if (l.eligibilityStatus && l.eligibilityStatus !== 'Incomplete / Phone Only') {
-        existing.eligibilityStatus = l.eligibilityStatus;
-      }
-      if ((!existing.assignedCompany || existing.assignedCompany === 'Pending Details' || existing.assignedCompany === 'Unassigned') && l.assignedCompany && l.assignedCompany !== 'Pending Details') {
-        existing.assignedCompany = l.assignedCompany;
-      }
-      if ((!existing.status || existing.status === 'Fresh') && l.status && l.status !== 'Fresh') {
-        existing.status = l.status;
-      }
+      if (isSameLeadId || isStepUpgrade || isCloseInTime) {
+        const newTime = new Date(l.created_at || l.created || l.date || 0).getTime() || 0;
+        const oldTime = new Date(existing.created_at || existing.created || existing.date || 0).getTime() || 0;
 
-      // If newer submission, update timestamps and ID so it displays at the top
-      if (newTime >= oldTime) {
-        existing.id = l.id || existing.id;
-        existing.loanNo = l.loanNo || existing.loanNo;
-        existing.lead_id = l.lead_id || existing.lead_id;
-        existing.created = l.created || existing.created;
-        existing.created_at = l.created_at || existing.created_at;
-        existing.created_time = l.created_time || existing.created_time;
-        existing.date = l.date || existing.date;
-        if (l.status) existing.status = l.status;
+        // Merge best fields: keep non-generic name, non-default amounts, richest source
+        if ((existing.name === 'Applicant' || !existing.name) && l.name && l.name !== 'Applicant') {
+          existing.name = l.name;
+          existing.fullName = l.fullName || l.name;
+          existing.initials = l.initials || existing.initials;
+        }
+        if ((existing.source === 'Website Application' || existing.source === 'Apply Now (Phone Only)') && l.source === 'Check Eligibility Website') {
+          existing.source = l.source;
+        }
+        if ((!existing.cibil || existing.cibil === '—') && l.cibil && l.cibil !== '—') {
+          existing.cibil = l.cibil;
+          existing.cibilScore = l.cibilScore || l.cibil;
+        }
+        if ((!existing.loanAmount || existing.loanAmount === 0) && Number(l.loanAmount) > 0) {
+          existing.loanAmount = Number(l.loanAmount);
+          existing.applied = Number(l.loanAmount);
+        }
+        if ((!existing.salary || existing.salary === 0) && Number(l.salary) > 0) {
+          existing.salary = Number(l.salary);
+          existing.monthlySalary = Number(l.salary);
+        }
+        if (l.email && l.email !== '—' && (!existing.email || existing.email === '—')) {
+          existing.email = l.email;
+          existing.emailAddress = l.email;
+        }
+        if (l.pincode && l.pincode !== '—' && (!existing.pincode || existing.pincode === '—')) {
+          existing.pincode = l.pincode;
+        }
+        if (l.city && l.city !== '—' && (!existing.city || existing.city === '—')) {
+          existing.city = l.city;
+        }
+        if (l.eligibilityStatus && l.eligibilityStatus !== 'Incomplete / Phone Only') {
+          existing.eligibilityStatus = l.eligibilityStatus;
+        }
+        if ((!existing.assignedCompany || existing.assignedCompany === 'Pending Details' || existing.assignedCompany === 'Unassigned') && l.assignedCompany && l.assignedCompany !== 'Pending Details') {
+          existing.assignedCompany = l.assignedCompany;
+        }
+        if ((!existing.status || existing.status === 'Fresh') && l.status && l.status !== 'Fresh') {
+          existing.status = l.status;
+        }
+        if (l.appliedTo && l.appliedTo !== 'Not Applied Yet') {
+          existing.appliedTo = l.appliedTo;
+          existing.applied_to = l.appliedTo;
+        }
+        if (l.clicked_partner) existing.clicked_partner = l.clicked_partner;
+        if (l.delivery_status && l.delivery_status !== 'none') existing.delivery_status = l.delivery_status;
+        if (l.delivery_partner) existing.delivery_partner = l.delivery_partner;
+        if (l.remarks) existing.remarks = l.remarks;
+        if (l.is_phone_masked !== undefined) existing.is_phone_masked = l.is_phone_masked;
+
+        // If newer submission, update timestamps and ID so it displays at the top
+        if (newTime >= oldTime) {
+          existing.id = l.id || existing.id;
+          existing.loanNo = l.loanNo || existing.loanNo;
+          existing.lead_id = l.lead_id || existing.lead_id;
+          existing.created = l.created || existing.created;
+          existing.created_at = l.created_at || existing.created_at;
+          existing.created_time = l.created_time || existing.created_time;
+          existing.date = l.date || existing.date;
+          if (l.status) existing.status = l.status;
+        }
+        return;
       }
-      return;
     }
 
     if (id && leadsById.has(id)) {
@@ -353,46 +361,17 @@ export async function getLeadsFromBackend() {
     if (id) leadsById.set(id, l);
   }
 
-  // 1. Fetch from local endpoints
-  for (const ep of endpoints) {
-    const res = await fetchApi(ep);
-    if (res && res.ok && res.data) {
-      const data = res.data;
-      if (data && Array.isArray(data.deleted_blacklist)) {
-        addToDeletedLeadBlacklist(data.deleted_blacklist);
-      }
-      const leads = Array.isArray(data.leads) 
-        ? data.leads 
-        : (data.data && Array.isArray(data.data.leads) ? data.data.leads : null);
-
-      if (leads && Array.isArray(leads) && leads.length > 0) {
-        for (const l of leads) {
-          mergeOrAddLead(l);
-        }
-        break;
-      }
-    }
-  }
-
-  // 2. Also fetch and merge from Render Cloud database
+  // 1. Direct fetch from Node.js Backend (https://api.paisainminutes.tech/api/loan-applications/all)
   try {
-    const token = localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token');
-    const renderHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
+    const res = await fetchApi('/api/loan-applications/all');
+    if (res && res.ok && res.data) {
+      const rawList = Array.isArray(res.data)
+        ? res.data
+        : (res.data.applications || res.data.leads || []);
 
-    const renderRes = await fetch(`${RENDER_BASE}/api/loan-applications/all`, {
-      headers: { 'Accept': 'application/json', ...renderHeaders }
-    });
-
-    if (renderRes.ok) {
-      const rData = await renderRes.json();
-      const rList = Array.isArray(rData) ? rData : (rData.applications || rData.leads || []);
-      if (Array.isArray(rList)) {
-        rList.forEach((item, idx) => {
-          const itemTime = new Date(item.createdAt || 0).getTime();
-          if (itemTime > 0 && itemTime < LIVE_LAUNCH_TIMESTAMP) {
-            return; // Exclude pre-launch test applications
-          }
-          const mapped = mapRenderLead(item, idx);
+      if (Array.isArray(rawList)) {
+        rawList.forEach((item, idx) => {
+          const mapped = mapBackendLead(item, idx);
           if (mapped) {
             mergeOrAddLead(mapped);
           }
@@ -400,14 +379,14 @@ export async function getLeadsFromBackend() {
       }
     }
   } catch (err) {
-    // Render offline / background sync
+    console.warn('[CRM DIRECT BACKEND SYNC ERROR]:', err);
   }
 
   // Combine unique leads list and apply user persistent overrides
   const combinedLeads = Array.from(
     new Set([...leadsByPhone.values(), ...leadsById.values()])
   ).filter(l => !isLeadDeletedLocally(l, deletedBlacklist))
-   .map(applyLeadOverrides);
+    .map(applyLeadOverrides);
 
   // Sort newest first by created_at / created timestamp
   combinedLeads.sort((a, b) => {
@@ -421,7 +400,7 @@ export async function getLeadsFromBackend() {
 
 /**
  * GET /api/loan-applications/phone/{phone}
- * Fetch specific loan application details by 10-digit phone number from Render backend
+ * Fetch specific loan application details by 10-digit phone number from backend
  */
 export async function fetchLoanApplicationByPhone(phone) {
   if (!phone) return { success: false, error: 'Phone number is required' };
@@ -430,14 +409,14 @@ export async function fetchLoanApplicationByPhone(phone) {
 
   try {
     const token = localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token');
-    const renderHeaders = {
+    const backendHeaders = {
       'Accept': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
 
-    const res = await fetch(`${RENDER_BASE}/api/loan-applications/phone/${encodeURIComponent(cleanPhone)}`, {
+    const res = await fetch(`${BACKEND_BASE}/api/loan-applications/phone/${encodeURIComponent(cleanPhone)}`, {
       method: 'GET',
-      headers: renderHeaders
+      headers: backendHeaders
     });
 
     if (res.ok) {
@@ -454,7 +433,7 @@ export async function fetchLoanApplicationByPhone(phone) {
 
 /**
  * DELETE /api/loan-applications/{id}
- * Delete a loan application by ID from Render backend
+ * Delete a loan application by ID from backend
  */
 export async function deleteLoanApplicationOnRender(id) {
   if (!id) return { success: false, error: 'Application ID is required' };
@@ -462,14 +441,14 @@ export async function deleteLoanApplicationOnRender(id) {
 
   try {
     const token = localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token');
-    const renderHeaders = {
+    const backendHeaders = {
       'Accept': 'application/json',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {})
     };
 
-    const res = await fetch(`${RENDER_BASE}/api/loan-applications/${encodeURIComponent(cleanId)}`, {
+    const res = await fetch(`${BACKEND_BASE}/api/loan-applications/${encodeURIComponent(cleanId)}`, {
       method: 'DELETE',
-      headers: renderHeaders
+      headers: backendHeaders
     });
 
     if (res.ok) {
@@ -502,30 +481,10 @@ export async function deleteLeadsApi(payload) {
     addToDeletedLeadBlacklist(toAdd);
   }
 
-  // 1. Local PHP endpoints
-  const deleteEndpoints = [
-    '/admin/api/delete-lead.php',
-    '/admin/api/delete-lead',
-    '/crm/api/delete-lead.php',
-    '/api/delete-lead.php',
-    '/api/delete-lead'
-  ];
-
-  for (const ep of deleteEndpoints) {
-    const res = await fetchApi(ep, {
-      method: 'POST',
-      body: JSON.stringify(payload)
-    });
-
-    if (res && res.ok && res.data) {
-      break;
-    }
-  }
-
-  // 2. Render DELETE endpoint: DELETE /api/loan-applications/{id}
+  // Directly call Node.js DELETE endpoint: DELETE https://api.paisainminutes.tech/api/loan-applications/{id}
   if (targetIds.length > 0 && !isClearAll) {
     for (const tid of targetIds) {
-      deleteLoanApplicationOnRender(tid).catch(() => {});
+      deleteLoanApplicationOnRender(tid).catch(() => { });
     }
   }
 

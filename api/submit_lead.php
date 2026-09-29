@@ -67,11 +67,16 @@ $pincode       = trim((string)($data['pincode'] ?? $data['pin_code'] ?? '—'));
 $city          = trim((string)($data['city'] ?? '—'));
 $state         = trim((string)($data['state'] ?? 'India'));
 $employmentType= trim((string)($data['employmentType'] ?? $data['employment_type'] ?? 'Salaried'));
-$dob           = trim((string)($data['dob'] ?? $data['dateOfBirth'] ?? $data['date_of_birth'] ?? '—'));
-$gender        = trim((string)($data['gender'] ?? '—'));
-$addressType   = trim((string)($data['addressType'] ?? $data['address_type'] ?? 'Rented'));
-$salaryMode    = trim((string)($data['modeOfSalary'] ?? $data['salaryMode'] ?? $data['salary_mode'] ?? $data['mode_of_salary'] ?? 'Bank Transfer'));
-$companyName   = trim((string)($data['companyName'] ?? $data['company_name'] ?? $data['employer'] ?? '—'));
+$dob           = trim((string)($data['dob'] ?? $data['dateOfBirth'] ?? $data['date_of_birth'] ?? ''));
+if ($dob === '') $dob = '—';
+$gender        = trim((string)($data['gender'] ?? ''));
+if ($gender === '') $gender = '—';
+$addressType   = trim((string)($data['addressType'] ?? $data['address_type'] ?? ''));
+if ($addressType === '') $addressType = 'Rented';
+$salaryMode    = trim((string)($data['modeOfSalary'] ?? $data['salaryMode'] ?? $data['salary_mode'] ?? $data['mode_of_salary'] ?? ''));
+if ($salaryMode === '') $salaryMode = 'Bank Transfer';
+$companyName   = trim((string)($data['companyName'] ?? $data['company_name'] ?? $data['employer'] ?? ''));
+if ($companyName === '') $companyName = '—';
 $pan           = strtoupper(trim((string)($data['pan'] ?? $data['panNumber'] ?? $data['pan_number'] ?? '—')));
 $haveCreditCard= trim((string)($data['haveCreditCard'] ?? $data['have_credit_card'] ?? $data['creditCard'] ?? 'No'));
 $creditCardLimit = isset($data['creditCardLimit']) && $data['creditCardLimit'] !== null && $data['creditCardLimit'] !== '' 
@@ -372,6 +377,20 @@ function upsertLeadInList(&$list, $newLead, $phone) {
         if (!empty($existing['status']) && $existing['status'] !== 'Fresh' && $newLead['status'] === 'Fresh') {
             $newLead['status'] = $existing['status'];
         }
+
+        // Preserve personal and application fields if existing has valid data and incoming is missing or dash
+        $fieldsToPreserve = [
+            'dob', 'dateOfBirth', 'gender', 'addressType', 'address_type', 
+            'salaryMode', 'modeOfSalary', 'mode_of_salary', 
+            'companyName', 'company_name', 
+            'haveCreditCard', 'have_credit_card', 'creditCardLimit', 'credit_card_limit', 
+            'pan', 'email', 'emailAddress', 'pincode', 'city', 'state', 'employmentType'
+        ];
+        foreach ($fieldsToPreserve as $fp) {
+            if ((empty($newLead[$fp]) || $newLead[$fp] === '—' || $newLead[$fp] === 'null') && !empty($existing[$fp]) && $existing[$fp] !== '—' && $existing[$fp] !== 'null') {
+                $newLead[$fp] = $existing[$fp];
+            }
+        }
         
         // Remove old position and place updated record at top
         array_splice($list, $foundIndex, 1);
@@ -381,52 +400,87 @@ function upsertLeadInList(&$list, $newLead, $phone) {
     }
 }
 
-// 5. Save IMMEDIATELY to local stores (ultra-fast, under 1ms)
-$dataDir = __DIR__ . '/data';
-if (!is_dir($dataDir)) {
-    mkdir($dataDir, 0755, true);
-}
-$jsonFile = $dataDir . '/leads.json';
-$leadsList = [];
-if (file_exists($jsonFile)) {
-    $existing = file_get_contents($jsonFile);
-    $leadsList = json_decode($existing, true) ?: [];
-}
-upsertLeadInList($leadsList, $leadRecord, $phone);
-file_put_contents($jsonFile, json_encode($leadsList, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+// 5. Save IMMEDIATELY to ALL local stores (ultra-fast, under 1ms)
+$allStoreFiles = array_unique([
+    __DIR__ . '/data/leads.json',
+    __DIR__ . '/crm/leads_store.json',
+    __DIR__ . '/admin/leads_store.json',
+    __DIR__ . '/admin/data/leads.json',
+    __DIR__ . '/crm/crm_subdomain_update/leads_store.json',
+    __DIR__ . '/deploy_update/data/leads.json',
+    __DIR__ . '/deploy_update/crm/leads_store.json'
+]);
 
-// Also sync to crm/leads_store.json
-$crmStoreFile = __DIR__ . '/crm/leads_store.json';
-if (file_exists($crmStoreFile) || is_dir(__DIR__ . '/crm')) {
-    $crmLeads = [];
-    if (file_exists($crmStoreFile)) {
-        $crmLeads = json_decode(file_get_contents($crmStoreFile), true) ?: [];
+foreach ($allStoreFiles as $storeFile) {
+    $dir = dirname($storeFile);
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0755, true);
     }
-    upsertLeadInList($crmLeads, $leadRecord, $phone);
-    file_put_contents($crmStoreFile, json_encode($crmLeads, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    $leads = [];
+    if (file_exists($storeFile)) {
+        $existing = file_get_contents($storeFile);
+        $leads = json_decode($existing, true) ?: [];
+    }
+    upsertLeadInList($leads, $leadRecord, $phone);
+    @file_put_contents($storeFile, json_encode($leads, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 }
 
-// 5b. Un-blacklist phone and leadId from deleted_leads.json so fresh submission is never hidden
-$unblackDeletedStores = [
-    $dataDir . '/deleted_leads.json',
+// 5b. Un-blacklist phone and leadId from ALL deleted_leads.json stores so fresh submission is never hidden
+$unblackDeletedStores = array_unique([
+    __DIR__ . '/data/deleted_leads.json',
     __DIR__ . '/crm/deleted_leads.json',
+    __DIR__ . '/crm/api/deleted_leads.json',
+    __DIR__ . '/admin/deleted_leads.json',
+    __DIR__ . '/admin/api/deleted_leads.json',
     __DIR__ . '/crm/crm_subdomain_update/deleted_leads.json',
     __DIR__ . '/deploy_update/data/deleted_leads.json',
     __DIR__ . '/deploy_update/crm/deleted_leads.json'
-];
+]);
 foreach ($unblackDeletedStores as $delStore) {
     if (file_exists($delStore)) {
         $delArr = json_decode(file_get_contents($delStore), true);
         if (is_array($delArr)) {
             $updatedDel = array_values(array_filter($delArr, function($item) use ($phone, $leadId) {
                 $it = trim(strtolower((string)$item));
-                return $it !== strtolower((string)$leadId) && $it !== (string)$phone;
+                $leadIdLower = strtolower((string)$leadId);
+                if ($it === $leadIdLower) return false;
+                if ($it === (string)$phone) return false;
+                if (strpos($it, (string)$phone) !== false) return false;
+                return true;
             }));
-            if (count($updatedDel) !== count($delArr)) {
-                file_put_contents($delStore, json_encode($updatedDel, JSON_PRETTY_PRINT));
-            }
+            @file_put_contents($delStore, json_encode($updatedDel, JSON_PRETTY_PRINT));
         }
     }
+}
+
+// 5c. Save accurate submission timestamp to leads_overrides.json so CRM always displays accurate IST time
+$overrideFiles = array_unique([
+    __DIR__ . '/data/leads_overrides.json',
+    __DIR__ . '/crm/leads_overrides.json',
+    __DIR__ . '/admin/leads_overrides.json',
+    __DIR__ . '/crm/crm_subdomain_update/leads_overrides.json',
+    __DIR__ . '/deploy_update/data/leads_overrides.json',
+    __DIR__ . '/deploy_update/crm/leads_overrides.json'
+]);
+foreach ($overrideFiles as $of) {
+    $oDir = dirname($of);
+    if (!is_dir($oDir)) @mkdir($oDir, 0755, true);
+    $overrides = [];
+    if (file_exists($of)) {
+        $overrides = json_decode(@file_get_contents($of), true) ?: [];
+    }
+    $timePatch = [
+        'created_at' => $timestamp,
+        'created'    => $formattedDate,
+        'date'       => $isoDate
+    ];
+    if (!empty($phone)) {
+        $overrides[$phone] = array_merge($overrides[$phone] ?? [], $timePatch);
+    }
+    if (!empty($leadId)) {
+        $overrides[$leadId] = array_merge($overrides[$leadId] ?? [], $timePatch);
+    }
+    @file_put_contents($of, json_encode($overrides, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
 }
 
 // 6. Sync Lead & Loan Application to Render Backend API (in background / with short timeout)
