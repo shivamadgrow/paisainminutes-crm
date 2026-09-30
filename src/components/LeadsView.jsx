@@ -94,7 +94,7 @@ const mapTabToFilterName = (tab) => {
 };
 
 // Modern workflow status styling helper using canonical CRM status stages
-export const getStatusBadge = (status) => {
+const getStatusBadge = (status) => {
   const norm = normalizeStatus(status);
   const cfg = CRM_STATUS_MAP[norm];
   if (cfg) {
@@ -112,7 +112,7 @@ export const getStatusBadge = (status) => {
 };
 
 // Modern partner company styling helper supporting all 9 onboarded partners + Pending Selection
-export const getCompanyBadge = (company) => {
+const getCompanyBadge = (company) => {
   const clean = String(company || '').toLowerCase().replace(/[\s\-_]/g, '');
   if (clean.includes('rupay91') || clean.includes('rupay')) {
     return {
@@ -192,7 +192,7 @@ export const getCompanyBadge = (company) => {
 };
 
 // Eligibility and CIBIL display helper
-export const getEligibilityInfo = (item) => {
+const getEligibilityInfo = (item) => {
   if (!item) {
     return {
       label: 'Eligible',
@@ -240,7 +240,7 @@ export default function LeadsView({
   setActiveFilterTab,
   currentUser
 }) {
-  const leads = propLeads || INITIAL_FULL_LEADS;
+  const leads = (Array.isArray(propLeads) && propLeads.length > 0) ? propLeads : (propLeads || []);
   const [localFilter, setLocalFilter] = useState(() => mapTabToFilterName(activeFilterTab));
   const [selectedPartnerFilter, setSelectedPartnerFilter] = useState('ALL');
   const [isMyLeadsOnly, setIsMyLeadsOnly] = useState(false);

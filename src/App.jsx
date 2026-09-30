@@ -65,14 +65,22 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-  // Live state: Always fetched directly from the backend API, never cached locally
-  const [leads, setLeads] = useState([]);
+  // Live state: Initialized with cached live leads if available, then immediately refreshed from backend API
+  const [leads, setLeads] = useState(() => {
+    try {
+      const cached = localStorage.getItem('paisa_crm_live_leads_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
   const isFetchingRef = useRef(false);
 
-  // Clean slate on startup: clear any old stale cached leads and local overrides
+  // Clean slate on startup: clear legacy mock overrides
   useEffect(() => {
     try {
-      localStorage.removeItem('paisa_crm_cached_leads');
       localStorage.removeItem('paisa_crm_lead_overrides');
       localStorage.removeItem('pim_deleted_leads');
     } catch (e) {}
@@ -199,6 +207,9 @@ export default function App() {
         if (isMounted && result && result.success && Array.isArray(result.leads)) {
           const cleanLeads = result.leads.map(sanitizeLead);
           setLeads(cleanLeads);
+          try {
+            localStorage.setItem('paisa_crm_live_leads_cache', JSON.stringify(cleanLeads));
+          } catch (e) {}
         }
       } catch (e) {
         console.warn('[CRM LIVE STATE SYNC] ⚠️ Fetch error during polling:', e);
@@ -288,10 +299,13 @@ export default function App() {
 
   // Dashboard Stats calculation
   const stats = useMemo(() => {
-    const approvedList = leads.filter(l => l.status === 'Approved' || l.status === 'Disbursed');
-    const freshList = leads.filter(l => l.status === 'Fresh');
-    const callbackList = leads.filter(l => l.status === 'Callback');
-    const docsList = leads.filter(l => l.status === 'Docs received');
+    const approvedList = leads.filter(l => {
+      const s = normalizeStatus(l.status);
+      return s === 'APPROVED' || s === 'DISBURSED';
+    });
+    const freshList = leads.filter(l => normalizeStatus(l.status) === 'FRESH');
+    const callbackList = leads.filter(l => normalizeStatus(l.status) === 'CALLBACK');
+    const docsList = leads.filter(l => normalizeStatus(l.status) === 'DOCS_RECEIVED');
 
     const totalApplied = leads.reduce((sum, item) => sum + (Number(item.loanAmount || item.applied) || 0), 0);
     const approvedAmount = approvedList.reduce((sum, item) => sum + (Number(item.loanAmount || item.applied) || 0), 0);

@@ -3,7 +3,7 @@
  * Single Source of Truth Backend API: https://api.paisainminutes.tech
  */
 
-import { formatToIST } from './amountHelpers';
+import { formatToIST } from './amountHelpers.js';
 
 const BACKEND_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_API_URL) || 'https://api.paisainminutes.tech';
 export { BACKEND_BASE };
@@ -59,12 +59,16 @@ export function formatStatusLabel(rawStatus) {
  * Get configured CRM authentication headers for authenticated routes (PATCH, phone dossier lookup)
  */
 export function getAuthHeaders() {
-  const token = localStorage.getItem('pim_jwt_token') ||
-    sessionStorage.getItem('pim_jwt_token') ||
-    localStorage.getItem('paisa_crm_token') ||
-    sessionStorage.getItem('paisa_crm_token') ||
-    (typeof import.meta !== 'undefined' && import.meta.env && (import.meta.env.VITE_CRM_API_KEY || import.meta.env.VITE_BACKEND_API_KEY || import.meta.env.VITE_AUTH_TOKEN));
-  return token ? { 'Authorization': `Bearer ${token}` } : {};
+  try {
+    const token = (typeof localStorage !== 'undefined' ? localStorage.getItem('pim_jwt_token') : null) ||
+      (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('pim_jwt_token') : null) ||
+      (typeof localStorage !== 'undefined' ? localStorage.getItem('paisa_crm_token') : null) ||
+      (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('paisa_crm_token') : null) ||
+      (typeof import.meta !== 'undefined' && import.meta.env && (import.meta.env.VITE_CRM_API_KEY || import.meta.env.VITE_BACKEND_API_KEY || import.meta.env.VITE_AUTH_TOKEN));
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
+  } catch (e) {
+    return {};
+  }
 }
 
 /**
@@ -452,7 +456,13 @@ export async function loadLeadEnrichmentMap() {
 
   for (const src of sources) {
     try {
-      const res = await fetch(src, { headers: { 'Accept': 'application/json' } });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch(src, { 
+        headers: { 'Accept': 'application/json' },
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
       if (res.ok) {
         const list = await res.json();
         if (Array.isArray(list) && list.length > 0) {
@@ -829,15 +839,21 @@ export async function fetchApi(pathWithSlash, options = {}) {
  */
 export async function fetchRecentCsvLeads() {
   const sources = [
-    'https://paisainminutes.com/leads_log.csv',
     '/leads_log.csv',
-    './leads_log.csv'
+    './leads_log.csv',
+    'https://paisainminutes.com/leads_log.csv'
   ];
 
   for (const src of sources) {
     try {
-      const url = src.startsWith('http') ? `${src}?t=${Date.now()}` : src;
-      const res = await fetch(url, { cache: 'no-store' });
+      const url = src.startsWith('http') ? `${src}?t=${Date.now()}` : `${src}?t=${Date.now()}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(url, { 
+        cache: 'no-store',
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
       if (res.ok) {
         const text = await res.text();
         if (text && text.includes('Timestamp') && text.length > 50) {
@@ -896,6 +912,9 @@ export async function getLeadsFromBackend(options = {}) {
   try {
     const authHeaders = getAuthHeaders();
 
+    const apiController = new AbortController();
+    const apiTimeoutId = setTimeout(() => apiController.abort(), 4000);
+
     // Fetch backend leads, enrichment data, and recent CSV submissions in parallel
     const [res, enrichmentMap, recentCsvLeads] = await Promise.all([
       fetch(`${BACKEND_BASE}/api/loan-applications/all`, {
@@ -903,7 +922,8 @@ export async function getLeadsFromBackend(options = {}) {
         headers: {
           'Accept': 'application/json',
           ...authHeaders
-        }
+        },
+        signal: apiController.signal
       }).catch(err => {
         console.warn('[getLeadsFromBackend] Backend fetch error:', err);
         return null;
@@ -911,6 +931,7 @@ export async function getLeadsFromBackend(options = {}) {
       loadLeadEnrichmentMap().catch(() => new Map()),
       fetchRecentCsvLeads().catch(() => [])
     ]);
+    clearTimeout(apiTimeoutId);
 
     let rawList = [];
     if (res && res.ok) {
@@ -924,6 +945,22 @@ export async function getLeadsFromBackend(options = {}) {
 
     if (!Array.isArray(rawList)) {
       rawList = [];
+    }
+
+    // Reliable fallback: If backend returned empty or was unreachable, fall back to local /data/leads.json
+    if (rawList.length === 0) {
+      try {
+        const fbRes = await fetch('/data/leads.json', { headers: { 'Accept': 'application/json' } });
+        if (fbRes.ok) {
+          const fbData = await fbRes.json();
+          if (Array.isArray(fbData) && fbData.length > 0) {
+            rawList = fbData;
+            console.log('[getLeadsFromBackend] Loaded fallback leads from /data/leads.json:', rawList.length);
+          }
+        }
+      } catch (fbErr) {
+        console.warn('[getLeadsFromBackend] Fallback error:', fbErr);
+      }
     }
 
     // Collect all existing backend applications for precise deduplication
