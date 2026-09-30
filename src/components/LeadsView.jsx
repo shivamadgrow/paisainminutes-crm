@@ -69,7 +69,8 @@ import {
   formatStatusLabel,
   CRM_STATUS_MAP,
   CRM_STATUS_STAGES,
-  mapBackendLead
+  mapBackendLead,
+  getLeadsFromBackend
 } from '../utils/apiConfig';
 
 const INITIAL_FULL_LEADS = [];
@@ -267,13 +268,55 @@ export default function LeadsView({
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
+
+  const handleManualSync = async () => {
+    if (isManualSyncing) return;
+    setIsManualSyncing(true);
+    try {
+      const partnerScope = currentUser?.role === 'Partner' ? currentUser.partnerId : undefined;
+      const res = await getLeadsFromBackend({ partnerId: partnerScope });
+      if (res && res.success && Array.isArray(res.leads)) {
+        if (setLeads) setLeads(res.leads);
+        showToast(`Sync complete! Fetched ${res.leads.length} live leads.`);
+      } else {
+        showToast('Live leads up to date.');
+      }
+    } catch (e) {
+      showToast('Error syncing leads: ' + e.message, true);
+    } finally {
+      setIsManualSyncing(false);
+    }
+  };
+
   const fetchLeadEvents = (leadId) => {
     if (!leadId) return;
-    fetch(`/crm/api/partner-events.php?lead_id=${encodeURIComponent(leadId)}`)
+    const cleanId = String(leadId).trim();
+    let localEvents = [];
+    try {
+      localEvents = JSON.parse(localStorage.getItem(`pim_tracking_${cleanId}`) || '[]');
+      if (cleanId.includes('6033')) {
+        const yEvents = JSON.parse(localStorage.getItem('pim_tracking_PIM-260930-6033') || '[]');
+        localEvents = [...localEvents, ...yEvents];
+      }
+    } catch (e) {}
+
+    setLeadEvents(localEvents);
+
+    fetch(`/crm/api/partner-events.php?lead_id=${encodeURIComponent(cleanId)}`)
       .then(res => res.json())
       .then(data => {
         if (data && data.success && Array.isArray(data.events)) {
-          setLeadEvents(data.events);
+          setLeadEvents(prev => {
+            const combined = [...data.events, ...prev];
+            const seen = new Set();
+            return combined.filter(ev => {
+              const k = `${ev.partner_id || ev.partner}_${ev.created_at || ev.timestamp}`;
+              if (seen.has(k)) return false;
+              seen.add(k);
+              return true;
+            });
+          });
         }
       })
       .catch(() => { });
@@ -760,8 +803,10 @@ export default function LeadsView({
     try {
       const targetLead = leads.find((l, i) => getLeadId(l, i) === leadId);
       const backendId = targetLead?.id || leadId;
+      const displayId = String(targetLead?.displayId || targetLead?.loanNo || targetLead?.id || leadId);
       const phone = targetLead ? String(targetLead.phone || targetLead.mobile || '').replace(/\D/g, '').slice(-10) : '';
       const selectedLenderId = (!newCompany || newCompany === 'Pending Selection') ? null : newCompany;
+      const isUnassigning = !newCompany || newCompany === 'Pending Selection';
 
       // 1. Instantly update React state for responsive UX
       if (setLeads) {
@@ -770,8 +815,10 @@ export default function LeadsView({
           if (getLeadId(l, i) === leadId || (phone && lPhone === phone)) {
             return {
               ...l,
-              assignedCompany: newCompany,
-              partner_name: newCompany,
+              assignedCompany: isUnassigning ? 'Pending Selection' : newCompany,
+              partner_name: isUnassigning ? 'Pending Selection' : newCompany,
+              appliedTo: isUnassigning ? 'Not Applied Yet' : newCompany,
+              delivery_status: isUnassigning ? 'none' : 'delivered',
               selectedLenderId: selectedLenderId
             };
           }
@@ -781,7 +828,73 @@ export default function LeadsView({
 
       setReassigningLeadId(null);
 
-      // 2. Call PATCH /api/loan-applications/{id}
+      // 2. Comprehensive Tracking: Track whichever partner PIM-260930-6033 goes to
+      const trackingRecord = {
+        id: `trk_${Date.now()}`,
+        lead_id: displayId,
+        leadId: displayId,
+        displayId: displayId,
+        phone: phone,
+        applicantName: targetLead?.name || targetLead?.applicantName || 'Applicant',
+        partner_id: newCompany,
+        partner: newCompany,
+        action: 'partner_assigned',
+        status: isUnassigning ? 'UNASSIGNED' : 'ASSIGNED',
+        timestamp: new Date().toISOString(),
+        created_at: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+        details: {
+          lead_id: displayId,
+          partner: newCompany,
+          remarks: `Lead ${displayId} dispatched to partner ${newCompany}`,
+          target_url: isUnassigning ? null : getPartnerTrackingUrl(newCompany, { leadId: displayId, phone: phone })
+        }
+      };
+
+      try {
+        const histKey = `pim_tracking_${displayId}`;
+        const prevHist = JSON.parse(localStorage.getItem(histKey) || '[]');
+        prevHist.unshift(trackingRecord);
+        localStorage.setItem(histKey, JSON.stringify(prevHist));
+
+        // Specifically track PIM-260930-6033
+        if (displayId.includes('6033') || phone === '8810606033') {
+          const yKey = 'pim_tracking_PIM-260930-6033';
+          const yHist = JSON.parse(localStorage.getItem(yKey) || '[]');
+          yHist.unshift(trackingRecord);
+          localStorage.setItem(yKey, JSON.stringify(yHist));
+        }
+
+        const globalLog = JSON.parse(localStorage.getItem('pim_partner_routing_history') || '[]');
+        globalLog.unshift(trackingRecord);
+        localStorage.setItem('pim_partner_routing_history', JSON.stringify(globalLog.slice(0, 100)));
+      } catch (e) {}
+
+      // Fire tracking events to server
+      try {
+        fetch('/crm/api/partner-events.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(trackingRecord)
+        }).catch(() => {});
+
+        fetch('/crm/api/delivery-logs.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'partner_assignment',
+            lead_id: displayId,
+            partner_id: newCompany,
+            status: isUnassigning ? 'none' : 'delivered'
+          })
+        }).catch(() => {});
+      } catch (e) {}
+
+      // Refresh overview modal events if open
+      if (selectedLeadForOverview && getLeadId(selectedLeadForOverview) === leadId) {
+        fetchLeadEvents(displayId);
+      }
+
+      // 3. Call PATCH /api/loan-applications/{id}
       const patchRes = await updateLoanApplication(backendId, { selectedLenderId });
       console.log('[CRM REASSIGN] 📥 Server PATCH response:', patchRes);
 
@@ -1274,6 +1387,18 @@ export default function LeadsView({
                 </button>
               )}
             </div>
+
+            {/* Instant Live Sync / Refresh Button */}
+            <button
+              type="button"
+              onClick={handleManualSync}
+              disabled={isManualSyncing}
+              className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-[#0A3977] border border-blue-200/80 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-2xs transition active:scale-95 cursor-pointer shrink-0"
+              title="Click to instantly fetch new leads from server"
+            >
+              <RotateCw className={`w-3.5 h-3.5 ${isManualSyncing ? 'animate-spin text-blue-600' : 'text-[#0A3977]'}`} />
+              <span>{isManualSyncing ? 'Fetching...' : 'Sync Leads'}</span>
+            </button>
           </div>
         </div>
 
@@ -2887,17 +3012,25 @@ export default function LeadsView({
                 <div className="relative pl-6 space-y-4 border-l-2 border-slate-200 ml-2 pt-1 pb-1">
                   {/* Node 1: Lead Assigned */}
                   <div className="relative">
-                    <span className="w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white absolute -left-[31px] top-0.5 shadow-xs"></span>
+                    <span className={`w-3.5 h-3.5 rounded-full border-2 border-white absolute -left-[31px] top-0.5 shadow-xs ${
+                      activeOverviewLead.assignedCompany && activeOverviewLead.assignedCompany !== 'Pending Selection'
+                        ? 'bg-blue-600'
+                        : 'bg-amber-500'
+                    }`}></span>
                     <div className="flex items-center justify-between">
                       <div className="font-bold text-slate-800 text-xs">
-                        Assigned to {activeOverviewLead.assignedCompany || 'Lending Partner'}
+                        {activeOverviewLead.assignedCompany && activeOverviewLead.assignedCompany !== 'Pending Selection'
+                          ? `Assigned to ${activeOverviewLead.assignedCompany}`
+                          : 'Pending Partner Selection'}
                       </div>
                       <span className="text-[10px] text-slate-400 font-mono">
                         {activeOverviewLead.created || activeOverviewLead.created_at || 'Lead Created'}
                       </span>
                     </div>
                     <div className="text-[11px] text-slate-500 mt-0.5">
-                      Lead routed based on CIBIL and salary eligibility slab criteria.
+                      {activeOverviewLead.assignedCompany && activeOverviewLead.assignedCompany !== 'Pending Selection'
+                        ? `Lead assigned to ${activeOverviewLead.assignedCompany}. Outbound clicks and API routing are tracked.`
+                        : 'No partner assigned yet. Status is Pending Selection.'}
                     </div>
                   </div>
 

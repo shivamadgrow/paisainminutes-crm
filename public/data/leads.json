@@ -1,7 +1,59 @@
 [
   {
-    "id": "PIM-20260930-6033",
-    "loanNo": "PIM-20260930-6033",
+    "id": "pim-live-7838056998-1759231082000-32",
+    "displayId": "PIM-260930-6998-3",
+    "loanNo": "PIM-260930-6998-3",
+    "lead_id": "PIM-260930-6998-3",
+    "applicantName": "Shivam",
+    "name": "Shivam",
+    "fullName": "Shivam",
+    "initials": "SH",
+    "avatarBg": "bg-indigo-600",
+    "phone": "7838056998",
+    "phoneNumber": "7838056998",
+    "mobile": "+91 7838056998",
+    "email": "shivam@adgrowmedia.com",
+    "emailAddress": "shivam@adgrowmedia.com",
+    "creditManager": "Unassigned",
+    "pan": "ABCDE1234F",
+    "dob": "1995-05-15",
+    "gender": "Male",
+    "addressType": "Current",
+    "salaryMode": "Bank Transfer",
+    "companyName": "Adgrow Media",
+    "haveCreditCard": "No",
+    "loan_amount": "₹20,000",
+    "loanAmount": 20000,
+    "applied": 20000,
+    "cibil_score": "750",
+    "cibil": "750",
+    "cibilScore": 750,
+    "monthly_salary": "35000",
+    "monthlySalary": 35000,
+    "salary": 35000,
+    "sal_val": 35000,
+    "pincode": "110001",
+    "city": "Delhi",
+    "state": "Delhi",
+    "employmentType": "Salaried",
+    "eligibility": "Eligible",
+    "eligibilityStatus": "Eligible",
+    "assignedCompany": "Pending Selection",
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection",
+    "purpose": "Personal Loan",
+    "status": "Fresh",
+    "source": "WhatsApp",
+    "created": "30 Sep 2026, 04:48 PM",
+    "created_at": "2026-09-30 16:48:02",
+    "date": "2026-09-30",
+    "selectedLenderId": null,
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none"
+  },
+  {
+    "id": "PIM-260930-6033",
+    "loanNo": "PIM-260930-6033",
     "lead_id": "PIM-20260930-6033",
     "name": "Yuvraj Kapoor",
     "fullName": "Yuvraj Kapoor",
@@ -46,14 +98,19 @@
     "salary_range": "₹60,000–₹69,999",
     "eligibility": "Eligible – Premium",
     "eligibilityStatus": "Eligible – Premium",
-    "assignedCompany": "Rupay91",
-    "partner_name": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "partner_name": "Pending Selection",
     "purpose": "Personal Loan",
     "status": "Fresh",
     "source": "WhatsApp",
     "created": "30 Sep 2026, 03:24 PM",
     "created_at": "2026-09-30 15:24:34",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "displayId": "PIM-260930-6033",
+    "selectedLenderId": null,
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
+    "partner": "Pending Selection"
   },
   {
     "id": "a76e2008-c5af-4996-9215-9b4c05ed50c4",
@@ -91,9 +148,11 @@
     "cibilScoreUpdatedAt": "2026-09-29T09:06:04.279Z",
     "cibil": "611",
     "cibilDisplay": "611",
-    "selectedLenderId": null,
+    "selectedLenderId": "Rupay 91",
     "lenderApplicationId": null,
-    "assignedCompany": "Borrowera",
+    "assignedCompany": "Rupay 91",
+    "appliedTo": "Rupay 91",
+    "delivery_status": "delivered",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -118,7 +177,9 @@
     "company_name": "Iksana Engineering and Management Consultants",
     "haveCreditCard": "Yes",
     "haveCreditCardBool": true,
-    "creditCardLimit": 10000
+    "creditCardLimit": 10000,
+    "partner_name": "Rupay 91",
+    "partner": "Rupay 91"
   },
   {
     "id": "d6d74a29-7823-415a-bb27-07e23ed7a95c",
@@ -158,7 +219,9 @@
     "cibilDisplay": "Not Available",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Insta Rupees",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -183,7 +246,9 @@
     "company_name": "Adgrow",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "91275630-906a-43c8-a386-6fe231024125",
@@ -223,7 +288,9 @@
     "cibilDisplay": "720",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Borrowera",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -248,7 +315,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "9d9c6105-7730-49d9-999b-fb5fb109e9b8",
@@ -288,7 +357,9 @@
     "cibilDisplay": "Not Available",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "ShubhCash",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -313,7 +384,9 @@
     "company_name": "Adgrow",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "dd0f13f5-6f91-4cd2-a462-5554fce02dfe",
@@ -353,7 +426,9 @@
     "cibilDisplay": "686",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -378,7 +453,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "a0c07639-923f-4e55-a575-b4d0c3428868",
@@ -418,7 +495,9 @@
     "cibilDisplay": "532",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -443,7 +522,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "783cb4e0-faf7-444d-a596-e3471477f31b",
@@ -483,7 +564,9 @@
     "cibilDisplay": "532",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -508,7 +591,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "9be6765b-712f-46f3-8875-9a2381040c8d",
@@ -548,7 +633,9 @@
     "cibilDisplay": "689",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -573,7 +660,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "94d8b3a0-9738-4198-8f6f-ea199eac87a7",
@@ -613,7 +702,9 @@
     "cibilDisplay": "515",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -638,7 +729,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "878531b6-233e-4242-83a8-ca968417ef43",
@@ -678,7 +771,9 @@
     "cibilDisplay": "Not Available",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Borrowera",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -703,7 +798,9 @@
     "company_name": "Adgrow",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "668ee115-a963-4a18-90c9-1d44e0998050",
@@ -743,7 +840,9 @@
     "cibilDisplay": "556",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -768,7 +867,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "e0d5b50e-be7d-43dc-b5f4-ce6eb94ea993",
@@ -808,7 +909,9 @@
     "cibilDisplay": "609",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Easy Fincare",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -833,7 +936,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "8abf50fe-8e58-48bd-8bea-e7495d221576",
@@ -871,9 +976,11 @@
     "cibilScoreUpdatedAt": "2026-09-29T09:05:34.304Z",
     "cibil": "724",
     "cibilDisplay": "724",
-    "selectedLenderId": null,
+    "selectedLenderId": "Jhatpat Loans",
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Jhatpat Loans",
+    "appliedTo": "Jhatpat Loans",
+    "delivery_status": "delivered",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -898,7 +1005,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Jhatpat Loans",
+    "partner": "Jhatpat Loans"
   },
   {
     "id": "45de3beb-bf28-417a-89be-53daac3c810a",
@@ -938,7 +1047,9 @@
     "cibilDisplay": "660",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -963,7 +1074,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "ac1b84d5-4c03-4168-b3a6-f31f314622b6",
@@ -1003,7 +1116,9 @@
     "cibilDisplay": "775",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1028,7 +1143,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "37bd49e6-84d6-4dd3-a631-53eb26ee4355",
@@ -1068,7 +1185,9 @@
     "cibilDisplay": "689",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1093,7 +1212,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "0522c042-7d99-4600-ab63-ecae08d2edc6",
@@ -1133,7 +1254,9 @@
     "cibilDisplay": "510",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1158,7 +1281,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "8bdfd107-1c0a-4691-8e60-7984e003270c",
@@ -1196,9 +1321,11 @@
     "cibilScoreUpdatedAt": "2026-09-29T09:05:45.254Z",
     "cibil": "Not Available",
     "cibilDisplay": "Not Available",
-    "selectedLenderId": null,
+    "selectedLenderId": "Ticket 2 Loan",
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Ticket 2 Loan",
+    "appliedTo": "Ticket 2 Loan",
+    "delivery_status": "delivered",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1223,7 +1350,9 @@
     "company_name": "IBM",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Ticket 2 Loan",
+    "partner": "Ticket 2 Loan"
   },
   {
     "id": "b12b6914-e404-4da8-adcc-3fa80275abdd",
@@ -1263,7 +1392,9 @@
     "cibilDisplay": "Not Available",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Borrowera",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1288,7 +1419,9 @@
     "company_name": "Adgrow",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "109cf729-3311-4969-a62f-387ab410d074",
@@ -1326,9 +1459,11 @@
     "cibilScoreUpdatedAt": "2026-09-29T09:05:53.051Z",
     "cibil": "Not Available",
     "cibilDisplay": "Not Available",
-    "selectedLenderId": null,
+    "selectedLenderId": "Rupay 91",
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Rupay 91",
+    "appliedTo": "Rupay 91",
+    "delivery_status": "delivered",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1353,7 +1488,9 @@
     "company_name": "RITES LIMITED",
     "haveCreditCard": "Yes",
     "haveCreditCardBool": true,
-    "creditCardLimit": 250000
+    "creditCardLimit": 250000,
+    "partner_name": "Rupay 91",
+    "partner": "Rupay 91"
   },
   {
     "id": "2f00dc39-3a43-41fe-bc91-9eae1df368b0",
@@ -1391,9 +1528,11 @@
     "cibilScoreUpdatedAt": "2026-09-29T09:05:55.783Z",
     "cibil": "717",
     "cibilDisplay": "717",
-    "selectedLenderId": null,
+    "selectedLenderId": "Rupay 91",
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Rupay 91",
+    "appliedTo": "Rupay 91",
+    "delivery_status": "delivered",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1418,7 +1557,9 @@
     "company_name": "Hygienic Research pvt ltd",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Rupay 91",
+    "partner": "Rupay 91"
   },
   {
     "id": "52bc6c49-e742-4ecc-b0eb-175ff67d7762",
@@ -1458,7 +1599,9 @@
     "cibilDisplay": "681",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1483,7 +1626,9 @@
     "company_name": "Tata Consultancy Services Ltd",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "a8655165-dd8b-45b9-98e7-7354df28a2aa",
@@ -1523,7 +1668,9 @@
     "cibilDisplay": "518",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1548,7 +1695,9 @@
     "company_name": "State government of tamilnadu",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "d4ab5393-fc75-460e-baf3-1fc5a36dabf5",
@@ -1586,9 +1735,11 @@
     "cibilScoreUpdatedAt": "2026-09-29T09:06:04.279Z",
     "cibil": "611",
     "cibilDisplay": "611",
-    "selectedLenderId": null,
+    "selectedLenderId": "Rupay 91",
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Rupay 91",
+    "appliedTo": "Rupay 91",
+    "delivery_status": "delivered",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1613,7 +1764,9 @@
     "company_name": "Iksana Engineering and Management Consultants",
     "haveCreditCard": "Yes",
     "haveCreditCardBool": true,
-    "creditCardLimit": 10000
+    "creditCardLimit": 10000,
+    "partner_name": "Rupay 91",
+    "partner": "Rupay 91"
   },
   {
     "id": "2e7ec311-14ab-4e1b-82ee-1890fba7d383",
@@ -1651,9 +1804,11 @@
     "cibilScoreUpdatedAt": "2026-09-29T09:06:08.303Z",
     "cibil": "510",
     "cibilDisplay": "510",
-    "selectedLenderId": null,
+    "selectedLenderId": "Rupay 91",
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Rupay 91",
+    "appliedTo": "Rupay 91",
+    "delivery_status": "delivered",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1678,7 +1833,9 @@
     "company_name": "Sun mutiara engineering pvt ltd",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Rupay 91",
+    "partner": "Rupay 91"
   },
   {
     "id": "760b96de-8767-42f5-b4a6-0f70475bfc27",
@@ -1716,9 +1873,11 @@
     "cibilScoreUpdatedAt": "2026-09-29T09:06:11.700Z",
     "cibil": "610",
     "cibilDisplay": "610",
-    "selectedLenderId": null,
+    "selectedLenderId": "Ticket 2 Loan",
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Ticket 2 Loan",
+    "appliedTo": "Ticket 2 Loan",
+    "delivery_status": "delivered",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1743,7 +1902,9 @@
     "company_name": "PROVANA INDIA PRIVATE LIMITED",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Ticket 2 Loan",
+    "partner": "Ticket 2 Loan"
   },
   {
     "id": "71ad7721-3540-4c94-9cd0-06e62eb42517",
@@ -1781,9 +1942,11 @@
     "cibilScoreUpdatedAt": "2026-09-29T09:06:13.435Z",
     "cibil": "Not Available",
     "cibilDisplay": "Not Available",
-    "selectedLenderId": null,
+    "selectedLenderId": "Jhatpat Loans",
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Jhatpat Loans",
+    "appliedTo": "Jhatpat Loans",
+    "delivery_status": "delivered",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1808,7 +1971,9 @@
     "company_name": "IndusInd bank limited",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Jhatpat Loans",
+    "partner": "Jhatpat Loans"
   },
   {
     "id": "e15a967a-28e7-4d21-867c-e97249b3ee89",
@@ -1848,7 +2013,9 @@
     "cibilDisplay": "Not Available",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1873,7 +2040,9 @@
     "company_name": null,
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "f682c075-2f02-4baf-b60c-1f4edba5f363",
@@ -1911,9 +2080,11 @@
     "cibilScoreUpdatedAt": "2026-09-29T09:06:18.543Z",
     "cibil": "510",
     "cibilDisplay": "510",
-    "selectedLenderId": null,
+    "selectedLenderId": "Ticket 2 Loan",
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Ticket 2 Loan",
+    "appliedTo": "Ticket 2 Loan",
+    "delivery_status": "delivered",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -1938,7 +2109,9 @@
     "company_name": "VISAKHAPATNAM PORT AUTHORITY",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Ticket 2 Loan",
+    "partner": "Ticket 2 Loan"
   },
   {
     "id": "5483a95b-f7dd-4cc7-9857-b9319ecc6584",
@@ -1976,9 +2149,11 @@
     "cibilScoreUpdatedAt": "2026-09-29T09:06:25.809Z",
     "cibil": "510",
     "cibilDisplay": "510",
-    "selectedLenderId": null,
+    "selectedLenderId": "UdhaarNow",
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "UdhaarNow",
+    "appliedTo": "UdhaarNow",
+    "delivery_status": "delivered",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -2003,7 +2178,9 @@
     "company_name": "Innova solutions",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "UdhaarNow",
+    "partner": "UdhaarNow"
   },
   {
     "id": "470a8ece-85d1-4dbf-8e45-16477d819f8f",
@@ -2043,7 +2220,9 @@
     "cibilDisplay": "754",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -2068,7 +2247,9 @@
     "company_name": "Adgrow Media",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "c5c36c06-f08e-4ef3-86b5-4bd1457c4da1",
@@ -2108,7 +2289,9 @@
     "cibilDisplay": "510",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Jhatpat Loans",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -2133,7 +2316,9 @@
     "company_name": "Genpact India Pvt Ltd",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "fc9100d4-d353-4f33-be73-8759ee8cbb88",
@@ -2173,7 +2358,9 @@
     "cibilDisplay": "690",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -2198,7 +2385,9 @@
     "company_name": "Tiwari construction",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "0ede9f95-49e1-4e3c-abdc-10c713ad13a4",
@@ -2238,7 +2427,9 @@
     "cibilDisplay": "629",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Easy Fincare",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -2263,7 +2454,9 @@
     "company_name": "Wisdom Tree",
     "haveCreditCard": "Yes",
     "haveCreditCardBool": true,
-    "creditCardLimit": 50000
+    "creditCardLimit": 50000,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "10187940-2630-4536-a5bc-59c97ebf576e",
@@ -2303,7 +2496,9 @@
     "cibilDisplay": "Not Available",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -2328,7 +2523,9 @@
     "company_name": "Ugam solutions",
     "haveCreditCard": "Yes",
     "haveCreditCardBool": true,
-    "creditCardLimit": 100000
+    "creditCardLimit": 100000,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "10c9ec2c-5f44-490f-8362-91e24b2912f8",
@@ -2368,7 +2565,9 @@
     "cibilDisplay": "Not Available",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Easy Fincare",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -2393,7 +2592,9 @@
     "company_name": "Vistas technolabs private limited",
     "haveCreditCard": "Yes",
     "haveCreditCardBool": true,
-    "creditCardLimit": 5000
+    "creditCardLimit": 5000,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   },
   {
     "id": "55a3f622-3239-4dca-92a6-1a50d418db75",
@@ -2433,7 +2634,9 @@
     "cibilDisplay": "658",
     "selectedLenderId": null,
     "lenderApplicationId": null,
-    "assignedCompany": "Rupay91",
+    "assignedCompany": "Pending Selection",
+    "appliedTo": "Not Applied Yet",
+    "delivery_status": "none",
     "panVerificationStatus": "PENDING",
     "kycStatus": "PENDING",
     "eligibilityStatus": "Eligible",
@@ -2458,6 +2661,8 @@
     "company_name": "D S M construction",
     "haveCreditCard": "No",
     "haveCreditCardBool": false,
-    "creditCardLimit": null
+    "creditCardLimit": null,
+    "partner_name": "Pending Selection",
+    "partner": "Pending Selection"
   }
 ]
