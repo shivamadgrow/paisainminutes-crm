@@ -203,7 +203,16 @@ export default function CompanyLeadsView({
       if (setLeads) {
         setLeads(prev => prev.map(l => {
           if (l.id === leadId || l.loanNo === leadId) {
-            return { ...l, assignedCompany: newCompany, partner_name: newCompany, selectedLenderId: newCompany };
+            return { 
+              ...l, 
+              assignedCompany: newCompany, 
+              partner_name: newCompany, 
+              selectedLenderId: newCompany,
+              appliedTo: newCompany,
+              applied_to: newCompany,
+              delivery_status: (newCompany && newCompany !== 'Pending Selection') ? 'delivered' : 'none',
+              delivery_partner: newCompany
+            };
           }
           return l;
         }));

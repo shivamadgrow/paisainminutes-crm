@@ -738,7 +738,11 @@ export default function LeadsView({
               ...l,
               assignedCompany: newCompany,
               partner_name: newCompany,
-              selectedLenderId: selectedLenderId
+              selectedLenderId: selectedLenderId,
+              appliedTo: newCompany,
+              applied_to: newCompany,
+              delivery_status: (newCompany && newCompany !== 'Pending Selection') ? 'delivered' : 'none',
+              delivery_partner: newCompany
             };
           }
           return l;
@@ -822,7 +826,15 @@ export default function LeadsView({
 
   const handleReassignCompanyInModal = async (leadId, newCompany) => {
     await handleReassignCompany(leadId, newCompany);
-    setSelectedLeadForOverview(prev => prev ? { ...prev, assignedCompany: newCompany, partner_name: newCompany } : null);
+    setSelectedLeadForOverview(prev => prev ? { 
+      ...prev, 
+      assignedCompany: newCompany, 
+      partner_name: newCompany,
+      appliedTo: newCompany,
+      applied_to: newCompany,
+      delivery_status: (newCompany && newCompany !== 'Pending Selection') ? 'delivered' : 'none',
+      delivery_partner: newCompany
+    } : null);
   };
 
   const handleStatusChangeInModal = async (leadId, newStatus) => {

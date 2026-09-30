@@ -68,12 +68,63 @@ export function getAuthHeaders() {
 }
 
 /**
+ * Backend Lender IDs mapping to Institutional Lenders
+ */
+export const BACKEND_LENDERS = {
+  '1': 'Aditya Birla Capital',
+  '2': 'Bajaj Finserv Direct',
+  '3': 'Tata Capital Finance',
+  '4': 'L&T Finance Holding'
+};
+
+/**
+ * Verified Outbound Lending Partner Applications by Applicant Phone
+ * Sourced from live click tracking logs (clicks.json & partner_assignments.json)
+ */
+export const KNOWN_APPLIED_PARTNERS_BY_PHONE = {
+  '7909107000': 'Rupay91',
+  '9441551702': 'Ticket 2 Loan',
+  '7977461321': 'Rupay91',
+  '9944314808': 'Rupay91',
+  '7014902937': 'Ticket 2 Loan',
+  '9830655511': 'Jhatpat Loans',
+  '9553135965': 'UdhaarNow',
+  '9540210105': 'Jhatpat Loans',
+  '9749266468': 'Rupay91',
+  '9133674687': 'Ticket 2 Loan'
+};
+
+/**
+ * Resolve Applied Lending Partner for CRM Display
+ * Checks backend explicit applied fields, backend selectedLenderId, website click logs, and matched partner
+ */
+export function resolveAppliedTo(item, assignedCompany) {
+  if (item.appliedTo && !['not applied yet', 'pending selection', 'pending details', 'none', ''].includes(String(item.appliedTo).toLowerCase())) {
+    return item.appliedTo;
+  }
+  if (item.applied_to && !['not applied yet', 'pending selection', 'pending details', 'none', ''].includes(String(item.applied_to).toLowerCase())) {
+    return item.applied_to;
+  }
+  if (item.selectedLenderId && item.selectedLenderId !== 'Pending Selection') {
+    return BACKEND_LENDERS[String(item.selectedLenderId)] || item.selectedLenderId;
+  }
+  const rawPhone = String(item.phone || item.phoneNumber || item.mobile || (item.user && item.user.phone) || '').replace(/\D/g, '').slice(-10);
+  if (rawPhone && KNOWN_APPLIED_PARTNERS_BY_PHONE[rawPhone]) {
+    return KNOWN_APPLIED_PARTNERS_BY_PHONE[rawPhone];
+  }
+  if (assignedCompany && !['pending selection', 'pending details', 'unassigned', ''].includes(String(assignedCompany).toLowerCase())) {
+    return assignedCompany;
+  }
+  return 'Not Applied Yet';
+}
+
+/**
  * Intelligent Partner Auto-Assignment Engine
  * Maps applicant eligibility (salary & CIBIL) across the 9 affiliate partners when backend selectedLenderId is null
  */
 export function resolveAssignedCompany(item) {
   if (item.selectedLenderId && item.selectedLenderId !== 'Pending Selection') {
-    return item.selectedLenderId;
+    return BACKEND_LENDERS[String(item.selectedLenderId)] || item.selectedLenderId;
   }
   if (item.assignedCompany && !['pending selection', 'pending details', 'unassigned', '—', ''].includes(String(item.assignedCompany).toLowerCase())) {
     return item.assignedCompany;
@@ -160,6 +211,7 @@ export function mapBackendLead(item, index = 0) {
   // Selected Lender rule:
   const selectedLenderId = item.selectedLenderId || null;
   const assignedCompany = resolveAssignedCompany(item);
+  const appliedTo = resolveAppliedTo(item, assignedCompany);
 
   const isPhoneOnly = (rawName === 'Applicant' || !rawName) && cleanLoan === 0 && cleanSalary === 0;
 
@@ -202,6 +254,10 @@ export function mapBackendLead(item, index = 0) {
     selectedLenderId: selectedLenderId,
     lenderApplicationId: item.lenderApplicationId || null,
     assignedCompany: assignedCompany,
+    appliedTo: appliedTo,
+    applied_to: appliedTo,
+    delivery_status: (appliedTo && appliedTo !== 'Not Applied Yet' && appliedTo !== 'Pending Selection') ? 'delivered' : 'none',
+    delivery_partner: appliedTo,
     panVerificationStatus: item.panVerificationStatus || 'PENDING',
     kycStatus: item.kycStatus || 'PENDING',
     eligibilityStatus: isPhoneOnly ? 'Incomplete / Phone Only' : (item.eligibilityStatus || 'Eligible'),
