@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { 
-  Building2, 
-  Search, 
+import {
+  Building2,
+  Search,
   X,
-  FileSpreadsheet, 
-  ArrowLeft, 
-  Phone, 
-  Mail, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle, 
-  XCircle, 
-  ChevronDown, 
-  UserCheck, 
+  FileSpreadsheet,
+  ArrowLeft,
+  Phone,
+  Mail,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  XCircle,
+  ChevronDown,
+  UserCheck,
   ArrowRightLeft,
   ExternalLink,
   ShieldAlert,
@@ -22,22 +22,22 @@ import {
   Check,
   ChevronRight
 } from 'lucide-react';
-import { 
-  getPartnerMeta, 
-  AFFILIATE_PARTNERS, 
-  getPartnerTrackingUrl, 
-  trackPartnerClick, 
-  getPartnerDirectUtmUrl 
+import {
+  getPartnerMeta,
+  AFFILIATE_PARTNERS,
+  getPartnerTrackingUrl,
+  trackPartnerClick,
+  getPartnerDirectUtmUrl
 } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
 import { cleanLoanAmount, cleanSalary, formatToIST, isDateInRange, DATE_RANGE_PRESETS } from '../utils/amountHelpers';
 import { updateLoanApplication, normalizeStatus, formatStatusLabel } from '../utils/apiConfig';
 
-export default function CompanyLeadsView({ 
-  companyId, 
-  leads = [], 
-  setLeads, 
-  onBackToHub 
+export default function CompanyLeadsView({
+  companyId,
+  leads = [],
+  setLeads,
+  onBackToHub
 }) {
   const partner = getPartnerMeta(companyId);
   const [searchQuery, setSearchQuery] = useState('');
@@ -99,9 +99,15 @@ export default function CompanyLeadsView({
   const companyLeads = useMemo(() => {
     return leads.filter(l => {
       const c = (l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
-      return c === partner.id.toLowerCase() || 
-             c === partner.name.toLowerCase().replace(/[\s\-_]/g, '') ||
-             c === (partner.code || '').toLowerCase();
+      const sel = String(l.selectedLenderId || '').trim().toLowerCase();
+      const pId = partner.id.toLowerCase();
+      const pName = partner.name.toLowerCase().replace(/[\s\-_]/g, '');
+      const pCode = (partner.code || '').toLowerCase();
+      return c === pId ||
+        c === pName ||
+        c === pCode ||
+        sel === pId ||
+        (l.assignedCompany && l.assignedCompany.toLowerCase().includes(partner.name.toLowerCase()));
     });
   }, [leads, partner]);
 
@@ -203,16 +209,7 @@ export default function CompanyLeadsView({
       if (setLeads) {
         setLeads(prev => prev.map(l => {
           if (l.id === leadId || l.loanNo === leadId) {
-            return { 
-              ...l, 
-              assignedCompany: newCompany, 
-              partner_name: newCompany, 
-              selectedLenderId: newCompany,
-              appliedTo: newCompany,
-              applied_to: newCompany,
-              delivery_status: (newCompany && newCompany !== 'Pending Selection') ? 'delivered' : 'none',
-              delivery_partner: newCompany
-            };
+            return { ...l, assignedCompany: newCompany, partner_name: newCompany, selectedLenderId: newCompany };
           }
           return l;
         }));
@@ -240,12 +237,12 @@ export default function CompanyLeadsView({
       }
 
       await updateLoanApplication(leadId, { status: canonicalStatus });
-    } catch (e) {}
+    } catch (e) { }
   };
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
-      
+
       {/* Top Header with Back Button & Partner Branding */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -297,7 +294,7 @@ export default function CompanyLeadsView({
 
       {/* Partner Info & KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
+
         <div className="crm-card bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Assigned Leads</span>
           <div className="text-2xl font-black text-slate-900 mt-1">{stats.total}</div>
@@ -326,7 +323,7 @@ export default function CompanyLeadsView({
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
-        
+
         {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -351,11 +348,10 @@ export default function CompanyLeadsView({
               <button
                 key={preset.id}
                 onClick={() => setSelectedDatePreset(preset.id)}
-                className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition cursor-pointer shrink-0 ${
-                  isSel
+                className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition cursor-pointer shrink-0 ${isSel
                     ? 'bg-[#0A3977] text-white shadow-2xs'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
+                  }`}
               >
                 {preset.label}
               </button>
@@ -395,11 +391,10 @@ export default function CompanyLeadsView({
             <button
               key={btn.id}
               onClick={() => setStatusFilter(btn.id)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition cursor-pointer shrink-0 ${
-                statusFilter === btn.id
+              className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition cursor-pointer shrink-0 ${statusFilter === btn.id
                   ? 'bg-[#0A3977] text-white shadow-2xs'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+                }`}
             >
               {btn.label}
             </button>
@@ -433,7 +428,7 @@ export default function CompanyLeadsView({
 
                   return (
                     <tr key={itemId} className="hover:bg-slate-50/80 transition">
-                      
+
                       {/* Applicant */}
                       <td className="p-3.5">
                         <div className="flex items-start gap-2.5">
@@ -460,8 +455,8 @@ export default function CompanyLeadsView({
                         </div>
                         <div className="text-[10px] text-slate-500 mt-1">
                           CIBIL: <span className="font-bold text-slate-700">
-                            {(item.cibilScore && Number(item.cibilScore) > 0) 
-                              ? item.cibilScore 
+                            {(item.cibilScore && Number(item.cibilScore) > 0)
+                              ? item.cibilScore
                               : (item.cibil && !item.cibil.includes('Estimated') && !item.cibil.includes('300') ? item.cibil : 'Not Available')}
                           </span>
                         </div>
@@ -484,8 +479,8 @@ export default function CompanyLeadsView({
 
                       {/* Source */}
                       <td className="p-3.5">
-                        {((item.source && item.source.toLowerCase().includes('whatsapp')) || 
-                          (item.utm_source && item.utm_source.toLowerCase().includes('whatsapp')) || 
+                        {((item.source && item.source.toLowerCase().includes('whatsapp')) ||
+                          (item.utm_source && item.utm_source.toLowerCase().includes('whatsapp')) ||
                           (item.lead_source && item.lead_source.toLowerCase().includes('whatsapp'))) ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
@@ -572,17 +567,17 @@ export default function CompanyLeadsView({
                             </a>
                           )}
                           <a
-                            href={getPartnerTrackingUrl(partner, { 
-                              leadId: itemId, 
-                              phone: item.mobile || item.phone, 
-                              source: 'crm_lead_row' 
+                            href={getPartnerTrackingUrl(partner, {
+                              leadId: itemId,
+                              phone: item.mobile || item.phone,
+                              source: 'crm_lead_row'
                             })}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={() => trackPartnerClick(partner, { 
-                              leadId: itemId, 
-                              phone: item.mobile || item.phone, 
-                              source: 'crm_lead_row' 
+                            onClick={() => trackPartnerClick(partner, {
+                              leadId: itemId,
+                              phone: item.mobile || item.phone,
+                              source: 'crm_lead_row'
                             })}
                             className="p-1.5 bg-blue-50 text-[#0A3977] hover:bg-blue-100 rounded-lg transition"
                             title={`Open ${partner.name} Portal with Lead ID ${itemId} & UTM tracking`}
@@ -629,9 +624,9 @@ export default function CompanyLeadsView({
           const q = (reassignFilterQuery || '').toLowerCase().trim();
           const filteredPartners = AFFILIATE_PARTNERS.filter(p => {
             if (!q) return true;
-            return (p.name || '').toLowerCase().includes(q) || 
-                   (p.tagline || '').toLowerCase().includes(q) ||
-                   (p.description || '').toLowerCase().includes(q);
+            return (p.name || '').toLowerCase().includes(q) ||
+              (p.tagline || '').toLowerCase().includes(q) ||
+              (p.description || '').toLowerCase().includes(q);
           });
 
           return (
@@ -689,7 +684,7 @@ export default function CompanyLeadsView({
               </div>
 
               {/* Scrollable list container */}
-              <div 
+              <div
                 className="pt-1.5 space-y-1 overflow-y-auto flex-1 min-h-[140px] pr-1 dropdown-scrollbar"
                 style={{
                   maxHeight: `${Math.min(320, Math.max(160, maxHeight - 95))}px`,
@@ -713,14 +708,13 @@ export default function CompanyLeadsView({
                         setReassignAnchor(null);
                         setReassignFilterQuery('');
                       }}
-                      className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between text-xs transition-all cursor-pointer group ${
-                        isCurrent 
-                          ? 'bg-blue-50/90 text-[#0A3977] font-black ring-1 ring-blue-300 shadow-2xs' 
+                      className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between text-xs transition-all cursor-pointer group ${isCurrent
+                          ? 'bg-blue-50/90 text-[#0A3977] font-black ring-1 ring-blue-300 shadow-2xs'
                           : 'hover:bg-slate-50 text-slate-700 font-bold'
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-2.5 truncate">
-                        <div 
+                        <div
                           className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 shadow-2xs text-white"
                           style={{ backgroundColor: p.accentColor || '#0A3977' }}
                         >

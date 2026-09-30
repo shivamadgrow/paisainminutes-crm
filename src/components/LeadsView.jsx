@@ -60,6 +60,11 @@ import {
   fetchApi,
   deleteLeadsApi,
   updateLoanApplication,
+  submitLoanApplication,
+  buildLeadPayload,
+  KNOWN_LENDERS,
+  resolveLenderName,
+  maskPan,
   normalizeStatus,
   formatStatusLabel,
   CRM_STATUS_MAP,
@@ -397,13 +402,35 @@ export default function LeadsView({
   };
   const [testMobile, setTestMobile] = useState('');
   const [testName, setTestName] = useState('');
-  const [testAmount, setTestAmount] = useState('₹50,000');
+  const [testEmail, setTestEmail] = useState('');
+  const [testAmount, setTestAmount] = useState('50000');
   const [testSalary, setTestSalary] = useState('35000');
-  const [testCibil, setTestCibil] = useState('750+ (Excellent - Best Approval)');
-  const [testSource, setTestSource] = useState('Check Eligibility Website');
+  const [testTenure, setTestTenure] = useState('12');
+  const [testPurpose, setTestPurpose] = useState('Personal Loan');
+  const [testEmploymentType, setTestEmploymentType] = useState('Salaried');
+  const [testCompanyName, setTestCompanyName] = useState('');
+  const [testSalaryMode, setTestSalaryMode] = useState('Bank');
+  const [testCity, setTestCity] = useState('');
+  const [testState, setTestState] = useState('');
+  const [testPincode, setTestPincode] = useState('');
+  const [testDob, setTestDob] = useState('');
+  const [testGender, setTestGender] = useState('Male');
+  const [testHaveCreditCard, setTestHaveCreditCard] = useState('No');
+  const [testCreditCardLimit, setTestCreditCardLimit] = useState('');
+  const [testPan, setTestPan] = useState('');
+  const [testCibil, setTestCibil] = useState('720');
+  const [testSelectedLenderId, setTestSelectedLenderId] = useState('');
+  const [testLenderApplicationId, setTestLenderApplicationId] = useState('');
+  const [testSource, setTestSource] = useState('website');
   const [testAssignedCompany, setTestAssignedCompany] = useState('AUTO');
+  const [testShowFullFields, setTestShowFullFields] = useState(false);
   const [isSubmittingTest, setIsSubmittingTest] = useState(false);
   const [testFeedback, setTestFeedback] = useState(null);
+  const [testToken, setTestToken] = useState(() => {
+    try {
+      return localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token') || '';
+    } catch (e) { return ''; }
+  });
 
   // New Lead Manual Modal form state
   const [newMobile, setNewMobile] = useState('');
@@ -413,6 +440,13 @@ export default function LeadsView({
   const [newCity, setNewCity] = useState('');
   const [newSource, setNewSource] = useState('Apply Now Website');
   const [newCompany, setNewCompany] = useState('Rupay91');
+  const [newToken, setNewToken] = useState(() => {
+    try {
+      return localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token') || '';
+    } catch (e) { return ''; }
+  });
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+  const [manualFeedback, setManualFeedback] = useState(null);
 
   useEffect(() => {
     if (activeFilterTab) {
@@ -738,11 +772,7 @@ export default function LeadsView({
               ...l,
               assignedCompany: newCompany,
               partner_name: newCompany,
-              selectedLenderId: selectedLenderId,
-              appliedTo: newCompany,
-              applied_to: newCompany,
-              delivery_status: (newCompany && newCompany !== 'Pending Selection') ? 'delivered' : 'none',
-              delivery_partner: newCompany
+              selectedLenderId: selectedLenderId
             };
           }
           return l;
@@ -826,15 +856,7 @@ export default function LeadsView({
 
   const handleReassignCompanyInModal = async (leadId, newCompany) => {
     await handleReassignCompany(leadId, newCompany);
-    setSelectedLeadForOverview(prev => prev ? { 
-      ...prev, 
-      assignedCompany: newCompany, 
-      partner_name: newCompany,
-      appliedTo: newCompany,
-      applied_to: newCompany,
-      delivery_status: (newCompany && newCompany !== 'Pending Selection') ? 'delivered' : 'none',
-      delivery_partner: newCompany
-    } : null);
+    setSelectedLeadForOverview(prev => prev ? { ...prev, assignedCompany: newCompany, partner_name: newCompany } : null);
   };
 
   const handleStatusChangeInModal = async (leadId, newStatus) => {
@@ -842,55 +864,71 @@ export default function LeadsView({
     setSelectedLeadForOverview(prev => prev ? { ...prev, status: newStatus } : null);
   };
 
-  // Test Website Lead Submit Handler
+  // Test Website Lead Submit Handler (Supports minimal and complete canonical payloads)
   const handleTestApplySubmit = async (e) => {
     e.preventDefault();
     if (!testMobile) return;
     setIsSubmittingTest(true);
     setTestFeedback(null);
 
-    const payload = {
+    const rawInput = {
+      applicantName: testName || 'Test Applicant',
       phone: testMobile,
-      fullName: testName || 'Test Applicant',
-      loanAmount: testAmount || '50000',
-      salary: testSalary || '35000',
+      email: testEmail || undefined,
+      amount: testAmount || 50000,
+      tenureMonths: testTenure || 12,
+      purpose: testPurpose || 'Personal Loan',
+      monthlyIncome: testSalary || 35000,
+      employmentType: testEmploymentType || undefined,
+      companyName: testCompanyName || undefined,
+      salaryMode: testSalaryMode || undefined,
+      city: testCity || undefined,
+      state: testState || undefined,
+      pincode: testPincode || undefined,
+      dob: testDob || undefined,
+      gender: testGender || undefined,
+      haveCreditCard: testHaveCreditCard === 'Yes' ? true : (testHaveCreditCard === 'No' ? false : undefined),
+      creditCardLimit: testCreditCardLimit || undefined,
+      utmSource: 'website',
+      leadSource: testSource || 'website',
+      pan: testPan || undefined,
       cibilScore: testCibil,
-      source: testSource || 'Check Eligibility Website',
-      assignedCompany: testAssignedCompany === 'AUTO' ? undefined : testAssignedCompany,
-      eligibilityStatus: 'Eligible - Test Submission'
+      selectedLenderId: testSelectedLenderId || (testAssignedCompany !== 'AUTO' ? testAssignedCompany : undefined),
+      lenderApplicationId: testLenderApplicationId || undefined,
+      token: testToken || undefined
     };
 
-    console.log('%c[CRM TEST SUBMIT] 🚀 Submitting Test Lead with payload:', 'color: #0284c7; font-weight: bold;', payload);
+    const payload = buildLeadPayload(rawInput);
+    if (testToken) payload.token = testToken;
+    // Secure logging: never log raw PAN
+    const logSafe = { ...payload };
+    if (logSafe.pan) logSafe.pan = maskPan(logSafe.pan);
+    console.log('%c[CRM TEST SUBMIT] 🚀 Submitting Test Lead with canonical payload:', 'color: #0284c7; font-weight: bold;', logSafe);
 
     try {
-      const res = await fetchApi('/admin/api/submit-lead', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-
-      const data = res?.data || (res ? await res.json() : null);
+      const result = await submitLoanApplication(rawInput);
       setIsSubmittingTest(false);
 
-      console.log('[CRM TEST SUBMIT] 📥 Server submission response:', data);
-
-      if (data && data.success && data.lead) {
+      if (result && result.success && result.lead) {
         if (setLeads) {
-          setLeads(prev => [data.lead, ...prev.filter(l => l.id !== data.lead.id)]);
+          setLeads(prev => [result.lead, ...prev.filter(l => l.id !== result.lead.id)]);
         }
         setTestFeedback({
           type: 'success',
-          message: `Lead created successfully! Routed to ${data.lead.assignedCompany || 'Partner'}.`
+          message: `Lead created successfully! ID: ${result.lead.displayId || result.lead.id}`
         });
         setTimeout(() => {
           setIsTestModalOpen(false);
           setTestFeedback(null);
           setTestMobile('');
           setTestName('');
+          setTestEmail('');
+          setTestPan('');
         }, 1800);
       } else {
         setTestFeedback({
           type: 'error',
-          message: (data && data.error) || 'Submission failed'
+          message: (result && result.error) || 'Submission failed'
         });
       }
     } catch (err) {
@@ -898,7 +936,7 @@ export default function LeadsView({
       setIsSubmittingTest(false);
       setTestFeedback({
         type: 'error',
-        message: 'Could not connect to API server'
+        message: err.message || 'Could not connect to API server'
       });
     }
   };
@@ -907,37 +945,58 @@ export default function LeadsView({
   const handleManualLeadSubmit = async (e) => {
     e.preventDefault();
     if (!newMobile) return;
+    setIsSubmittingManual(true);
+    setManualFeedback(null);
 
-    const payload = {
+    const rawInput = {
+      applicantName: newName || 'Manual Lead',
       phone: newMobile,
-      fullName: newName || 'Manual Lead',
-      loanAmount: newAmount || '50000',
-      salary: newSalary || '30000',
-      city: newCity || 'Direct Entry',
-      source: newSource || 'Direct Manual Entry',
-      assignedCompany: newCompany || 'Rupay91',
-      eligibilityStatus: 'Pre-Approved'
+      amount: newAmount || 50000,
+      monthlyIncome: newSalary || 30000,
+      city: newCity || undefined,
+      leadSource: newSource || 'Direct Manual Entry',
+      utmSource: 'crm_manual',
+      selectedLenderId: newCompany,
+      token: newToken || undefined
     };
 
-    console.log('%c[CRM MANUAL SUBMIT] 📝 Creating Manual Lead with payload:', 'color: #0d9488; font-weight: bold;', payload);
+    const payload = buildLeadPayload(rawInput);
+    if (newToken) payload.token = newToken;
+    const logSafe = { ...payload };
+    if (logSafe.pan) logSafe.pan = maskPan(logSafe.pan);
+    console.log('%c[CRM MANUAL SUBMIT] 📝 Creating Manual Lead with canonical payload:', 'color: #0d9488; font-weight: bold;', logSafe);
 
     try {
-      const res = await fetchApi('/admin/api/submit-lead', {
-        method: 'POST',
-        body: JSON.stringify(payload)
-      });
-      const data = res?.data || (res ? await res.json() : null);
-      console.log('[CRM MANUAL SUBMIT] 📥 Server response:', data);
-      if (data && data.success && data.lead && setLeads) {
-        setLeads(prev => [data.lead, ...prev]);
+      const result = await submitLoanApplication(rawInput);
+      setIsSubmittingManual(false);
+      if (result && result.success && result.lead) {
+        if (setLeads) {
+          setLeads(prev => [result.lead, ...prev.filter(l => l.id !== result.lead.id)]);
+        }
+        setManualFeedback({
+          type: 'success',
+          message: `Lead created successfully! ID: ${result.lead.displayId || result.lead.id}`
+        });
+        setTimeout(() => {
+          setIsAddModalOpen(false);
+          setManualFeedback(null);
+          setNewMobile('');
+          setNewName('');
+        }, 1500);
+      } else {
+        setManualFeedback({
+          type: 'error',
+          message: (result && result.error) || 'Submission failed'
+        });
       }
     } catch (e) {
       console.error('[CRM MANUAL SUBMIT] ❌ Error:', e);
+      setIsSubmittingManual(false);
+      setManualFeedback({
+        type: 'error',
+        message: e.message || 'Could not connect to API server'
+      });
     }
-
-    setIsAddModalOpen(false);
-    setNewMobile('');
-    setNewName('');
   };
 
   const isAllSelected = filteredLeads.length > 0 && filteredLeads.every((item, idx) => selectedLeadIds.includes(getLeadId(item, idx)));
@@ -1827,32 +1886,76 @@ export default function LeadsView({
             )}
 
             <form onSubmit={handleTestApplySubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Mobile Number <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  required
-                  placeholder="e.g. 9876543210"
-                  value={testMobile}
-                  onChange={(e) => setTestMobile(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
-                />
+              {/* Payload Mode Toggle */}
+              <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-xl text-xs font-bold text-slate-600">
+                <button
+                  type="button"
+                  onClick={() => setTestShowFullFields(false)}
+                  className={`flex-1 py-1.5 rounded-lg transition cursor-pointer text-center ${!testShowFullFields ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  Minimal Payload
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTestShowFullFields(true);
+                    if (!testEmail) setTestEmail('test.applicant@example.com');
+                    if (!testCompanyName) setTestCompanyName('Test Corp Ltd');
+                    if (!testCity) setTestCity('Delhi');
+                    if (!testState) setTestState('Delhi');
+                    if (!testPincode) setTestPincode('110001');
+                    if (!testDob) setTestDob('2000-01-01');
+                    if (!testCreditCardLimit) setTestCreditCardLimit('100000');
+                    if (!testPan) setTestPan('ABCDE1234F');
+                    if (!testSelectedLenderId) setTestSelectedLenderId('1');
+                    if (!testLenderApplicationId) setTestLenderApplicationId('PARTNER-APP-7890');
+                  }}
+                  className={`flex-1 py-1.5 rounded-lg transition cursor-pointer text-center ${testShowFullFields ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                  Complete Canonical Payload
+                </button>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Applicant Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Rahul Sharma"
-                  value={testName}
-                  onChange={(e) => setTestName(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
-                />
+              {/* Core / Minimal Fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Mobile Number <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="e.g. 9876543210"
+                    value={testMobile}
+                    onChange={(e) => setTestMobile(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Applicant Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Rahul Sharma"
+                    value={testName}
+                    onChange={(e) => setTestName(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="e.g. rahul@example.com"
+                    value={testEmail}
+                    onChange={(e) => setTestEmail(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">Loan Amount (₹)</label>
                   <input
@@ -1863,51 +1966,237 @@ export default function LeadsView({
                     className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
                   />
                 </div>
+              </div>
 
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Monthly Salary (₹)</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Monthly Salary / Income (₹)</label>
                   <input
                     type="number"
-                    placeholder="e.g. 35000"
+                    placeholder="e.g. 55000"
                     value={testSalary}
                     onChange={(e) => setTestSalary(e.target.value)}
                     className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
                   />
                 </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Tenure (Months)</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 12"
+                    value={testTenure}
+                    onChange={(e) => setTestTenure(e.target.value)}
+                    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
+                  />
+                </div>
               </div>
 
+              {/* Extended Fields in Complete Payload Mode */}
+              {testShowFullFields && (
+                <div className="space-y-3 pt-3 border-t border-slate-100 animate-fade-in">
+                  <div className="text-[11px] font-extrabold uppercase tracking-wider text-blue-700">
+                    Additional Lead Data Fields
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Employment Type</label>
+                      <select
+                        value={testEmploymentType}
+                        onChange={(e) => setTestEmploymentType(e.target.value)}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white"
+                      >
+                        <option value="Salaried">Salaried</option>
+                        <option value="Self-Employed">Self-Employed</option>
+                        <option value="Business">Business</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Company Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Test Corp Ltd"
+                        value={testCompanyName}
+                        onChange={(e) => setTestCompanyName(e.target.value)}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Salary Mode</label>
+                      <select
+                        value={testSalaryMode}
+                        onChange={(e) => setTestSalaryMode(e.target.value)}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white"
+                      >
+                        <option value="Bank">Bank</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Cheque">Cheque</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">PAN Card (Secure)</label>
+                      <input
+                        type="text"
+                        maxLength={10}
+                        placeholder="e.g. ABCDE1234F"
+                        value={testPan}
+                        onChange={(e) => setTestPan(e.target.value.toUpperCase())}
+                        className="w-full px-3 py-2 text-xs font-mono font-bold uppercase border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">City</label>
+                      <input
+                        type="text"
+                        placeholder="Delhi"
+                        value={testCity}
+                        onChange={(e) => setTestCity(e.target.value)}
+                        className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">State</label>
+                      <input
+                        type="text"
+                        placeholder="Delhi"
+                        value={testState}
+                        onChange={(e) => setTestState(e.target.value)}
+                        className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Pincode</label>
+                      <input
+                        type="text"
+                        maxLength={6}
+                        placeholder="110001"
+                        value={testPincode}
+                        onChange={(e) => setTestPincode(e.target.value)}
+                        className="w-full px-2.5 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Date of Birth (YYYY-MM-DD)</label>
+                      <input
+                        type="date"
+                        value={testDob}
+                        onChange={(e) => setTestDob(e.target.value)}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Gender</label>
+                      <select
+                        value={testGender}
+                        onChange={(e) => setTestGender(e.target.value)}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white"
+                      >
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Has Credit Card?</label>
+                      <select
+                        value={testHaveCreditCard}
+                        onChange={(e) => setTestHaveCreditCard(e.target.value)}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white font-bold"
+                      >
+                        <option value="Yes">Yes (Has Card)</option>
+                        <option value="No">No</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Credit Card Limit (₹)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 100000"
+                        value={testCreditCardLimit}
+                        onChange={(e) => setTestCreditCardLimit(e.target.value)}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Selected Lender (Backend ID)</label>
+                      <select
+                        value={testSelectedLenderId}
+                        onChange={(e) => setTestSelectedLenderId(e.target.value)}
+                        className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white font-bold"
+                      >
+                        <option value="">None / Pending Selection</option>
+                        {KNOWN_LENDERS.map(l => (
+                          <option key={l.id} value={l.id}>
+                            {l.name} (ID: {l.id})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Lender Application ID</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. PARTNER-APP-7890"
+                        value={testLenderApplicationId}
+                        onChange={(e) => setTestLenderApplicationId(e.target.value)}
+                        className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">CIBIL Score (Eligibility Factor)</label>
-                <select
+                <label className="block text-xs font-bold text-slate-700 mb-1">CIBIL Score (300–900)</label>
+                <input
+                  type="number"
+                  min="300"
+                  max="900"
+                  placeholder="e.g. 720"
                   value={testCibil}
                   onChange={(e) => setTestCibil(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white font-semibold"
-                >
-                  <option value="850–900">850–900 (Slab 8: ₹90,000+ | Eligible – Premium | Rupay91)</option>
-                  <option value="800–849">800–849 (Slab 7: ₹80,000–₹89,999 | Eligible – Premium | Rupay91)</option>
-                  <option value="750–799">750–799 (Slab 6: ₹70,000–₹79,999 | Eligible – Preferred | Rupay91)</option>
-                  <option value="700–749">700–749 (Slab 5: ₹60,000–₹69,999 | Eligible – Good | Jhatpat Loans)</option>
-                  <option value="650–699">650–699 (Slab 4: ₹50,000–₹59,999 | Eligible | Jhatpat Loans)</option>
-                  <option value="600–649">600–649 (Slab 3: ₹40,000–₹49,999 | Eligible | Jhatpat Loans)</option>
-                  <option value="550–599">550–599 (Slab 2: ₹30,000–₹39,999 | Eligible | Jhatpat Loans)</option>
-                  <option value="500–549">500–549 (Slab 1: ₹20,000–₹29,999 | Eligible – Base | Jhatpat Loans)</option>
-                  <option value="—">No CIBIL / Not Provided</option>
-                </select>
+                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none font-bold"
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Assigned Affiliate Partner
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Bearer JWT Token (Authentication)</span>
+                  <span className="text-[10px] text-amber-600 font-semibold">Required by backend</span>
                 </label>
-                <select
-                  value={testAssignedCompany}
-                  onChange={(e) => setTestAssignedCompany(e.target.value)}
-                  className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white font-bold"
-                >
-                  <option value="AUTO">✨ Smart Auto-Route (750+ Rupay91, &lt;750 Jhatpat Loans)</option>
-                  <option value="Rupay91">💳 Rupay91 (CIBIL 750+)</option>
-                  <option value="Jhatpat Loans">⚡ Jhatpat Loans (CIBIL &lt; 750)</option>
-                </select>
+                <input
+                  type="password"
+                  placeholder="Paste Bearer JWT token if available..."
+                  value={testToken}
+                  onChange={(e) => {
+                    setTestToken(e.target.value);
+                    try { localStorage.setItem('pim_jwt_token', e.target.value.trim()); } catch(err) {}
+                  }}
+                  className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-slate-50"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
@@ -1924,7 +2213,7 @@ export default function LeadsView({
                   className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow transition cursor-pointer disabled:opacity-50"
                 >
                   <Zap className="w-3.5 h-3.5" />
-                  <span>{isSubmittingTest ? 'Simulating...' : 'Submit Test Lead'}</span>
+                  <span>{isSubmittingTest ? 'Submitting...' : 'Submit Test Lead'}</span>
                 </button>
               </div>
             </form>
@@ -1942,6 +2231,12 @@ export default function LeadsView({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {manualFeedback && (
+              <div className={`p-3 rounded-xl text-xs font-bold mb-3 ${manualFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}`}>
+                {manualFeedback.message}
+              </div>
+            )}
 
             <form onSubmit={handleManualLeadSubmit} className="space-y-3.5">
               <div>
@@ -2001,6 +2296,23 @@ export default function LeadsView({
                 </select>
               </div>
 
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>Bearer JWT Token</span>
+                  <span className="text-[10px] text-slate-400">If authenticated</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="Bearer JWT Token..."
+                  value={newToken}
+                  onChange={(e) => {
+                    setNewToken(e.target.value);
+                    try { localStorage.setItem('pim_jwt_token', e.target.value.trim()); } catch(err) {}
+                  }}
+                  className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-slate-50"
+                />
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
                   type="button"
@@ -2011,9 +2323,10 @@ export default function LeadsView({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#0A3977] hover:bg-blue-900 text-white rounded-xl text-xs font-bold shadow"
+                  disabled={isSubmittingManual}
+                  className="px-4 py-2 bg-[#0A3977] hover:bg-blue-900 text-white rounded-xl text-xs font-bold shadow disabled:opacity-50"
                 >
-                  Create Lead
+                  {isSubmittingManual ? 'Creating...' : 'Create Lead'}
                 </button>
               </div>
             </form>
@@ -2192,7 +2505,9 @@ export default function LeadsView({
 
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">PAN Card:</span>
-                      <span className="font-bold font-mono text-slate-900">{activeOverviewLead.pan && activeOverviewLead.pan !== '—' ? activeOverviewLead.pan : '—'}</span>
+                      <span className="font-bold font-mono text-slate-900">
+                        {activeOverviewLead.panMasked || (activeOverviewLead.pan && activeOverviewLead.pan !== '—' ? maskPan(activeOverviewLead.pan) : '—')}
+                      </span>
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -2448,21 +2763,21 @@ export default function LeadsView({
                   <span>Lead Workflow & Partner Management</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Partner Company Selector */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Selected Lender (Backend Lenders Table) */}
                   <div>
                     <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                      Assigned Lending Partner / Company:
+                      Selected Lender:
                     </label>
                     <select
-                      value={activeOverviewLead.assignedCompany || 'Pending Selection'}
+                      value={activeOverviewLead.selectedLenderId || 'Pending Selection'}
                       onChange={(e) => handleReassignCompanyInModal(getLeadId(activeOverviewLead), e.target.value)}
                       className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0A3977] cursor-pointer shadow-2xs"
                     >
-                      <option value="Pending Selection">Pending Selection (Awaiting applicant choice)</option>
-                      {AFFILIATE_PARTNERS.map(p => (
-                        <option key={p.id} value={p.name}>
-                          {p.name} — {p.description || 'Lending Partner'}
+                      <option value="Pending Selection">Pending Selection</option>
+                      {KNOWN_LENDERS.map(l => (
+                        <option key={l.id} value={l.id}>
+                          {l.name} (ID: {l.id})
                         </option>
                       ))}
                     </select>
@@ -2486,6 +2801,28 @@ export default function LeadsView({
                       <option value="DISBURSED">Disbursed</option>
                       <option value="REJECTED">Rejected</option>
                     </select>
+                  </div>
+
+                  {/* Lender Application ID */}
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                      Lender Application ID:
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. PARTNER-APP-12345"
+                      defaultValue={activeOverviewLead.lenderApplicationId || ''}
+                      onBlur={(e) => {
+                        const val = e.target.value.trim();
+                        if (val !== (activeOverviewLead.lenderApplicationId || '')) {
+                          updateLoanApplication(getLeadId(activeOverviewLead), { lenderApplicationId: val });
+                          if (setLeads) {
+                            setLeads(prev => prev.map(l => getLeadId(l) === getLeadId(activeOverviewLead) ? { ...l, lenderApplicationId: val || null } : l));
+                          }
+                        }
+                      }}
+                      className="w-full px-3 py-2 text-xs font-mono font-bold border border-slate-300 rounded-xl bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0A3977] shadow-2xs"
+                    />
                   </div>
                 </div>
 

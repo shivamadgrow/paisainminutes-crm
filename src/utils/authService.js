@@ -15,7 +15,6 @@ export function purgeAllClientCaches() {
       localStorage.removeItem('pim_deleted_leads');
       localStorage.removeItem('paisa_crm_lead_overrides');
       localStorage.removeItem('paisa_security_incidents');
-      localStorage.removeItem('pim_jwt_token');
       localStorage.removeItem(STAFF_STORAGE_KEY);
       localStorage.removeItem('paisa_crm_active_tab');
       localStorage.removeItem('paisa_crm_payout_requests');

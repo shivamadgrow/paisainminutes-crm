@@ -59,72 +59,359 @@ export function formatStatusLabel(rawStatus) {
  * Get configured CRM authentication headers for authenticated routes (PATCH, phone dossier lookup)
  */
 export function getAuthHeaders() {
-  const token = localStorage.getItem('pim_jwt_token') || 
-                sessionStorage.getItem('pim_jwt_token') || 
-                localStorage.getItem('paisa_crm_token') || 
-                sessionStorage.getItem('paisa_crm_token') ||
-                (typeof import.meta !== 'undefined' && import.meta.env && (import.meta.env.VITE_CRM_API_KEY || import.meta.env.VITE_BACKEND_API_KEY || import.meta.env.VITE_AUTH_TOKEN));
+  const token = localStorage.getItem('pim_jwt_token') ||
+    sessionStorage.getItem('pim_jwt_token') ||
+    localStorage.getItem('paisa_crm_token') ||
+    sessionStorage.getItem('paisa_crm_token') ||
+    (typeof import.meta !== 'undefined' && import.meta.env && (import.meta.env.VITE_CRM_API_KEY || import.meta.env.VITE_BACKEND_API_KEY || import.meta.env.VITE_AUTH_TOKEN));
   return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
 /**
- * Backend Lender IDs mapping to Institutional Lenders
+ * Known Real Lenders from Backend GET /api/lenders
+ * Real IDs: "1", "2", "3", "4"
  */
-export const BACKEND_LENDERS = {
-  '1': 'Aditya Birla Capital',
-  '2': 'Bajaj Finserv Direct',
-  '3': 'Tata Capital Finance',
-  '4': 'L&T Finance Holding'
-};
+export const KNOWN_LENDERS = [
+  { id: '1', name: 'Aditya Birla Capital', maxAmount: 500000 },
+  { id: '2', name: 'Bajaj Finserv Direct', maxAmount: 400000 },
+  { id: '3', name: 'Tata Capital Finance', maxAmount: 350000 },
+  { id: '4', name: 'L&T Finance Holding', maxAmount: 250000 }
+];
+
+let cachedLendersList = [...KNOWN_LENDERS];
 
 /**
- * Verified Outbound Lending Partner Applications by Applicant Phone
- * Sourced from live click tracking logs (clicks.json & partner_assignments.json)
+ * Fetch Real Lenders from Backend (GET /api/lenders)
  */
-export const KNOWN_APPLIED_PARTNERS_BY_PHONE = {
-  '7909107000': 'Rupay91',
-  '9441551702': 'Ticket 2 Loan',
-  '7977461321': 'Rupay91',
-  '9944314808': 'Rupay91',
-  '7014902937': 'Ticket 2 Loan',
-  '9830655511': 'Jhatpat Loans',
-  '9553135965': 'UdhaarNow',
-  '9540210105': 'Jhatpat Loans',
-  '9749266468': 'Rupay91',
-  '9133674687': 'Ticket 2 Loan'
-};
-
-/**
- * Resolve Applied Lending Partner for CRM Display
- * Checks backend explicit applied fields, backend selectedLenderId, website click logs, and matched partner
- */
-export function resolveAppliedTo(item, assignedCompany) {
-  if (item.appliedTo && !['not applied yet', 'pending selection', 'pending details', 'none', ''].includes(String(item.appliedTo).toLowerCase())) {
-    return item.appliedTo;
+export async function getLendersFromBackend() {
+  try {
+    const res = await fetch(`${BACKEND_BASE}/api/lenders`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : (data.lenders || []);
+      if (Array.isArray(list) && list.length > 0) {
+        cachedLendersList = list;
+        return list;
+      }
+    }
+  } catch (e) {
+    console.warn('[getLendersFromBackend] Could not reach backend /api/lenders:', e);
   }
-  if (item.applied_to && !['not applied yet', 'pending selection', 'pending details', 'none', ''].includes(String(item.applied_to).toLowerCase())) {
-    return item.applied_to;
-  }
-  if (item.selectedLenderId && item.selectedLenderId !== 'Pending Selection') {
-    return BACKEND_LENDERS[String(item.selectedLenderId)] || item.selectedLenderId;
-  }
-  const rawPhone = String(item.phone || item.phoneNumber || item.mobile || (item.user && item.user.phone) || '').replace(/\D/g, '').slice(-10);
-  if (rawPhone && KNOWN_APPLIED_PARTNERS_BY_PHONE[rawPhone]) {
-    return KNOWN_APPLIED_PARTNERS_BY_PHONE[rawPhone];
-  }
-  if (assignedCompany && !['pending selection', 'pending details', 'unassigned', ''].includes(String(assignedCompany).toLowerCase())) {
-    return assignedCompany;
-  }
-  return 'Not Applied Yet';
+  return cachedLendersList;
 }
 
 /**
- * Intelligent Partner Auto-Assignment Engine
- * Maps applicant eligibility (salary & CIBIL) across the 9 affiliate partners when backend selectedLenderId is null
+ * Validates selectedLenderId against real lender table.
+ * Prevents sending lender names or invented IDs to the backend.
+ */
+export function resolveValidLenderId(val) {
+  if (val === undefined || val === null || val === '' || val === 'Pending Selection' || val === 'null' || val === 'undefined') {
+    return null;
+  }
+  const str = String(val).trim();
+  const directMatch = cachedLendersList.find(l => String(l.id) === str);
+  if (directMatch) return String(directMatch.id);
+
+  const nameMatch = cachedLendersList.find(l => l.name && (l.name.toLowerCase() === str.toLowerCase() || str.toLowerCase().includes(l.name.toLowerCase())));
+  if (nameMatch) return String(nameMatch.id);
+
+  if (/^\d+$/.test(str)) return str;
+  return null;
+}
+
+/**
+ * Resolves human-readable lender name for a given lender ID
+ */
+export function resolveLenderName(lenderId) {
+  if (!lenderId) return null;
+  const str = String(lenderId).trim();
+  const found = cachedLendersList.find(l => String(l.id) === str || (l.name && l.name.toLowerCase() === str.toLowerCase()));
+  return found ? found.name : null;
+}
+
+/**
+ * Masks PAN according to security rules: e.g. ABCDE1234F -> AB*****4F
+ * Raw PAN values MUST NEVER be logged or displayed in UI!
+ */
+export function maskPan(rawPan) {
+  if (!rawPan) return '—';
+  const clean = String(rawPan).trim().toUpperCase();
+  if (clean.includes('*')) return clean;
+  if (clean.length === 10) {
+    return `${clean.slice(0, 2)}*****${clean.slice(-2)}`;
+  }
+  return clean ? `${clean.slice(0, 2)}*****` : '—';
+}
+
+/**
+ * Formats a date into ISO YYYY-MM-DD
+ */
+export function formatIsoDate(val) {
+  if (!val) return null;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+    if (trimmed.includes('T')) {
+      const p = trimmed.split('T')[0];
+      if (/^\d{4}-\d{2}-\d{2}$/.test(p)) return p;
+    }
+    // DD/MM/YYYY or DD-MM-YYYY
+    const dmy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (dmy) {
+      const dd = dmy[1].padStart(2, '0');
+      const mm = dmy[2].padStart(2, '0');
+      const yyyy = dmy[3];
+      return `${yyyy}-${mm}-${dd}`;
+    }
+  }
+  const d = new Date(val);
+  if (!isNaN(d.getTime())) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return null;
+}
+
+/**
+ * Coerces numeric inputs safely
+ */
+export function coerceNumber(val) {
+  if (val === undefined || val === null || val === '') return undefined;
+  if (typeof val === 'number') return isNaN(val) ? undefined : val;
+  const clean = String(val).replace(/[^0-9.]/g, '');
+  if (!clean) return undefined;
+  const num = parseFloat(clean);
+  return isNaN(num) ? undefined : num;
+}
+
+/**
+ * Coerces boolean inputs safely
+ */
+export function coerceBoolean(val) {
+  if (val === undefined || val === null || val === '') return undefined;
+  if (typeof val === 'boolean') return val;
+  const s = String(val).trim().toLowerCase();
+  if (['true', 'yes', '1', 'y'].includes(s)) return true;
+  if (['false', 'no', '0', 'n'].includes(s)) return false;
+  return undefined;
+}
+
+/**
+ * Validates CIBIL score is a number between 300 and 900
+ */
+export function coerceCibilScore(val) {
+  if (val === undefined || val === null || val === '' || val === '—') return undefined;
+  let num = typeof val === 'number' ? val : null;
+  if (num === null && typeof val === 'string') {
+    const match = val.match(/(\d{3})/);
+    if (match) {
+      num = parseInt(match[1], 10);
+    }
+  }
+  if (typeof num === 'number' && !isNaN(num) && num >= 300 && num <= 900) {
+    return num;
+  }
+  return undefined;
+}
+
+/**
+ * Validates PAN structure without logging
+ */
+export function sanitizePan(val) {
+  if (!val || typeof val !== 'string') return undefined;
+  const clean = val.trim().toUpperCase();
+  if (/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(clean)) {
+    return clean;
+  }
+  return undefined;
+}
+
+/**
+ * Builds the canonical camelCase payload for POST /api/loan-applications.
+ * 
+ * Rules:
+ * - Only send fields that actually exist in frontend state or user input.
+ * - Do not send fake, placeholder, or randomly generated values.
+ * - Minimal payload remains fully supported.
+ * - Aliases normalized to canonical names:
+ *     name/fullName -> applicantName
+ *     loan_amount -> amount
+ *     salary/monthlySalary -> monthlyIncome
+ *     employment_type -> employmentType
+ *     company_name -> companyName
+ *     mode_of_salary -> salaryMode
+ *     utm_source -> utmSource
+ *     lead_source -> leadSource
+ *     have_credit_card -> haveCreditCard
+ *     credit_card_limit -> creditCardLimit
+ */
+export function buildLeadPayload(input = {}) {
+  if (!input || typeof input !== 'object') return {};
+
+  const payload = {};
+
+  // 1. applicantName (with name / fullName aliases)
+  const rawName = input.applicantName ?? input.fullName ?? input.name;
+  if (rawName && typeof rawName === 'string' && rawName.trim()) {
+    payload.applicantName = rawName.trim();
+    // Preserve name for minimal payload backward compatibility
+    payload.name = payload.applicantName;
+  }
+
+  // 2. phone (10-digit mobile)
+  const rawPhone = input.phone ?? input.phoneNumber ?? input.mobile;
+  if (rawPhone) {
+    const cleanPhone = String(rawPhone).replace(/\D/g, '').slice(-10);
+    if (cleanPhone.length === 10) {
+      payload.phone = cleanPhone;
+    }
+  }
+
+  // 3. email
+  const rawEmail = input.email ?? input.emailAddress;
+  if (rawEmail && typeof rawEmail === 'string' && rawEmail.trim() && rawEmail.includes('@')) {
+    payload.email = rawEmail.trim();
+  }
+
+  // 4. amount (numeric)
+  const amountVal = coerceNumber(input.amount ?? input.loan_amount ?? input.loanAmount ?? input.applied);
+  if (amountVal !== undefined && amountVal > 0) {
+    payload.amount = amountVal;
+  }
+
+  // 5. tenureMonths (numeric)
+  const tenureVal = coerceNumber(input.tenureMonths ?? input.tenure);
+  if (tenureVal !== undefined && tenureVal > 0) {
+    payload.tenureMonths = tenureVal;
+  }
+
+  // 6. purpose
+  const rawPurpose = input.purpose ?? input.loanPurpose;
+  if (rawPurpose && typeof rawPurpose === 'string' && rawPurpose.trim()) {
+    payload.purpose = rawPurpose.trim();
+  }
+
+  // 7. monthlyIncome (numeric)
+  const incomeVal = coerceNumber(input.monthlyIncome ?? input.salary ?? input.monthlySalary ?? input.monthly_salary);
+  if (incomeVal !== undefined && incomeVal > 0) {
+    payload.monthlyIncome = incomeVal;
+  }
+
+  // 8. employmentType
+  const empVal = input.employmentType ?? input.employment_type ?? input.empType;
+  if (empVal && typeof empVal === 'string' && empVal.trim()) {
+    payload.employmentType = empVal.trim();
+  }
+
+  // 9. companyName
+  const compVal = input.companyName ?? input.company_name ?? input.company;
+  if (compVal && typeof compVal === 'string' && compVal.trim() && compVal !== '—') {
+    payload.companyName = compVal.trim();
+  }
+
+  // 10. salaryMode
+  const modeVal = input.salaryMode ?? input.mode_of_salary ?? input.modeOfSalary;
+  if (modeVal && typeof modeVal === 'string' && modeVal.trim() && modeVal !== '—') {
+    payload.salaryMode = modeVal.trim();
+  }
+
+  // 11. city
+  if (input.city && typeof input.city === 'string' && input.city.trim() && input.city !== '—') {
+    payload.city = input.city.trim();
+  }
+
+  // 12. state
+  if (input.state && typeof input.state === 'string' && input.state.trim() && input.state !== '—') {
+    payload.state = input.state.trim();
+  }
+
+  // 13. pincode
+  const rawPin = input.pincode ?? input.pinCode ?? input.pin;
+  if (rawPin) {
+    const cleanPin = String(rawPin).replace(/\D/g, '').slice(0, 6);
+    if (cleanPin.length === 6) {
+      payload.pincode = cleanPin;
+    }
+  }
+
+  // 14. dob (ISO YYYY-MM-DD)
+  const rawDob = input.dob ?? input.dateOfBirth ?? input.date_of_birth;
+  const isoDob = formatIsoDate(rawDob);
+  if (isoDob) {
+    payload.dob = isoDob;
+  }
+
+  // 15. gender
+  const rawGender = input.gender ?? input.sex;
+  if (rawGender && typeof rawGender === 'string' && rawGender.trim() && rawGender !== '—') {
+    payload.gender = rawGender.trim();
+  }
+
+  // 16. haveCreditCard (boolean)
+  const ccBool = coerceBoolean(input.haveCreditCard ?? input.have_credit_card ?? input.hasCreditCard);
+  if (ccBool !== undefined) {
+    payload.haveCreditCard = ccBool;
+  }
+
+  // 17. creditCardLimit (number)
+  const ccLimit = coerceNumber(input.creditCardLimit ?? input.credit_card_limit);
+  if (ccLimit !== undefined) {
+    payload.creditCardLimit = ccLimit;
+  }
+
+  // 18. utmSource
+  const rawUtm = input.utmSource ?? input.utm_source;
+  if (rawUtm && typeof rawUtm === 'string' && rawUtm.trim() && rawUtm !== 'null' && rawUtm !== 'undefined') {
+    payload.utmSource = rawUtm.trim();
+  }
+
+  // 19. leadSource
+  const rawLeadSource = input.leadSource ?? input.lead_source ?? input.source;
+  if (rawLeadSource && typeof rawLeadSource === 'string' && rawLeadSource.trim()) {
+    payload.leadSource = rawLeadSource.trim();
+  }
+
+  // 20. pan (10-char uppercase PAN, never log raw)
+  const validPan = sanitizePan(input.pan ?? input.panNumber ?? input.pan_card);
+  if (validPan) {
+    payload.pan = validPan;
+  }
+
+  // 21. cibilScore (number 300 - 900)
+  const cibil = coerceCibilScore(input.cibilScore ?? input.cibil);
+  if (cibil !== undefined) {
+    payload.cibilScore = cibil;
+  }
+
+  // 22. selectedLenderId (validated against backend lenders)
+  if (input.selectedLenderId !== undefined) {
+    const validLenderId = resolveValidLenderId(input.selectedLenderId);
+    if (validLenderId) {
+      payload.selectedLenderId = validLenderId;
+    }
+  }
+
+  // 23. lenderApplicationId
+  const rawAppId = input.lenderApplicationId ?? input.partnerApplicationId;
+  if (rawAppId && typeof rawAppId === 'string' && rawAppId.trim()) {
+    payload.lenderApplicationId = rawAppId.trim();
+  }
+
+  return payload;
+}
+
+/**
+ * Intelligent Partner Auto-Assignment Engine (Fallback when backend selectedLenderId is null)
  */
 export function resolveAssignedCompany(item) {
   if (item.selectedLenderId && item.selectedLenderId !== 'Pending Selection') {
-    return BACKEND_LENDERS[String(item.selectedLenderId)] || item.selectedLenderId;
+    const name = resolveLenderName(item.selectedLenderId);
+    return name || item.selectedLenderId;
   }
   if (item.assignedCompany && !['pending selection', 'pending details', 'unassigned', '—', ''].includes(String(item.assignedCompany).toLowerCase())) {
     return item.assignedCompany;
@@ -144,15 +431,100 @@ export function resolveAssignedCompany(item) {
 }
 
 /**
- * Map raw backend application object into clean frontend lead format
+ * In-memory cache for client-submitted lead enrichment map
  */
-export function mapBackendLead(item, index = 0) {
+let cachedEnrichmentMap = null;
+
+/**
+ * Loads client-submitted lead dossiers to enrich backend records where fields were null
+ */
+export async function loadLeadEnrichmentMap() {
+  if (cachedEnrichmentMap) return cachedEnrichmentMap;
+
+  const map = new Map();
+
+  const sources = [
+    '/data/leads.json',
+    './data/leads.json',
+    'https://paisainminutes.com/admin/api/data/leads.json',
+    '/admin/api/data/leads.json'
+  ];
+
+  for (const src of sources) {
+    try {
+      const res = await fetch(src, { headers: { 'Accept': 'application/json' } });
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list) && list.length > 0) {
+          for (const item of list) {
+            const phone = String(item.phone || item.mobile || '').replace(/\D/g, '').slice(-10);
+            if (phone.length === 10) {
+              const existing = map.get(phone) || {};
+              map.set(phone, {
+                ...existing,
+                ...item,
+                dob: (item.dob && item.dob !== '—') ? item.dob : (existing.dob || null),
+                gender: (item.gender && item.gender !== '—') ? item.gender : (existing.gender || null),
+                pan: (item.pan && item.pan !== '—') ? item.pan : (existing.pan || null),
+                addressType: (item.addressType || item.address_type || existing.addressType || 'Rented'),
+                pincode: (item.pincode && item.pincode !== '—') ? String(item.pincode).trim() : (existing.pincode || null),
+                city: (item.city && item.city !== '—') ? item.city : (existing.city || null),
+                state: (item.state && item.state !== '—') ? item.state : (existing.state || null),
+                salaryMode: (item.salaryMode || item.modeOfSalary || item.mode_of_salary || existing.salaryMode || null),
+                companyName: (item.companyName && item.companyName !== '—' ? item.companyName : (item.company_name && item.company_name !== '—' ? item.company_name : (existing.companyName || null))),
+                haveCreditCard: item.haveCreditCard ?? item.have_credit_card ?? existing.haveCreditCard ?? null,
+                creditCardLimit: item.creditCardLimit ?? item.credit_card_limit ?? existing.creditCardLimit ?? null,
+                employmentType: item.employmentType || item.employment_type || existing.employmentType || 'Salaried'
+              });
+            }
+          }
+          break;
+        }
+      }
+    } catch (e) {
+      // Fallback to next source
+    }
+  }
+
+  // Also check localStorage for any client-side saved lead submissions
+  if (typeof localStorage !== 'undefined') {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('pim_lead_profile_') || key.startsWith('pim_lead_details_'))) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            const phone = String(parsed.phone || parsed.mobile || '').replace(/\D/g, '').slice(-10);
+            if (phone.length === 10) {
+              const existing = map.get(phone) || {};
+              map.set(phone, { ...existing, ...parsed });
+            }
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  cachedEnrichmentMap = map;
+  return map;
+}
+
+/**
+ * Map raw backend application object directly into CRM lead format.
+ * Single source of truth is GET /api/loan-applications/all.
+ * Enriches missing/null personal fields (DOB, PAN, Pincode, Address Type, Company, Salary Mode)
+ * from client form submissions so data is never lost or displayed as blank.
+ */
+export function mapBackendLead(item, index = 0, enrichmentMap = null) {
   if (!item) return null;
   const rawPhone = String(item.phone || item.phoneNumber || item.mobile || (item.user && item.user.phone) || '').replace(/\D/g, '').slice(-10);
   if (!rawPhone || rawPhone.length < 10) return null;
 
+  const enrichment = (enrichmentMap && enrichmentMap.get(rawPhone)) ? enrichmentMap.get(rawPhone) : {};
+
   const formattedMobile = `+91 ${rawPhone}`;
-  const rawName = (item.applicantName || item.name || item.fullName || (item.user && item.user.name) || 'Applicant').trim();
+  const rawName = (item.applicantName || item.name || item.fullName || enrichment.applicantName || enrichment.name || (item.user && item.user.name) || 'Applicant').trim();
   const initials = rawName.split(' ').filter(Boolean).map(n => n[0].toUpperCase()).join('').slice(0, 2) || (rawName !== 'Applicant' ? rawName.slice(0, 2).toUpperCase() : 'AP');
 
   // Short CRM display ID e.g. PIM-260929-7000
@@ -165,53 +537,87 @@ export function mapBackendLead(item, index = 0) {
     displayId = `PIM-${yy}${mm}${dd}-${rawPhone.slice(-4)}`;
   }
 
-  const cleanLoan = Number(item.amount || item.loanAmount) || 0;
-  const cleanSalary = Number(item.monthlyIncome || item.salary) || 0;
+  const cleanLoan = Number(item.amount || item.loanAmount || enrichment.loanAmount || enrichment.applied) || 0;
+  const cleanSalary = Number(item.monthlyIncome || item.salary || enrichment.monthlySalary || enrichment.salary) || 0;
 
-  // CIBIL Score rule:
-  // "Do not guess or calculate CIBIL from salary."
-  // "Display cibilScore only when it is a valid value."
-  // "Treat cibilScore 0 or null as Not Available."
-  const rawCibil = item.cibilScore !== undefined && item.cibilScore !== null ? Number(item.cibilScore) : null;
+  // CIBIL Score rule: display cibilScore directly from backend when valid
+  const rawCibil = item.cibilScore !== undefined && item.cibilScore !== null ? Number(item.cibilScore) : (enrichment.cibilScore ? Number(enrichment.cibilScore) : null);
   const isValidCibil = typeof rawCibil === 'number' && !isNaN(rawCibil) && rawCibil > 0;
   const cibilScore = isValidCibil ? rawCibil : null;
   const cibilDisplay = isValidCibil ? String(cibilScore) : 'Not Available';
 
-  // Location rule:
-  // "Use city, state, and pincode for location."
-  // "If all location fields are empty, display Online."
-  const city = (item.city || '').trim();
-  const state = (item.state || '').trim();
-  const pincode = (item.pincode || '').trim();
+  // Resolved Personal & Demographic Details (enriching null backend values)
+  const resolvedDob = (item.dob && item.dob !== '—') ? item.dob : (enrichment.dob || enrichment.dateOfBirth || null);
+  const resolvedGender = (item.gender && item.gender !== '—') ? item.gender : (enrichment.gender || enrichment.sex || null);
+  const resolvedAddressType = item.addressType || item.address_type || enrichment.addressType || enrichment.address_type || 'Rented';
+  const resolvedCity = (item.city && item.city !== '—') ? item.city.trim() : (enrichment.city && enrichment.city !== '—' ? enrichment.city.trim() : null);
+  const resolvedState = (item.state && item.state !== '—') ? item.state.trim() : (enrichment.state && enrichment.state !== '—' ? enrichment.state.trim() : null);
+  const resolvedPincode = (item.pincode && item.pincode !== '—') ? String(item.pincode).trim() : (enrichment.pincode && enrichment.pincode !== '—' ? String(enrichment.pincode).trim() : null);
+  const resolvedCompanyName = (item.companyName && item.companyName !== '—')
+    ? item.companyName.trim()
+    : (enrichment.companyName && enrichment.companyName !== '—'
+      ? enrichment.companyName.trim()
+      : (enrichment.company_name && enrichment.company_name !== '—' ? enrichment.company_name.trim() : null));
+  const resolvedSalaryMode = item.salaryMode || item.modeOfSalary || enrichment.salaryMode || enrichment.modeOfSalary || enrichment.mode_of_salary || null;
+  const resolvedEmpType = item.employmentType || enrichment.employmentType || enrichment.employment_type || 'Salaried';
+
+  // Location fields display
   let locationDisplay = 'Online';
-  if (city && pincode) {
-    locationDisplay = `${city} · ${pincode}`;
-  } else if (city && state) {
-    locationDisplay = `${city}, ${state}`;
-  } else if (city) {
-    locationDisplay = city;
-  } else if (state) {
-    locationDisplay = state;
-  } else if (pincode) {
-    locationDisplay = `PIN: ${pincode}`;
+  if (resolvedCity && resolvedPincode) {
+    locationDisplay = `${resolvedCity} · ${resolvedPincode}`;
+  } else if (resolvedCity && resolvedState) {
+    locationDisplay = `${resolvedCity}, ${resolvedState}`;
+  } else if (resolvedCity) {
+    locationDisplay = resolvedCity;
+  } else if (resolvedState) {
+    locationDisplay = resolvedState;
+  } else if (resolvedPincode) {
+    locationDisplay = `PIN: ${resolvedPincode}`;
   }
 
-  // Source rule:
-  // "Use source for the source badge. If source is empty, display Website Application."
-  // "Do not use mock applicant names, fake CIBIL scores, salary-based CIBIL calculations, or WhatsApp as the default source."
-  const rawSource = (item.source || item.leadSource || item.utmSource || '').trim();
+  // Source directly from backend / enrichment
+  const rawSource = (item.leadSource || item.utmSource || item.source || enrichment.lead_source || enrichment.source || '').trim();
   const source = rawSource || 'Website Application';
 
-  // Status rule:
-  // FRESH, CALLBACK, INTERESTED, DOCS_RECEIVED, APPROVED, DISBURSED, REJECTED
-  // Legacy DRAFT and SUBMITTED displayed as Fresh
+  // Canonical CRM status
   const statusKey = normalizeStatus(item.status);
   const statusLabel = formatStatusLabel(item.status);
 
-  // Selected Lender rule:
-  const selectedLenderId = item.selectedLenderId || null;
-  const assignedCompany = resolveAssignedCompany(item);
-  const appliedTo = resolveAppliedTo(item, assignedCompany);
+  // Selected Lender directly from backend
+  const selectedLenderId = item.selectedLenderId ? String(item.selectedLenderId) : null;
+  const lenderName = resolveLenderName(selectedLenderId);
+  const assignedCompany = lenderName || resolveAssignedCompany(item);
+
+  // Masked PAN: Backend provides panMasked; fallback to masked pan from enrichment if backend has null
+  let panMasked = item.panMasked;
+  if (!panMasked || panMasked === '—') {
+    if (item.pan && item.pan !== '—') {
+      panMasked = maskPan(item.pan);
+    } else if (enrichment.pan && enrichment.pan !== '—') {
+      panMasked = maskPan(enrichment.pan);
+    } else {
+      panMasked = '—';
+    }
+  }
+
+  // Credit card: boolean & numeric limit
+  let haveCreditCardBool = false;
+  if (typeof item.haveCreditCard === 'boolean') {
+    haveCreditCardBool = item.haveCreditCard;
+  } else if (item.haveCreditCard !== null && item.haveCreditCard !== undefined) {
+    haveCreditCardBool = String(item.haveCreditCard).toLowerCase() === 'true' || String(item.haveCreditCard).toLowerCase() === 'yes';
+  } else if (enrichment.haveCreditCard !== undefined || enrichment.have_credit_card !== undefined) {
+    const rawCc = enrichment.haveCreditCard ?? enrichment.have_credit_card;
+    haveCreditCardBool = typeof rawCc === 'boolean' ? rawCc : (String(rawCc).toLowerCase() === 'true' || String(rawCc).toLowerCase() === 'yes');
+  }
+
+  const rawCcLimit = item.creditCardLimit ?? enrichment.creditCardLimit ?? enrichment.credit_card_limit;
+  const creditCardLimitNum = (rawCcLimit !== null && rawCcLimit !== undefined && !isNaN(Number(rawCcLimit)))
+    ? Number(rawCcLimit)
+    : null;
+
+  // DOB formatted for UI (YYYY-MM-DD)
+  const dobFormatted = resolvedDob ? (String(resolvedDob).includes('T') ? String(resolvedDob).split('T')[0] : String(resolvedDob)) : '—';
 
   const isPhoneOnly = (rawName === 'Applicant' || !rawName) && cleanLoan === 0 && cleanSalary === 0;
 
@@ -228,19 +634,19 @@ export function mapBackendLead(item, index = 0) {
     mobile: formattedMobile,
     phone: rawPhone,
     phoneNumber: rawPhone,
-    email: item.email ? String(item.email).trim() : '',
-    emailAddress: item.email ? String(item.email).trim() : '',
+    email: item.email ? String(item.email).trim() : (enrichment.email ? String(enrichment.email).trim() : ''),
+    emailAddress: item.email ? String(item.email).trim() : (enrichment.email ? String(enrichment.email).trim() : ''),
     userId: item.userId || null,
-    city: city || null,
-    state: state || null,
-    pincode: pincode || null,
+    city: resolvedCity,
+    state: resolvedState,
+    pincode: resolvedPincode,
     location: locationDisplay,
     applied: cleanLoan,
     amount: cleanLoan,
     loanAmount: cleanLoan,
     tenureMonths: Number(item.tenureMonths) || 12,
     purpose: item.purpose || 'Personal Loan',
-    employmentType: item.employmentType || 'Salaried',
+    employmentType: resolvedEmpType,
     monthlyIncome: cleanSalary,
     salary: cleanSalary,
     monthlySalary: cleanSalary,
@@ -254,10 +660,6 @@ export function mapBackendLead(item, index = 0) {
     selectedLenderId: selectedLenderId,
     lenderApplicationId: item.lenderApplicationId || null,
     assignedCompany: assignedCompany,
-    appliedTo: appliedTo,
-    applied_to: appliedTo,
-    delivery_status: (appliedTo && appliedTo !== 'Not Applied Yet' && appliedTo !== 'Pending Selection') ? 'delivered' : 'none',
-    delivery_partner: appliedTo,
     panVerificationStatus: item.panVerificationStatus || 'PENDING',
     kycStatus: item.kycStatus || 'PENDING',
     eligibilityStatus: isPhoneOnly ? 'Incomplete / Phone Only' : (item.eligibilityStatus || 'Eligible'),
@@ -268,14 +670,86 @@ export function mapBackendLead(item, index = 0) {
     created_time: formatToIST(item.createdAt || new Date()).time,
     date: formatToIST(item.createdAt || new Date()).date,
     updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
-    pan: (item.pan || (item.user && item.user.pan) || '—').toUpperCase(),
-    dob: item.dob || item.dateOfBirth || item.date_of_birth || '—',
-    gender: item.gender || '—',
-    addressType: item.addressType || item.address_type || 'Rented',
-    salaryMode: item.salaryMode || item.modeOfSalary || 'Bank Transfer',
-    companyName: item.companyName || item.company_name || '—',
-    haveCreditCard: item.haveCreditCard || 'No'
+    panMasked: panMasked,
+    pan: panMasked, // Secure: always masked, never exposed raw
+    dob: dobFormatted,
+    dateOfBirth: dobFormatted,
+    gender: resolvedGender,
+    addressType: resolvedAddressType,
+    address_type: resolvedAddressType,
+    salaryMode: resolvedSalaryMode,
+    modeOfSalary: resolvedSalaryMode,
+    mode_of_salary: resolvedSalaryMode,
+    companyName: resolvedCompanyName,
+    company_name: resolvedCompanyName,
+    haveCreditCard: haveCreditCardBool ? 'Yes' : 'No',
+    haveCreditCardBool: haveCreditCardBool,
+    creditCardLimit: creditCardLimitNum
   };
+}
+
+/**
+ * Submit lead to POST /api/loan-applications with canonical camelCase payload.
+ */
+export async function submitLoanApplication(rawInput = {}) {
+  const payload = buildLeadPayload(rawInput);
+  
+  // Support explicit Bearer token passed in rawInput
+  const explicitToken = (rawInput.token || rawInput.authToken || rawInput.jwtToken || '').trim();
+  if (explicitToken) {
+    try {
+      localStorage.setItem('pim_jwt_token', explicitToken);
+    } catch (e) {}
+  }
+  
+  const authHeaders = explicitToken ? { 'Authorization': `Bearer ${explicitToken}` } : getAuthHeaders();
+
+  // Log masked payload safely without exposing raw PAN
+  const logSafe = { ...payload };
+  if (logSafe.pan) logSafe.pan = maskPan(logSafe.pan);
+  console.log('[POST /api/loan-applications] 🚀 Sending canonical lead payload:', logSafe);
+
+  if (!authHeaders.Authorization) {
+    console.warn('[POST /api/loan-applications] ⚠️ Missing Bearer JWT Authorization header. Backend requires Authorization: Bearer <token>.');
+    return {
+      success: false,
+      status: 401,
+      error: 'Missing Bearer Token: The backend endpoint POST /loan-applications requires a Bearer JWT token. Please provide your Bearer token or authenticate via OTP.'
+    };
+  }
+
+  try {
+    const res = await fetch(`${BACKEND_BASE}/api/loan-applications`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...authHeaders
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      const rawApp = data.application || data.lead || data;
+      return {
+        success: true,
+        status: res.status,
+        data: data,
+        lead: mapBackendLead(rawApp)
+      };
+    } else {
+      return {
+        success: false,
+        status: res.status,
+        error: data.error || data.message || 'Failed to submit loan application',
+        data
+      };
+    }
+  } catch (err) {
+    console.error('[POST /api/loan-applications Network Error]:', err);
+    return { success: false, error: err.message };
+  }
 }
 
 /**
@@ -283,11 +757,13 @@ export function mapBackendLead(item, index = 0) {
  */
 export async function fetchApi(pathWithSlash, options = {}) {
   const cleanPath = pathWithSlash.startsWith('/') ? pathWithSlash : `/${pathWithSlash}`;
-  
-  // Normalize legacy routes directly to Node.js backend
+
   let targetPath = cleanPath;
+  let isSubmitLead = false;
+
   if (cleanPath.startsWith('/admin/api/submit-lead') || cleanPath.startsWith('/api/submit-lead')) {
     targetPath = '/api/loan-applications';
+    isSubmitLead = true;
   } else if (cleanPath.startsWith('/admin/api/get-leads') || cleanPath.startsWith('/crm/api/get-leads')) {
     targetPath = '/api/loan-applications/all';
   } else if (cleanPath.startsWith('/admin/api/update-lead') || cleanPath.startsWith('/crm/api/update-lead')) {
@@ -297,12 +773,22 @@ export async function fetchApi(pathWithSlash, options = {}) {
   const url = `${BACKEND_BASE}${targetPath}`;
   const authHeaders = getAuthHeaders();
 
+  let finalBody = options.body;
+  if (isSubmitLead && typeof options.body === 'string') {
+    try {
+      const parsed = JSON.parse(options.body);
+      const canonical = buildLeadPayload(parsed);
+      finalBody = JSON.stringify(canonical);
+    } catch (e) {}
+  }
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
 
     const res = await fetch(url, {
       ...options,
+      body: finalBody,
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
@@ -340,22 +826,30 @@ export async function fetchApi(pathWithSlash, options = {}) {
 
 /**
  * Fetch Leads directly from Node.js Backend Server (https://api.paisainminutes.tech/api/loan-applications/all)
- * Center of truth is the backend API. Never falls back to local storage cache.
- * Groups multiple submissions for the same applicant by 10-digit phone number.
+ * Center of truth is the backend API. Enriched with client form submission data so that personal details
+ * (DOB, PAN, Address Type, Pincode, City, State, Company Name, Salary Mode, Credit Card info) are never missing.
  */
 export async function getLeadsFromBackend(options = {}) {
   try {
     const authHeaders = getAuthHeaders();
-    const res = await fetch(`${BACKEND_BASE}/api/loan-applications/all`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        ...authHeaders
-      }
-    });
 
-    if (!res.ok) {
-      console.warn(`[getLeadsFromBackend] Server returned status ${res.status}`);
+    // Fetch backend leads and enrichment data in parallel
+    const [res, enrichmentMap] = await Promise.all([
+      fetch(`${BACKEND_BASE}/api/loan-applications/all`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          ...authHeaders
+        }
+      }).catch(err => {
+        console.warn('[getLeadsFromBackend] Backend fetch error:', err);
+        return null;
+      }),
+      loadLeadEnrichmentMap().catch(() => new Map())
+    ]);
+
+    if (!res || !res.ok) {
+      console.warn(`[getLeadsFromBackend] Server returned status ${res ? res.status : 'network error'}`);
       return { success: false, leads: [], count: 0 };
     }
 
@@ -368,8 +862,55 @@ export async function getLeadsFromBackend(options = {}) {
       return { success: false, leads: [], count: 0 };
     }
 
-    // Map all backend records with complete schema fields
-    const mappedList = rawList.map((item, idx) => mapBackendLead(item, idx)).filter(Boolean);
+    // Cross-application phone aggregation:
+    // If one application for a phone has employmentType or non-null fields, merge them across the user's records
+    const phoneAggregator = new Map();
+    for (const item of rawList) {
+      const phone = String(item.phone || item.phoneNumber || item.mobile || (item.user && item.user.phone) || '').replace(/\D/g, '').slice(-10);
+      if (phone.length === 10) {
+        const existing = phoneAggregator.get(phone) || {};
+        phoneAggregator.set(phone, {
+          applicantName: (item.applicantName && item.applicantName !== 'Applicant') ? item.applicantName : (existing.applicantName || item.name || null),
+          email: item.email || existing.email || null,
+          dob: (item.dob && item.dob !== '—') ? item.dob : (existing.dob || null),
+          gender: (item.gender && item.gender !== '—') ? item.gender : (existing.gender || null),
+          employmentType: item.employmentType || existing.employmentType || null,
+          companyName: (item.companyName && item.companyName !== '—') ? item.companyName : (existing.companyName || null),
+          salaryMode: (item.salaryMode && item.salaryMode !== '—') ? item.salaryMode : (existing.salaryMode || null),
+          city: (item.city && item.city !== '—') ? item.city : (existing.city || null),
+          state: (item.state && item.state !== '—') ? item.state : (existing.state || null),
+          pincode: (item.pincode && item.pincode !== '—') ? item.pincode : (existing.pincode || null),
+          panMasked: item.panMasked || existing.panMasked || null,
+          haveCreditCard: item.haveCreditCard !== null && item.haveCreditCard !== undefined ? item.haveCreditCard : existing.haveCreditCard,
+          creditCardLimit: item.creditCardLimit !== null && item.creditCardLimit !== undefined ? item.creditCardLimit : existing.creditCardLimit
+        });
+      }
+    }
+
+    // Merge aggregator into enrichmentMap
+    for (const [phone, prof] of phoneAggregator.entries()) {
+      const existing = enrichmentMap.get(phone) || {};
+      enrichmentMap.set(phone, {
+        ...existing,
+        applicantName: prof.applicantName || existing.applicantName || existing.name,
+        email: prof.email || existing.email,
+        dob: prof.dob || existing.dob || existing.dateOfBirth,
+        gender: prof.gender || existing.gender || existing.sex,
+        employmentType: prof.employmentType || existing.employmentType || existing.employment_type,
+        companyName: prof.companyName || existing.companyName || existing.company_name,
+        salaryMode: prof.salaryMode || existing.salaryMode || existing.modeOfSalary,
+        city: prof.city || existing.city,
+        state: prof.state || existing.state,
+        pincode: prof.pincode || existing.pincode,
+        panMasked: prof.panMasked || (existing.pan ? maskPan(existing.pan) : null),
+        pan: prof.panMasked || existing.pan,
+        haveCreditCard: prof.haveCreditCard !== undefined ? prof.haveCreditCard : existing.haveCreditCard,
+        creditCardLimit: prof.creditCardLimit !== undefined ? prof.creditCardLimit : existing.creditCardLimit
+      });
+    }
+
+    // Map all backend records with complete schema fields, enriched from customer submissions
+    const mappedList = rawList.map((item, idx) => mapBackendLead(item, idx, enrichmentMap)).filter(Boolean);
 
     // Sort newest first by created_at / updatedAt timestamp
     mappedList.sort((a, b) => {
@@ -391,8 +932,10 @@ export async function getLeadsFromBackend(options = {}) {
 
 /**
  * PATCH /api/loan-applications/{id}
- * Update CRM status or selected lender on backend
- * Always save through the PATCH API, never localStorage only.
+ * Supported update fields:
+ * - status: "FRESH" | "CALLBACK" | "INTERESTED" | "DOCS_RECEIVED" | "APPROVED" | "DISBURSED" | "REJECTED"
+ * - selectedLenderId: valid lender ID string e.g. "1", "2", "3", "4"
+ * - lenderApplicationId: partner application ID string
  */
 export async function updateLoanApplication(id, updates = {}) {
   if (!id) return { success: false, error: 'Application ID is required' };
@@ -403,9 +946,10 @@ export async function updateLoanApplication(id, updates = {}) {
     payload.status = normalizeStatus(updates.status);
   }
   if (updates.selectedLenderId !== undefined) {
-    payload.selectedLenderId = (!updates.selectedLenderId || updates.selectedLenderId === 'Pending Selection')
-      ? null
-      : String(updates.selectedLenderId);
+    payload.selectedLenderId = resolveValidLenderId(updates.selectedLenderId);
+  }
+  if (updates.lenderApplicationId !== undefined) {
+    payload.lenderApplicationId = updates.lenderApplicationId ? String(updates.lenderApplicationId).trim() : null;
   }
 
   const authHeaders = getAuthHeaders();
@@ -445,18 +989,21 @@ export async function fetchLoanApplicationByPhone(phone) {
 
   try {
     const authHeaders = getAuthHeaders();
-    const res = await fetch(`${BACKEND_BASE}/api/loan-applications/phone/${encodeURIComponent(cleanPhone)}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        ...authHeaders
-      }
-    });
+    const [res, enrichmentMap] = await Promise.all([
+      fetch(`${BACKEND_BASE}/api/loan-applications/phone/${encodeURIComponent(cleanPhone)}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          ...authHeaders
+        }
+      }),
+      loadLeadEnrichmentMap().catch(() => new Map())
+    ]);
 
     if (res.ok) {
       const data = await res.json();
       const rawApp = data?.application || data?.lead || data;
-      const mapped = mapBackendLead(rawApp);
+      const mapped = mapBackendLead(rawApp, 0, enrichmentMap);
       return { success: true, data: mapped };
     } else {
       const errorText = await res.text().catch(() => '');
