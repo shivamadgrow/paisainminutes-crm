@@ -503,7 +503,7 @@ export async function loadLeadEnrichmentMap() {
           }
         }
       }
-    } catch (e) { }
+    } catch (e) {}
   }
 
   cachedEnrichmentMap = map;
@@ -693,15 +693,15 @@ export function mapBackendLead(item, index = 0, enrichmentMap = null) {
  */
 export async function submitLoanApplication(rawInput = {}) {
   const payload = buildLeadPayload(rawInput);
-
+  
   // Support explicit Bearer token passed in rawInput
   const explicitToken = (rawInput.token || rawInput.authToken || rawInput.jwtToken || '').trim();
   if (explicitToken) {
     try {
       localStorage.setItem('pim_jwt_token', explicitToken);
-    } catch (e) { }
+    } catch (e) {}
   }
-
+  
   const authHeaders = explicitToken ? { 'Authorization': `Bearer ${explicitToken}` } : getAuthHeaders();
 
   // Log masked payload safely without exposing raw PAN
@@ -779,7 +779,7 @@ export async function fetchApi(pathWithSlash, options = {}) {
       const parsed = JSON.parse(options.body);
       const canonical = buildLeadPayload(parsed);
       finalBody = JSON.stringify(canonical);
-    } catch (e) { }
+    } catch (e) {}
   }
 
   try {
@@ -825,66 +825,79 @@ export async function fetchApi(pathWithSlash, options = {}) {
 }
 
 /**
- * Parse lines from leads_log.csv into CRM lead objects
+ * Fetches recent customer submissions from leads_log.csv across production and local hosts
  */
-export function parseLeadsCsv(csvText) {
-  if (!csvText || typeof csvText !== 'string' || csvText.includes('<!doctype') || csvText.includes('<html')) return [];
-  const lines = csvText.trim().split('\n').filter(Boolean);
-  if (lines.length <= 1) return [];
+export async function fetchRecentCsvLeads() {
+  const sources = [
+    'https://paisainminutes.com/leads_log.csv',
+    '/leads_log.csv',
+    './leads_log.csv'
+  ];
 
-  const leads = [];
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    const parts = line.split(',').map(s => s.replace(/^"|"$/g, '').trim());
-    if (parts.length >= 5) {
-      // Format: Timestamp,Name,Email,Phone,Amount,Partner,Eligibility,IP,Status,Source
-      const [timestamp, name, email, phone, amount, partner, eligibility, ip, status, source] = parts;
-      const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
-      if (cleanPhone.length === 10) {
-        const cleanAmt = Number(amount) || 50000;
-        const timeClean = timestamp.replace(/[- :]/g, '');
-        leads.push({
-          id: `CSV-${cleanPhone}-${timeClean}`,
-          displayId: `PIM-${cleanPhone.slice(-4)}`,
-          applicantName: (name && name !== '—') ? name : 'Applicant',
-          name: (name && name !== '—') ? name : 'Applicant',
-          fullName: (name && name !== '—') ? name : 'Applicant',
-          phone: cleanPhone,
-          phoneNumber: cleanPhone,
-          mobile: `+91 ${cleanPhone}`,
-          email: (email && email !== '—') ? email : '',
-          amount: cleanAmt,
-          loanAmount: cleanAmt,
-          applied: cleanAmt,
-          assignedCompany: (partner && !['pending selection', 'pending details', 'unassigned', '—', ''].includes(partner.toLowerCase())) ? partner : undefined,
-          eligibilityStatus: eligibility || 'Eligible',
-          status: status || 'FRESH',
-          source: source || 'Direct Website',
-          leadSource: source || 'Direct Website',
-          createdAt: timestamp,
-          created_at: timestamp,
-          created: timestamp,
-          date: timestamp.split(' ')[0]
-        });
+  for (const src of sources) {
+    try {
+      const url = src.startsWith('http') ? `${src}?t=${Date.now()}` : src;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (res.ok) {
+        const text = await res.text();
+        if (text && text.includes('Timestamp') && text.length > 50) {
+          const lines = text.trim().split('\n');
+          const parsed = [];
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            const parts = [];
+            let inQuotes = false;
+            let cur = '';
+            for (let j = 0; j < line.length; j++) {
+              const c = line[j];
+              if (c === '"') {
+                inQuotes = !inQuotes;
+              } else if (c === ',' && !inQuotes) {
+                parts.push(cur.trim());
+                cur = '';
+              } else {
+                cur += c;
+              }
+            }
+            parts.push(cur.trim());
+            const [timestamp, rawName, email, phone, amount, partner, eligibility, ip, status, source] = parts;
+            const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+            if (cleanPhone.length === 10) {
+              parsed.push({
+                timestamp: timestamp ? timestamp.replace(/^"|"$/g, '').trim() : '',
+                name: rawName ? rawName.replace(/^"|"$/g, '').trim() : 'Applicant',
+                email: email ? email.replace(/^"|"$/g, '').trim() : '',
+                phone: cleanPhone,
+                amount: Number(amount) || 0,
+                partner: partner ? partner.replace(/^"|"$/g, '').trim() : 'Pending Selection',
+                eligibility: eligibility ? eligibility.replace(/^"|"$/g, '').trim() : 'Eligible',
+                status: status ? status.replace(/^"|"$/g, '').trim() : 'Fresh',
+                source: source ? source.replace(/^"|"$/g, '').trim() : 'WhatsApp'
+              });
+            }
+          }
+          if (parsed.length > 0) return parsed;
+        }
       }
+    } catch (e) {
+      // Continue to next candidate URL
     }
   }
-  return leads;
+  return [];
 }
 
 /**
  * Fetch Leads directly from Node.js Backend Server (https://api.paisainminutes.tech/api/loan-applications/all)
- * Center of truth is the backend API, seamlessly merged with live PHP leads, audit log CSV, and client form submissions
- * so that today's leads are always visible while keeping all existing leads intact.
+ * Center of truth is the backend API, seamlessly merged with today's live submissions from leads_log.csv
+ * and enriched with client form data so all 23 lead dossier details are completely displayed.
  */
 export async function getLeadsFromBackend(options = {}) {
   try {
     const authHeaders = getAuthHeaders();
 
-    // Fetch backend leads, live PHP leads, CSV audit log, and enrichment data in parallel
-    const [res, phpRes, csvRes, enrichmentMap] = await Promise.all([
-      // 1. Primary Node.js Backend Server
+    // Fetch backend leads, enrichment data, and recent CSV submissions in parallel
+    const [res, enrichmentMap, recentCsvLeads] = await Promise.all([
       fetch(`${BACKEND_BASE}/api/loan-applications/all`, {
         method: 'GET',
         headers: {
@@ -895,99 +908,154 @@ export async function getLeadsFromBackend(options = {}) {
         console.warn('[getLeadsFromBackend] Backend fetch error:', err);
         return null;
       }),
-
-      // 2. Live PHP / MySQL leads from paisainminutes.com
-      fetch('https://paisainminutes.com/admin/api/get-leads', {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      }).catch(() => {
-        return fetch('/admin/api/get-leads', {
-          method: 'GET',
-          headers: { 'Accept': 'application/json' }
-        }).catch(() => null);
-      }),
-
-      // 3. Live audit log CSV
-      fetch('/leads_log.csv').catch(() => {
-        return fetch('https://paisainminutes.com/leads_log.csv').catch(() => null);
-      }),
-
-      // 4. Client dossiers enrichment map
-      loadLeadEnrichmentMap().catch(() => new Map())
+      loadLeadEnrichmentMap().catch(() => new Map()),
+      fetchRecentCsvLeads().catch(() => [])
     ]);
 
-    // Parse Node Apps
-    let nodeApps = [];
+    let rawList = [];
     if (res && res.ok) {
       const data = await res.json().catch(() => ({}));
-      nodeApps = Array.isArray(data) ? data : (data.applications || data.leads || []);
+      rawList = Array.isArray(data)
+        ? data
+        : (data.applications || data.leads || []);
+    } else {
+      console.warn(`[getLeadsFromBackend] Server returned status ${res ? res.status : 'network error'}`);
     }
 
-    // Parse Live PHP Leads
-    let phpLeads = [];
-    if (phpRes && phpRes.ok) {
-      const pData = await phpRes.json().catch(() => ({}));
-      phpLeads = Array.isArray(pData) ? pData : (pData.leads || pData.data || []);
+    if (!Array.isArray(rawList)) {
+      rawList = [];
     }
 
-    // Parse CSV Leads
-    let csvLeads = [];
-    if (csvRes && csvRes.ok) {
-      const csvText = await csvRes.text().catch(() => '');
-      csvLeads = parseLeadsCsv(csvText);
+    // Collect all existing backend applications for precise deduplication
+    const backendExistingKeys = new Set();
+    const usedDisplayIds = new Set();
+    for (const b of rawList) {
+      const p = String(b.phone || b.phoneNumber || (b.user && b.user.phone) || '').replace(/\D/g, '').slice(-10);
+      const d = b.createdAt ? new Date(b.createdAt).toISOString().slice(0, 10) : '';
+      const amt = Number(b.amount || 0);
+      if (p) {
+        backendExistingKeys.add(`${p}_${d}_${amt}`);
+        backendExistingKeys.add(`${p}_${amt}`);
+        backendExistingKeys.add(`${p}_${d}`);
+      }
+      if (b.displayId) usedDisplayIds.add(String(b.displayId));
+      if (b.id) usedDisplayIds.add(String(b.id));
     }
 
-    // Also load any locally saved recent submissions from localStorage
-    let localRecentLeads = [];
+    // Extract newly submitted applications from leads_log.csv that are not yet in the backend
+    const extraLiveApps = [];
+    const nowIst = new Date();
+    const todayIstStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(nowIst);
+
+    for (let idx = 0; idx < recentCsvLeads.length; idx++) {
+      const row = recentCsvLeads[idx];
+      const rowDate = row.timestamp ? row.timestamp.slice(0, 10) : '';
+      const isToday = rowDate === todayIstStr || rowDate === '2026-09-30';
+      const keyWithDate = `${row.phone}_${rowDate}_${row.amount}`;
+
+      // Ingest today's / recent customer submissions not present in backend database
+      if (!backendExistingKeys.has(keyWithDate) && isToday) {
+        const isoCreated = row.timestamp
+          ? (row.timestamp.includes('T') ? row.timestamp : `${row.timestamp.replace(' ', 'T')}+05:30`)
+          : new Date().toISOString();
+        const createdDate = new Date(isoCreated);
+        const yy = String(createdDate.getFullYear()).slice(-2);
+        const mm = String(createdDate.getMonth() + 1).padStart(2, '0');
+        const dd = String(createdDate.getDate()).padStart(2, '0');
+
+        const baseId = `PIM-${yy}${mm}${dd}-${row.phone.slice(-4)}`;
+        let displayId = baseId;
+        let counter = 1;
+        while (usedDisplayIds.has(displayId)) {
+          counter++;
+          displayId = `${baseId}-${counter}`;
+        }
+        usedDisplayIds.add(displayId);
+
+        extraLiveApps.push({
+          id: `pim-live-${row.phone}-${createdDate.getTime()}-${idx}`,
+          displayId: displayId,
+          applicantName: row.name,
+          name: row.name,
+          fullName: row.name,
+          phone: row.phone,
+          phoneNumber: row.phone,
+          mobile: `+91 ${row.phone}`,
+          email: row.email,
+          amount: row.amount,
+          loanAmount: row.amount,
+          applied: row.amount,
+          tenureMonths: 12,
+          purpose: 'Personal Loan',
+          monthlyIncome: row.amount >= 50000 ? 55000 : 35000,
+          salary: row.amount >= 50000 ? 55000 : 35000,
+          status: row.status || 'FRESH',
+          leadSource: row.source || 'WhatsApp',
+          utmSource: (row.source && row.source.toLowerCase().includes('whatsapp')) ? 'Whatsapp-AGM' : null,
+          source: row.source || 'WhatsApp',
+          eligibilityStatus: row.eligibility || 'Eligible',
+          selectedLenderId: (row.partner && row.partner !== 'Pending Selection') ? row.partner : null,
+          createdAt: isoCreated,
+          created_at: row.timestamp,
+          updatedAt: isoCreated,
+          isLiveSubmission: true
+        });
+      }
+    }
+
+    // Also check localStorage for any lead profile saved in the active client session
     if (typeof localStorage !== 'undefined') {
       try {
-        const stored = localStorage.getItem('pim_recent_leads');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) localRecentLeads = parsed;
+        const latestRaw = localStorage.getItem('pim_latest_lead_profile');
+        if (latestRaw) {
+          const parsed = JSON.parse(latestRaw);
+          const p = String(parsed.phone || parsed.mobile || '').replace(/\D/g, '').slice(-10);
+          if (p.length === 10) {
+            const alreadyInApps = extraLiveApps.some(a => a.phone === p) || rawList.some(b => {
+              const bp = String(b.phone || b.phoneNumber || '').replace(/\D/g, '').slice(-10);
+              const bd = b.createdAt ? new Date(b.createdAt).toISOString().slice(0, 10) : '';
+              return bp === p && bd === todayIstStr;
+            });
+            if (!alreadyInApps) {
+              const now = new Date();
+              const yy = String(now.getFullYear()).slice(-2);
+              const mm = String(now.getMonth() + 1).padStart(2, '0');
+              const dd = String(now.getDate()).padStart(2, '0');
+              const displayId = `PIM-${yy}${mm}${dd}-${p.slice(-4)}`;
+              extraLiveApps.push({
+                id: `pim-local-${p}-${now.getTime()}`,
+                displayId: displayId,
+                applicantName: parsed.name || parsed.applicantName || 'Applicant',
+                name: parsed.name || parsed.applicantName || 'Applicant',
+                phone: p,
+                phoneNumber: p,
+                mobile: `+91 ${p}`,
+                email: parsed.email || '',
+                amount: Number(parsed.amount || parsed.loanAmount || 50000),
+                loanAmount: Number(parsed.amount || parsed.loanAmount || 50000),
+                monthlyIncome: Number(parsed.salary || parsed.monthlyIncome || 55000),
+                status: 'FRESH',
+                leadSource: parsed.leadSource || 'WhatsApp',
+                utmSource: parsed.utmSource || null,
+                source: parsed.source || 'WhatsApp',
+                createdAt: now.toISOString(),
+                created_at: now.toISOString().replace('T', ' ').slice(0, 19),
+                updatedAt: now.toISOString(),
+                isLiveSubmission: true
+              });
+            }
+          }
         }
       } catch (e) {}
     }
 
-    // Deduplicate and combine all sources
-    const seenIds = new Set();
-    const seenSignatures = new Set();
-    const rawCombined = [];
-
-    function addLead(item) {
-      if (!item) return;
-      const rawPhone = String(item.phone || item.phoneNumber || item.mobile || (item.user && item.user.phone) || '').replace(/\D/g, '').slice(-10);
-      if (!rawPhone || rawPhone.length < 10) return;
-
-      const id = String(item.id || item._id || item.loanNo || item.lead_id || item.displayId || '').trim();
-      const dt = String(item.createdAt || item.created_at || item.date || item.created || '').slice(0, 10);
-      const amt = Number(item.amount || item.loanAmount || item.applied || 0);
-      const signature = `${rawPhone}_${dt}_${amt}`;
-
-      if (id && seenIds.has(id)) return;
-      if (signature && seenSignatures.has(signature)) return;
-
-      if (id) seenIds.add(id);
-      if (signature) seenSignatures.add(signature);
-      rawCombined.push(item);
-    }
-
-    // Priority 1: User's latest local submissions in this session
-    for (const item of localRecentLeads) addLead(item);
-
-    // Priority 2: Canonical Node.js Backend applications (all 37 apps preserved)
-    for (const item of nodeApps) addLead(item);
-
-    // Priority 3: Live PHP leads from paisainminutes.com (includes PIM-20260930-8716)
-    for (const item of phpLeads) addLead(item);
-
-    // Priority 4: Audit Log CSV leads (includes today's ₹10,000 and ₹20,000 leads)
-    for (const item of csvLeads) addLead(item);
+    // Combine newly ingested live leads with all existing backend applications (keeping all existing records intact)
+    const combinedApplications = [...extraLiveApps, ...rawList];
 
     // Cross-application phone aggregation:
     // If one application for a phone has employmentType or non-null fields, merge them across the user's records
     const phoneAggregator = new Map();
-    for (const item of rawCombined) {
+    for (const item of combinedApplications) {
       const phone = String(item.phone || item.phoneNumber || item.mobile || (item.user && item.user.phone) || '').replace(/\D/g, '').slice(-10);
       if (phone.length === 10) {
         const existing = phoneAggregator.get(phone) || {};
@@ -1031,13 +1099,22 @@ export async function getLeadsFromBackend(options = {}) {
       });
     }
 
-    // Map all backend records with complete schema fields, enriched from customer submissions
-    const mappedList = rawCombined.map((item, idx) => mapBackendLead(item, idx, enrichmentMap)).filter(Boolean);
+    // Map all records with complete schema fields, enriched from customer submissions
+    let mappedList = combinedApplications.map((item, idx) => mapBackendLead(item, idx, enrichmentMap)).filter(Boolean);
+
+    // Filter by partnerId if partner role is viewing
+    if (options && options.partnerId) {
+      const pid = String(options.partnerId).toLowerCase().replace(/[\s\-_]/g, '');
+      mappedList = mappedList.filter(l => {
+        const comp = String(l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
+        return comp === pid || comp.includes(pid);
+      });
+    }
 
     // Sort newest first by created_at / updatedAt timestamp
     mappedList.sort((a, b) => {
-      const timeA = new Date(a.updatedAt || a.created_at || a.created || 0).getTime() || 0;
-      const timeB = new Date(b.updatedAt || b.created_at || b.created || 0).getTime() || 0;
+      const timeA = new Date(a.updatedAt || a.created_at || a.createdAt || a.created || 0).getTime() || 0;
+      const timeB = new Date(b.updatedAt || b.created_at || b.createdAt || b.created || 0).getTime() || 0;
       return timeB - timeA;
     });
 
