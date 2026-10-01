@@ -21,8 +21,26 @@ import {
   EyeOff
 } from 'lucide-react';
 import { cleanLoanAmount } from '../utils/amountHelpers';
+import { updateLoanApplication } from '../utils/apiConfig';
+import { exportPartnerLeadsCsv } from '../utils/crmApi';
 
-export default function PartnerPortalView({ currentUser, leads = [], setLeads }) {
+// UI labels <-> server `partnerStatus` (the CRM workflow `status` is never touched by a partner)
+const FILTER_TO_PARTNER_STATUS = {
+  Fresh: ['NONE', 'ASSIGNED'],
+  Redirected: ['REDIRECTED'],
+  Contacted: ['CONTACTED'],
+  Approved: ['APPROVED'],
+  Disbursed: ['DISBURSED'],
+  Rejected: ['REJECTED']
+};
+const FORM_TO_PARTNER_STATUS = { Contacted: 'CONTACTED', Approved: 'APPROVED', Rejected: 'REJECTED', Disbursed: 'DISBURSED' };
+const PARTNER_STATUS_TO_FORM = { CONTACTED: 'Contacted', APPROVED: 'Approved', REJECTED: 'Rejected', DISBURSED: 'Disbursed' };
+const partnerStatusLabel = (lead) => {
+  const key = String(lead.partnerStatus || 'NONE').toUpperCase();
+  return { NONE: 'Fresh', ASSIGNED: 'Fresh', REDIRECTED: 'Redirected', CONTACTED: 'Contacted', APPROVED: 'Approved', DISBURSED: 'Disbursed', REJECTED: 'Rejected' }[key] || 'Fresh';
+};
+
+export default function PartnerPortalView({ currentUser, leads = [], setLeads, onRefresh, readOnly = false }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedLeadForUpdate, setSelectedLeadForUpdate] = useState(null);
@@ -32,66 +50,39 @@ export default function PartnerPortalView({ currentUser, leads = [], setLeads })
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
-  const partnerId = currentUser?.partnerId || currentUser?.partner_id || 'rupay91';
+  const partnerId = currentUser?.partnerId || '';
   const partnerName = currentUser?.partnerName || currentUser?.name || 'Partner Portal';
-  const cleanPartnerKey = String(partnerId).toLowerCase().replace(/[^a-z0-9]/g, '');
+  const serverPartnerId = currentUser?.serverPartnerId || currentUser?.partnerIds?.[0] || '';
 
   const showToast = (msg, isError = false) => {
     setToastMessage({ text: msg, isError });
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Strictly filter leads scoped ONLY to this partner (no bypass possible)
+  // The server only returns leads assigned to this partner; the slug match is a second safeguard
   const scopedLeads = useMemo(() => {
-    return leads.filter(l => {
-      const assigned = String(l.assignedCompany || l.company || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const applied = String(l.appliedTo || l.applied_to || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-      const clicked = String(l.clicked_partner || l.clickedPartner || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-      return assigned.includes(cleanPartnerKey) ||
-             applied.includes(cleanPartnerKey) ||
-             clicked.includes(cleanPartnerKey);
-    });
-  }, [leads, cleanPartnerKey]);
+    return leads.filter(l => !l.assignedPartnerSlug || l.assignedPartnerSlug === partnerId);
+  }, [leads, partnerId]);
 
   // Statistics
   const stats = useMemo(() => {
     const total = scopedLeads.length;
-    const clickedCount = scopedLeads.filter(l => {
-      const app = String(l.appliedTo || '').toLowerCase();
-      const st = String(l.status || '').toLowerCase();
-      return app.includes(cleanPartnerKey) || st.includes('redirected');
-    }).length;
-
-    const contactedCount = scopedLeads.filter(l => l.status === 'Contacted').length;
-    const approvedLeads = scopedLeads.filter(l => l.status === 'Approved' || l.status === 'Disbursed');
-    const approvedCount = approvedLeads.length;
-    const disbursedLeads = scopedLeads.filter(l => l.status === 'Disbursed');
+    const clickedCount = scopedLeads.filter(l => ['REDIRECTED', 'CONTACTED', 'APPROVED', 'DISBURSED', 'REJECTED'].includes(l.partnerStatus)).length;
+    const contactedCount = scopedLeads.filter(l => l.partnerStatus === 'CONTACTED').length;
+    const approvedCount = scopedLeads.filter(l => l.partnerStatus === 'APPROVED' || l.partnerStatus === 'DISBURSED').length;
+    const disbursedLeads = scopedLeads.filter(l => l.partnerStatus === 'DISBURSED');
     const disbursedCount = disbursedLeads.length;
-
-    const totalDisbursedAmount = disbursedLeads.reduce((acc, l) => {
-      return acc + (cleanLoanAmount(l.disbursedAmount || l.loanAmount || l.applied || 0));
-    }, 0);
-
+    const totalDisbursedAmount = disbursedLeads.reduce((acc, l) => acc + (Number(l.disbursedAmountRupees) || cleanLoanAmount(l.loanAmount || l.applied || 0)), 0);
     const conversionRate = total > 0 ? ((approvedCount / total) * 100).toFixed(1) : 0;
-
-    return {
-      total,
-      clickedCount,
-      contactedCount,
-      approvedCount,
-      disbursedCount,
-      totalDisbursedAmount,
-      conversionRate
-    };
-  }, [scopedLeads, cleanPartnerKey]);
+    return { total, clickedCount, contactedCount, approvedCount, disbursedCount, totalDisbursedAmount, conversionRate };
+  }, [scopedLeads]);
 
   // Search and status filtering
   const filteredLeads = useMemo(() => {
     return scopedLeads.filter(l => {
       if (statusFilter !== 'all') {
-        if (statusFilter === 'Redirected' && !String(l.status || '').includes('Redirected')) return false;
-        if (statusFilter !== 'Redirected' && l.status !== statusFilter) return false;
+        const allowed = FILTER_TO_PARTNER_STATUS[statusFilter] || [];
+        if (!allowed.includes(String(l.partnerStatus || 'NONE').toUpperCase())) return false;
       }
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -107,65 +98,36 @@ export default function PartnerPortalView({ currentUser, leads = [], setLeads })
   // Handle Status & Remarks Update
   const handleOpenStatusModal = (lead) => {
     setSelectedLeadForUpdate(lead);
-    setNewStatus(lead.status && lead.status !== 'Fresh' ? lead.status : 'Contacted');
-    setDisbursedAmount(lead.disbursedAmount || lead.loanAmount || '');
-    setRemarks(lead.remarks || '');
+    setNewStatus(PARTNER_STATUS_TO_FORM[lead.partnerStatus] || 'Contacted');
+    setDisbursedAmount(lead.disbursedAmountRupees || lead.loanAmount || '');
+    setRemarks(lead.partnerRemarks || '');
   };
 
   const handleSaveStatusUpdate = async (e) => {
     e.preventDefault();
-    if (!selectedLeadForUpdate) return;
+    if (!selectedLeadForUpdate || readOnly) return;
 
     setIsSubmitting(true);
-    const targetLeadId = selectedLeadForUpdate.id || selectedLeadForUpdate.lead_id;
+    const target = selectedLeadForUpdate;
+    // Only the shared partner allowlist is sent; the server takes the actor from the token.
+    const updates = {
+      partnerStatus: FORM_TO_PARTNER_STATUS[newStatus],
+      partnerRemarks: remarks
+    };
+    if (newStatus === 'Disbursed') {
+      updates.disbursedAmountRupees = Math.round(Number(disbursedAmount) || 0);
+    }
 
-    try {
-      const updates = {
-        status: newStatus,
-        remarks: remarks,
-        updated_by: currentUser.name || partnerName,
-        partner_id: partnerId,
-        assignedCompany: partnerName
-      };
+    const res = await updateLoanApplication(target.id, updates, { role: 'partner' });
+    setIsSubmitting(false);
 
-      if (newStatus === 'Disbursed' && disbursedAmount) {
-        updates.disbursedAmount = Number(disbursedAmount);
-        updates.loanAmount = Number(disbursedAmount);
-      }
-
-      const res = await fetch('/crm/api/update-lead.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: targetLeadId,
-          phone: selectedLeadForUpdate.phone,
-          updates: updates,
-          currentUser: { name: currentUser.name || partnerName }
-        })
-      });
-
-      // Update state locally
-      if (setLeads) {
-        setLeads(prev => prev.map(l => {
-          const lId = l.id || l.lead_id;
-          if (String(lId) === String(targetLeadId)) {
-            return {
-              ...l,
-              status: newStatus,
-              remarks: remarks,
-              ...(newStatus === 'Disbursed' && disbursedAmount ? { disbursedAmount: Number(disbursedAmount), loanAmount: Number(disbursedAmount) } : {})
-            };
-          }
-          return l;
-        }));
-      }
-
-      showToast(`Lead ${targetLeadId} status updated to "${newStatus}"!`);
+    if (res.success && res.lead) {
+      if (setLeads) setLeads(prev => prev.map(l => (l.id === target.id ? res.lead : l)));
+      showToast(`Lead ${target.leadCode || target.id} status updated to "${newStatus}"!`);
       setSelectedLeadForUpdate(null);
-    } catch (err) {
-      showToast('Error updating lead status', true);
-    } finally {
-      setIsSubmitting(false);
+      if (onRefresh) onRefresh();
+    } else {
+      showToast(res.error || 'Could not update the lead. Nothing was changed.', true);
     }
   };
 
@@ -180,8 +142,8 @@ export default function PartnerPortalView({ currentUser, leads = [], setLeads })
     return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">{cibil || '—'}</span>;
   };
 
-  const getStatusBadge = (status) => {
-    const s = String(status || 'Fresh').trim();
+  const getStatusBadge = (lead) => {
+    const s = partnerStatusLabel(lead);
     if (s.includes('Disbursed')) {
       return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">Disbursed</span>;
     }
@@ -200,8 +162,10 @@ export default function PartnerPortalView({ currentUser, leads = [], setLeads })
     return <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300">{s}</span>;
   };
 
-  const handleDownloadCsv = () => {
-    window.open(`/crm/api/export-partner-leads.php?partner_id=${encodeURIComponent(partnerId)}&format=csv`, '_blank');
+  // Authenticated download of the server-generated CSV (no bare link; PAN is never included)
+  const handleDownloadCsv = async () => {
+    const res = await exportPartnerLeadsCsv(serverPartnerId || partnerId);
+    if (!res.ok) showToast(res.error || 'Could not export your leads.', true);
   };
 
   return (
@@ -336,17 +300,17 @@ export default function PartnerPortalView({ currentUser, leads = [], setLeads })
                   const itemId = item.id || item.lead_id || `PIM-${idx}`;
                   const rawPhone = String(item.phone || item.mobile || '').replace(/\D/g, '').slice(-10);
                   
-                  // Phone masking: masked if not yet applied or redirected to this partner
-                  const isApplied = String(item.appliedTo || '').toLowerCase().includes(cleanPartnerKey) ||
-                                    String(item.clicked_partner || '').toLowerCase().includes(cleanPartnerKey) ||
-                                    String(item.status || '').toLowerCase().includes('redirected');
+                  // Phone shown once the applicant has been redirected to / worked by this partner
+                  const isApplied = ['REDIRECTED', 'CONTACTED', 'APPROVED', 'DISBURSED', 'REJECTED'].includes(item.partnerStatus);
 
-                  const maskedPhone = isApplied && !item.is_phone_masked
-                    ? (rawPhone ? `+91 ${rawPhone}` : '—')
-                    : (rawPhone.length >= 4 ? `XXXXXX${rawPhone.slice(-4)}` : 'XXXXXXXXXX');
+                  const maskedPhone = item.phoneMasked
+                    ? item.phone
+                    : (isApplied
+                      ? (rawPhone ? `+91 ${rawPhone}` : '—')
+                      : (rawPhone.length >= 4 ? `XXXXXX${rawPhone.slice(-4)}` : 'XXXXXXXXXX'));
 
-                  const loanAmt = cleanLoanAmount(item.loanAmount || item.applied || 50000);
-                  const salaryAmt = Number(item.salary || item.monthlySalary || 35000);
+                  const loanAmt = cleanLoanAmount(item.loanAmount || item.applied || 0);
+                  const salaryAmt = Number(item.salary || item.monthlySalary || 0);
 
                   return (
                     <tr key={itemId} className="hover:bg-slate-50/70 transition">
@@ -395,10 +359,10 @@ export default function PartnerPortalView({ currentUser, leads = [], setLeads })
 
                       {/* Status */}
                       <td className="py-3 px-4">
-                        {getStatusBadge(item.status)}
-                        {item.remarks && (
-                          <div className="text-[10px] text-slate-500 italic mt-0.5 truncate max-w-[120px]" title={item.remarks}>
-                            "{item.remarks}"
+                        {getStatusBadge(item)}
+                        {item.partnerRemarks && (
+                          <div className="text-[10px] text-slate-500 italic mt-0.5 truncate max-w-[120px]" title={item.partnerRemarks}>
+                            "{item.partnerRemarks}"
                           </div>
                         )}
                       </td>
@@ -410,6 +374,7 @@ export default function PartnerPortalView({ currentUser, leads = [], setLeads })
 
                       {/* Action */}
                       <td className="py-3 px-4 text-center">
+                        {!readOnly && (
                         <button
                           onClick={() => handleOpenStatusModal(item)}
                           className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#0A3977] font-bold text-[11px] rounded-xl transition cursor-pointer"
@@ -417,6 +382,7 @@ export default function PartnerPortalView({ currentUser, leads = [], setLeads })
                           <span>Update</span>
                           <ChevronRight className="w-3 h-3" />
                         </button>
+                        )}
                       </td>
                     </tr>
                   );

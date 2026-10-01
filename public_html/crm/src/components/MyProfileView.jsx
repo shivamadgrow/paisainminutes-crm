@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { User, Mail, Phone, MapPin, Calendar, CheckCircle2, XCircle, KeyRound, X, Check, Copy, RefreshCw } from 'lucide-react';
-import { getCurrentUser, resetStaffPassword } from '../utils/authService';
+import { getCurrentUser } from '../utils/authService';
+import ChangePasswordModal from './ChangePasswordModal';
 
-export default function MyProfileView({ currentUser }) {
+export default function MyProfileView({ currentUser, onPasswordChanged }) {
   const user = currentUser || getCurrentUser() || {
     id: '1',
     name: 'Admin',
@@ -14,25 +15,7 @@ export default function MyProfileView({ currentUser }) {
   };
 
   const [isChangePassOpen, setIsChangePassOpen] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [toastMessage, setToastMessage] = useState(null);
-
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
-  };
-
-  const handleChangePassword = (e) => {
-    e.preventDefault();
-    if (!newPassword.trim()) return;
-
-    if (user.id) {
-      resetStaffPassword(user.id, newPassword.trim());
-      showToast('✅ Password changed successfully!');
-      setIsChangePassOpen(false);
-      setNewPassword('');
-    }
-  };
+  const [toastMessage] = useState(null);
 
   return (
     <div className="space-y-6 animate-fade-in max-w-6xl">
@@ -208,58 +191,9 @@ export default function MyProfileView({ currentUser }) {
 
       </div>
 
-      {/* Change Password Modal */}
+      {/* Change Password Modal (checked by the server; every session is revoked afterwards) */}
       {isChangePassOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 relative animate-fade-in text-slate-800">
-            <button 
-              onClick={() => setIsChangePassOpen(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="text-center space-y-2 mb-4">
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 text-[#0A3977] flex items-center justify-center mx-auto">
-                <KeyRound className="w-6 h-6" />
-              </div>
-              <h3 className="font-extrabold text-slate-900 text-base">Change My Password</h3>
-              <p className="text-xs text-slate-500">
-                Enter your new password below for account <strong className="text-slate-800">{user.name}</strong>
-              </p>
-            </div>
-
-            <form onSubmit={handleChangePassword} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">New Password *</label>
-                <input 
-                  type="text"
-                  required
-                  placeholder="Enter new password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-mono font-bold"
-                />
-              </div>
-
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsChangePassOpen(false)}
-                  className="px-4 py-2 border border-slate-300 text-slate-600 font-semibold rounded-xl hover:bg-slate-50 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-[#0A3977] hover:bg-blue-900 text-white font-bold rounded-xl shadow cursor-pointer active:scale-95"
-                >
-                  Save New Password
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ChangePasswordModal onClose={() => setIsChangePassOpen(false)} onChanged={onPasswordChanged} />
       )}
 
     </div>

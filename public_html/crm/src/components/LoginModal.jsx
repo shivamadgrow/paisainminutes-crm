@@ -18,20 +18,15 @@ import {
   Shield
 } from 'lucide-react';
 import paisaLogo from '../assets/paisa-logo.png';
-import { 
-  authenticateStaff, 
-  getStaffList, 
-  setCurrentUserSession 
-} from '../utils/authService';
+import { authenticateStaff } from '../utils/authService';
 
-export default function LoginModal({ isOpen = true, onClose, onLogin, currentUser, isFullScreen = false }) {
+export default function LoginModal({ isOpen = true, onClose, onLogin, currentUser, isFullScreen = false, notice = '' }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [blockedIncident, setBlockedIncident] = useState(null);
-  const [isSimulatingOffHours, setIsSimulatingOffHours] = useState(false);
 
   // If not full screen and not open, don't render
   if (!isFullScreen && !isOpen) return null;
@@ -42,14 +37,14 @@ export default function LoginModal({ isOpen = true, onClose, onLogin, currentUse
     setIsLoading(true);
 
     try {
-      const result = await authenticateStaff(username, password, isSimulatingOffHours);
+      const result = await authenticateStaff(username, password);
 
       if (result.success && result.user) {
         setBlockedIncident(null);
         if (onLogin) onLogin(result.user);
         if (onClose) onClose();
-      } else if (result.blockedIncident) {
-        setBlockedIncident(result.blockedIncident);
+      } else if (result.blocked) {
+        setBlockedIncident(result.blocked);
       } else {
         setError(result.error || 'Authentication failed. Please check credentials.');
       }
@@ -103,12 +98,12 @@ export default function LoginModal({ isOpen = true, onClose, onLogin, currentUse
               </p>
             </div>
 
-            {/* Incident Details */}
+            {/* Incident Details (the block itself is decided and recorded by the server) */}
             <div className="bg-slate-50 rounded-2xl p-3.5 border border-rose-200 text-xs space-y-2.5">
               <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
                 <span className="font-extrabold text-rose-700 uppercase tracking-wider text-[10px] flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-                  Incident #{blockedIncident.id}
+                  Access Blocked
                 </span>
                 <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold text-[10px]">
                   Logged & Blocked
@@ -121,24 +116,15 @@ export default function LoginModal({ isOpen = true, onClose, onLogin, currentUse
                   <div className="font-bold text-slate-900 font-sans text-xs mt-0.5">{blockedIncident.user}</div>
                 </div>
                 <div>
-                  <div className="text-slate-400 font-sans text-[10px] uppercase font-bold">ROLE</div>
-                  <div className="font-bold text-indigo-700 font-sans text-xs mt-0.5">{blockedIncident.role}</div>
-                </div>
-                <div>
                   <div className="text-slate-400 font-sans text-[10px] uppercase font-bold">TIME</div>
-                  <div className="text-slate-800 mt-0.5">{blockedIncident.timestamp} IST</div>
-                </div>
-                <div>
-                  <div className="text-slate-400 font-sans text-[10px] uppercase font-bold">IP</div>
-                  <div className="text-slate-800 mt-0.5">{blockedIncident.ip}</div>
+                  <div className="text-slate-800 mt-0.5">{new Date(blockedIncident.at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</div>
                 </div>
               </div>
 
               <div className="p-2.5 bg-white rounded-xl border border-slate-200 flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
                 <div className="text-[11px] leading-tight">
-                  <span className="font-bold text-slate-900">{blockedIncident.location}</span>
-                  <div className="text-[10px] text-slate-400 font-mono">GPS: {blockedIncident.coords}</div>
+                  <span className="font-bold text-slate-900">{blockedIncident.reason}</span>
                 </div>
               </div>
             </div>
@@ -180,6 +166,13 @@ export default function LoginModal({ isOpen = true, onClose, onLogin, currentUse
                 Active
               </span>
             </div>
+
+            {notice && !error && (
+              <div className="mb-4 p-3 rounded-xl bg-amber-50 text-amber-800 text-xs font-semibold border border-amber-200 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <div className="flex-1">{notice}</div>
+              </div>
+            )}
 
             {/* Error Message Box */}
             {error && (

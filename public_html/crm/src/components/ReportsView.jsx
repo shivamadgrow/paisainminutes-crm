@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   FileSpreadsheet, 
   Search, 
@@ -17,6 +17,8 @@ import {
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
 import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers';
+import { normalizeStatus } from '../utils/apiConfig';
+import { getPartnerKpiSummary } from '../utils/crmApi';
 
 export default function ReportsView({ leads = [] }) {
   const [partnerFilter, setPartnerFilter] = useState('All');
@@ -26,31 +28,39 @@ export default function ReportsView({ leads = [] }) {
   const [dateTo, setDateTo] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Per-partner payment status, derived by the server from settlement records (this financial year)
+  const [paymentStatusBySlug, setPaymentStatusBySlug] = useState({});
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const res = await getPartnerKpiSummary({
+        period: 'this_fy',
+        asOf: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date())
+      });
+      if (alive && res.success) {
+        setPaymentStatusBySlug(Object.fromEntries((res.partners || []).map(p => [p.slug, p.paymentStatus === 'None' ? 'Pending' : p.paymentStatus])));
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  const paymentStatusOf = (lead) => paymentStatusBySlug[lead.assignedPartnerSlug] || 'Pending';
+
   // Filtered dataset
   const filteredData = useMemo(() => {
     return leads.filter(l => {
-      // Partner filter
-      if (partnerFilter !== 'All') {
-        const assigned = String(l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
-        const target = partnerFilter.toLowerCase().replace(/[\s\-_]/g, '');
-        if (assigned !== target && !assigned.includes(target)) return false;
-      }
+      // Partner filter (the partner the lead is really assigned to)
+      if (partnerFilter !== 'All' && l.assignedPartnerSlug !== partnerFilter) return false;
 
-      // Stage filter
+      // Stage filter (canonical CRM status)
       if (stageFilter !== 'All') {
-        const s = String(l.status || 'Fresh').toLowerCase().replace(/\s+/g, '-');
-        if (s !== stageFilter.toLowerCase().replace(/\s+/g, '-')) return false;
+        const wanted = normalizeStatus(stageFilter);
+        const current = normalizeStatus(l.status);
+        if (wanted === 'APPROVED' ? !['APPROVED', 'DISBURSED'].includes(current) : current !== wanted) return false;
       }
 
       // Commission status filter
-      if (commissionStatusFilter !== 'All') {
-        const partner = AFFILIATE_PARTNERS.find(p => {
-          const assigned = String(l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
-          return assigned === p.id.toLowerCase() || assigned === p.name.toLowerCase().replace(/[\s\-_]/g, '');
-        });
-        const pStatus = partner?.paymentStatus || 'Pending';
-        if (pStatus !== commissionStatusFilter) return false;
-      }
+      if (commissionStatusFilter !== 'All' && paymentStatusOf(l) !== commissionStatusFilter) return false;
 
       // Search
       if (searchQuery) {
@@ -63,17 +73,21 @@ export default function ReportsView({ leads = [] }) {
 
       return true;
     });
-  }, [leads, partnerFilter, stageFilter, commissionStatusFilter, searchQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads, partnerFilter, stageFilter, commissionStatusFilter, searchQuery, paymentStatusBySlug]);
 
   // Aggregate metrics
   const metrics = useMemo(() => {
     const totalCount = filteredData.length;
     const totalApplied = filteredData.reduce((s, l) => s + cleanLoanAmount(l.loanAmount || l.applied || 0), 0);
-    const approvedCount = filteredData.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length;
-    const approvedVolume = filteredData
-      .filter(l => l.status === 'Approved' || l.status === 'Disbursed')
-      .reduce((s, l) => s + cleanLoanAmount(l.loanAmount || l.applied || 50000), 0);
-    const estimatedCommission = Math.round(approvedVolume * 0.025);
+    const approvedLeads = filteredData.filter(l => ['APPROVED', 'DISBURSED'].includes(normalizeStatus(l.status)));
+    const approvedCount = approvedLeads.length;
+    const approvedVolume = approvedLeads.reduce((s, l) => s + cleanLoanAmount(l.disbursedAmountRupees || l.loanAmount || l.applied || 0), 0);
+    // Estimate at each partner's own commission rate (from the server), not a flat guess
+    const estimatedCommission = Math.round(approvedLeads.reduce((s, l) => {
+      const partner = AFFILIATE_PARTNERS.find(p => p.id === l.assignedPartnerSlug);
+      return s + cleanLoanAmount(l.disbursedAmountRupees || l.loanAmount || l.applied || 0) * ((partner && partner.commissionPct) || 0);
+    }, 0));
 
     return { totalCount, totalApplied, approvedCount, approvedVolume, estimatedCommission };
   }, [filteredData]);
@@ -92,25 +106,18 @@ export default function ReportsView({ leads = [] }) {
       'City'
     ];
 
-    const rows = filteredData.map(l => {
-      const partner = AFFILIATE_PARTNERS.find(p => {
-        const assigned = String(l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
-        return assigned === p.id.toLowerCase() || assigned === p.name.toLowerCase().replace(/[\s\-_]/g, '');
-      });
-
-      return [
-        l.id || l.loanNo || '—',
-        l.name || 'Applicant',
-        l.mobile || l.phone || '—',
-        l.assignedCompany || partner?.name || 'Unassigned',
-        l.status || 'Fresh',
-        cleanLoanAmount(l.loanAmount || l.applied || 0),
-        cleanSalary(l.salary || l.monthlySalary || 0),
-        l.cibil || l.cibilScore || '—',
-        partner?.paymentStatus || 'Pending',
-        l.city || '—'
-      ];
-    });
+    const rows = filteredData.map(l => [
+      l.leadCode || l.id || l.loanNo || '—',
+      l.name || 'Applicant',
+      l.mobile || l.phone || '—',
+      l.assignedCompany || 'Unassigned',
+      l.statusLabel || l.status || 'Fresh',
+      cleanLoanAmount(l.loanAmount || l.applied || 0),
+      cleanSalary(l.salary || l.monthlySalary || 0),
+      l.cibil || l.cibilScore || '—',
+      paymentStatusOf(l),
+      l.city || '—'
+    ]);
 
     exportToCsv(`paisa-affiliate-custom-report-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
@@ -157,7 +164,7 @@ export default function ReportsView({ leads = [] }) {
               onChange={(e) => setPartnerFilter(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
             >
-              <option value="All">All 8 Partners</option>
+              <option value="All">All {AFFILIATE_PARTNERS.length} Partners</option>
               {AFFILIATE_PARTNERS.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
@@ -284,7 +291,7 @@ export default function ReportsView({ leads = [] }) {
                       <div className="text-[10px] text-slate-400 font-mono">{l.mobile || l.phone}</div>
                     </td>
                     <td className="py-3 px-4 font-semibold text-indigo-900">
-                      {l.assignedCompany || 'Rupay91'}
+                      {l.assignedCompany || 'Unassigned'}
                     </td>
                     <td className="py-3 px-4">
                       <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">

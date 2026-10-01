@@ -33,6 +33,8 @@ import {
   FileDown
 } from 'lucide-react';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
+import { canViewTab } from '../utils/permissions';
+import { exportPartnerLeadsCsv } from '../utils/crmApi';
 
 const STORAGE_KEY = 'paisa_crm_sidebar_sections';
 
@@ -86,6 +88,18 @@ export default function Sidebar({
   };
 
   const isSelected = (id) => activeTab === id;
+  // Hide menu entries the account has no permission for (the server still enforces permissions on every call).
+  const show = (id) => canViewTab(currentUser, id);
+
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExportPartnerCsv = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    // Authenticated download of the server-generated CSV (partner users can only export their own partner).
+    const res = await exportPartnerLeadsCsv(currentUser?.serverPartnerId || currentUser?.partnerId);
+    setIsExporting(false);
+    if (!res.ok) window.alert(`Could not export leads: ${res.error}`);
+  };
 
   const getNavItemClass = (id) => {
     const selected = isSelected(id);
@@ -98,7 +112,7 @@ export default function Sidebar({
 
   // 🛡️ ROLE ISOLATION: Dedicated scoped navigation for Partner role
   if (currentUser && currentUser.role === 'Partner') {
-    const partnerId = currentUser.partnerId || 'rupay91';
+    const partnerId = currentUser.partnerId || '';
     const partnerName = currentUser.partnerName || 'Partner Portal';
     const myLeadCount = partnerCounts[partnerId] ?? (leadCounts?.total ?? 0);
 
@@ -142,10 +156,11 @@ export default function Sidebar({
             </span>
           </button>
 
-          <a 
-            href={`/crm/api/export-partner-leads.php?partner_id=${encodeURIComponent(partnerId)}`}
-            download
-            className="group flex items-center justify-between px-3 py-2 text-xs font-medium rounded-xl text-slate-600 hover:bg-emerald-50 hover:text-emerald-900 transition-all cursor-pointer"
+          <button 
+            type="button"
+            onClick={handleExportPartnerCsv}
+            disabled={isExporting}
+            className="group w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-xl text-slate-600 hover:bg-emerald-50 hover:text-emerald-900 transition-all cursor-pointer"
             title="Export all assigned and redirected leads as CSV"
           >
             <div className="flex items-center gap-2.5">
@@ -155,7 +170,7 @@ export default function Sidebar({
             <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-emerald-100 text-emerald-800">
               CSV
             </span>
-          </a>
+          </button>
 
           <div className="pt-4 px-2 pb-1 text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">
             Account & Security
@@ -201,6 +216,7 @@ export default function Sidebar({
       <div className="flex-1 overflow-y-auto px-3 py-4 space-y-4 text-slate-700 text-xs scrollbar-thin">
         
         {/* 1. Section: DASHBOARDS */}
+        {(show('executive') || show('kpi')) && (
         <div>
           <button
             type="button"
@@ -215,6 +231,7 @@ export default function Sidebar({
           
           {!collapsedSections.dashboards && (
             <div className="space-y-0.5 mt-1 animate-fade-in">
+              {show('executive') && (
               <button 
                 onClick={() => handleNavClick('executive')} 
                 className={getNavItemClass('executive')}
@@ -224,7 +241,9 @@ export default function Sidebar({
                   <span>Executive Overview</span>
                 </div>
               </button>
+              )}
 
+              {show('kpi') && (
               <button 
                 onClick={() => handleNavClick('kpi')} 
                 className={getNavItemClass('kpi')}
@@ -234,11 +253,14 @@ export default function Sidebar({
                   <span>Partner Analytics</span>
                 </div>
               </button>
+              )}
             </div>
           )}
         </div>
+        )}
 
         {/* 2. Section: AFFILIATE PARTNERS */}
+        {(show('partner-hub') || show('partner-agreements') || show('delivery-logs')) && (
         <div>
           <button
             type="button"
@@ -257,6 +279,7 @@ export default function Sidebar({
           {!collapsedSections.partners && (
             <div className="space-y-0.5 mt-1 animate-fade-in">
               {/* Partner Hub (All Companies) */}
+              {show('partner-hub') && (
               <button 
                 onClick={() => handleNavClick('partner-hub')} 
                 className={getNavItemClass('partner-hub')}
@@ -269,6 +292,7 @@ export default function Sidebar({
                   {AFFILIATE_PARTNERS.length}
                 </span>
               </button>
+              )}
 
               {/* All 8 Affiliate Partners */}
               {AFFILIATE_PARTNERS.map(partner => (
@@ -291,6 +315,7 @@ export default function Sidebar({
               ))}
 
               {/* [NEW] Add New Partner */}
+              {show('partner-onboarding') && (
               <button 
                 onClick={() => handleNavClick('partner-onboarding')} 
                 className={getNavItemClass('partner-onboarding')}
@@ -300,8 +325,10 @@ export default function Sidebar({
                   <span>Add New Partner</span>
                 </div>
               </button>
+              )}
 
               {/* [NEW] Partner Agreements */}
+              {show('partner-agreements') && (
               <button 
                 onClick={() => handleNavClick('partner-agreements')} 
                 className={getNavItemClass('partner-agreements')}
@@ -311,8 +338,10 @@ export default function Sidebar({
                   <span>Partner Agreements</span>
                 </div>
               </button>
+              )}
 
               {/* [NEW] API Delivery Logs */}
+              {show('delivery-logs') && (
               <button 
                 onClick={() => handleNavClick('delivery-logs')} 
                 className={getNavItemClass('delivery-logs')}
@@ -322,11 +351,14 @@ export default function Sidebar({
                   <span>API Delivery Logs</span>
                 </div>
               </button>
+              )}
             </div>
           )}
         </div>
+        )}
 
         {/* 3. Section: COMMISSIONS & PAYOUTS (NEW SECTION) */}
+        {(show('commission-summary') || show('payout-requests') || show('settlements') || show('invoices-raised') || show('rate-cards')) && (
         <div>
           <button
             type="button"
@@ -344,13 +376,16 @@ export default function Sidebar({
           
           {!collapsedSections.commissions && (
             <div className="space-y-0.5 mt-1 animate-fade-in">
+              {show('commission-summary') && (
               <button onClick={() => handleNavClick('commission-summary')} className={getNavItemClass('commission-summary')}>
                 <div className="flex items-center gap-2.5">
                   <DollarSign className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
                   <span>Commission Summary</span>
                 </div>
               </button>
+              )}
 
+              {show('payout-requests') && (
               <button onClick={() => handleNavClick('payout-requests')} className={getNavItemClass('payout-requests')}>
                 <div className="flex items-center gap-2.5">
                   <Send className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
@@ -362,7 +397,9 @@ export default function Sidebar({
                   {commissionCounts?.payoutRequests ?? 0}
                 </span>
               </button>
+              )}
 
+              {show('settlements') && (
               <button onClick={() => handleNavClick('settlements')} className={getNavItemClass('settlements')}>
                 <div className="flex items-center gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
@@ -374,7 +411,9 @@ export default function Sidebar({
                   {commissionCounts?.settlements ?? 0}
                 </span>
               </button>
+              )}
 
+              {show('invoices-raised') && (
               <button onClick={() => handleNavClick('invoices-raised')} className={getNavItemClass('invoices-raised')}>
                 <div className="flex items-center gap-2.5">
                   <Receipt className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
@@ -386,18 +425,23 @@ export default function Sidebar({
                   {commissionCounts?.invoices ?? 0}
                 </span>
               </button>
+              )}
 
+              {show('rate-cards') && (
               <button onClick={() => handleNavClick('rate-cards')} className={getNavItemClass('rate-cards')}>
                 <div className="flex items-center gap-2.5">
                   <Sliders className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
                   <span>Commission Rate Cards</span>
                 </div>
               </button>
+              )}
             </div>
           )}
         </div>
+        )}
 
         {/* 4. Section: LEAD MANAGEMENT */}
+        {(show('all-leads') || show('pipeline') || show('tracker')) && (
         <div>
           <button
             type="button"
@@ -413,6 +457,7 @@ export default function Sidebar({
           {!collapsedSections.leads && (
             <div className="space-y-0.5 mt-1 animate-fade-in">
               {/* All Leads */}
+              {show('all-leads') && (
               <button onClick={() => handleNavClick('all-leads')} className={getNavItemClass('all-leads')}>
                 <div className="flex items-center gap-2.5">
                   <Users className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
@@ -422,8 +467,10 @@ export default function Sidebar({
                   {leadCounts?.total ?? 0}
                 </span>
               </button>
+              )}
 
               {/* [NEW] Mobile-only Leads */}
+              {show('mobile-only') && (
               <button onClick={() => handleNavClick('mobile-only')} className={getNavItemClass('mobile-only')}>
                 <div className="flex items-center gap-2.5">
                   <Smartphone className="w-4 h-4 text-slate-400 group-hover:text-blue-600" />
@@ -433,8 +480,10 @@ export default function Sidebar({
                   {leadCounts?.mobileOnly ?? 0}
                 </span>
               </button>
+              )}
 
               {/* Fresh Applications */}
+              {show('fresh') && (
               <button onClick={() => handleNavClick('fresh')} className={getNavItemClass('fresh')}>
                 <div className="flex items-center gap-2.5">
                   <Sparkles className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
@@ -444,24 +493,30 @@ export default function Sidebar({
                   {leadCounts?.fresh ?? 0}
                 </span>
               </button>
+              )}
 
               {/* Pipeline Flow */}
+              {show('pipeline') && (
               <button onClick={() => handleNavClick('pipeline')} className={getNavItemClass('pipeline')}>
                 <div className="flex items-center gap-2.5">
                   <GitMerge className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
                   <span>Pipeline Flow</span>
                 </div>
               </button>
+              )}
 
               {/* Application Tracker */}
+              {show('tracker') && (
               <button onClick={() => handleNavClick('tracker')} className={getNavItemClass('tracker')}>
                 <div className="flex items-center gap-2.5">
                   <Compass className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
                   <span>Application Tracker</span>
                 </div>
               </button>
+              )}
 
               {/* Callback */}
+              {show('callback') && (
               <button onClick={() => handleNavClick('callback')} className={getNavItemClass('callback')}>
                 <div className="flex items-center gap-2.5">
                   <PhoneCall className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
@@ -471,8 +526,10 @@ export default function Sidebar({
                   {leadCounts?.callback ?? 0}
                 </span>
               </button>
+              )}
 
               {/* Interested */}
+              {show('interested') && (
               <button onClick={() => handleNavClick('interested')} className={getNavItemClass('interested')}>
                 <div className="flex items-center gap-2.5">
                   <Heart className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
@@ -482,8 +539,10 @@ export default function Sidebar({
                   {leadCounts?.interested ?? 0}
                 </span>
               </button>
+              )}
 
               {/* Docs Received */}
+              {show('docs-received') && (
               <button onClick={() => handleNavClick('docs-received')} className={getNavItemClass('docs-received')}>
                 <div className="flex items-center gap-2.5">
                   <FileCheck className="w-4 h-4 text-slate-400 group-hover:text-slate-[#0A3977]" />
@@ -493,8 +552,10 @@ export default function Sidebar({
                   {leadCounts?.docsReceived ?? 0}
                 </span>
               </button>
+              )}
 
               {/* Approved & Converted */}
+              {show('approved') && (
               <button onClick={() => handleNavClick('approved')} className={getNavItemClass('approved')}>
                 <div className="flex items-center gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
@@ -504,8 +565,10 @@ export default function Sidebar({
                   {leadCounts?.approved ?? 0}
                 </span>
               </button>
+              )}
 
               {/* Rejected / Drop-off */}
+              {show('rejected') && (
               <button onClick={() => handleNavClick('rejected')} className={getNavItemClass('rejected')}>
                 <div className="flex items-center gap-2.5">
                   <XCircle className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
@@ -515,8 +578,10 @@ export default function Sidebar({
                   {leadCounts?.rejected ?? 0}
                 </span>
               </button>
+              )}
 
               {/* [NEW] Duplicate Leads */}
+              {show('duplicate-leads') && (
               <button onClick={() => handleNavClick('duplicate-leads')} className={getNavItemClass('duplicate-leads')}>
                 <div className="flex items-center gap-2.5">
                   <AlertCircle className="w-4 h-4 text-slate-400 group-hover:text-amber-600" />
@@ -526,11 +591,14 @@ export default function Sidebar({
                   {leadCounts?.duplicateLeads ?? 0}
                 </span>
               </button>
+              )}
             </div>
           )}
         </div>
+        )}
 
         {/* 5. Section: ADMINISTRATION */}
+        {(show('admin-staff') || show('admin-roles') || show('admin-audit') || show('admin-integrations') || show('admin-notifications') || show('admin-settings')) && (
         <div>
           <button
             type="button"
@@ -545,57 +613,71 @@ export default function Sidebar({
           
           {!collapsedSections.administration && (
             <div className="space-y-0.5 mt-1 animate-fade-in">
+              {show('admin-staff') && (
               <button onClick={() => handleNavClick('admin-staff')} className={getNavItemClass('admin-staff')}>
                 <div className="flex items-center gap-2.5">
                   <Users className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
                   <span>Staff & Telecallers</span>
                 </div>
               </button>
+              )}
 
               {/* [NEW] Roles & Permissions */}
+              {show('admin-roles') && (
               <button onClick={() => handleNavClick('admin-roles')} className={getNavItemClass('admin-roles')}>
                 <div className="flex items-center gap-2.5">
                   <ShieldCheck className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
                   <span>Roles & Permissions</span>
                 </div>
               </button>
+              )}
 
               {/* [NEW] Activity Log */}
+              {show('admin-audit') && (
               <button onClick={() => handleNavClick('admin-audit')} className={getNavItemClass('admin-audit')}>
                 <div className="flex items-center gap-2.5">
                   <Activity className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
                   <span>Activity Log</span>
                 </div>
               </button>
+              )}
 
               {/* [NEW] Integration Settings */}
+              {show('admin-integrations') && (
               <button onClick={() => handleNavClick('admin-integrations')} className={getNavItemClass('admin-integrations')}>
                 <div className="flex items-center gap-2.5">
                   <LinkIcon className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
                   <span>Integration Settings</span>
                 </div>
               </button>
+              )}
 
               {/* [NEW] Notification Settings */}
+              {show('admin-notifications') && (
               <button onClick={() => handleNavClick('admin-notifications')} className={getNavItemClass('admin-notifications')}>
                 <div className="flex items-center gap-2.5">
                   <Bell className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
                   <span>Notification Settings</span>
                 </div>
               </button>
+              )}
 
               {/* [NEW] General Settings */}
+              {show('admin-settings') && (
               <button onClick={() => handleNavClick('admin-settings')} className={getNavItemClass('admin-settings')}>
                 <div className="flex items-center gap-2.5">
                   <Settings className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
                   <span>General Settings</span>
                 </div>
               </button>
+              )}
             </div>
           )}
         </div>
+        )}
 
         {/* 6. Section: REPORTS (NEW SECTION AT BOTTOM) */}
+        {(show('reports')) && (
         <div>
           <button
             type="button"
@@ -613,15 +695,18 @@ export default function Sidebar({
           
           {!collapsedSections.reports && (
             <div className="space-y-0.5 mt-1 animate-fade-in">
+              {show('reports') && (
               <button onClick={() => handleNavClick('reports')} className={getNavItemClass('reports')}>
                 <div className="flex items-center gap-2.5">
                   <FileSpreadsheet className="w-4 h-4 text-slate-400 group-hover:text-indigo-600" />
                   <span>Custom Reports</span>
                 </div>
               </button>
+              )}
             </div>
           )}
         </div>
+        )}
 
       </div>
 

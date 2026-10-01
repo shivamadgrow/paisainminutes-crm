@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   DollarSign, 
   Search, 
@@ -13,24 +13,61 @@ import {
   Edit2,
   AlertCircle
 } from 'lucide-react';
-import { INITIAL_RATE_CARDS } from '../data/rateCardsData';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
+import { fetchAllPages, apiPost, apiPatch } from '../utils/crmApi';
+import { rateCardFromServer, RATE_MODEL_TO_SERVER, toPaise } from '../utils/financeMappers';
 
 export default function CommissionRateCardsView() {
-  const [rateCards, setRateCards] = useState(INITIAL_RATE_CARDS);
+  const [serverCards, setServerCards] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCard, setSelectedCard] = useState(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
 
   const [editForm, setEditForm] = useState({
-    model: 'tiered',
-    defaultRate: '6.0%',
+    model: 'flat_pct',
+    defaultRate: '6.0',
     effectiveFrom: new Date().toISOString().slice(0, 10),
-    slab1Rate: '2.5',
-    slab2Rate: '2.8',
-    slab3Rate: '3.2',
     perLeadFee: 1500
   });
+
+  // Rate cards come from the server; partners without a card get an empty one to configure
+  const loadCards = async () => {
+    setIsLoading(true);
+    const res = await fetchAllPages('/api/crm/rate-cards', 'rateCards');
+    if (res.success) {
+      setServerCards(res.items.map(rateCardFromServer));
+      setLoadError('');
+    } else {
+      setLoadError(res.error || 'Could not load rate cards.');
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadCards();
+  }, []);
+
+  const rateCards = [
+    ...serverCards,
+    ...AFFILIATE_PARTNERS
+      .filter(p => p.serverId && !serverCards.some(c => c.partnerId === p.id))
+      .map(p => ({
+        id: `new-${p.id}`,
+        serverId: null,
+        partnerId: p.id,
+        partnerName: p.name,
+        model: 'flat_pct',
+        defaultRate: '—',
+        defaultRatePercent: 0,
+        effectiveFrom: '—',
+        slabs: [],
+        history: []
+      }))
+  ];
 
   const filtered = rateCards.filter(rc => {
     if (searchQuery) {
@@ -44,60 +81,67 @@ export default function CommissionRateCardsView() {
 
   const handleOpenEdit = (rc) => {
     setSelectedCard(rc);
+    setActionError('');
     setEditForm({
-      model: rc.model,
-      defaultRate: rc.defaultRate,
+      model: rc.model === 'tiered' || rc.model === 'per_lead' ? rc.model : 'flat_pct',
+      defaultRate: String(rc.defaultRatePercent ?? 0),
       effectiveFrom: new Date().toISOString().slice(0, 10),
-      slab1Rate: '2.5',
-      slab2Rate: '2.8',
-      slab3Rate: '3.2',
       perLeadFee: rc.perLeadFee || 1500
     });
     setIsEditOpen(true);
   };
 
-  const handleSaveRateCard = (e) => {
+  // The server keeps the immutable effective-date history; the card refreshes after a successful save
+  const handleSaveRateCard = async (e) => {
     e.preventDefault();
     if (!selectedCard) return;
+    setActionError('');
 
-    const newHistoryEntry = {
-      effectiveFrom: selectedCard.effectiveFrom,
-      effectiveTo: editForm.effectiveFrom,
-      rate: selectedCard.defaultRate,
-      model: selectedCard.model,
-      updatedBy: 'Super Admin'
+    const isPerLead = editForm.model === 'per_lead';
+    const rate = parseFloat(String(editForm.defaultRate).replace('%', ''));
+    if (!isPerLead && (!Number.isFinite(rate) || rate < 0 || rate > 100)) {
+      setActionError('Enter a commission rate between 0 and 100.');
+      return;
+    }
+    const body = {
+      model: RATE_MODEL_TO_SERVER[editForm.model],
+      defaultRatePercent: isPerLead ? 0 : rate,
+      effectiveFrom: editForm.effectiveFrom
     };
+    if (isPerLead) {
+      body.perLeadFeePaise = toPaise(editForm.perLeadFee);
+    } else if (editForm.model === 'flat_pct') {
+      body.slabs = [{ minVolumePaise: 0, maxVolumePaise: null, ratePercent: rate, label: `Flat ${rate.toFixed(1)}% on all Disbursals` }];
+    } else if (selectedCard.rawSlabs) {
+      body.slabs = selectedCard.rawSlabs;
+    }
 
-    setRateCards(prev => prev.map(rc => {
-      if (rc.id === selectedCard.id) {
-        return {
-          ...rc,
-          model: editForm.model,
-          defaultRate: editForm.model === 'per_lead' 
-            ? `₹${editForm.perLeadFee} / lead` 
-            : `${editForm.defaultRate}`,
-          effectiveFrom: editForm.effectiveFrom,
-          history: [
-            ...rc.history,
-            newHistoryEntry,
-            {
-              effectiveFrom: editForm.effectiveFrom,
-              effectiveTo: 'Present',
-              rate: editForm.defaultRate,
-              model: editForm.model,
-              updatedBy: 'Super Admin'
-            }
-          ]
-        };
-      }
-      return rc;
-    }));
-
-    setIsEditOpen(false);
+    setIsSaving(true);
+    let res;
+    if (selectedCard.serverId) {
+      res = await apiPatch(`/api/crm/rate-cards/${encodeURIComponent(selectedCard.serverId)}`, body);
+    } else {
+      const partner = AFFILIATE_PARTNERS.find(p => p.id === selectedCard.partnerId);
+      res = await apiPost('/api/crm/rate-cards', { ...body, partnerId: partner && partner.serverId, partnerName: selectedCard.partnerName });
+    }
+    setIsSaving(false);
+    if (res.ok) {
+      await loadCards();
+      setIsEditOpen(false);
+    } else {
+      setActionError(res.error || 'The rate card could not be saved.');
+    }
   };
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {(loadError || actionError) && !isEditOpen && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>{loadError || actionError}</span>
+          <button onClick={loadError ? loadCards : () => setActionError('')} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">{loadError ? 'Retry' : 'Dismiss'}</button>
+        </div>
+      )}
+      {isLoading && <div className="text-xs text-slate-500">Loading rate cards from the server…</div>}
       {/* Title Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -105,7 +149,7 @@ export default function CommissionRateCardsView() {
             <DollarSign className="w-6 h-6 text-emerald-600" />
             <span>Commission Rate Cards</span>
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-              {rateCards.length} Partners Configured
+              {serverCards.length} Partners Configured
             </span>
           </h1>
           <p className="text-xs text-slate-500 mt-1 font-mono">
@@ -169,7 +213,7 @@ export default function CommissionRateCardsView() {
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500 font-semibold">Commercial Model:</span>
                 <span className="font-mono uppercase text-[11px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
-                  {rc.model.replace('_', ' ')}
+                  {String(rc.model).replace('_', ' ')}
                 </span>
               </div>
 
@@ -251,12 +295,15 @@ export default function CommissionRateCardsView() {
 
               {editForm.model !== 'per_lead' ? (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Base Commission Rate</label>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Base Commission Rate (%)</label>
                   <input 
-                    type="text"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
                     value={editForm.defaultRate}
                     onChange={(e) => setEditForm(p => ({ ...p, defaultRate: e.target.value }))}
-                    placeholder="e.g. 6.0%"
+                    placeholder="e.g. 6.0"
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                   />
                 </div>
@@ -285,6 +332,10 @@ export default function CommissionRateCardsView() {
                 </p>
               </div>
 
+              {actionError && (
+                <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">{actionError}</div>
+              )}
+
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
@@ -295,9 +346,10 @@ export default function CommissionRateCardsView() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-[#0A3977] text-white font-bold text-xs rounded-lg shadow-xs hover:bg-[#072956] transition"
+                  disabled={isSaving}
+                  className="px-4 py-1.5 bg-[#0A3977] disabled:bg-slate-400 text-white font-bold text-xs rounded-lg shadow-xs hover:bg-[#072956] transition"
                 >
-                  Apply Rate Card
+                  {isSaving ? 'Saving…' : 'Apply Rate Card'}
                 </button>
               </div>
             </form>

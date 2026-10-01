@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Send, 
   Search, 
@@ -12,23 +12,43 @@ import {
   Filter,
   Check
 } from 'lucide-react';
-import { INITIAL_PAYOUT_REQUESTS } from '../data/payoutsData';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
+import { fetchAllPages, apiPost, apiPatch } from '../utils/crmApi';
+import { payoutFromServer, toPaise, serverPartnerId } from '../utils/financeMappers';
 
-export default function PayoutRequestsView({ requests: propRequests, setRequests: propSetRequests }) {
-  const [localRequests, setLocalRequests] = useState(INITIAL_PAYOUT_REQUESTS);
-  const requests = propRequests !== undefined ? propRequests : localRequests;
-  const setRequests = propSetRequests !== undefined ? propSetRequests : setLocalRequests;
+export default function PayoutRequestsView({ onChanged }) {
+  const [requests, setRequests] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [newRequest, setNewRequest] = useState({
-    partnerId: 'instarupees',
+    partnerId: (AFFILIATE_PARTNERS[0] && AFFILIATE_PARTNERS[0].id) || '',
     amount: '',
-    period: '01/08/2026 - 15/08/2026',
+    period: '',
     notes: ''
   });
+
+  // Payout requests live in MongoDB (via the Node server); nothing is kept in this browser
+  const loadRequests = async () => {
+    setIsLoading(true);
+    const res = await fetchAllPages('/api/crm/payout-requests', 'payoutRequests');
+    if (res.success) {
+      setRequests(res.items.map(payoutFromServer));
+      setLoadError('');
+    } else {
+      setLoadError(res.error || 'Could not load payout requests.');
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadRequests();
+  }, []);
 
   const filtered = requests.filter(r => {
     if (searchQuery) {
@@ -41,40 +61,46 @@ export default function PayoutRequestsView({ requests: propRequests, setRequests
     return true;
   });
 
-  const handleStatusChange = (requestId, newStatus) => {
-    setRequests(prev => prev.map(r => {
-      if (r.id === requestId) {
-        return {
-          ...r,
-          status: newStatus,
-          paidDate: newStatus === 'Paid' ? new Date().toISOString().slice(0, 10) : r.paidDate
-        };
-      }
-      return r;
-    }));
+  // The server enforces the state machine (Requested -> Acknowledged -> Paid); the list updates after success
+  const handleStatusChange = async (request, newStatus) => {
+    setActionError('');
+    const res = await apiPatch(`/api/crm/payout-requests/${encodeURIComponent(request.serverId)}`, {
+      status: newStatus.toUpperCase(),
+      ...(newStatus === 'Paid' ? { paidDate: new Date().toISOString().slice(0, 10) } : {})
+    });
+    if (res.ok && res.data && res.data.payoutRequest) {
+      const updated = payoutFromServer(res.data.payoutRequest);
+      setRequests(prev => prev.map(r => (r.serverId === updated.serverId ? updated : r)));
+      if (onChanged) onChanged();
+    } else {
+      setActionError(res.error || 'The payout request could not be updated.');
+    }
   };
 
-  const handleCreateRequest = (e) => {
+  const handleCreateRequest = async (e) => {
     e.preventDefault();
-    const partner = AFFILIATE_PARTNERS.find(p => p.id === newRequest.partnerId) || { name: 'Partner' };
-    const req = {
-      id: `PR-2026-${Math.floor(100 + Math.random() * 900)}`,
-      partnerId: newRequest.partnerId,
-      partnerName: partner.name,
-      amount: Number(newRequest.amount) || 50000,
-      requestedDate: new Date().toISOString().slice(0, 10),
-      status: 'Requested',
-      leadsCount: 10,
+    setActionError('');
+    const partnerServerId = serverPartnerId(newRequest.partnerId);
+    if (!partnerServerId) {
+      setActionError('This partner is not registered on the server yet.');
+      return;
+    }
+    setIsSaving(true);
+    const res = await apiPost('/api/crm/payout-requests', {
+      partnerId: partnerServerId,
+      amountPaise: toPaise(newRequest.amount),
       disbursalPeriod: newRequest.period,
-      invoiceNo: `INV-2026-${Math.floor(100 + Math.random() * 900)}`,
-      contactPerson: partner.name + ' Finance',
-      contactEmail: 'accounts@' + newRequest.partnerId + '.com',
-      notes: newRequest.notes || 'Submitted via Payout Portal'
-    };
-
-    setRequests(prev => [req, ...prev]);
-    setIsCreateOpen(false);
-    setNewRequest({ partnerId: 'instarupees', amount: '', period: '01/08/2026 - 15/08/2026', notes: '' });
+      notes: newRequest.notes || undefined
+    });
+    setIsSaving(false);
+    if (res.ok && res.data && res.data.payoutRequest) {
+      await loadRequests();
+      setIsCreateOpen(false);
+      setNewRequest({ partnerId: newRequest.partnerId, amount: '', period: '', notes: '' });
+      if (onChanged) onChanged();
+    } else {
+      setActionError(res.error || 'The payout request could not be created.');
+    }
   };
 
   const handleExportCsv = () => {
@@ -91,6 +117,12 @@ export default function PayoutRequestsView({ requests: propRequests, setRequests
     ]);
     exportToCsv(`paisa-payout-requests-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
+
+  // Average days from request to payment, from real records
+  const paidRequests = requests.filter(r => r.status === 'Paid' && r.paidDate && r.requestedDate);
+  const avgCycleDays = paidRequests.length > 0
+    ? (paidRequests.reduce((sum, r) => sum + Math.max(0, (new Date(r.paidDate) - new Date(r.requestedDate)) / 86400000), 0) / paidRequests.length).toFixed(1)
+    : null;
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -121,6 +153,13 @@ export default function PayoutRequestsView({ requests: propRequests, setRequests
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {(loadError || actionError) && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>{loadError || actionError}</span>
+          <button onClick={loadError ? loadRequests : () => setActionError('')} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">{loadError ? 'Retry' : 'Dismiss'}</button>
+        </div>
+      )}
+      {isLoading && <div className="text-xs text-slate-500">Loading payout requests from the server…</div>}
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -177,7 +216,7 @@ export default function PayoutRequestsView({ requests: propRequests, setRequests
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Avg Settlement Cycle</div>
           <div className="text-2xl font-black text-[#0A3977] mt-1">
-            {requests.filter(r => r.status === 'Paid').length > 0 ? '4.2 Days' : '—'}
+            {avgCycleDays !== null ? `${avgCycleDays} Days` : '—'}
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">From request submission to bank credit</div>
         </div>
@@ -263,7 +302,7 @@ export default function PayoutRequestsView({ requests: propRequests, setRequests
                       <div className="inline-flex items-center gap-1.5">
                         {req.status === 'Requested' && (
                           <button
-                            onClick={() => handleStatusChange(req.id, 'Acknowledged')}
+                            onClick={() => handleStatusChange(req, 'Acknowledged')}
                             className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md font-semibold text-[11px] transition cursor-pointer"
                           >
                             Acknowledge
@@ -271,7 +310,7 @@ export default function PayoutRequestsView({ requests: propRequests, setRequests
                         )}
                         {req.status !== 'Paid' && (
                           <button
-                            onClick={() => handleStatusChange(req.id, 'Paid')}
+                            onClick={() => handleStatusChange(req, 'Paid')}
                             className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md font-semibold text-[11px] transition cursor-pointer"
                           >
                             Mark Paid
@@ -298,6 +337,10 @@ export default function PayoutRequestsView({ requests: propRequests, setRequests
             <p className="text-xs text-slate-500 mb-4">Generate and dispatch a commission payout claim to the partner finance desk</p>
 
             <form onSubmit={handleCreateRequest} className="space-y-4">
+              {actionError && (
+                <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">{actionError}</div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Select Partner</label>
                 <select
@@ -316,6 +359,8 @@ export default function PayoutRequestsView({ requests: propRequests, setRequests
                 <input 
                   type="number"
                   required
+                  min="1"
+                  step="0.01"
                   placeholder="e.g. 75000"
                   value={newRequest.amount}
                   onChange={(e) => setNewRequest(p => ({ ...p, amount: e.target.value }))}
@@ -327,7 +372,8 @@ export default function PayoutRequestsView({ requests: propRequests, setRequests
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Disbursal Period</label>
                 <input 
                   type="text"
-                  placeholder="e.g. 01/08/2026 - 15/08/2026"
+                  required
+                  placeholder="e.g. 01/10/2026 - 15/10/2026"
                   value={newRequest.period}
                   onChange={(e) => setNewRequest(p => ({ ...p, period: e.target.value }))}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
@@ -355,9 +401,10 @@ export default function PayoutRequestsView({ requests: propRequests, setRequests
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-[#0A3977] text-white font-bold text-xs rounded-lg shadow-xs hover:bg-[#072956] transition"
+                  disabled={isSaving}
+                  className="px-4 py-1.5 bg-[#0A3977] disabled:bg-slate-400 text-white font-bold text-xs rounded-lg shadow-xs hover:bg-[#072956] transition"
                 >
-                  Send Claim
+                  {isSaving ? 'Sending…' : 'Send Claim'}
                 </button>
               </div>
             </form>

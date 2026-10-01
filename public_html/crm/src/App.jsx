@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Navbar from './components/Navbar';
 import ExecutiveDashboard from './components/ExecutiveDashboard';
@@ -7,12 +7,12 @@ import CompanyLeadsView from './components/CompanyLeadsView';
 import LeadsView from './components/LeadsView';
 import ApplicationTracker from './components/ApplicationTracker';
 import PipelineView from './components/PipelineView';
-import KPISummary from './components/KPISummary';
 import PartnerAnalyticsKPISummary from './components/PartnerAnalyticsKPISummary';
 import StaffView from './components/StaffView';
 import AuditLogView from './components/AuditLogView';
 import MyProfileView from './components/MyProfileView';
 import LoginModal from './components/LoginModal';
+import ChangePasswordModal from './components/ChangePasswordModal';
 import PartnerPortalView from './components/PartnerPortalView';
 import DeliveryLogView from './components/DeliveryLogView';
 
@@ -23,9 +23,6 @@ import CommissionSummaryView from './components/CommissionSummaryView';
 import PayoutRequestsView from './components/PayoutRequestsView';
 import SettlementsView from './components/SettlementsView';
 import InvoicesRaisedView from './components/InvoicesRaisedView';
-import { INITIAL_PAYOUT_REQUESTS } from './data/payoutsData';
-import { INITIAL_SETTLEMENTS } from './data/settlementsData';
-import { INITIAL_INVOICES } from './data/invoicesData';
 import CommissionRateCardsView from './components/CommissionRateCardsView';
 import RolesPermissionsView from './components/RolesPermissionsView';
 import IntegrationSettingsView from './components/IntegrationSettingsView';
@@ -33,16 +30,21 @@ import NotificationsView from './components/NotificationsView';
 import GeneralSettingsView from './components/GeneralSettingsView';
 import ReportsView from './components/ReportsView';
 
-import { isOffHours, isUserExempt, logSecurityIncident } from './utils/shiftSecurity';
-import { getLiveSecurityDetails } from './utils/geoService';
 import { sanitizeLead } from './utils/amountHelpers';
 import { getLeadsFromBackend, normalizeStatus } from './utils/apiConfig';
-import { 
-  getCurrentUser, 
-  setCurrentUserSession, 
-  clearCurrentUserSession 
+import { SESSION_EVENT, SESSION_EXPIRED_EVENT } from './utils/apiClient';
+import {
+  getCurrentUser,
+  setCurrentUserSession,
+  restoreSession,
+  logoutStaff
 } from './utils/authService';
+import { getFinanceCounts } from './utils/crmApi';
+import { canViewTab, hasPermission } from './utils/permissions';
 import { AFFILIATE_PARTNERS } from './data/affiliatePartners';
+
+// Leads refresh interval (the old 3 second polling hammered the server). Paused while the tab is hidden.
+const LEADS_REFRESH_MS = 30000;
 
 export default function App() {
   const [activeTab, setActiveTabState] = useState(() => {
@@ -51,7 +53,9 @@ export default function App() {
     try {
       const saved = localStorage.getItem('paisa_crm_active_tab');
       if (saved) return saved;
-    } catch (e) {}
+    } catch (e) {
+      // storage unavailable: use the default tab
+    }
     return 'executive';
   });
 
@@ -59,175 +63,163 @@ export default function App() {
     setActiveTabState(tab);
     try {
       localStorage.setItem('paisa_crm_active_tab', tab);
-    } catch (e) {}
+    } catch (e) {
+      // UI preference only
+    }
   };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
-  // Live state: Initialized with cached live leads if available, then immediately refreshed from backend API
-  const [leads, setLeads] = useState(() => {
-    try {
-      const cached = localStorage.getItem('paisa_crm_live_leads_cache');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {}
-    return [];
-  });
+  // Leads come only from the Node server (no browser cache of personal data).
+  const [leads, setLeads] = useState([]);
+  const [leadsError, setLeadsError] = useState('');
+  const [leadsLoaded, setLeadsLoaded] = useState(false);
   const isFetchingRef = useRef(false);
+  const [partnerPreview, setPartnerPreview] = useState(null);
 
-  // Clean slate on startup: clear legacy mock overrides
-  useEffect(() => {
+  const [commissionCounts, setCommissionCounts] = useState({ payoutRequests: 0, settlements: 0, invoices: 0 });
+  const refreshCommissionCounts = useCallback(async () => {
     try {
-      localStorage.removeItem('paisa_crm_lead_overrides');
-      localStorage.removeItem('pim_deleted_leads');
-    } catch (e) {}
+      setCommissionCounts(await getFinanceCounts());
+    } catch (e) {
+      // counts are cosmetic
+    }
   }, []);
-
-  // Financial transactions state initialized clean (0 records for live marketing)
-  const [payoutRequests, setPayoutRequests] = useState(() => {
-    try {
-      const saved = localStorage.getItem('paisa_crm_payout_requests');
-      return saved ? JSON.parse(saved) : INITIAL_PAYOUT_REQUESTS;
-    } catch (e) {
-      return INITIAL_PAYOUT_REQUESTS;
-    }
-  });
-
-  const [settlements, setSettlements] = useState(() => {
-    try {
-      const saved = localStorage.getItem('paisa_crm_settlements');
-      return saved ? JSON.parse(saved) : INITIAL_SETTLEMENTS;
-    } catch (e) {
-      return INITIAL_SETTLEMENTS;
-    }
-  });
-
-  const [invoices, setInvoices] = useState(() => {
-    try {
-      const saved = localStorage.getItem('paisa_crm_invoices');
-      return saved ? JSON.parse(saved) : INITIAL_INVOICES;
-    } catch (e) {
-      return INITIAL_INVOICES;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('paisa_crm_payout_requests', JSON.stringify(payoutRequests));
-    } catch (e) {}
-  }, [payoutRequests]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('paisa_crm_settlements', JSON.stringify(settlements));
-    } catch (e) {}
-  }, [settlements]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('paisa_crm_invoices', JSON.stringify(invoices));
-    } catch (e) {}
-  }, [invoices]);
 
   // Authenticated user session (null when locked/logged out)
   const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
-
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [sessionNotice, setSessionNotice] = useState('');
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
-  const [isSecurityRestricted, setIsSecurityRestricted] = useState(false);
 
-  // Listen to session changes
+  // On page load, confirm the stored session with the server (a revoked or expired session returns to login).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (getCurrentUser()) {
+        const user = await restoreSession();
+        if (!cancelled) {
+          if (user) setCurrentUser(user);
+          else {
+            setCurrentUserSession(null);
+            setCurrentUser(null);
+          }
+        }
+      }
+      if (!cancelled) setSessionChecked(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Listen to session changes (login, logout, token refresh failure)
   useEffect(() => {
     const handleSessionChange = (e) => {
-      const user = e.detail || getCurrentUser();
+      const user = e.detail || null;
       setCurrentUser(user);
+      if (!user) {
+        setLeads([]);
+        setLeadsLoaded(false);
+        setPartnerPreview(null);
+      }
       if (user && user.role === 'Partner') {
         setActiveTab('partner-leads');
       }
     };
-    window.addEventListener('paisa_session_changed', handleSessionChange);
-    return () => window.removeEventListener('paisa_session_changed', handleSessionChange);
+    const handleExpired = () => setSessionNotice('Your session has expired. Please sign in again.');
+    window.addEventListener(SESSION_EVENT, handleSessionChange);
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleExpired);
+    return () => {
+      window.removeEventListener(SESSION_EVENT, handleSessionChange);
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired);
+    };
   }, []);
 
-  // Shift & Timing Security Check (9:27 AM - 6:35 PM IST for non-exempt staff)
-  useEffect(() => {
-    const checkSecurity = async () => {
-      if (!currentUser) return;
-      const exempt = isUserExempt(currentUser);
-      if (exempt) {
-        setIsSecurityRestricted(false);
-        return;
-      }
-
-      if (isOffHours()) {
-        setIsSecurityRestricted(true);
-        const geo = await getLiveSecurityDetails();
-        logSecurityIncident(currentUser, geo);
-      } else {
-        setIsSecurityRestricted(false);
-      }
-    };
-
-    checkSecurity();
-    const timer = setInterval(checkSecurity, 30000);
-    return () => clearInterval(timer);
-  }, [currentUser]);
-
   const handleLoginSuccess = (user) => {
+    setSessionNotice('');
     setCurrentUser(user);
     setCurrentUserSession(user);
     setIsLoginModalOpen(false);
+    if (user && user.role === 'Partner') setActiveTab('partner-leads');
   };
 
+  // Used when the signed-in user's own profile changed (e.g. edited in Staff).
   const handleSwitchUser = (user) => {
     setCurrentUser(user);
     setCurrentUserSession(user);
   };
 
-  const handleLogout = () => {
-    clearCurrentUserSession();
+  // The server revokes every session when a password changes, so the user signs in again.
+  const handlePasswordChanged = () => {
+    setCurrentUserSession(null);
     setCurrentUser(null);
-    setIsLoginModalOpen(false);
+    setSessionNotice('Password changed. Please sign in with your new password.');
   };
 
-  // Real-time API Sync: In-flight locked polling with non-overlapping scheduling
-  useEffect(() => {
-    if (!currentUser) return; // Don't fetch if locked
-    let isMounted = true;
-    let pollTimeout = null;
+  const handleLogout = async () => {
+    await logoutStaff();
+    setCurrentUser(null);
+    setIsLoginModalOpen(false);
+    setSessionNotice('');
+  };
 
-    const fetchLeadsFromApi = async () => {
-      if (isFetchingRef.current) return;
-      isFetchingRef.current = true;
-      try {
-        const partnerScope = currentUser?.role === 'Partner' ? currentUser.partnerId : undefined;
-        const result = await getLeadsFromBackend({ partnerId: partnerScope });
-        if (isMounted && result && result.success && Array.isArray(result.leads)) {
-          const cleanLeads = result.leads.map(sanitizeLead);
-          setLeads(cleanLeads);
-          try {
-            localStorage.setItem('paisa_crm_live_leads_cache', JSON.stringify(cleanLeads));
-          } catch (e) {}
-        }
-      } catch (e) {
-        console.warn('[CRM LIVE STATE SYNC] ⚠️ Fetch error during polling:', e);
-      } finally {
-        isFetchingRef.current = false;
-        if (isMounted) {
-          pollTimeout = setTimeout(fetchLeadsFromApi, 3000);
+  const partnerScope = currentUser?.role === 'Partner' ? undefined : partnerPreview?.partnerId;
+
+  const refreshLeads = useCallback(async () => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
+    try {
+      const result = await getLeadsFromBackend({ partnerId: partnerScope });
+      if (result && result.success && Array.isArray(result.leads)) {
+        setLeads(result.leads.map(sanitizeLead));
+        setLeadsError('');
+        setLeadsLoaded(true);
+      } else if (result && result.status !== 401) {
+        setLeadsError(result?.error || 'Could not load leads from the server.');
+      }
+    } finally {
+      isFetchingRef.current = false;
+    }
+  }, [partnerScope]);
+
+  // Server sync: load once, then refresh every 30s while the tab is visible.
+  useEffect(() => {
+    if (!currentUser || currentUser.mustChangePassword) return undefined;
+    let timer = null;
+    const canSeeFinance = hasPermission(currentUser, 'finance.read');
+
+    const tick = async () => {
+      await refreshLeads();
+      if (canSeeFinance) {
+        try {
+          setCommissionCounts(await getFinanceCounts());
+        } catch (e) {
+          // counts are cosmetic; the finance screens report their own errors
         }
       }
     };
 
-    fetchLeadsFromApi();
-
-    return () => {
-      isMounted = false;
-      if (pollTimeout) clearTimeout(pollTimeout);
+    const schedule = () => {
+      timer = setTimeout(async () => {
+        if (!document.hidden) await tick();
+        schedule();
+      }, LEADS_REFRESH_MS);
     };
-  }, [currentUser]);
+
+    const onVisible = () => {
+      if (!document.hidden) tick();
+    };
+
+    tick();
+    schedule();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      if (timer) clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [currentUser, refreshLeads]);
 
   // Compute live counts and stats dynamically from leads array
   const leadCounts = useMemo(() => {
@@ -277,22 +269,11 @@ export default function App() {
     };
   }, [leads]);
 
-  // Counts for commissions & payouts - dynamic based on live state (0 for clean marketing launch)
-  const commissionCounts = useMemo(() => ({
-    payoutRequests: (payoutRequests || []).filter(r => r.status !== 'Paid').length,
-    settlements: (settlements || []).length,
-    invoices: (invoices || []).filter(i => i.status !== 'Paid').length
-  }), [payoutRequests, settlements, invoices]);
-
-  // Compute partner-wise counts
+  // Compute partner-wise counts (by the partner each lead is really assigned to)
   const partnerCounts = useMemo(() => {
-    const normalize = (name) => (name || '').toLowerCase().replace(/[\s\-_]/g, '');
     const counts = {};
     AFFILIATE_PARTNERS.forEach(p => {
-      counts[p.id] = leads.filter(l => {
-        const c = normalize(l.assignedCompany);
-        return c === p.id || c === normalize(p.name) || (c && c.includes(p.id));
-      }).length;
+      counts[p.id] = leads.filter(l => l.assignedPartnerSlug === p.id).length;
     });
     return counts;
   }, [leads]);
@@ -323,6 +304,11 @@ export default function App() {
     };
   }, [leads]);
 
+  // Wait for the server to confirm a stored session before showing anything (avoids a login flash).
+  if (!sessionChecked) {
+    return <div className="min-h-screen flex items-center justify-center bg-[#F4F7FC] text-slate-500 text-sm">Loading…</div>;
+  }
+
   // 🔒 IF NOT LOGGED IN: SHOW FULL-SCREEN LOGIN LOCK SCREEN
   if (!currentUser) {
     return (
@@ -331,6 +317,7 @@ export default function App() {
         isOpen={true}
         onLogin={handleLoginSuccess}
         currentUser={null}
+        notice={sessionNotice}
       />
     );
   }
@@ -340,24 +327,61 @@ export default function App() {
     // 🛡️ STRICT ROLE-BASED ACCESS CONTROL FOR PARTNER USERS
     if (currentUser?.role === 'Partner') {
       if (activeTab === 'profile') {
-        return <MyProfileView currentUser={currentUser} />;
+        return <MyProfileView currentUser={currentUser} onPasswordChanged={handlePasswordChanged} />;
       }
       return (
         <PartnerPortalView 
           currentUser={currentUser} 
           leads={leads} 
           setLeads={setLeads} 
+          onRefresh={refreshLeads}
         />
       );
     }
 
+    // Menu hiding is convenience only (the server re-checks every call); a hidden tab falls back to a safe page.
+    if (!canViewTab(currentUser, activeTab)) {
+      return (
+        <div className="crm-card bg-white p-8 rounded-2xl border border-slate-200 text-center text-sm text-slate-600">
+          You do not have permission to view this page.
+        </div>
+      );
+    }
+
     switch (activeTab) {
+      case 'partner-preview':
+        return (
+          <div className="space-y-3">
+            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-3">
+              <span>
+                Read-only preview of the <strong>{partnerPreview?.partnerName}</strong> partner portal. Partner actions are
+                only available when the partner signs in with their own account.
+              </span>
+              <button
+                onClick={() => { setPartnerPreview(null); setActiveTab('admin-staff'); }}
+                className="px-3 py-1.5 rounded-lg bg-white border border-amber-300 font-bold cursor-pointer"
+              >
+                Exit preview
+              </button>
+            </div>
+            <PartnerPortalView
+              currentUser={{ ...currentUser, role: 'Partner', partnerId: partnerPreview?.partnerId, partnerName: partnerPreview?.partnerName }}
+              leads={leads}
+              setLeads={setLeads}
+              onRefresh={refreshLeads}
+              readOnly
+            />
+          </div>
+        );
+
       case 'partner-leads':
         return (
           <PartnerPortalView 
             currentUser={currentUser} 
             leads={leads} 
             setLeads={setLeads} 
+            onRefresh={refreshLeads}
+            readOnly
           />
         );
 
@@ -417,26 +441,17 @@ export default function App() {
 
       case 'payout-requests':
         return (
-          <PayoutRequestsView 
-            requests={payoutRequests} 
-            setRequests={setPayoutRequests} 
-          />
+          <PayoutRequestsView onChanged={refreshCommissionCounts} />
         );
 
       case 'settlements':
         return (
-          <SettlementsView 
-            settlements={settlements} 
-            setSettlements={setSettlements} 
-          />
+          <SettlementsView onChanged={refreshCommissionCounts} />
         );
 
       case 'invoices-raised':
         return (
-          <InvoicesRaisedView 
-            invoices={invoices} 
-            setInvoices={setInvoices} 
-          />
+          <InvoicesRaisedView onChanged={refreshCommissionCounts} />
         );
 
       case 'rate-cards':
@@ -478,7 +493,7 @@ export default function App() {
 
       case 'pipeline':
         return (
-          <PipelineView onSwitchToList={() => setActiveTab('all-leads')} />
+          <PipelineView leads={leads} onSwitchToList={() => setActiveTab('all-leads')} />
         );
 
       case 'kpi':
@@ -493,6 +508,10 @@ export default function App() {
         return (
           <StaffView 
             onSwitchUser={handleSwitchUser} 
+            onPreviewPartner={(account) => {
+              setPartnerPreview({ partnerId: account.partnerId, partnerName: account.partnerName });
+              setActiveTab('partner-preview');
+            }}
             currentUser={currentUser} 
           />
         );
@@ -531,6 +550,7 @@ export default function App() {
         return (
           <MyProfileView 
             currentUser={currentUser} 
+            onPasswordChanged={handlePasswordChanged}
           />
         );
 
@@ -556,19 +576,6 @@ export default function App() {
         );
     }
   };
-
-  // Strict Mandatory Login Gate: If user is not authenticated, lock CRM completely!
-  if (!currentUser) {
-    return (
-      <LoginModal 
-        isFullScreen={true}
-        isOpen={true} 
-        onClose={() => {}} 
-        onLogin={handleLoginSuccess}
-        currentUser={null}
-      />
-    );
-  }
 
   return (
     <div className="flex h-screen bg-[#F4F7FC] overflow-hidden text-slate-800">
@@ -607,6 +614,12 @@ export default function App() {
         {/* Page Content View */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           <div className="w-full">
+            {leadsError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+                <span>Could not load leads from the server: {leadsError}{leadsLoaded ? ' (showing the last loaded data)' : ''}</span>
+                <button onClick={refreshLeads} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">Retry</button>
+              </div>
+            )}
             {renderMainContent()}
           </div>
         </main>
@@ -622,12 +635,16 @@ export default function App() {
         currentUser={currentUser}
       />
 
+      {/* Temporary password must be replaced before using the CRM */}
+      {currentUser.mustChangePassword && (
+        <ChangePasswordModal forced onChanged={handlePasswordChanged} />
+      )}
+
       {/* Onboard Partner Modal */}
       <PartnerOnboardingModal
         isOpen={isOnboardingOpen}
         onClose={() => setIsOnboardingOpen(false)}
         onAddPartner={(newPartner) => {
-          AFFILIATE_PARTNERS.push(newPartner);
           setActiveTab(`company-${newPartner.id}`);
         }}
       />

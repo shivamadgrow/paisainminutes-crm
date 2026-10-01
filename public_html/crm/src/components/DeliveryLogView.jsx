@@ -15,10 +15,28 @@ import {
   Eye,
   X
 } from 'lucide-react';
+import { listDeliveryLogs, retryDeliveryLog } from '../utils/crmApi';
+
+// Server delivery log (camelCase) -> the field names this screen renders
+const mapLog = (l) => ({
+  id: l.id,
+  lead_id: l.leadCode || l.applicationId,
+  application_id: l.applicationId,
+  partner_id: l.partnerId,
+  partner_name: l.partnerName,
+  endpoint: l.endpoint,
+  status: String(l.status || '').toLowerCase(),
+  attempts: l.attempt,
+  response_code: l.httpStatus,
+  created_at: l.createdAt ? new Date(l.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '',
+  request_payload: { applicationId: l.applicationId, partnerId: l.partnerId },
+  response_body: [l.errorCode, l.errorMessage].filter(Boolean).join(': ')
+});
 
 export default function DeliveryLogView() {
   const [logs, setLogs] = useState([]);
-  const [stats, setStats] = useState({ total: 0, delivered: 0, failed: 0, success_rate: 100 });
+  const [stats, setStats] = useState({ total: 0, delivered: 0, failed: 0, success_rate: 0 });
+  const [loadError, setLoadError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -29,20 +47,15 @@ export default function DeliveryLogView() {
 
   const fetchDeliveryLogs = async () => {
     setIsLoading(true);
-    try {
-      const res = await fetch(`/crm/api/delivery-logs.php?status=${statusFilter}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.success) {
-          setLogs(data.logs || []);
-          if (data.stats) setStats(data.stats);
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to fetch delivery logs:', e);
-    } finally {
-      setIsLoading(false);
+    const res = await listDeliveryLogs(statusFilter !== 'all' ? { status: statusFilter } : {});
+    if (res.success) {
+      setLogs((res.logs || []).map(mapLog));
+      if (res.stats) setStats({ ...res.stats, success_rate: res.stats.successRate ?? 0 });
+      setLoadError('');
+    } else {
+      setLoadError(res.error || 'Could not load delivery logs.');
     }
+    setIsLoading(false);
   };
 
   useEffect(() => {
@@ -58,35 +71,18 @@ export default function DeliveryLogView() {
     const logId = log.id;
     setRetryingIds(prev => new Set(prev).add(logId));
 
-    try {
-      const res = await fetch('/crm/api/delivery-logs.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'retry',
-          log_id: logId,
-          lead_id: log.lead_id,
-          partner_id: log.partner_id
-        })
-      });
-
-      const data = await res.json();
-      if (data && data.success) {
-        showToast(`Lead ${log.lead_id} successfully re-delivered to ${log.partner_name}!`);
-        await fetchDeliveryLogs();
-      } else {
-        showToast(data.error || data.message || 'Retry delivery failed', true);
-        await fetchDeliveryLogs();
-      }
-    } catch (e) {
-      showToast('Error connecting to server for retry', true);
-    } finally {
-      setRetryingIds(prev => {
-        const next = new Set(prev);
-        next.delete(logId);
-        return next;
-      });
+    const res = await retryDeliveryLog(logId);
+    if (res.success) {
+      showToast(`Lead ${log.lead_id} successfully re-delivered to ${log.partner_name}!`);
+    } else {
+      showToast(res.error || (res.result && res.result.log && res.result.log.errorMessage) || 'Retry delivery failed', true);
     }
+    await fetchDeliveryLogs();
+    setRetryingIds(prev => {
+      const next = new Set(prev);
+      next.delete(logId);
+      return next;
+    });
   };
 
   const filteredLogs = logs.filter(l => {
@@ -113,6 +109,13 @@ export default function DeliveryLogView() {
         }`}>
           {toastMessage.isError ? <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
           <span>{toastMessage.text}</span>
+        </div>
+      )}
+
+      {loadError && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>Could not load delivery logs: {loadError}</span>
+          <button onClick={fetchDeliveryLogs} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">Retry</button>
         </div>
       )}
 

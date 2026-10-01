@@ -596,14 +596,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 formStatus.className = 'form-status';
                 formStatus.textContent = 'Resending Verification Code...';
 
-                fetch(`${window.otp_api_base_url}/api/otp/send`, {
+                fetch(`${window.otp_api_base_url}/api/auth/send-otp`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ phoneNumber: '+91' + phoneVal })
+                    body: JSON.stringify({ phone: phoneVal })
                 })
                 .then(r => r.json())
                 .then(data => {
-                    if (data.success) {
+                    if (data.ok || data.success) {
                         formStatus.className = 'form-status success';
                         formStatus.textContent = 'Verification code resent successfully!';
                         startLeadTimer();
@@ -618,7 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     } else {
                         formStatus.className = 'form-status error';
-                        formStatus.textContent = data.message || 'Failed to resend verification code.';
+                        formStatus.textContent = data.message || data.error || 'Failed to resend verification code.';
                     }
                 })
                 .catch(err => {
@@ -671,22 +671,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const finalSource = hasUtm ? activeUtm : "Modal Quick Apply";
             const finalLeadSource = hasUtm ? (isWhatsApp ? 'WhatsApp' : 'Campaign') : 'Direct Website';
 
+            // Phone-only first step: only what the visitor actually entered (the Node intake route upserts the
+            // same lead later when the full form arrives). No invented amount / salary / CIBIL / partner.
             const modalPayload = {
-                applicantName: "Applicant",
                 phone: phoneVal,
-                amount: 50000,
-                tenureMonths: 12,
-                purpose: "Personal Loan",
-                monthlyIncome: 35000,
-                cibilScore: 750,
-                utmSource: finalUtmSource,
-                leadSource: finalLeadSource,
-                name: "Applicant",
-                mobile: phoneVal,
-                loanAmount: 50000,
-                salary: 35000,
-                cibil: "750+",
-                assignedCompany: "Rupay91",
                 utm_source: finalUtmSource,
                 lead_source: finalLeadSource,
                 source: finalSource
@@ -703,25 +691,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const modalTimer = setTimeout(navigateToEligibility, 1200);
 
-            fetch('/admin/api/submit-lead.php', {
+            // One call to the Node server (replaces three separate posts to PHP endpoints and the old CRM host)
+            fetch((window.backend_server_url || '') + '/api/public/leads', {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "Accept": "application/json" },
                 body: JSON.stringify(modalPayload),
-                keepalive: true
-            }).catch(() => {});
-
-            fetch('/submit-lead.php', {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(modalPayload),
-                keepalive: true
-            }).catch(() => {});
-
-            fetch('https://crm.paisainminutes.com/api/submit-lead.php', {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(modalPayload),
-                mode: 'cors',
                 keepalive: true
             }).catch(() => {});
 

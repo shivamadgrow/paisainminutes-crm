@@ -5,6 +5,8 @@
 
 export function cleanLoanAmount(raw) {
   if (raw === null || raw === undefined || raw === '' || raw === 0 || raw === '0') return 0;
+  // A real number comes from the server (integer rupees) and is authoritative: never re-interpret it
+  if (typeof raw === 'number') return Number.isFinite(raw) && raw > 0 ? raw : 0;
   
   // 1. If it's a string with range separators like '-', '–', '—', 'to'
   if (typeof raw === 'string') {
@@ -42,6 +44,7 @@ export function cleanLoanAmount(raw) {
 }
 
 export function cleanSalary(raw, salVal, salRange) {
+  if (typeof raw === 'number' && !salVal && !salRange) return Number.isFinite(raw) && raw > 0 ? raw : 0;
   // 1. Direct clean numeric sal_val takes highest priority
   if (salVal !== null && salVal !== undefined && salVal !== '') {
     const sv = Number(salVal);

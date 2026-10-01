@@ -1183,8 +1183,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const cibilBadge = document.getElementById('leadCibilBadge');
     let cibilLookupTimeout = null;
 
+    // Node server base URL (credit check + lead intake)
+    const NODE_API = <?php echo json_encode($pim_node_api_url); ?>;
+
     function autoCheckCibil(phoneNum) {
-        if (!phoneNum || phoneNum.length !== 10 || !/^[6-9]/.test(phoneNum)) {
+        // The bureau is queried only after the applicant ticked the credit-bureau consent in step 1
+        const bureauConsent = document.getElementById('step1Consent1');
+        if (!phoneNum || phoneNum.length !== 10 || !/^[6-9]/.test(phoneNum) || !(bureauConsent && bureauConsent.checked)) {
             if (cibilBadge) cibilBadge.style.display = 'none';
             return;
         }
@@ -1197,7 +1202,11 @@ document.addEventListener('DOMContentLoaded', function() {
             cibilBadge.style.border = '1px solid #BFDBFE';
             cibilBadge.innerHTML = '<span>⚡</span> <span>Checking bureau credit score...</span>';
         }
-        fetch('/api/fetch-cibil.php?phone=' + encodeURIComponent(phoneNum))
+        fetch(NODE_API + '/api/public/credit-check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ phone: phoneNum, consent: true })
+        })
             .then(r => r.json())
             .then(res => {
                 if (res && res.success && res.score) {
@@ -1333,8 +1342,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.textContent = 'Processing Application...';
             }
 
-            const jwtToken = localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token') || '';
-
             // 1. Detect UTM Source (Priority: URL query > sessionStorage > localStorage > PHP session/cookie)
             const urlParams = new URLSearchParams(window.location.search);
             const activeUtm = (urlParams.get('utm_source') || 
@@ -1383,92 +1390,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 utm_source: finalUtmSource,
                 lead_source: finalLeadSource,
                 source: finalSource,
-                status: "Fresh",
-                token: jwtToken
+                status: "Fresh"
             };
 
             try { sessionStorage.setItem('pim_phone', phoneVal); } catch(e){}
             try { localStorage.setItem('pim_phone', phoneVal); } catch(e){}
             try { sessionStorage.setItem('pim_name', nameVal); } catch(e){}
             try { sessionStorage.setItem('pim_salary', salaryVal); } catch(e){}
-            try { sessionStorage.setItem('pim_pan', panVal); } catch(e){}
-
-            // Save complete lead submission profile in localStorage for immediate CRM availability
-            const fullLeadProfile = {
-                name: nameVal,
-                fullName: nameVal,
-                applicantName: nameVal,
-                phone: phoneVal,
-                mobile: '+91 ' + phoneVal,
-                email: emailVal,
-                dob: dobVal,
-                dateOfBirth: dobVal,
-                gender: genderVal,
-                addressType: addressTypeVal,
-                pincode: pincodeVal,
-                employmentType: empTypeVal,
-                salary: Number(salaryVal),
-                monthlySalary: Number(salaryVal),
-                monthlyIncome: Number(salaryVal),
-                loanAmount: Number(loanAmtVal),
-                amount: Number(loanAmtVal),
-                salaryMode: salaryModeVal,
-                modeOfSalary: salaryModeVal,
-                companyName: companyNameVal,
-                pan: panVal,
-                haveCreditCard: creditCardVal,
-                creditCardLimit: creditCardLimitVal ? Number(creditCardLimitVal) : null,
-                city: "Online",
-                state: "India",
-                cibilScore: sessionStorage.getItem('pim_cibil') || '',
-                source: finalSource,
-                leadSource: finalLeadSource,
-                utmSource: finalUtmSource
-            };
-            try { localStorage.setItem('pim_lead_profile_' + phoneVal, JSON.stringify(fullLeadProfile)); } catch(e){}
-            try { localStorage.setItem('pim_latest_lead_profile', JSON.stringify(fullLeadProfile)); } catch(e){}
-
-            // Post canonical camelCase payload directly to Node.js backend POST /api/loan-applications
-            const canonicalBackendPayload = {
-                applicantName: nameVal,
-                name: nameVal,
-                phone: phoneVal,
-                email: emailVal,
-                amount: Number(loanAmtVal),
-                tenureMonths: 12,
-                purpose: "Personal Loan",
-                monthlyIncome: Number(salaryVal),
-                employmentType: empTypeVal,
-                companyName: companyNameVal,
-                salaryMode: salaryModeVal,
-                city: "Online",
-                state: "India",
-                pincode: pincodeVal,
-                dob: dobVal,
-                gender: genderVal,
-                pan: panVal,
-                haveCreditCard: (creditCardVal === 'Yes' || creditCardVal === true),
-                creditCardLimit: creditCardLimitVal ? Number(creditCardLimitVal) : null,
-                addressType: addressTypeVal,
-                leadSource: finalLeadSource,
-                utmSource: finalUtmSource,
-                source: finalSource
-            };
-            const cibilScoreVal = sessionStorage.getItem('pim_cibil');
-            if (cibilScoreVal && !isNaN(Number(cibilScoreVal)) && Number(cibilScoreVal) >= 300) {
-                canonicalBackendPayload.cibilScore = Number(cibilScoreVal);
-            }
-
-            fetch('https://api.paisainminutes.tech/api/loan-applications', {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    ...(jwtToken ? { "Authorization": "Bearer " + jwtToken } : {})
-                },
-                body: JSON.stringify(canonicalBackendPayload),
-                keepalive: true
-            }).catch(() => {});
 
             let hasNavigated = false;
             let redirectUrl = '/loan-offers.php?phone=' + encodeURIComponent(phoneVal) + 
@@ -1483,11 +1411,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.location.href = redirectUrl;
             };
 
-            // Post to backend endpoints asynchronously
-            fetch('/submit-lead.php', {
+            // One submission to the Node server (it replaces the four separate posts the page used to make)
+            fetch(NODE_API + '/api/public/leads', {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
+                headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                body: JSON.stringify(payload),
+                keepalive: true
             })
             .then(res => res.json())
             .then(data => {
@@ -1499,22 +1428,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(() => {
                 navigateNext();
             });
-
-            // Parallel background post to CRM & admin endpoints
-            fetch('/admin/api/submit-lead.php', {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-                keepalive: true
-            }).catch(() => {});
-
-            fetch('https://crm.paisainminutes.com/api/submit-lead.php', {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
-                mode: 'cors',
-                keepalive: true
-            }).catch(() => {});
 
             // Safety timeout after 1.8 seconds max to guarantee navigation
             setTimeout(navigateNext, 1800);

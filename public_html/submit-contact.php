@@ -1,14 +1,19 @@
 <?php
+/**
+ * Contact form endpoint (compatibility forwarder).
+ *
+ * The contact page now posts directly to the Node server (POST /api/public/contact). This file only remains for
+ * old cached pages: it forwards the submission to Node server-side and relays Node's JSON answer. It no longer
+ * stores anything itself (no data/contacts.json, no contacts_log.csv).
+ */
 if (!headers_sent()) {
     header("Strict-Transport-Security: max-age=31536000; includeSubDomains; preload");
     header("X-Content-Type-Options: nosniff");
 }
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 header('Content-Type: application/json');
+
+require_once __DIR__ . '/config/env.php';
+$pimNodeApi = rtrim((string) getEnvVal('BACKEND_API_URL', 'https://api.paisainminutes.tech'), '/');
 
 // Read input from POST or JSON body
 $input = $_POST;
@@ -17,77 +22,46 @@ if (is_array($jsonInput)) {
     $input = array_merge($input, $jsonInput);
 }
 
-$name = isset($input['name']) ? trim(htmlspecialchars($input['name'])) : '';
-$phone = isset($input['phone']) ? trim(htmlspecialchars($input['phone'])) : '';
-$email = isset($input['email']) ? trim(htmlspecialchars($input['email'])) : '';
-$subject = isset($input['subject']) ? trim(htmlspecialchars($input['subject'])) : '';
-$message = isset($input['message']) ? trim(htmlspecialchars($input['message'])) : '';
-$agree_consent = isset($input['agree_consent']) ? true : false;
-
-// Validation
-if (empty($name) || empty($phone) || empty($email) || empty($message)) {
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'Please fill in all required fields (Name, Phone, Email, and Message).'
-    ]);
-    exit;
-}
-
-if (!$agree_consent && !isset($input['agree_consent'])) {
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'Please accept the consent terms before submitting.'
-    ]);
-    exit;
-}
-
-$contactId = 'MSG-' . rand(100000, 999999);
-$timestamp = date('Y-m-d H:i:s');
-$userIp = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
-
-$contactData = [
-    'contact_id' => $contactId,
-    'timestamp' => $timestamp,
-    'name' => $name,
-    'phone' => $phone,
-    'email' => $email,
-    'subject' => $subject,
-    'message' => $message,
-    'ip_address' => $userIp,
-    'status' => 'New'
+$body = [
+    'name' => isset($input['name']) ? trim((string) $input['name']) : '',
+    'phone' => isset($input['phone']) ? trim((string) $input['phone']) : '',
+    'email' => isset($input['email']) ? trim((string) $input['email']) : '',
+    'subject' => isset($input['subject']) ? trim((string) $input['subject']) : '',
+    'message' => isset($input['message']) ? trim((string) $input['message']) : '',
+    'agree_consent' => isset($input['agree_consent']) ? '1' : '',
+    'website' => isset($input['website']) ? (string) $input['website'] : '',
 ];
 
-// Save to data/contacts.json
-$dataDir = __DIR__ . '/data';
-if (!is_dir($dataDir)) {
-    @mkdir($dataDir, 0755, true);
+if (!function_exists('curl_init')) {
+    http_response_code(503);
+    echo json_encode(['status' => 'error', 'message' => 'The message service is temporarily unavailable. Please try again later.']);
+    exit;
 }
 
-$jsonFile = $dataDir . '/contacts.json';
-$contactsList = [];
-if (file_exists($jsonFile)) {
-    $existing = file_get_contents($jsonFile);
-    $contactsList = json_decode($existing, true) ?: [];
-}
-$contactsList[] = $contactData;
-@file_put_contents($jsonFile, json_encode($contactsList, JSON_PRETTY_PRINT));
-
-// Save to contacts_log.csv
-$logFile = __DIR__ . '/contacts_log.csv';
-$fileExisted = file_exists($logFile);
-$file = @fopen($logFile, 'a');
-if ($file) {
-    if (!$fileExisted) {
-        fputcsv($file, array_keys($contactData));
-    }
-    fputcsv($file, array_values($contactData));
-    fclose($file);
-}
-
-// Return success response
-echo json_encode([
-    'status' => 'success',
-    'message' => 'Thank you! Your message has been sent successfully. Our team will contact you shortly.',
-    'reference_id' => $contactId
+$ch = curl_init($pimNodeApi . '/api/public/contact');
+curl_setopt_array($ch, [
+    CURLOPT_POST => true,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_CONNECTTIMEOUT => 2,
+    CURLOPT_TIMEOUT => 5,
+    CURLOPT_HTTPHEADER => ['Content-Type: application/json', 'Accept: application/json'],
+    CURLOPT_POSTFIELDS => json_encode($body),
 ]);
+$response = curl_exec($ch);
+$code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+$decoded = ($response === false) ? null : json_decode($response, true);
+if (!is_array($decoded)) {
+    http_response_code(503);
+    echo json_encode(['status' => 'error', 'message' => 'The message service is temporarily unavailable. Please try again later.']);
+    exit;
+}
+
+if (!isset($decoded['status'])) {
+    // Node rate limiter answers {success:false,error:"..."}
+    $decoded = ['status' => 'error', 'message' => $decoded['error'] ?? 'Failed to send message. Please try again.'];
+}
+http_response_code($code >= 100 ? $code : 503);
+echo json_encode($decoded);
 exit;

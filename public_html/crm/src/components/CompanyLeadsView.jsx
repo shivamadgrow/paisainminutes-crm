@@ -27,7 +27,8 @@ import {
   AFFILIATE_PARTNERS,
   getPartnerTrackingUrl,
   trackPartnerClick,
-  getPartnerDirectUtmUrl
+  getPartnerDirectUtmUrl,
+  getServerPartnerId
 } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
 import { cleanLoanAmount, cleanSalary, formatToIST, isDateInRange, DATE_RANGE_PRESETS } from '../utils/amountHelpers';
@@ -49,6 +50,7 @@ export default function CompanyLeadsView({
   const [reassigningLeadId, setReassigningLeadId] = useState(null);
   const [reassignAnchor, setReassignAnchor] = useState(null);
   const [reassignFilterQuery, setReassignFilterQuery] = useState('');
+  const [actionError, setActionError] = useState('');
 
   // Close reassign popover on click outside, background scroll, resize, or Escape
   useEffect(() => {
@@ -95,20 +97,9 @@ export default function CompanyLeadsView({
     };
   }, [reassigningLeadId]);
 
-  // Filter leads assigned to this company
+  // Leads really assigned to this partner (server field `assignedPartnerId`, never a name match)
   const companyLeads = useMemo(() => {
-    return leads.filter(l => {
-      const c = (l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
-      const sel = String(l.selectedLenderId || '').trim().toLowerCase();
-      const pId = partner.id.toLowerCase();
-      const pName = partner.name.toLowerCase().replace(/[\s\-_]/g, '');
-      const pCode = (partner.code || '').toLowerCase();
-      return c === pId ||
-        c === pName ||
-        c === pCode ||
-        sel === pId ||
-        (l.assignedCompany && l.assignedCompany.toLowerCase().includes(partner.name.toLowerCase()));
-    });
+    return leads.filter(l => l.assignedPartnerSlug === partner.id);
   }, [leads, partner]);
 
   // Apply search, status, and date range filter
@@ -203,45 +194,51 @@ export default function CompanyLeadsView({
     exportToCsv(`${partner.name.toLowerCase()}-assigned-leads-${dateStr}.csv`, headers, rows);
   };
 
-  // Re-assign lead to another partner
-  const handleReassign = async (leadId, newCompany) => {
-    try {
-      if (setLeads) {
-        setLeads(prev => prev.map(l => {
-          if (l.id === leadId || l.loanNo === leadId) {
-            return { ...l, assignedCompany: newCompany, partner_name: newCompany, selectedLenderId: newCompany };
-          }
-          return l;
-        }));
-      }
+  const replaceLead = (backendId, updated) => {
+    if (updated && setLeads) setLeads(prev => prev.map(l => (l.id === backendId ? updated : l)));
+  };
 
-      await updateLoanApplication(leadId, { selectedLenderId: newCompany });
-      setReassigningLeadId(null);
-    } catch (e) {
-      setReassigningLeadId(null);
+  // Re-assign lead to another partner (server decides; the list changes only after success)
+  const handleReassign = async (leadId, newCompany) => {
+    const target = AFFILIATE_PARTNERS.find(p => p.name === newCompany || p.id === newCompany);
+    const serverPartnerId = target ? getServerPartnerId(target.id) : null;
+    setReassigningLeadId(null);
+    if (!serverPartnerId) {
+      setActionError(`"${newCompany}" is not registered on the server yet.`);
+      return;
+    }
+    const lead = leads.find(l => l.id === leadId || l.loanNo === leadId);
+    const res = await updateLoanApplication(lead ? lead.id : leadId, { assignedPartnerId: serverPartnerId });
+    if (res.success && res.lead) {
+      replaceLead(lead ? lead.id : leadId, res.lead);
+      setActionError('');
+    } else {
+      setActionError(res.error || 'Could not reassign the lead.');
     }
   };
 
-  // Update lead status
+  // Update lead status (the seven canonical CRM statuses only)
   const handleStatusChange = async (leadId, newStatus) => {
     const canonicalStatus = normalizeStatus(newStatus);
-    const displayLabel = formatStatusLabel(newStatus);
-    try {
-      if (setLeads) {
-        setLeads(prev => prev.map(l => {
-          if (l.id === leadId || l.loanNo === leadId) {
-            return { ...l, status: canonicalStatus, statusLabel: displayLabel };
-          }
-          return l;
-        }));
-      }
-
-      await updateLoanApplication(leadId, { status: canonicalStatus });
-    } catch (e) { }
+    const lead = leads.find(l => l.id === leadId || l.loanNo === leadId);
+    const res = await updateLoanApplication(lead ? lead.id : leadId, { status: canonicalStatus });
+    if (res.success && res.lead) {
+      replaceLead(lead ? lead.id : leadId, res.lead);
+      setActionError('');
+    } else {
+      setActionError(res.error || `Could not change the status to ${formatStatusLabel(newStatus)}.`);
+    }
   };
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+
+      {actionError && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>{actionError}</span>
+          <button onClick={() => setActionError('')} className="px-2 py-1 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">Dismiss</button>
+        </div>
+      )}
 
       {/* Top Header with Back Button & Partner Branding */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

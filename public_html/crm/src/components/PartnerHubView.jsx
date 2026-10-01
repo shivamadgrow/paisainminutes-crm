@@ -18,21 +18,19 @@ import {
 import { AFFILIATE_PARTNERS, getPartnerTrackingUrl, trackPartnerClick } from '../data/affiliatePartners';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
 import { cleanLoanAmount } from '../utils/amountHelpers';
+import { normalizeStatus } from '../utils/apiConfig';
 
 export default function PartnerHubView({ leads = [], onSelectCompany, onOpenTestModal }) {
   const [selectedTimeRange, setSelectedTimeRange] = useState('all');
 
   // Compute metrics per affiliate partner
   const partnerStats = AFFILIATE_PARTNERS.map(partner => {
-    const partnerLeads = leads.filter(l => {
-      const c = (l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
-      return c === partner.id || c === partner.name.toLowerCase().replace(/[\s\-_]/g, '') || c === partner.code.toLowerCase();
-    });
+    const partnerLeads = leads.filter(l => l.assignedPartnerSlug === partner.id);
 
     const totalCount = partnerLeads.length;
     const totalVolume = partnerLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied), 0);
-    const freshCount = partnerLeads.filter(l => l.status === 'Fresh').length;
-    const approvedCount = partnerLeads.filter(l => l.status === 'Approved' || l.status === 'Disbursed').length;
+    const freshCount = partnerLeads.filter(l => normalizeStatus(l.status) === 'FRESH').length;
+    const approvedCount = partnerLeads.filter(l => ['APPROVED', 'DISBURSED'].includes(normalizeStatus(l.status))).length;
     const avgTicket = totalCount > 0 ? Math.round(totalVolume / totalCount) : 0;
     const conversionRate = totalCount > 0 ? Math.round((approvedCount / totalCount) * 100) : 0;
 
@@ -49,7 +47,7 @@ export default function PartnerHubView({ leads = [], onSelectCompany, onOpenTest
   });
 
   const totalAssigned = partnerStats.reduce((sum, p) => sum + p.totalCount, 0);
-  const unassignedCount = leads.filter(l => !l.assignedCompany || l.assignedCompany === '—' || l.assignedCompany === 'Unassigned').length;
+  const unassignedCount = leads.filter(l => !l.assignedPartnerId).length;
   const totalVolumeAll = leads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied), 0);
 
   // Chart data

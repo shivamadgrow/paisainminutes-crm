@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   DollarSign, 
   IndianRupee, 
@@ -16,48 +16,59 @@ import {
 } from 'lucide-react';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
-import { cleanLoanAmount } from '../utils/amountHelpers';
+import { getPartnerKpiSummary } from '../utils/crmApi';
 
-export default function CommissionSummaryView({ leads = [], onSelectCompany }) {
+export default function CommissionSummaryView({ onSelectCompany }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [sortField, setSortField] = useState('commissionEarned');
   const [sortDirection, setSortDirection] = useState('desc');
 
-  // Compute live partner commission breakdown
+  const [kpi, setKpi] = useState(null);
+  const [loadError, setLoadError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Per-partner numbers come from the server's partner KPI report (this financial year, IST); nothing is
+  // recomputed in the browser, and a partner's payment status is derived by the server from settlements.
+  const loadKpi = async () => {
+    setIsLoading(true);
+    const res = await getPartnerKpiSummary({
+      period: 'this_fy',
+      asOf: new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date())
+    });
+    if (res.success) {
+      setKpi(res);
+      setLoadError('');
+    } else {
+      setLoadError(res.error || 'Could not load the commission summary.');
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadKpi();
+  }, []);
+
+  const rupees = (paise) => Math.round((Number(paise) || 0) / 100);
+
   const partnerData = useMemo(() => {
-    return AFFILIATE_PARTNERS.map(partner => {
-      const pLeads = leads.filter(l => {
-        const assigned = String(l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
-        const partnerNameClean = partner.name.toLowerCase().replace(/[\s\-_]/g, '');
-        const partnerIdClean = partner.id.toLowerCase().replace(/[\s\-_]/g, '');
-        return assigned === partnerIdClean || assigned === partnerNameClean || (assigned && assigned.includes(partnerIdClean));
-      });
-
-      const leadsSent = pLeads.length;
-      const approvedLeads = pLeads.filter(l => l.status === 'Approved' || l.status === 'Disbursed');
-      const approved = approvedLeads.length;
-      const conversionRate = leadsSent > 0 ? Number(((approved / leadsSent) * 100).toFixed(1)) : 0;
-      
-      const disbursal = approvedLeads.reduce((sum, l) => {
-        return sum + cleanLoanAmount(l.loanAmount || l.applied || 50000);
-      }, 0);
-
-      const ratePct = partner.commissionPct || 0.06;
-      const commissionEarned = Math.round(disbursal * ratePct);
-
+    return ((kpi && kpi.partners) || []).map(sp => {
+      const meta = AFFILIATE_PARTNERS.find(p => p.id === sp.slug) || {};
       return {
-        ...partner,
-        leadsSent,
-        approved,
-        conversionRate,
-        disbursal,
-        commissionEarned,
-        commissionRate: partner.commissionRate || `${(ratePct * 100).toFixed(1)}%`,
-        paymentStatus: partner.paymentStatus || 'Pending'
+        ...meta,
+        id: sp.slug || sp.id,
+        name: sp.name,
+        code: meta.code || String(sp.slug || '').toUpperCase(),
+        leadsSent: Number(sp.leadsSent) || 0,
+        approved: Number(sp.approved) || 0,
+        conversionRate: Number(sp.conversionRate) || 0,
+        disbursal: rupees(sp.disbursalPaise),
+        commissionEarned: rupees(sp.commissionEarnedPaise),
+        commissionRate: `${Number(sp.commissionRatePercent || 0).toFixed(1)}%`,
+        paymentStatus: sp.paymentStatus === 'None' ? 'Pending' : (sp.paymentStatus || 'Pending')
       };
     });
-  }, [leads]);
+  }, [kpi]);
 
   // Overall totals
   const totals = useMemo(() => {
@@ -151,6 +162,13 @@ export default function CommissionSummaryView({ leads = [], onSelectCompany }) {
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {loadError && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>{loadError}</span>
+          <button onClick={loadKpi} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">Retry</button>
+        </div>
+      )}
+      {isLoading && <div className="text-xs text-slate-500">Loading commission summary from the server…</div>}
       {/* Title & Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -162,7 +180,7 @@ export default function CommissionSummaryView({ leads = [], onSelectCompany }) {
             </span>
           </h1>
           <p className="text-xs text-slate-500 mt-1 font-mono">
-            Partner-wise approved disbursals, earned commission slabs & reconciliation status for FY 2026-27
+            Partner-wise approved disbursals, earned commission slabs & reconciliation status for the current financial year
           </p>
         </div>
 
@@ -180,7 +198,7 @@ export default function CommissionSummaryView({ leads = [], onSelectCompany }) {
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Leads Sent</div>
           <div className="text-2xl font-black text-[#0A3977] mt-1">{totals.leadsSent.toLocaleString('en-IN')}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5">Across 8 active partners</div>
+          <div className="text-[10px] text-slate-500 mt-0.5">Across {partnerData.length} partners</div>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">

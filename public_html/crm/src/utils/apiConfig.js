@@ -1,11 +1,13 @@
 /**
- * Unified API Client for Paisa in Minutes CRM
- * Single Source of Truth Backend API: https://api.paisainminutes.tech
+ * Lead data layer for the CRM. Everything goes through the single API client (`apiClient.js`) to the Node
+ * server; MongoDB (via that server) is the only source of truth. There are no static-file, CSV or
+ * localStorage fallbacks: when the server cannot be reached the caller gets `{ success:false, error }`.
  */
 
 import { formatToIST } from './amountHelpers.js';
+import { api, BACKEND_BASE } from './apiClient.js';
+import { AFFILIATE_PARTNERS, getServerPartnerId, getPartnerSlugByServerId } from '../data/affiliatePartners.js';
 
-const BACKEND_BASE = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_API_URL) || 'https://api.paisainminutes.tech';
 export { BACKEND_BASE };
 
 /**
@@ -32,7 +34,9 @@ export const CRM_STATUS_MAP = {
 };
 
 /**
- * Normalizes any raw status string (e.g. DRAFT, SUBMITTED, Fresh) into canonical uppercase enum
+ * Normalizes any raw status string (e.g. DRAFT, SUBMITTED, Fresh) into the canonical uppercase CRM enum.
+ * The CRM `status` only ever holds the seven values above; partner delivery state ("Contacted",
+ * "Redirected", ...) lives in the separate `partnerStatus` field.
  */
 export function normalizeStatus(rawStatus) {
   if (!rawStatus) return 'FRESH';
@@ -55,75 +59,36 @@ export function formatStatusLabel(rawStatus) {
   return CRM_STATUS_MAP[norm]?.label || norm;
 }
 
-/**
- * Get configured CRM authentication headers for authenticated routes (PATCH, phone dossier lookup)
- */
-export function getAuthHeaders() {
-  try {
-    const token = (typeof localStorage !== 'undefined' ? localStorage.getItem('pim_jwt_token') : null) ||
-      (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('pim_jwt_token') : null) ||
-      (typeof localStorage !== 'undefined' ? localStorage.getItem('paisa_crm_token') : null) ||
-      (typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('paisa_crm_token') : null) ||
-      (typeof import.meta !== 'undefined' && import.meta.env && (import.meta.env.VITE_CRM_API_KEY || import.meta.env.VITE_BACKEND_API_KEY || import.meta.env.VITE_AUTH_TOKEN));
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
-  } catch (e) {
-    return {};
-  }
+/** Partner delivery states kept by the server in `partnerStatus` (never in `status`). */
+export const PARTNER_STATUS_LABELS = {
+  NONE: 'Not Assigned',
+  ASSIGNED: 'Assigned',
+  REDIRECTED: 'Redirected',
+  CONTACTED: 'Contacted',
+  APPROVED: 'Approved',
+  DISBURSED: 'Disbursed',
+  REJECTED: 'Rejected'
+};
+
+export function formatPartnerStatusLabel(raw) {
+  const key = String(raw || 'NONE').toUpperCase();
+  return PARTNER_STATUS_LABELS[key] || key;
 }
 
-/**
- * Known Real Lenders from Backend GET /api/lenders
- * Real IDs: "1", "2", "3", "4"
- */
-export const KNOWN_LENDERS = [
-  { id: '1', name: 'Aditya Birla Capital', maxAmount: 500000 },
-  { id: '2', name: 'Bajaj Finserv Direct', maxAmount: 400000 },
-  { id: '3', name: 'Tata Capital Finance', maxAmount: 350000 },
-  { id: '4', name: 'L&T Finance Holding', maxAmount: 250000 }
-];
+// ---------------------------------------------------------------- lenders (real Lender rows only)
 
-let cachedLendersList = [...KNOWN_LENDERS];
+let cachedLendersList = [];
 
 /**
- * Fetch Real Lenders from Backend (GET /api/lenders)
+ * Real lenders from `GET /api/lenders`. A lender id is only ever a Lender table id, never a partner slug.
  */
 export async function getLendersFromBackend() {
-  try {
-    const res = await fetch(`${BACKEND_BASE}/api/lenders`, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' }
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : (data.lenders || []);
-      if (Array.isArray(list) && list.length > 0) {
-        cachedLendersList = list;
-        return list;
-      }
-    }
-  } catch (e) {
-    console.warn('[getLendersFromBackend] Could not reach backend /api/lenders:', e);
+  const res = await api('/api/lenders', { auth: false });
+  if (res.ok && res.data) {
+    const list = Array.isArray(res.data) ? res.data : res.data.lenders || [];
+    if (Array.isArray(list)) cachedLendersList = list;
   }
   return cachedLendersList;
-}
-
-/**
- * Validates selectedLenderId against real lender table.
- * Prevents sending lender names or invented IDs to the backend.
- */
-export function resolveValidLenderId(val) {
-  if (val === undefined || val === null || val === '' || val === 'Pending Selection' || val === 'null' || val === 'undefined') {
-    return null;
-  }
-  const str = String(val).trim();
-  const directMatch = cachedLendersList.find(l => String(l.id) === str);
-  if (directMatch) return String(directMatch.id);
-
-  const nameMatch = cachedLendersList.find(l => l.name && (l.name.toLowerCase() === str.toLowerCase() || str.toLowerCase().includes(l.name.toLowerCase())));
-  if (nameMatch) return String(nameMatch.id);
-
-  if (/^\d+$/.test(str)) return str;
-  return null;
 }
 
 /**
@@ -132,20 +97,20 @@ export function resolveValidLenderId(val) {
 export function resolveLenderName(lenderId) {
   if (!lenderId) return null;
   const str = String(lenderId).trim();
-  const found = cachedLendersList.find(l => String(l.id) === str || (l.name && l.name.toLowerCase() === str.toLowerCase()));
+  const found = cachedLendersList.find(l => String(l.id) === str);
   return found ? found.name : null;
 }
 
 /**
- * Masks PAN according to security rules: e.g. ABCDE1234F -> AB*****4F
- * Raw PAN values MUST NEVER be logged or displayed in UI!
+ * Masks PAN: the server already returns `ABCDE****F`; anything else is masked here. Raw PAN values must
+ * never be logged or displayed in the UI.
  */
 export function maskPan(rawPan) {
   if (!rawPan) return '—';
   const clean = String(rawPan).trim().toUpperCase();
   if (clean.includes('*')) return clean;
   if (clean.length === 10) {
-    return `${clean.slice(0, 2)}*****${clean.slice(-2)}`;
+    return `${clean.slice(0, 5)}****${clean.slice(-1)}`;
   }
   return clean ? `${clean.slice(0, 2)}*****` : '—';
 }
@@ -163,7 +128,7 @@ export function formatIsoDate(val) {
       if (/^\d{4}-\d{2}-\d{2}$/.test(p)) return p;
     }
     // DD/MM/YYYY or DD-MM-YYYY
-    const dmy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    const dmy = trimmed.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
     if (dmy) {
       const dd = dmy[1].padStart(2, '0');
       const mm = dmy[2].padStart(2, '0');
@@ -236,38 +201,20 @@ export function sanitizePan(val) {
 }
 
 /**
- * Builds the canonical camelCase payload for POST /api/loan-applications.
- * 
- * Rules:
- * - Only send fields that actually exist in frontend state or user input.
- * - Do not send fake, placeholder, or randomly generated values.
- * - Minimal payload remains fully supported.
- * - Aliases normalized to canonical names:
- *     name/fullName -> applicantName
- *     loan_amount -> amount
- *     salary/monthlySalary -> monthlyIncome
- *     employment_type -> employmentType
- *     company_name -> companyName
- *     mode_of_salary -> salaryMode
- *     utm_source -> utmSource
- *     lead_source -> leadSource
- *     have_credit_card -> haveCreditCard
- *     credit_card_limit -> creditCardLimit
+ * Builds the canonical camelCase payload for POST /api/loan-applications (CRM "add lead" forms).
+ * Only fields that exist in the form are sent; nothing is invented.
  */
 export function buildLeadPayload(input = {}) {
   if (!input || typeof input !== 'object') return {};
 
   const payload = {};
 
-  // 1. applicantName (with name / fullName aliases)
   const rawName = input.applicantName ?? input.fullName ?? input.name;
   if (rawName && typeof rawName === 'string' && rawName.trim()) {
     payload.applicantName = rawName.trim();
-    // Preserve name for minimal payload backward compatibility
     payload.name = payload.applicantName;
   }
 
-  // 2. phone (10-digit mobile)
   const rawPhone = input.phone ?? input.phoneNumber ?? input.mobile;
   if (rawPhone) {
     const cleanPhone = String(rawPhone).replace(/\D/g, '').slice(-10);
@@ -278,65 +225,54 @@ export function buildLeadPayload(input = {}) {
     }
   }
 
-  // 3. email
   const rawEmail = input.email ?? input.emailAddress;
   if (rawEmail && typeof rawEmail === 'string' && rawEmail.trim() && rawEmail.includes('@')) {
     payload.email = rawEmail.trim();
   }
 
-  // 4. amount (numeric)
   const amountVal = coerceNumber(input.amount ?? input.loan_amount ?? input.loanAmount ?? input.applied);
   if (amountVal !== undefined && amountVal > 0) {
     payload.amount = amountVal;
   }
 
-  // 5. tenureMonths (numeric)
   const tenureVal = coerceNumber(input.tenureMonths ?? input.tenure);
   if (tenureVal !== undefined && tenureVal > 0) {
     payload.tenureMonths = tenureVal;
   }
 
-  // 6. purpose
   const rawPurpose = input.purpose ?? input.loanPurpose;
   if (rawPurpose && typeof rawPurpose === 'string' && rawPurpose.trim()) {
     payload.purpose = rawPurpose.trim();
   }
 
-  // 7. monthlyIncome (numeric)
   const incomeVal = coerceNumber(input.monthlyIncome ?? input.salary ?? input.monthlySalary ?? input.monthly_salary);
   if (incomeVal !== undefined && incomeVal > 0) {
     payload.monthlyIncome = incomeVal;
   }
 
-  // 8. employmentType
   const empVal = input.employmentType ?? input.employment_type ?? input.empType;
   if (empVal && typeof empVal === 'string' && empVal.trim()) {
     payload.employmentType = empVal.trim();
   }
 
-  // 9. companyName
   const compVal = input.companyName ?? input.company_name ?? input.company;
   if (compVal && typeof compVal === 'string' && compVal.trim() && compVal !== '—') {
     payload.companyName = compVal.trim();
   }
 
-  // 10. salaryMode
   const modeVal = input.salaryMode ?? input.mode_of_salary ?? input.modeOfSalary;
   if (modeVal && typeof modeVal === 'string' && modeVal.trim() && modeVal !== '—') {
     payload.salaryMode = modeVal.trim();
   }
 
-  // 11. city
   if (input.city && typeof input.city === 'string' && input.city.trim() && input.city !== '—') {
     payload.city = input.city.trim();
   }
 
-  // 12. state
   if (input.state && typeof input.state === 'string' && input.state.trim() && input.state !== '—') {
     payload.state = input.state.trim();
   }
 
-  // 13. pincode
   const rawPin = input.pincode ?? input.pinCode ?? input.pin;
   if (rawPin) {
     const cleanPin = String(rawPin).replace(/\D/g, '').slice(0, 6);
@@ -345,901 +281,328 @@ export function buildLeadPayload(input = {}) {
     }
   }
 
-  // 14. dob (ISO YYYY-MM-DD)
   const rawDob = input.dob ?? input.dateOfBirth ?? input.date_of_birth;
   const isoDob = formatIsoDate(rawDob);
   if (isoDob) {
     payload.dob = isoDob;
   }
 
-  // 15. gender
   const rawGender = input.gender ?? input.sex;
   if (rawGender && typeof rawGender === 'string' && rawGender.trim() && rawGender !== '—') {
     payload.gender = rawGender.trim();
   }
 
-  // 16. haveCreditCard (boolean)
   const ccBool = coerceBoolean(input.haveCreditCard ?? input.have_credit_card ?? input.hasCreditCard);
   if (ccBool !== undefined) {
     payload.haveCreditCard = ccBool;
   }
 
-  // 17. creditCardLimit (number)
   const ccLimit = coerceNumber(input.creditCardLimit ?? input.credit_card_limit);
   if (ccLimit !== undefined) {
     payload.creditCardLimit = ccLimit;
   }
 
-  // 18. utmSource
   const rawUtm = input.utmSource ?? input.utm_source;
   if (rawUtm && typeof rawUtm === 'string' && rawUtm.trim() && rawUtm !== 'null' && rawUtm !== 'undefined') {
     payload.utmSource = rawUtm.trim();
   }
 
-  // 19. leadSource
   const rawLeadSource = input.leadSource ?? input.lead_source ?? input.source;
   if (rawLeadSource && typeof rawLeadSource === 'string' && rawLeadSource.trim()) {
     payload.leadSource = rawLeadSource.trim();
   }
 
-  // 20. pan (10-char uppercase PAN, never log raw)
   const validPan = sanitizePan(input.pan ?? input.panNumber ?? input.pan_card);
   if (validPan) {
     payload.pan = validPan;
   }
 
-  // 21. cibilScore (number 300 - 900)
   const cibil = coerceCibilScore(input.cibilScore ?? input.cibil);
   if (cibil !== undefined) {
     payload.cibilScore = cibil;
   }
 
-  // 22. selectedLenderId (validated against backend lenders)
-  if (input.selectedLenderId !== undefined) {
-    const validLenderId = resolveValidLenderId(input.selectedLenderId);
-    if (validLenderId) {
-      payload.selectedLenderId = validLenderId;
-    }
-  }
-
-  // 23. lenderApplicationId
-  const rawAppId = input.lenderApplicationId ?? input.partnerApplicationId;
-  if (rawAppId && typeof rawAppId === 'string' && rawAppId.trim()) {
-    payload.lenderApplicationId = rawAppId.trim();
-  }
-
   return payload;
 }
 
+const PLACEHOLDER_COMPANY = ['pending selection', 'pending details', 'unassigned', '—', '', 'null', 'undefined'];
+
 /**
- * Resolves Assigned Lending Partner.
- * Strict Rule: Never guess or auto-route based on salary or CIBIL.
- * If backend selectedLenderId is null or unassigned, return 'Pending Selection'.
+ * Display name of whoever the lead is assigned to. Strict rule: never guess or auto-route.
+ * Assigned partner (real `assignedPartnerId`) first, then a real lender, otherwise 'Pending Selection'.
  */
 export function resolveAssignedCompany(item) {
   if (!item) return 'Pending Selection';
-  if (item.selectedLenderId && item.selectedLenderId !== 'Pending Selection' && item.selectedLenderId !== 'null') {
+  if (item.assignedPartnerId) {
+    const slug = getPartnerSlugByServerId(item.assignedPartnerId);
+    const partner = slug ? AFFILIATE_PARTNERS.find((p) => p.id === slug) : null;
+    if (partner) return partner.name;
+  }
+  if (item.selectedLenderId) {
     const name = resolveLenderName(item.selectedLenderId);
-    return name || item.selectedLenderId;
-  }
-  if (item.assignedCompany && !['pending selection', 'pending details', 'unassigned', '—', '', 'null', 'undefined'].includes(String(item.assignedCompany).toLowerCase())) {
-    return item.assignedCompany;
-  }
-  if (item.partner && !['pending selection', 'pending details', 'unassigned', '—', '', 'null', 'undefined'].includes(String(item.partner).toLowerCase())) {
-    return item.partner;
+    if (name) return name;
   }
   return 'Pending Selection';
 }
 
 /**
- * In-memory cache for client-submitted lead enrichment map
+ * Map a lead returned by the Node server (`/api/loan-applications/*`) into the CRM's lead shape.
+ * Nothing is enriched from static files or browser storage: what the server returns is what is shown.
  */
-let cachedEnrichmentMap = null;
-
-/**
- * Loads client-submitted lead dossiers to enrich backend records where fields were null
- */
-export async function loadLeadEnrichmentMap() {
-  if (cachedEnrichmentMap) return cachedEnrichmentMap;
-
-  const map = new Map();
-
-  const sources = [
-    '/data/leads.json',
-    './data/leads.json',
-    'https://paisainminutes.com/admin/api/data/leads.json',
-    '/admin/api/data/leads.json'
-  ];
-
-  for (const src of sources) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
-      const res = await fetch(src, { 
-        headers: { 'Accept': 'application/json' },
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      if (res.ok) {
-        const list = await res.json();
-        if (Array.isArray(list) && list.length > 0) {
-          for (const item of list) {
-            const phone = String(item.phone || item.mobile || '').replace(/\D/g, '').slice(-10);
-            if (phone.length === 10) {
-              const existing = map.get(phone) || {};
-              map.set(phone, {
-                ...existing,
-                ...item,
-                dob: (item.dob && item.dob !== '—') ? item.dob : (existing.dob || null),
-                gender: (item.gender && item.gender !== '—') ? item.gender : (existing.gender || null),
-                pan: (item.pan && item.pan !== '—') ? item.pan : (existing.pan || null),
-                addressType: (item.addressType || item.address_type || existing.addressType || 'Rented'),
-                pincode: (item.pincode && item.pincode !== '—') ? String(item.pincode).trim() : (existing.pincode || null),
-                city: (item.city && item.city !== '—') ? item.city : (existing.city || null),
-                state: (item.state && item.state !== '—') ? item.state : (existing.state || null),
-                salaryMode: (item.salaryMode || item.modeOfSalary || item.mode_of_salary || existing.salaryMode || null),
-                companyName: (item.companyName && item.companyName !== '—' ? item.companyName : (item.company_name && item.company_name !== '—' ? item.company_name : (existing.companyName || null))),
-                haveCreditCard: item.haveCreditCard ?? item.have_credit_card ?? existing.haveCreditCard ?? null,
-                creditCardLimit: item.creditCardLimit ?? item.credit_card_limit ?? existing.creditCardLimit ?? null,
-                employmentType: item.employmentType || item.employment_type || existing.employmentType || 'Salaried'
-              });
-            }
-          }
-          break;
-        }
-      }
-    } catch (e) {
-      // Fallback to next source
-    }
-  }
-
-  // Also check localStorage for any client-side saved lead submissions
-  if (typeof localStorage !== 'undefined') {
-    try {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.startsWith('pim_lead_profile_') || key.startsWith('pim_lead_details_'))) {
-          const raw = localStorage.getItem(key);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            const phone = String(parsed.phone || parsed.mobile || '').replace(/\D/g, '').slice(-10);
-            if (phone.length === 10) {
-              const existing = map.get(phone) || {};
-              map.set(phone, { ...existing, ...parsed });
-            }
-          }
-        }
-      }
-    } catch (e) {}
-  }
-
-  cachedEnrichmentMap = map;
-  return map;
-}
-
-/**
- * Map raw backend application object directly into CRM lead format.
- * Single source of truth is GET /api/loan-applications/all.
- * Enriches missing/null personal fields (DOB, PAN, Pincode, Address Type, Company, Salary Mode)
- * from client form submissions so data is never lost or displayed as blank.
- */
-export function mapBackendLead(item, index = 0, enrichmentMap = null) {
+export function mapBackendLead(item, index = 0) {
   if (!item) return null;
-  const rawPhone = String(item.phone || item.phoneNumber || item.mobile || (item.user && item.user.phone) || '').replace(/\D/g, '').slice(-10);
-  if (!rawPhone || rawPhone.length < 10) return null;
+  // A partner user receives a masked number (XXXXXX1234) until the applicant has been redirected / worked
+  const phoneText = String(item.phone || item.phoneNumber || item.mobile || '');
+  const phoneMasked = /x/i.test(phoneText);
+  const rawPhone = phoneMasked ? phoneText.toUpperCase() : phoneText.replace(/\D/g, '').slice(-10);
+  if (!rawPhone || (!phoneMasked && rawPhone.length < 10)) return null;
 
-  const enrichment = (enrichmentMap && enrichmentMap.get(rawPhone)) ? enrichmentMap.get(rawPhone) : {};
-
-  const formattedMobile = `+91 ${rawPhone}`;
-  const rawName = (item.applicantName || item.name || item.fullName || enrichment.applicantName || enrichment.name || (item.user && item.user.name) || 'Applicant').trim();
+  const formattedMobile = phoneMasked ? rawPhone : `+91 ${rawPhone}`;
+  const rawName = String(item.applicantName || item.name || 'Applicant').trim() || 'Applicant';
   const initials = rawName.split(' ').filter(Boolean).map(n => n[0].toUpperCase()).join('').slice(0, 2) || (rawName !== 'Applicant' ? rawName.slice(0, 2).toUpperCase() : 'AP');
 
-  // Short CRM display ID e.g. PIM-260929-7000
-  let displayId = item.displayId;
-  if (!displayId) {
-    const createdDate = item.createdAt ? new Date(item.createdAt) : new Date();
-    const yy = String(createdDate.getFullYear()).slice(-2);
-    const mm = String(createdDate.getMonth() + 1).padStart(2, '0');
-    const dd = String(createdDate.getDate()).padStart(2, '0');
-    displayId = `PIM-${yy}${mm}${dd}-${rawPhone.slice(-4)}`;
-  }
+  const displayId = String(item.leadCode || item.displayId || `PIM-${rawPhone.slice(-4)}-${index}`);
 
-  const cleanLoan = Number(item.amount || item.loanAmount || enrichment.loanAmount || enrichment.applied) || 0;
-  const cleanSalary = Number(item.monthlyIncome || item.salary || enrichment.monthlySalary || enrichment.salary) || 0;
+  const cleanLoan = Number(item.loanAmountRupees ?? item.amount) || 0;
+  const cleanSalary = Number(item.monthlyIncome) || 0;
 
-  // CIBIL Score rule: display cibilScore directly from backend when valid
-  const rawCibil = item.cibilScore !== undefined && item.cibilScore !== null ? Number(item.cibilScore) : (enrichment.cibilScore ? Number(enrichment.cibilScore) : null);
+  const rawCibil = item.cibilScore !== undefined && item.cibilScore !== null ? Number(item.cibilScore) : null;
   const isValidCibil = typeof rawCibil === 'number' && !isNaN(rawCibil) && rawCibil > 0;
   const cibilScore = isValidCibil ? rawCibil : null;
   const cibilDisplay = isValidCibil ? String(cibilScore) : 'Not Available';
 
-  // Resolved Personal & Demographic Details (enriching null backend values)
-  const resolvedDob = (item.dob && item.dob !== '—') ? item.dob : (enrichment.dob || enrichment.dateOfBirth || null);
-  const resolvedGender = (item.gender && item.gender !== '—') ? item.gender : (enrichment.gender || enrichment.sex || null);
-  const resolvedAddressType = item.addressType || item.address_type || enrichment.addressType || enrichment.address_type || 'Rented';
-  const resolvedCity = (item.city && item.city !== '—') ? item.city.trim() : (enrichment.city && enrichment.city !== '—' ? enrichment.city.trim() : null);
-  const resolvedState = (item.state && item.state !== '—') ? item.state.trim() : (enrichment.state && enrichment.state !== '—' ? enrichment.state.trim() : null);
-  const resolvedPincode = (item.pincode && item.pincode !== '—') ? String(item.pincode).trim() : (enrichment.pincode && enrichment.pincode !== '—' ? String(enrichment.pincode).trim() : null);
-  const resolvedCompanyName = (item.companyName && item.companyName !== '—')
-    ? item.companyName.trim()
-    : (enrichment.companyName && enrichment.companyName !== '—'
-      ? enrichment.companyName.trim()
-      : (enrichment.company_name && enrichment.company_name !== '—' ? enrichment.company_name.trim() : null));
-  const resolvedSalaryMode = item.salaryMode || item.modeOfSalary || enrichment.salaryMode || enrichment.modeOfSalary || enrichment.mode_of_salary || null;
-  const resolvedEmpType = item.employmentType || enrichment.employmentType || enrichment.employment_type || 'Salaried';
+  const city = item.city && item.city !== '—' ? String(item.city).trim() : null;
+  const state = item.state && item.state !== '—' ? String(item.state).trim() : null;
+  const pincode = item.pincode && item.pincode !== '—' ? String(item.pincode).trim() : null;
 
-  // Location fields display
   let locationDisplay = 'Online';
-  if (resolvedCity && resolvedPincode) {
-    locationDisplay = `${resolvedCity} · ${resolvedPincode}`;
-  } else if (resolvedCity && resolvedState) {
-    locationDisplay = `${resolvedCity}, ${resolvedState}`;
-  } else if (resolvedCity) {
-    locationDisplay = resolvedCity;
-  } else if (resolvedState) {
-    locationDisplay = resolvedState;
-  } else if (resolvedPincode) {
-    locationDisplay = `PIN: ${resolvedPincode}`;
-  }
+  if (city && pincode) locationDisplay = `${city} · ${pincode}`;
+  else if (city && state) locationDisplay = `${city}, ${state}`;
+  else if (city) locationDisplay = city;
+  else if (state) locationDisplay = state;
+  else if (pincode) locationDisplay = `PIN: ${pincode}`;
 
-  // Source directly from backend / enrichment
-  const rawSource = (item.leadSource || item.utmSource || item.source || enrichment.lead_source || enrichment.source || '').trim();
+  const rawSource = String(item.leadSource || item.utmSource || item.source || '').trim();
   const source = rawSource || 'Website Application';
 
-  // Canonical CRM status
   const statusKey = normalizeStatus(item.status);
   const statusLabel = formatStatusLabel(item.status);
+  const partnerStatus = String(item.partnerStatus || 'NONE').toUpperCase();
 
-  // Selected Lender directly from backend
   const selectedLenderId = item.selectedLenderId ? String(item.selectedLenderId) : null;
-  const lenderName = resolveLenderName(selectedLenderId);
-  const assignedCompany = lenderName || resolveAssignedCompany(item);
+  const assignedPartnerId = item.assignedPartnerId ? String(item.assignedPartnerId) : null;
+  const partnerSlug = assignedPartnerId ? getPartnerSlugByServerId(assignedPartnerId) : null;
+  const assignedCompany = resolveAssignedCompany(item);
+  const wasClicked = ['REDIRECTED', 'CONTACTED', 'APPROVED', 'DISBURSED', 'REJECTED'].includes(partnerStatus);
 
-  // Masked PAN: Backend provides panMasked; fallback to masked pan from enrichment if backend has null
-  let panMasked = item.panMasked;
-  if (!panMasked || panMasked === '—') {
-    if (item.pan && item.pan !== '—') {
-      panMasked = maskPan(item.pan);
-    } else if (enrichment.pan && enrichment.pan !== '—') {
-      panMasked = maskPan(enrichment.pan);
-    } else {
-      panMasked = '—';
-    }
-  }
-
-  // Credit card: boolean & numeric limit
-  let haveCreditCardBool = false;
-  if (typeof item.haveCreditCard === 'boolean') {
-    haveCreditCardBool = item.haveCreditCard;
-  } else if (item.haveCreditCard !== null && item.haveCreditCard !== undefined) {
-    haveCreditCardBool = String(item.haveCreditCard).toLowerCase() === 'true' || String(item.haveCreditCard).toLowerCase() === 'yes';
-  } else if (enrichment.haveCreditCard !== undefined || enrichment.have_credit_card !== undefined) {
-    const rawCc = enrichment.haveCreditCard ?? enrichment.have_credit_card;
-    haveCreditCardBool = typeof rawCc === 'boolean' ? rawCc : (String(rawCc).toLowerCase() === 'true' || String(rawCc).toLowerCase() === 'yes');
-  }
-
-  const rawCcLimit = item.creditCardLimit ?? enrichment.creditCardLimit ?? enrichment.credit_card_limit;
-  const creditCardLimitNum = (rawCcLimit !== null && rawCcLimit !== undefined && !isNaN(Number(rawCcLimit)))
-    ? Number(rawCcLimit)
+  const panMasked = item.panMasked ? maskPan(item.panMasked) : '—';
+  const haveCreditCardBool = item.haveCreditCard === true;
+  const ccLimit = item.creditCardLimit !== null && item.creditCardLimit !== undefined && !isNaN(Number(item.creditCardLimit))
+    ? Number(item.creditCardLimit)
     : null;
-
-  // DOB formatted for UI (YYYY-MM-DD)
-  const dobFormatted = resolvedDob ? (String(resolvedDob).includes('T') ? String(resolvedDob).split('T')[0] : String(resolvedDob)) : '—';
-
-  const isPhoneOnly = (rawName === 'Applicant' || !rawName) && cleanLoan === 0 && cleanSalary === 0;
+  const dobFormatted = item.dob ? String(item.dob).split('T')[0] : '—';
+  const isPhoneOnly = (rawName === 'Applicant') && cleanLoan === 0 && cleanSalary === 0;
+  const createdIso = item.createdAt || null;
+  const ist = createdIso ? formatToIST(createdIso) : { full: '—', time: '—', date: '—' };
 
   return {
-    id: String(item.id || item._id || displayId),
-    displayId: String(displayId),
-    loanNo: String(displayId),
-    lead_id: String(displayId),
+    id: String(item.id),
+    displayId,
+    loanNo: displayId,
+    lead_id: displayId,
+    leadCode: displayId,
     applicantName: rawName,
     name: rawName,
     fullName: rawName,
-    initials: initials,
+    initials,
     avatarBg: 'bg-[#0A3977]',
     mobile: formattedMobile,
     phone: rawPhone,
     phoneNumber: rawPhone,
-    email: item.email ? String(item.email).trim() : (enrichment.email ? String(enrichment.email).trim() : ''),
-    emailAddress: item.email ? String(item.email).trim() : (enrichment.email ? String(enrichment.email).trim() : ''),
+    phoneMasked,
+    email: item.email ? String(item.email).trim() : '',
+    emailAddress: item.email ? String(item.email).trim() : '',
     userId: item.userId || null,
-    city: resolvedCity,
-    state: resolvedState,
-    pincode: resolvedPincode,
+    city,
+    state,
+    pincode,
     location: locationDisplay,
     applied: cleanLoan,
     amount: cleanLoan,
     loanAmount: cleanLoan,
+    disbursedAmount: Number(item.disbursedAmountRupees) || 0,
+    disbursedAmountRupees: item.disbursedAmountRupees ?? null,
     tenureMonths: Number(item.tenureMonths) || 12,
     purpose: item.purpose || 'Personal Loan',
-    employmentType: resolvedEmpType,
+    employmentType: item.employmentType || '—',
     monthlyIncome: cleanSalary,
     salary: cleanSalary,
     monthlySalary: cleanSalary,
-    source: source,
+    source,
     leadSource: item.leadSource || null,
     utmSource: item.utmSource || null,
-    cibilScore: cibilScore,
+    cibilScore,
     cibilScoreUpdatedAt: item.cibilScoreUpdatedAt || null,
     cibil: cibilDisplay,
-    cibilDisplay: cibilDisplay,
-    selectedLenderId: selectedLenderId,
+    cibilDisplay,
+    cibilStatus: item.cibilStatus || null,
+    slab: item.slab ?? null,
+    eligibility: item.eligibility || null,
+    cibilRange: item.cibilRange || null,
+    salaryRange: item.salaryRange || null,
+    selectedLenderId,
     lenderApplicationId: item.lenderApplicationId || null,
-    assignedCompany: assignedCompany,
-    appliedTo: item.appliedTo || item.applied_to || (item.clicked_partner && item.clicked_partner !== 'none' ? item.clicked_partner : null) || (item.partner && !['pending selection', 'pending details', 'unassigned', '—', '', 'null'].includes(String(item.partner).toLowerCase()) ? item.partner : null) || 'Not Applied Yet',
-    delivery_status: item.delivery_status || 'none',
+    assignedPartnerId,
+    assignedPartnerSlug: partnerSlug,
+    partnerStatus,
+    partnerStatusLabel: formatPartnerStatusLabel(partnerStatus),
+    remarks: item.remarks || '',
+    partnerRemarks: item.partnerRemarks || '',
+    suggestedCompany: item.assignedCompany || null,
+    assignedCompany,
+    appliedTo: wasClicked ? assignedCompany : 'Not Applied Yet',
+    delivery_status: assignedPartnerId ? 'delivered' : 'none',
     panVerificationStatus: item.panVerificationStatus || 'PENDING',
     kycStatus: item.kycStatus || 'PENDING',
-    eligibilityStatus: isPhoneOnly ? 'Incomplete / Phone Only' : (item.eligibilityStatus || 'Eligible'),
+    eligibilityStatus: isPhoneOnly ? 'Incomplete / Phone Only' : (item.eligibility || 'Eligible'),
+    isPhoneOnly,
     status: statusKey,
-    statusLabel: statusLabel,
-    created: formatToIST(item.createdAt || new Date()).full,
-    created_at: item.createdAt || new Date().toISOString(),
-    created_time: formatToIST(item.createdAt || new Date()).time,
-    date: formatToIST(item.createdAt || new Date()).date,
-    updatedAt: item.updatedAt || item.createdAt || new Date().toISOString(),
-    panMasked: panMasked,
-    pan: panMasked, // Secure: always masked, never exposed raw
+    statusLabel,
+    created: ist.full,
+    created_at: createdIso,
+    created_time: ist.time,
+    date: ist.date,
+    updatedAt: item.updatedAt || createdIso,
+    panMasked,
+    pan: panMasked, // always masked, never raw
     dob: dobFormatted,
     dateOfBirth: dobFormatted,
-    gender: resolvedGender,
-    addressType: resolvedAddressType,
-    address_type: resolvedAddressType,
-    salaryMode: resolvedSalaryMode,
-    modeOfSalary: resolvedSalaryMode,
-    mode_of_salary: resolvedSalaryMode,
-    companyName: resolvedCompanyName,
-    company_name: resolvedCompanyName,
+    gender: item.gender || null,
+    addressType: null,
+    salaryMode: item.salaryMode || null,
+    modeOfSalary: item.salaryMode || null,
+    mode_of_salary: item.salaryMode || null,
+    companyName: item.companyName || null,
+    company_name: item.companyName || null,
     haveCreditCard: haveCreditCardBool ? 'Yes' : 'No',
-    haveCreditCardBool: haveCreditCardBool,
-    creditCardLimit: creditCardLimitNum
+    haveCreditCardBool,
+    creditCardLimit: ccLimit
   };
 }
 
 /**
- * Submit lead to POST /api/loan-applications with canonical camelCase payload.
+ * Submit a lead from a CRM "add lead" form to the public intake route.
  */
 export async function submitLoanApplication(rawInput = {}) {
   const payload = buildLeadPayload(rawInput);
-  
-  // Support explicit Bearer token passed in rawInput
-  const explicitToken = (rawInput.token || rawInput.authToken || rawInput.jwtToken || '').trim();
-  if (explicitToken) {
-    try {
-      localStorage.setItem('pim_jwt_token', explicitToken);
-    } catch (e) {}
+  const res = await api('/api/loan-applications', { method: 'POST', auth: false, body: payload });
+  if (res.ok && res.data) {
+    return { success: true, status: res.status, data: res.data, lead: mapBackendLead(res.data.application || res.data.lead) };
   }
-  
-  const authHeaders = explicitToken ? { 'Authorization': `Bearer ${explicitToken}` } : getAuthHeaders();
-
-  // Log masked payload safely without exposing raw PAN
-  const logSafe = { ...payload };
-  if (logSafe.pan) logSafe.pan = maskPan(logSafe.pan);
-  console.log('[POST /api/loan-applications] 🚀 Sending canonical lead payload to backend:', logSafe);
-
-  try {
-    const res = await fetch(`${BACKEND_BASE}/api/loan-applications`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...authHeaders
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
-      const rawApp = data.application || data.lead || data;
-      return {
-        success: true,
-        status: res.status,
-        data: data,
-        lead: mapBackendLead(rawApp)
-      };
-    } else {
-      return {
-        success: false,
-        status: res.status,
-        error: data.error || data.message || 'Failed to submit loan application',
-        data
-      };
-    }
-  } catch (err) {
-    console.error('[POST /api/loan-applications Network Error]:', err);
-    return { success: false, error: err.message };
-  }
+  return { success: false, status: res.status, error: res.error || 'Failed to submit loan application', data: res.data };
 }
 
 /**
- * Universal Direct Fetch to Node.js Backend (https://api.paisainminutes.tech)
- */
-export async function fetchApi(pathWithSlash, options = {}) {
-  const cleanPath = pathWithSlash.startsWith('/') ? pathWithSlash : `/${pathWithSlash}`;
-
-  let targetPath = cleanPath;
-  let isSubmitLead = false;
-
-  if (cleanPath.startsWith('/admin/api/submit-lead') || cleanPath.startsWith('/api/submit-lead')) {
-    targetPath = '/api/loan-applications';
-    isSubmitLead = true;
-  } else if (cleanPath.startsWith('/admin/api/get-leads') || cleanPath.startsWith('/crm/api/get-leads')) {
-    targetPath = '/api/loan-applications/all';
-  } else if (cleanPath.startsWith('/admin/api/update-lead') || cleanPath.startsWith('/crm/api/update-lead')) {
-    targetPath = '/api/loan-applications';
-  }
-
-  const url = `${BACKEND_BASE}${targetPath}`;
-  const authHeaders = getAuthHeaders();
-
-  let finalBody = options.body;
-  if (isSubmitLead && typeof options.body === 'string') {
-    try {
-      const parsed = JSON.parse(options.body);
-      const canonical = buildLeadPayload(parsed);
-      finalBody = JSON.stringify(canonical);
-    } catch (e) {}
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-    const res = await fetch(url, {
-      ...options,
-      body: finalBody,
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...authHeaders,
-        ...(options.headers || {})
-      }
-    });
-    clearTimeout(timeoutId);
-
-    if (res && res.ok) {
-      const data = await res.json().catch(() => ({}));
-      return {
-        ok: true,
-        status: res.status,
-        url: url,
-        data: data,
-        json: async () => data
-      };
-    } else if (res) {
-      const errData = await res.json().catch(() => ({}));
-      return {
-        ok: false,
-        status: res.status,
-        url: url,
-        data: errData,
-        json: async () => errData
-      };
-    }
-  } catch (e) {
-    console.error(`[API ERROR] ${url}:`, e);
-  }
-  return null;
-}
-
-/**
- * Fetches recent customer submissions from leads_log.csv across production and local hosts
- */
-export async function fetchRecentCsvLeads() {
-  const sources = [
-    'https://paisainminutes.com/leads_log.csv',
-    '/leads_log.csv',
-    './leads_log.csv'
-  ];
-
-  let bestParsed = [];
-
-  for (const src of sources) {
-    try {
-      const url = `${src}?t=${Date.now()}`;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
-      const res = await fetch(url, { 
-        cache: 'no-store',
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      if (res.ok) {
-        const text = await res.text();
-        if (text && text.includes('Timestamp') && text.length > 50) {
-          const lines = text.trim().split('\n');
-          const parsed = [];
-          for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-            const parts = [];
-            let inQuotes = false;
-            let cur = '';
-            for (let j = 0; j < line.length; j++) {
-              const c = line[j];
-              if (c === '"') {
-                inQuotes = !inQuotes;
-              } else if (c === ',' && !inQuotes) {
-                parts.push(cur.trim());
-                cur = '';
-              } else {
-                cur += c;
-              }
-            }
-            parts.push(cur.trim());
-            const [timestamp, rawName, email, phone, amount, partner, eligibility, ip, status, source] = parts;
-            const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
-            if (cleanPhone.length === 10) {
-              parsed.push({
-                timestamp: timestamp ? timestamp.replace(/^"|"$/g, '').trim() : '',
-                name: rawName ? rawName.replace(/^"|"$/g, '').trim() : 'Applicant',
-                email: email ? email.replace(/^"|"$/g, '').trim() : '',
-                phone: cleanPhone,
-                amount: Number(amount) || 0,
-                partner: partner ? partner.replace(/^"|"$/g, '').trim() : 'Pending Selection',
-                eligibility: eligibility ? eligibility.replace(/^"|"$/g, '').trim() : 'Eligible',
-                status: status ? status.replace(/^"|"$/g, '').trim() : 'Fresh',
-                source: source ? source.replace(/^"|"$/g, '').trim() : 'WhatsApp'
-              });
-            }
-          }
-          if (parsed.length > bestParsed.length) {
-            bestParsed = parsed;
-          }
-        }
-      }
-    } catch (e) {
-      // Continue to next candidate URL
-    }
-  }
-  return bestParsed;
-}
-
-/**
- * Loads real outbound partner assignments recorded from redirect.php and clicks_log
- */
-export async function loadPartnerTrackingAssignments() {
-  const sources = [
-    '/data/partner_assignments.json',
-    '/crm/partner_assignments.json',
-    './data/partner_assignments.json',
-    './partner_assignments.json',
-    'https://paisainminutes.com/data/partner_assignments.json'
-  ];
-
-  for (const src of sources) {
-    try {
-      const res = await fetch(`${src}?t=${Date.now()}`, { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && (data.by_phone || data.by_lead || data.by_lead_id)) {
-          return data;
-        }
-      }
-    } catch (e) {}
-  }
-  return { by_phone: {}, by_lead: {}, by_lead_id: {} };
-}
-
-/**
- * Fetch Leads directly from Node.js Backend Server (https://api.paisainminutes.tech/api/loan-applications/all)
- * Center of truth is the backend API, seamlessly merged with today's live submissions from leads_log.csv,
- * real click tracking assignments from partner_assignments.json,
- * and enriched with client form data so all 23 lead dossier details are completely displayed.
+ * Loads every lead the signed-in account may see. Pages through `GET /api/loan-applications/all`
+ * (max 500 per page) until `total` is reached. A PARTNER account is scoped by the server; a staff
+ * account may pass `partnerId` (a UI partner slug) to view one partner's leads.
  */
 export async function getLeadsFromBackend(options = {}) {
-  try {
-    const authHeaders = getAuthHeaders();
-
-    const apiController = new AbortController();
-    const apiTimeoutId = setTimeout(() => apiController.abort(), 4000);
-
-    // Fetch backend leads, enrichment data, and real partner assignments in parallel
-    const [res, enrichmentMap, partnerAssignments] = await Promise.all([
-      fetch(`${BACKEND_BASE}/api/loan-applications/all`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          ...authHeaders
-        },
-        signal: apiController.signal
-      }).catch(err => {
-        console.warn('[getLeadsFromBackend] Backend fetch error:', err);
-        return null;
-      }),
-      loadLeadEnrichmentMap().catch(() => new Map()),
-      loadPartnerTrackingAssignments().catch(() => ({ by_phone: {}, by_lead: {}, by_lead_id: {} }))
-    ]);
-    clearTimeout(apiTimeoutId);
-
-    let rawList = [];
-    if (res && res.ok) {
-      const data = await res.json().catch(() => ({}));
-      rawList = Array.isArray(data)
-        ? data
-        : (data.applications || data.leads || []);
-    } else {
-      console.warn(`[getLeadsFromBackend] Server returned status ${res ? res.status : 'network error'}`);
-    }
-
-    if (!Array.isArray(rawList)) {
-      rawList = [];
-    }
-
-    // Reliable fallback: If backend returned empty or was unreachable, fall back to local /data/leads.json
-    if (rawList.length === 0) {
-      try {
-        const fbRes = await fetch('/data/leads.json', { headers: { 'Accept': 'application/json' } });
-        if (fbRes.ok) {
-          const fbData = await fbRes.json();
-          if (Array.isArray(fbData) && fbData.length > 0) {
-            rawList = fbData;
-            console.log('[getLeadsFromBackend] Loaded fallback leads from /data/leads.json:', rawList.length);
-          }
-        }
-      } catch (fbErr) {
-        console.warn('[getLeadsFromBackend] Fallback error:', fbErr);
-      }
-    }
-
-    // Collect all existing backend applications for precise deduplication
-    const backendExistingKeys = new Set();
-    const usedDisplayIds = new Set();
-    for (const b of rawList) {
-      const p = String(b.phone || b.phoneNumber || (b.user && b.user.phone) || '').replace(/\D/g, '').slice(-10);
-      const d = b.createdAt ? new Date(b.createdAt).toISOString().slice(0, 10) : '';
-      const amt = Number(b.amount || 0);
-      if (p) {
-        backendExistingKeys.add(`${p}_${d}_${amt}`);
-        backendExistingKeys.add(`${p}_${amt}`);
-        backendExistingKeys.add(`${p}_${d}`);
-      }
-      if (b.displayId) usedDisplayIds.add(String(b.displayId));
-      if (b.id) usedDisplayIds.add(String(b.id));
-    }
-
-    // Backend API is the single center of truth (https://api.paisainminutes.tech/api/loan-applications/all)
-    const combinedApplications = rawList;
-
-    // Cross-reference with real server partner click assignments from redirect.php and clicks_log
-    if (partnerAssignments && (partnerAssignments.by_phone || partnerAssignments.by_lead || partnerAssignments.by_lead_id)) {
-      for (const item of combinedApplications) {
-        const p10 = String(item.phone || item.phoneNumber || item.mobile || (item.user && item.user.phone) || '').replace(/\D/g, '').slice(-10);
-        const lId = String(item.id || item.lead_id || item.displayId || '');
-        const dispId = String(item.displayId || item.loanNo || '');
-        
-        const assign = (p10 && partnerAssignments.by_phone && partnerAssignments.by_phone[p10]) ||
-                       (lId && partnerAssignments.by_lead && partnerAssignments.by_lead[lId]) ||
-                       (dispId && partnerAssignments.by_lead && partnerAssignments.by_lead[dispId]) ||
-                       (lId && partnerAssignments.by_lead_id && partnerAssignments.by_lead_id[lId]);
-        
-        if (assign && assign.partner) {
-          item.assignedCompany = assign.partner;
-          item.partner_name = assign.partner;
-          item.partner = assign.partner;
-          item.appliedTo = assign.partner;
-          item.delivery_status = 'delivered';
-          item.selectedLenderId = assign.partner;
-          item.clicked_partner = assign.partner_slug || assign.partner;
-        }
-      }
-    }
-
-    // Cross-application phone aggregation:
-    // If one application for a phone has employmentType or non-null fields, merge them across the user's records
-    const phoneAggregator = new Map();
-    for (const item of combinedApplications) {
-      const phone = String(item.phone || item.phoneNumber || item.mobile || (item.user && item.user.phone) || '').replace(/\D/g, '').slice(-10);
-      if (phone.length === 10) {
-        const existing = phoneAggregator.get(phone) || {};
-        phoneAggregator.set(phone, {
-          applicantName: (item.applicantName && item.applicantName !== 'Applicant') ? item.applicantName : (existing.applicantName || item.name || null),
-          email: item.email || existing.email || null,
-          dob: (item.dob && item.dob !== '—') ? item.dob : (existing.dob || null),
-          gender: (item.gender && item.gender !== '—') ? item.gender : (existing.gender || null),
-          employmentType: item.employmentType || existing.employmentType || null,
-          companyName: (item.companyName && item.companyName !== '—') ? item.companyName : (existing.companyName || null),
-          salaryMode: (item.salaryMode && item.salaryMode !== '—') ? item.salaryMode : (existing.salaryMode || null),
-          city: (item.city && item.city !== '—') ? item.city : (existing.city || null),
-          state: (item.state && item.state !== '—') ? item.state : (existing.state || null),
-          pincode: (item.pincode && item.pincode !== '—') ? item.pincode : (existing.pincode || null),
-          panMasked: item.panMasked || existing.panMasked || null,
-          haveCreditCard: item.haveCreditCard !== null && item.haveCreditCard !== undefined ? item.haveCreditCard : existing.haveCreditCard,
-          creditCardLimit: item.creditCardLimit !== null && item.creditCardLimit !== undefined ? item.creditCardLimit : existing.creditCardLimit
-        });
-      }
-    }
-
-    // Merge aggregator into enrichmentMap
-    for (const [phone, prof] of phoneAggregator.entries()) {
-      const existing = enrichmentMap.get(phone) || {};
-      enrichmentMap.set(phone, {
-        ...existing,
-        applicantName: prof.applicantName || existing.applicantName || existing.name,
-        email: prof.email || existing.email,
-        dob: prof.dob || existing.dob || existing.dateOfBirth,
-        gender: prof.gender || existing.gender || existing.sex,
-        employmentType: prof.employmentType || existing.employmentType || existing.employment_type,
-        companyName: prof.companyName || existing.companyName || existing.company_name,
-        salaryMode: prof.salaryMode || existing.salaryMode || existing.modeOfSalary,
-        city: prof.city || existing.city,
-        state: prof.state || existing.state,
-        pincode: prof.pincode || existing.pincode,
-        panMasked: prof.panMasked || (existing.pan ? maskPan(existing.pan) : null),
-        pan: prof.panMasked || existing.pan,
-        haveCreditCard: prof.haveCreditCard !== undefined ? prof.haveCreditCard : existing.haveCreditCard,
-        creditCardLimit: prof.creditCardLimit !== undefined ? prof.creditCardLimit : existing.creditCardLimit
-      });
-    }
-
-    // Map all records with complete schema fields, enriched from customer submissions
-    let mappedList = combinedApplications.map((item, idx) => mapBackendLead(item, idx, enrichmentMap)).filter(Boolean);
-
-    // Filter by partnerId if partner role is viewing
-    if (options && options.partnerId) {
-      const pid = String(options.partnerId).toLowerCase().replace(/[\s\-_]/g, '');
-      mappedList = mappedList.filter(l => {
-        const comp = String(l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
-        return comp === pid || comp.includes(pid);
-      });
-    }
-
-    // Sort newest first by created_at / updatedAt timestamp
-    mappedList.sort((a, b) => {
-      const timeA = new Date(a.updatedAt || a.created_at || a.createdAt || a.created || 0).getTime() || 0;
-      const timeB = new Date(b.updatedAt || b.created_at || b.createdAt || b.created || 0).getTime() || 0;
-      return timeB - timeA;
-    });
-
-    return {
-      success: true,
-      count: mappedList.length,
-      leads: mappedList
-    };
-  } catch (err) {
-    console.error('[getLeadsFromBackend Error]:', err);
-    return { success: false, leads: [], count: 0, error: err.message };
+  const query = { limit: 500 };
+  if (options.partnerId) {
+    const serverId = getServerPartnerId(options.partnerId);
+    if (serverId) query.partnerId = serverId;
   }
+  ['status', 'partnerStatus', 'from', 'to', 'q'].forEach((key) => {
+    if (options[key]) query[key] = options[key];
+  });
+
+  const all = [];
+  let page = 1;
+  let total = null;
+  const MAX_PAGES = 200;
+  while (page <= MAX_PAGES) {
+    const res = await api('/api/loan-applications/all', { query: { ...query, page } });
+    if (!res.ok) {
+      return { success: false, leads: [], count: 0, status: res.status, error: res.error };
+    }
+    const batch = Array.isArray(res.data?.applications) ? res.data.applications : [];
+    total = typeof res.data?.total === 'number' ? res.data.total : total;
+    all.push(...batch);
+    if (batch.length === 0 || total === null || all.length >= total) break;
+    page += 1;
+  }
+
+  const leads = all.map((item, idx) => mapBackendLead(item, idx)).filter(Boolean);
+  return { success: true, count: leads.length, total: total ?? leads.length, leads };
 }
 
+const STAFF_UPDATE_FIELDS = ['status', 'selectedLenderId', 'lenderApplicationId', 'assignedPartnerId', 'remarks', 'loanAmountRupees', 'disbursedAmountRupees'];
+const PARTNER_UPDATE_FIELDS = ['partnerStatus', 'partnerRemarks', 'disbursedAmountRupees'];
+
 /**
- * PATCH /api/loan-applications/{id}
- * Supported update fields:
- * - status: "FRESH" | "CALLBACK" | "INTERESTED" | "DOCS_RECEIVED" | "APPROVED" | "DISBURSED" | "REJECTED"
- * - selectedLenderId: valid lender ID string e.g. "1", "2", "3", "4"
- * - lenderApplicationId: partner application ID string
+ * PATCH /api/loan-applications/{id}. Only fields on the shared allowlist are sent; the server decides
+ * the actor, role and time from the token. `role` selects which allowlist applies ('partner' | 'staff').
  */
-export async function updateLoanApplication(id, updates = {}) {
+export async function updateLoanApplication(id, updates = {}, { role = 'staff' } = {}) {
   if (!id) return { success: false, error: 'Application ID is required' };
-  const cleanId = String(id).trim();
-
+  const allowed = role === 'partner' ? PARTNER_UPDATE_FIELDS : STAFF_UPDATE_FIELDS;
   const payload = {};
-  if (updates.status !== undefined) {
-    payload.status = normalizeStatus(updates.status);
-  }
-  if (updates.selectedLenderId !== undefined) {
-    payload.selectedLenderId = resolveValidLenderId(updates.selectedLenderId);
-  }
-  if (updates.lenderApplicationId !== undefined) {
-    payload.lenderApplicationId = updates.lenderApplicationId ? String(updates.lenderApplicationId).trim() : null;
-  }
+  allowed.forEach((key) => {
+    if (updates[key] !== undefined) payload[key] = updates[key];
+  });
+  if (payload.status !== undefined) payload.status = normalizeStatus(payload.status);
+  if (payload.partnerStatus !== undefined) payload.partnerStatus = String(payload.partnerStatus).toUpperCase();
+  if (Object.keys(payload).length === 0) return { success: false, error: 'Nothing to update' };
 
-  const authHeaders = getAuthHeaders();
-
-  try {
-    const res = await fetch(`${BACKEND_BASE}/api/loan-applications/${encodeURIComponent(cleanId)}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        ...authHeaders
-      },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
-      return { success: true, status: res.status, data };
-    } else {
-      console.warn(`[PATCH /api/loan-applications/${cleanId} STATUS ${res.status}]:`, data);
-      return { success: false, status: res.status, error: data.error || 'Failed to update application on backend', data };
-    }
-  } catch (err) {
-    console.error(`[PATCH /api/loan-applications/${cleanId} NETWORK ERROR]:`, err);
-    return { success: false, error: err.message };
+  const res = await api(`/api/loan-applications/${encodeURIComponent(String(id).trim())}`, { method: 'PATCH', body: payload });
+  if (res.ok) {
+    const lead = mapBackendLead(res.data?.application);
+    return { success: true, status: res.status, data: res.data?.application, lead };
   }
+  return { success: false, status: res.status, error: res.error || 'Failed to update application', data: res.data };
 }
 
 /**
- * GET /api/loan-applications/phone/{phone}
- * Fetch specific loan application details by 10-digit phone number from backend
+ * GET /api/loan-applications/phone/{phone}: all applications for a number, newest first.
+ * `data` is the newest one for convenience; `applications` has all of them.
  */
 export async function fetchLoanApplicationByPhone(phone) {
   if (!phone) return { success: false, error: 'Phone number is required' };
   const cleanPhone = String(phone).replace(/\D/g, '').slice(-10);
   if (cleanPhone.length !== 10) return { success: false, error: 'Valid 10-digit phone number is required' };
 
-  try {
-    const authHeaders = getAuthHeaders();
-    const [res, enrichmentMap] = await Promise.all([
-      fetch(`${BACKEND_BASE}/api/loan-applications/phone/${encodeURIComponent(cleanPhone)}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          ...authHeaders
-        }
-      }),
-      loadLeadEnrichmentMap().catch(() => new Map())
-    ]);
-
-    if (res.ok) {
-      const data = await res.json();
-      const rawApp = data?.application || data?.lead || data;
-      const mapped = mapBackendLead(rawApp, 0, enrichmentMap);
-      return { success: true, data: mapped };
-    } else {
-      const errorText = await res.text().catch(() => '');
-      return { success: false, status: res.status, error: errorText || 'Failed to fetch application dossier' };
-    }
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
+  const res = await api(`/api/loan-applications/phone/${encodeURIComponent(cleanPhone)}`);
+  if (!res.ok) return { success: false, status: res.status, error: res.error };
+  const applications = (Array.isArray(res.data?.applications) ? res.data.applications : [])
+    .map((item, idx) => mapBackendLead(item, idx))
+    .filter(Boolean);
+  return { success: true, applications, data: applications[0] || null };
 }
 
 /**
- * DELETE /api/loan-applications/{id}
- * Delete a loan application by ID from backend
+ * Deletes leads on the server. Local state must only be changed after `success`.
+ *  - payload.ids (array of lead ids) -> bulk delete with confirmation
+ *  - payload.id / leadId                -> single delete
+ *  - payload.clear_all                  -> delete everything (server requires the confirmation phrase)
  */
-export async function deleteLoanApplicationOnRender(id) {
-  if (!id) return { success: false, error: 'Application ID is required' };
-  const cleanId = String(id).trim();
-
-  try {
-    const authHeaders = getAuthHeaders();
-    const res = await fetch(`${BACKEND_BASE}/api/loan-applications/${encodeURIComponent(cleanId)}`, {
-      method: 'DELETE',
-      headers: {
-        'Accept': 'application/json',
-        ...authHeaders
-      }
-    });
-
-    if (res.ok) {
-      const data = await res.json().catch(() => ({ success: true }));
-      return { success: true, data };
-    } else {
-      return { success: false, status: res.status };
-    }
-  } catch (err) {
-    return { success: false, error: err.message };
-  }
-}
-
-/**
- * Delete Leads API (Synchronized with blacklist and Node.js DELETE endpoint)
- */
-export async function deleteLeadsApi(payload) {
-  const isClearAll = payload.clear_all || payload.all || (payload.ids && payload.ids.includes('*')) || payload.action === 'reset_all' || payload.action === 'clear_all';
-
-  const targetIds = [];
-  if (payload.id) targetIds.push(String(payload.id));
-  if (payload.leadId) targetIds.push(String(payload.leadId));
-  if (payload.ids && Array.isArray(payload.ids)) {
-    payload.ids.forEach(i => { if (i && i !== '*') targetIds.push(String(i)); });
+export async function deleteLeadsApi(payload = {}) {
+  const isClearAll = Boolean(payload.clear_all || payload.all || payload.action === 'reset_all' || payload.action === 'clear_all');
+  if (isClearAll) {
+    const res = await api('/api/loan-applications/all', { method: 'DELETE', body: { confirm: 'DELETE_ALL_LEADS' } });
+    return { success: res.ok, is_clear_all: true, error: res.error, deletedCount: res.data?.deletedCount };
   }
 
-  const toAdd = targetIds.map(i => i.toLowerCase());
-  if (toAdd.length > 0) {
-    addToDeletedLeadBlacklist(toAdd);
-  }
+  const ids = [];
+  if (payload.id) ids.push(String(payload.id));
+  if (Array.isArray(payload.ids)) payload.ids.forEach((i) => i && ids.push(String(i)));
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return { success: false, error: 'No lead id supplied' };
 
-  if (targetIds.length > 0 && !isClearAll) {
-    for (const tid of targetIds) {
-      deleteLoanApplicationOnRender(tid).catch(() => { });
-    }
+  if (unique.length === 1) {
+    const res = await api(`/api/loan-applications/${encodeURIComponent(unique[0])}`, { method: 'DELETE' });
+    return { success: res.ok, error: res.error, deletedIds: res.ok ? [unique[0]] : [] };
   }
-
-  return { success: true, is_clear_all: isClearAll };
+  const res = await api('/api/loan-applications', { method: 'DELETE', body: { ids: unique, confirm: true } });
+  return { success: res.ok, error: res.error, deletedIds: res.data?.deletedIds || [], notFound: res.data?.notFound || [] };
 }

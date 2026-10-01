@@ -18,7 +18,7 @@ import {
   KeyRound,
   X
 } from 'lucide-react';
-import { getStaffList, purgeAllClientCaches } from '../utils/authService';
+import { purgeAllClientCaches } from '../utils/authService';
 
 export default function Navbar({ 
   searchQuery, 
@@ -33,7 +33,6 @@ export default function Navbar({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [hasUnread, setHasUnread] = useState(true);
-  const [staffList, setStaffList] = useState(() => getStaffList());
   
   const notifRef = useRef(null);
   const userDropdownRef = useRef(null);
@@ -50,14 +49,6 @@ export default function Navbar({
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  useEffect(() => {
-    const handleStaffUpdated = (e) => {
-      setStaffList(e.detail || getStaffList());
-    };
-    window.addEventListener('paisa_staff_updated', handleStaffUpdated);
-    return () => window.removeEventListener('paisa_staff_updated', handleStaffUpdated);
   }, []);
 
   const activeUser = currentUser || {
@@ -92,7 +83,7 @@ export default function Navbar({
       id: 2,
       type: 'system',
       title: 'Backend API Sync (api.paisainminutes.tech)',
-      desc: 'Real-time database polling active (3s interval)',
+      desc: 'Live data refreshes from the server every 30 seconds',
       time: '2m ago',
       unread: false,
       action: 'executive'
@@ -101,7 +92,7 @@ export default function Navbar({
       id: 3,
       type: 'security',
       title: 'Shift & Security Active',
-      desc: 'Operational shift (09:27 AM – 06:35 PM IST) verified',
+      desc: 'Sign-in policy is enforced by the server',
       time: '10m ago',
       unread: false,
       action: 'staff'

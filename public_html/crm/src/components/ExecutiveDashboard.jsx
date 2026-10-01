@@ -35,9 +35,10 @@ import {
   Legend 
 } from 'recharts';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
-import { cleanLoanAmount, formatToIST } from '../utils/amountHelpers';
+import { getExecutiveOverview } from '../utils/crmApi';
+import { formatToIST } from '../utils/amountHelpers';
 
-export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany, onOpenPartnerHub }) {
+export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub }) {
   // Period filter state: 'this_month' | 'last_month' | 'this_fy' | 'custom'
   const [period, setPeriod] = useState('this_month');
   const [customStart, setCustomStart] = useState(() => {
@@ -53,106 +54,38 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
   // Line chart visibility toggle for Approved line
   const [showApprovedLine, setShowApprovedLine] = useState(true);
 
-  // API State
+  // Server data (GET /api/crm/executive-overview). No local recomputation: if the call fails the screen shows
+  // an error with a retry instead of a different set of numbers.
   const [apiData, setApiData] = useState(null);
+  const [loadError, setLoadError] = useState('');
   const [isLoadingApi, setIsLoadingApi] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Helper to parse lead timestamps
-  const getLeadDate = useCallback((lead) => {
-    const raw = lead?.created_at || lead?.createdAt || lead?.created || lead?.date;
-    if (!raw) return null;
-    const d = new Date(raw);
-    return isNaN(d.getTime()) ? null : d;
-  }, []);
-
-  // Compute period start, end dates and period label
-  const { periodStart, periodEnd, periodLabel, priorStart, priorEnd, priorPeriodName } = useMemo(() => {
-    const now = new Date();
-    let start, end, label, priorPeriodName = 'last month';
-
-    if (period === 'last_month') {
-      start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-      end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-      label = start.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      priorPeriodName = 'prior month';
-    } else if (period === 'this_fy') {
-      const curYear = now.getFullYear();
-      const fyStartYear = now.getMonth() >= 3 ? curYear : curYear - 1;
-      start = new Date(fyStartYear, 3, 1, 0, 0, 0, 0);
-      end = new Date(now.getTime());
-      label = `FY ${fyStartYear}-${String(fyStartYear + 1).slice(-2)}`;
-      priorPeriodName = 'last FY';
-    } else if (period === 'custom') {
-      start = customStart ? new Date(`${customStart}T00:00:00`) : new Date(now.getFullYear(), now.getMonth(), 1);
-      end = customEnd ? new Date(`${customEnd}T23:59:59`) : new Date();
-      label = `${start.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
-      priorPeriodName = 'prior period';
-    } else {
-      // this_month
-      start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-      end = new Date(now.getTime());
-      label = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      priorPeriodName = 'last month';
-    }
-
-    const durationMs = end.getTime() - start.getTime();
-    const pEnd = new Date(start.getTime() - 1);
-    const pStart = new Date(pEnd.getTime() - durationMs);
-
-    return {
-      periodStart: start,
-      periodEnd: end,
-      periodLabel: label,
-      priorStart: pStart,
-      priorEnd: pEnd,
-      priorPeriodName
-    };
-  }, [period, customStart, customEnd]);
-
-  // Fetch from backend API
   const fetchExecutiveData = useCallback(async () => {
-    try {
-      setIsLoadingApi(true);
-      const endpoints = [
-        `/api/executive-overview.php?period=${period}&startDate=${customStart}&endDate=${customEnd}`,
-        `/crm/api/executive-overview.php?period=${period}&startDate=${customStart}&endDate=${customEnd}`,
-        `/admin/api/executive-overview.php?period=${period}&startDate=${customStart}&endDate=${customEnd}`
-      ];
-
-      for (const ep of endpoints) {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 3000);
-          const res = await fetch(ep, { cache: 'no-store', signal: controller.signal });
-          clearTimeout(timeoutId);
-          if (res.ok) {
-            const json = await res.json();
-            if (json && json.success) {
-              setApiData(json);
-              return;
-            }
-          }
-        } catch (e) {
-          // try next endpoint
-        }
-      }
-    } catch (err) {
-      console.warn('Executive API fetch failed, falling back to local calculation:', err);
-    } finally {
-      setIsLoadingApi(false);
-      setIsRefreshing(false);
+    if (period === 'custom' && (!customStart || !customEnd)) return;
+    setIsLoadingApi(true);
+    const res = await getExecutiveOverview({
+      period,
+      ...(period === 'custom' ? { startDate: customStart, endDate: customEnd } : {})
+    });
+    if (res.success) {
+      setApiData(res);
+      setLoadError('');
+    } else {
+      setLoadError(res.error || 'Could not load the executive overview.');
     }
+    setIsLoadingApi(false);
+    setIsRefreshing(false);
   }, [period, customStart, customEnd]);
 
   useEffect(() => {
     fetchExecutiveData();
   }, [fetchExecutiveData]);
 
-  // Auto-refresh timer every 30 seconds for recent activity
+  // Auto-refresh every 30 seconds while the tab is visible
   useEffect(() => {
     const timer = setInterval(() => {
-      fetchExecutiveData();
+      if (!document.hidden) fetchExecutiveData();
     }, 30000);
     return () => clearInterval(timer);
   }, [fetchExecutiveData]);
@@ -162,196 +95,69 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
     fetchExecutiveData();
   };
 
-  // Local calculation engine for instant zero-lag rendering
-  const computedMetrics = useMemo(() => {
-    // Partition leads into current period and prior period
-    const currentPeriodLeads = [];
-    const priorPeriodLeads = [];
+  const totals = apiData?.totals || {};
+  const apiTrends = apiData?.trends || {};
+  const totalLeads = totals.leads || 0;
+  const totalApproved = totals.approved || 0;
+  const freshCount = apiData?.statusCounts?.FRESH ?? 0;
+  const appliedVolume = totals.appliedVolumeRupees || 0;
+  // Commission arrives in paise; the screen shows rupees
+  const totalCommissionEarned = Math.round((totals.commissionEarnedPaise || 0) / 100);
+  const periodLabel = apiData?.period?.label || (period === 'custom' ? `${customStart} - ${customEnd}` : period.replace('_', ' '));
+  const priorPeriodName = { this_month: 'last month', last_month: 'prior month', this_fy: 'last FY', custom: 'prior period' }[period] || 'prior period';
 
-    leads.forEach(l => {
-      const dt = getLeadDate(l);
-      if (!dt) {
-        currentPeriodLeads.push(l);
-        return;
-      }
-      if (dt >= periodStart && dt <= periodEnd) {
-        currentPeriodLeads.push(l);
-      } else if (dt >= priorStart && dt <= priorEnd) {
-        priorPeriodLeads.push(l);
-      }
-    });
+  const eventColorFor = (code) => ({
+    approved: 'bg-emerald-500',
+    disbursed: 'bg-purple-600',
+    docs: 'bg-amber-500',
+    interested: 'bg-cyan-500'
+  }[code] || 'bg-blue-500');
 
-    // Partner breakdown
-    const partnerBreakdown = AFFILIATE_PARTNERS.map(partner => {
-      const pLeads = currentPeriodLeads.filter(l => {
-        const c = (l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
-        return c === partner.id || c === partner.name.toLowerCase().replace(/[\s\-_]/g, '') || c.includes(partner.id);
-      });
-
-      const count = pLeads.length;
-      const volume = pLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied), 0);
-
-      const approvedLeads = pLeads.filter(l => {
-        const st = (l.status || '').toLowerCase();
-        return st === 'approved' || st === 'disbursed';
-      });
-      const approvedCount = approvedLeads.length;
-
-      const ratePct = partner.commissionPct || 0.025;
-      const commission = Math.round(volume * ratePct);
-
-      return {
-        ...partner,
-        count,
-        volume,
-        approved: approvedCount,
-        commission
-      };
-    });
-
-    const totalLeads = currentPeriodLeads.length;
-    const freshCount = currentPeriodLeads.filter(l => (l.status || '').toLowerCase() === 'fresh').length;
-    const totalApproved = currentPeriodLeads.filter(l => {
-      const st = (l.status || '').toLowerCase();
-      return st === 'approved' || st === 'disbursed';
-    }).length;
-
-    const totalVolume = currentPeriodLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied), 0);
-    const totalCommissionEarned = partnerBreakdown.reduce((sum, p) => sum + p.commission, 0);
-
-    // Prior period calculations for trends
-    const priorTotalLeads = priorPeriodLeads.length;
-    const priorApproved = priorPeriodLeads.filter(l => {
-      const st = (l.status || '').toLowerCase();
-      return st === 'approved' || st === 'disbursed';
-    }).length;
-    const priorVolume = priorPeriodLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied), 0);
-    const priorCommission = Math.round(priorVolume * 0.025);
-
-    const calcTrend = (curr, prior) => {
-      if (prior <= 0) return null;
-      const diff = ((curr - prior) / prior) * 100;
-      return Math.round(diff * 10) / 10;
-    };
-
-    // Leads over time (daily or weekly points)
-    const periodDays = Math.max(1, Math.round((periodEnd.getTime() - periodStart.getTime()) / (1000 * 3600 * 24)));
-    const isDaily = periodDays <= 62;
-
-    const dateBuckets = {};
-    const cursor = new Date(periodStart);
-    while (cursor <= periodEnd) {
-      const key = isDaily 
-        ? `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`
-        : `${cursor.getFullYear()}-W${Math.ceil(cursor.getDate() / 7)}`;
-      const label = isDaily 
-        ? cursor.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })
-        : `Wk ${Math.ceil(cursor.getDate() / 7)} ${cursor.toLocaleDateString('en-IN', { month: 'short' })}`;
-
-      if (!dateBuckets[key]) {
-        dateBuckets[key] = { date: label, totalLeads: 0, approved: 0 };
-      }
-      cursor.setDate(cursor.getDate() + 1);
-    }
-
-    currentPeriodLeads.forEach(l => {
-      const dt = getLeadDate(l) || periodEnd;
-      const key = isDaily 
-        ? `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
-        : `${dt.getFullYear()}-W${Math.ceil(dt.getDate() / 7)}`;
-      if (dateBuckets[key]) {
-        dateBuckets[key].totalLeads++;
-        const st = (l.status || '').toLowerCase();
-        if (st === 'approved' || st === 'disbursed') {
-          dateBuckets[key].approved++;
-        }
-      }
-    });
-
-    const leadsOverTime = Object.values(dateBuckets);
-
-    // Recent activity list (last 10 items)
-    const sorted = [...leads].sort((a, b) => {
-      const da = getLeadDate(a)?.getTime() || 0;
-      const db = getLeadDate(b)?.getTime() || 0;
-      return db - da;
-    });
-
-    const recentActivity = sorted.slice(0, 10).map((l, idx) => {
-      const st = (l.status || 'Fresh').toLowerCase();
-      let eventType = 'New Lead';
-      let eventColor = 'bg-blue-500';
-      if (st === 'approved') {
-        eventType = 'Status Change → Approved';
-        eventColor = 'bg-emerald-500';
-      } else if (st === 'disbursed') {
-        eventType = 'Loan Disbursed';
-        eventColor = 'bg-purple-600';
-      } else if (st.includes('doc')) {
-        eventType = 'Documents Submitted';
-        eventColor = 'bg-amber-500';
-      } else if (st === 'interested') {
-        eventType = 'Customer Interested';
-        eventColor = 'bg-cyan-500';
-      }
-
-      return {
-        id: l.id || `lead-${idx}`,
-        timestamp: l.created_at || l.createdAt || l.created || new Date().toISOString(),
-        leadRef: l.id ? String(l.id) : `L-${1020 + idx}`,
-        leadName: l.name || 'Applicant',
-        partner: l.assignedCompany || 'Rupay91',
-        eventType,
-        eventColor,
-        amount: cleanLoanAmount(l.loanAmount || l.applied)
-      };
-    });
-
+  // Per-partner rows: presentation (colours) from the partner list, numbers from the server
+  const partnerBreakdown = (apiData?.partners || []).map((p) => {
+    const meta = AFFILIATE_PARTNERS.find((x) => x.id === p.slug) || {};
     return {
-      partnerBreakdown,
-      totalLeads,
-      freshCount,
-      totalApproved,
-      appliedVolume: totalVolume,
-      totalVolume,
-      totalCommissionEarned,
-      leadsOverTime,
-      recentActivity,
-      trends: {
-        totalLeads: calcTrend(totalLeads, priorTotalLeads),
-        totalApproved: calcTrend(totalApproved, priorApproved),
-        appliedVolume: calcTrend(totalVolume, priorVolume),
-        totalCommissionEarned: calcTrend(totalCommissionEarned, priorCommission)
-      }
+      ...meta,
+      id: p.slug || 'unassigned',
+      name: p.name,
+      leads: p.leads || 0,
+      volume: p.volumeRupees || 0,
+      approved: p.approved || 0,
+      commission: Math.round((p.commissionPaise || 0) / 100),
+      accentColor: meta.accentColor || '#64748B',
+      badgeClass: meta.badgeClass || 'bg-slate-100 text-slate-600 border border-slate-200'
     };
-  }, [leads, periodStart, periodEnd, priorStart, priorEnd, getLeadDate]);
+  });
 
-  // Use API data if available, with computed metrics as dependable real-time source
-  const totalLeads = (apiData?.totalLeads ?? computedMetrics?.totalLeads) || 0;
-  const totalApproved = (apiData?.totalApproved ?? computedMetrics?.totalApproved) || 0;
-  const appliedVolume = (apiData?.appliedVolume ?? computedMetrics?.appliedVolume) || 0;
-  const totalCommissionEarned = (apiData?.totalCommissionEarned ?? computedMetrics?.totalCommissionEarned) || 0;
-  const partnerBreakdown = apiData?.partners ?? computedMetrics?.partnerBreakdown ?? [];
-  const leadsOverTime = (apiData?.leadsOverTime && apiData.leadsOverTime.length > 0) ? apiData.leadsOverTime : (computedMetrics?.leadsOverTime || []);
-  const recentActivity = (apiData?.recentActivity && apiData.recentActivity.length > 0) ? apiData.recentActivity : (computedMetrics?.recentActivity || []);
+  const leadsOverTime = apiData?.leadsOverTime || [];
+  const recentActivity = (apiData?.recentActivity || []).map((a, idx) => ({
+    id: a.id || `act-${idx}`,
+    timestamp: a.timestamp,
+    leadRef: a.leadRef,
+    leadName: a.leadName,
+    partner: a.partner,
+    eventType: a.eventType,
+    eventColor: eventColorFor(a.eventCode),
+    amount: a.amountRupees
+  }));
 
   const trends = {
-    totalLeads: apiData?.totalLeadsTrend ?? computedMetrics?.trends?.totalLeads ?? null,
-    totalApproved: apiData?.totalApprovedTrend ?? computedMetrics?.trends?.totalApproved ?? null,
-    appliedVolume: apiData?.appliedVolumeTrend ?? computedMetrics?.trends?.appliedVolume ?? null,
-    totalCommissionEarned: apiData?.totalCommissionTrend ?? computedMetrics?.trends?.totalCommissionEarned ?? null
+    totalLeads: apiTrends.leads ?? null,
+    totalApproved: apiTrends.approved ?? null,
+    appliedVolume: apiTrends.appliedVolume ?? null,
+    totalCommissionEarned: apiTrends.commission ?? null
   };
 
   // Bar and Pie chart data
   const barData = partnerBreakdown.map(p => ({
     name: p.name,
-    leads: p.leads ?? p.count ?? 0,
+    leads: p.leads ?? 0,
     color: p.accentColor || '#0A3977'
   }));
 
   const pieData = partnerBreakdown.map(p => ({
     name: p.name,
-    value: p.leads ?? p.count ?? 0,
+    value: p.leads ?? 0,
     color: p.accentColor || '#0A3977'
   }));
 
@@ -383,6 +189,13 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+
+      {loadError && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>Could not load the executive overview: {loadError}</span>
+          <button onClick={handleManualRefresh} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">Retry</button>
+        </div>
+      )}
       
       {/* Dashboard Title & Overview Header with Period Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
@@ -478,7 +291,7 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
             </div>
           </div>
           <div className="text-[11px] text-slate-500 mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2">
-            <span className="text-blue-700 font-bold">{computedMetrics.freshCount} Fresh</span>
+            <span className="text-blue-700 font-bold">{freshCount} Fresh</span>
             <span>·</span>
             <span className="text-emerald-600 font-bold">{totalApproved} Approved</span>
           </div>
@@ -591,11 +404,11 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
               </div>
             </div>
             <div className="text-2xl font-black text-slate-900">
-              100%
+              {apiData && typeof apiData.routingRate === 'number' ? `${apiData.routingRate}%` : '—'}
             </div>
           </div>
           <div className="text-[11px] text-emerald-600 font-bold mt-2 border-t border-slate-100 pt-2 truncate">
-            Automated instant matching
+            Leads routed to a partner
           </div>
         </div>
 
@@ -623,7 +436,7 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
             return (
               <div
                 key={p.id}
-                onClick={() => onSelectCompany && onSelectCompany(p.id)}
+                onClick={() => onSelectCompany && p.id !== 'unassigned' && onSelectCompany(p.id)}
                 className="crm-card bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs hover:shadow-md hover:border-[#0A3977] transition cursor-pointer group"
               >
                 <div className="flex items-center justify-between mb-2">
@@ -873,7 +686,7 @@ export default function ExecutiveDashboard({ stats, leads = [], onSelectCompany,
                       {act.partner}
                     </span>
                     <span className="font-bold text-slate-800">
-                      ₹{act.amount ? Number(act.amount || 0).toLocaleString('en-IN') : '50,000'}
+                      {act.amount ? `₹${Number(act.amount || 0).toLocaleString('en-IN')}` : '—'}
                     </span>
                     <span className="text-slate-400 text-[10px] whitespace-nowrap">
                       {dt.full}

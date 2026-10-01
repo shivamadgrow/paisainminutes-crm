@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Link as LinkIcon, 
   Search, 
@@ -14,15 +14,47 @@ import {
   EyeOff,
   Code
 } from 'lucide-react';
-import { INITIAL_INTEGRATIONS } from '../data/integrationsData';
-import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
+import { BACKEND_BASE } from '../utils/apiClient';
+import { apiGet, apiPatch } from '../utils/crmApi';
+
+const STATUS_LABELS = { CONNECTED: 'Connected', ERROR: 'Error', PAUSED: 'Paused' };
+const postbackUrlFor = (slug) => `${BACKEND_BASE}/api/public/postback/${slug}`;
+const maskedKey = (meta) => (meta && meta.isSet ? `••••••••••••••••${meta.last4 || ''}` : 'Not set');
 
 export default function IntegrationSettingsView() {
-  const [integrations, setIntegrations] = useState(INITIAL_INTEGRATIONS);
+  const [integrations, setIntegrations] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedKey, setCopiedKey] = useState(null);
-  const [showKeys, setShowKeys] = useState({});
-  const [pingStatus, setPingStatus] = useState({});
+  const [editing, setEditing] = useState({}); // partnerId -> { apiKey, secretKey }
+  const [savingId, setSavingId] = useState(null);
+  const [pingNotice, setPingNotice] = useState({});
+
+  // Partner integration settings live on the server. API keys and shared secrets are write-only there:
+  // only a masked tail is ever returned, so they cannot be revealed or copied from this screen.
+  const loadIntegrations = async () => {
+    setIsLoading(true);
+    const res = await apiGet('/api/crm/settings/integrations');
+    if (res.ok && res.data && Array.isArray(res.data.integrations)) {
+      setIntegrations(res.data.integrations.map(i => ({
+        ...i,
+        status: STATUS_LABELS[i.status] || i.status,
+        apiEndpoint: i.apiEndpoint || '—',
+        authType: i.authType || '—',
+        lastSync: i.lastSyncAt ? new Date(i.lastSyncAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : 'Never'
+      })));
+      setLoadError('');
+    } else {
+      setLoadError(res.error || 'Could not load integration settings.');
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadIntegrations();
+  }, []);
 
   const filtered = integrations.filter(item => {
     if (searchQuery) {
@@ -38,22 +70,39 @@ export default function IntegrationSettingsView() {
     setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  const handleToggleKey = (id) => {
-    setShowKeys(p => ({ ...p, [id]: !p[id] }));
+  const handleSaveCredentials = async (item) => {
+    const draft = editing[item.partnerId] || {};
+    const body = {};
+    if (draft.apiKey) body.apiKey = draft.apiKey;
+    if (draft.secretKey) body.secretKey = draft.secretKey;
+    if (!Object.keys(body).length) return;
+    setSavingId(item.partnerId);
+    setActionError('');
+    const res = await apiPatch(`/api/crm/settings/integrations/${encodeURIComponent(item.partnerId)}`, body);
+    setSavingId(null);
+    if (res.ok) {
+      setEditing(p => ({ ...p, [item.partnerId]: undefined }));
+      await loadIntegrations();
+    } else {
+      setActionError(res.error || 'The credentials could not be saved.');
+    }
   };
 
+  // There is no live endpoint-ping route; deliveries are tested from a lead and recorded in the delivery logs.
   const handleTestPing = (partnerId) => {
-    setPingStatus(p => ({ ...p, [partnerId]: 'pinging' }));
-    setTimeout(() => {
-      setPingStatus(p => ({ ...p, [partnerId]: 'success' }));
-      setTimeout(() => {
-        setPingStatus(p => ({ ...p, [partnerId]: null }));
-      }, 3000);
-    }, 800);
+    setPingNotice(p => ({ ...p, [partnerId]: true }));
+    setTimeout(() => setPingNotice(p => ({ ...p, [partnerId]: false })), 4000);
   };
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {(loadError || actionError) && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>{loadError || actionError}</span>
+          <button onClick={loadError ? loadIntegrations : () => setActionError('')} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">{loadError ? 'Retry' : 'Dismiss'}</button>
+        </div>
+      )}
+      {isLoading && <div className="text-xs text-slate-500">Loading integration settings from the server…</div>}
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -75,16 +124,16 @@ export default function IntegrationSettingsView() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Code className="w-5 h-5 text-indigo-400" />
-            <h3 className="font-bold text-sm text-slate-100">Global Incoming Callback Webhook URL</h3>
+            <h3 className="font-bold text-sm text-slate-100">Incoming Callback (Postback) URL</h3>
           </div>
           <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold">
             HTTP 200 OK Receiver
           </span>
         </div>
         <div className="flex items-center gap-2 bg-slate-800/80 p-2.5 rounded-xl border border-slate-700 font-mono text-xs text-indigo-200">
-          <span className="flex-1 truncate">https://crm.paisainminutes.com/api/webhooks/disbursal-callback</span>
+          <span className="flex-1 truncate">{BACKEND_BASE}/api/public/postback/&#123;partner_slug&#125;?sub_id=&#123;lead_id&#125;&amp;status=&#123;status&#125;&amp;amount=&#123;amount&#125;&amp;secret=&#123;partner_secret&#125;</span>
           <button
-            onClick={() => handleCopy('https://crm.paisainminutes.com/api/webhooks/disbursal-callback', 'global-webhook')}
+            onClick={() => handleCopy(`${BACKEND_BASE}/api/public/postback/{partner_slug}?sub_id={lead_id}&status={status}&amount={amount}&secret={partner_secret}`, 'global-webhook')}
             className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md text-[11px] flex items-center gap-1 transition cursor-pointer"
           >
             {copiedKey === 'global-webhook' ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
@@ -134,25 +183,10 @@ export default function IntegrationSettingsView() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handleTestPing(item.partnerId)}
-                  disabled={pingStatus[item.partnerId] === 'pinging'}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
+                                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
                 >
-                  {pingStatus[item.partnerId] === 'pinging' ? (
-                    <>
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
-                      <span>Testing ping...</span>
-                    </>
-                  ) : pingStatus[item.partnerId] === 'success' ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-emerald-700">200 OK Verified</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Test Endpoint Ping</span>
-                    </>
-                  )}
+                  <Zap className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{pingNotice[item.partnerId] ? 'Not available yet — see API Delivery Logs' : 'Test Endpoint Ping'}</span>
                 </button>
               </div>
             </div>
@@ -165,48 +199,45 @@ export default function IntegrationSettingsView() {
               </div>
 
               <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/60 space-y-1">
-                <div className="text-[10px] uppercase font-bold text-slate-400 font-sans">Dedicated Status Webhook</div>
-                <div className="text-slate-800 break-all text-[11px] select-all">{item.webhookUrl}</div>
+                <div className="text-[10px] uppercase font-bold text-slate-400 font-sans">Dedicated Status Webhook (incoming postback)</div>
+                <div className="text-slate-800 break-all text-[11px] select-all">{postbackUrlFor(item.slug)}</div>
               </div>
 
-              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/60 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] uppercase font-bold text-slate-400 font-sans">API Key</div>
-                  <div className="text-slate-800 text-[11px]">
-                    {showKeys[item.partnerId] ? item.apiKey : '••••••••••••••••••••••••'}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleToggleKey(item.partnerId)}
-                    className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 cursor-pointer"
-                  >
-                    {showKeys[item.partnerId] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
-                  <button
-                    onClick={() => handleCopy(item.apiKey, item.partnerId + '-key')}
-                    className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 cursor-pointer"
-                  >
-                    {copiedKey === item.partnerId + '-key' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/60 space-y-1.5">
+                <div className="text-[10px] uppercase font-bold text-slate-400 font-sans">API Key (write-only)</div>
+                <div className="text-slate-800 text-[11px]">{maskedKey(item.apiKey)}</div>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="Enter new API key to replace"
+                  value={(editing[item.partnerId] || {}).apiKey || ''}
+                  onChange={(e) => setEditing(p => ({ ...p, [item.partnerId]: { ...(p[item.partnerId] || {}), apiKey: e.target.value } }))}
+                  className="w-full px-2 py-1.5 text-[11px] border border-slate-200 rounded-md bg-white font-mono"
+                />
               </div>
 
-              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/60 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] uppercase font-bold text-slate-400 font-sans">Shared Secret</div>
-                  <div className="text-slate-800 text-[11px]">
-                    {showKeys[item.partnerId] ? item.secretKey : '••••••••••••••••••••••••'}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleCopy(item.secretKey, item.partnerId + '-sec')}
-                    className="p-1 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 cursor-pointer"
-                  >
-                    {copiedKey === item.partnerId + '-sec' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
+              <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/60 space-y-1.5">
+                <div className="text-[10px] uppercase font-bold text-slate-400 font-sans">Shared Secret (write-only)</div>
+                <div className="text-slate-800 text-[11px]">{maskedKey(item.secretKey)}</div>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="Enter new shared secret to replace"
+                  value={(editing[item.partnerId] || {}).secretKey || ''}
+                  onChange={(e) => setEditing(p => ({ ...p, [item.partnerId]: { ...(p[item.partnerId] || {}), secretKey: e.target.value } }))}
+                  className="w-full px-2 py-1.5 text-[11px] border border-slate-200 rounded-md bg-white font-mono"
+                />
+              </div>
+
+              <div className="md:col-span-2 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => handleSaveCredentials(item)}
+                  disabled={savingId === item.partnerId || !((editing[item.partnerId] || {}).apiKey || (editing[item.partnerId] || {}).secretKey)}
+                  className="px-3 py-1.5 bg-[#0A3977] disabled:bg-slate-300 text-white rounded-lg text-xs font-bold cursor-pointer"
+                >
+                  {savingId === item.partnerId ? 'Saving…' : 'Update credentials'}
+                </button>
               </div>
             </div>
           </div>

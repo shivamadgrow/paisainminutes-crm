@@ -16,48 +16,49 @@ $isJsonRequest = (isset($_SERVER['HTTP_ACCEPT']) && strpos($_SERVER['HTTP_ACCEPT
 
 $found = false;
 $leadDetails = null;
+$serviceError = false;
+
+// The application status comes from the Node server (GET /api/public/leads/status). Short timeout, no local files.
+require_once __DIR__ . '/config/env.php';
+$pimNodeApi = rtrim((string) getEnvVal('BACKEND_API_URL', 'https://api.paisainminutes.tech'), '/');
+
+if (!function_exists('pimNodeStatusLookup')) {
+    function pimNodeStatusLookup($base, $phone) {
+        if (!function_exists('curl_init')) {
+            return ['code' => 0, 'json' => null];
+        }
+        $ch = curl_init($base . '/api/public/leads/status?phone=' . urlencode($phone));
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 1,
+            CURLOPT_TIMEOUT => 3,
+            CURLOPT_HTTPHEADER => ['Accept: application/json'],
+        ]);
+        $body = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        return ['code' => $code, 'json' => ($body === false) ? null : json_decode($body, true)];
+    }
+}
 
 if (!empty($phone) && preg_match("/^[6-9]\d{9}$/", $phone)) {
-    // 1. Search JSON database first for detailed metadata
-    $jsonFile = __DIR__ . '/data/leads.json';
-    if (file_exists($jsonFile)) {
-        $jsonLeads = json_decode(file_get_contents($jsonFile), true) ?: [];
-        foreach (array_reverse($jsonLeads) as $ld) {
-            if (isset($ld['phone']) && trim($ld['phone']) === $phone) {
-                $found = true;
-                $leadDetails = [
-                    'timestamp' => $ld['timestamp'] ?? date('Y-m-d H:i:s'),
-                    'name' => $ld['name'] ?? 'Loan Applicant',
-                    'amount' => $ld['loan_amount'] ?? 700000,
-                    'status' => !empty($ld['status']) ? $ld['status'] : 'Under Review',
-                    'reference_id' => $ld['lead_id'] ?? ('PIM-' . strtoupper(substr(md5($phone), 0, 6)))
-                ];
-                break;
-            }
-        }
-    }
-
-    // 2. Fallback search CSV log
-    if (!$found) {
-        $logFile = __DIR__ . '/leads_log.csv';
-        if (file_exists($logFile)) {
-            if (($handle = fopen($logFile, 'r')) !== FALSE) {
-                $headers = fgetcsv($handle);
-                while (($data = fgetcsv($handle)) !== FALSE) {
-                    if (count($data) > 3 && trim($data[3]) === $phone) {
-                        $found = true;
-                        $leadDetails = [
-                            'timestamp' => $data[0] ?? date('Y-m-d H:i:s'),
-                            'name' => $data[1] ?? 'Loan Applicant',
-                            'amount' => $data[4] ?? 700000,
-                            'status' => !empty($data[8]) ? $data[8] : 'Under Review',
-                            'reference_id' => !empty($data[0]) ? ('PIM-' . strtoupper(substr(md5($phone), 0, 6))) : 'PIM-100234'
-                        ];
-                    }
-                }
-                fclose($handle);
-            }
-        }
+    $nodeRes = pimNodeStatusLookup($pimNodeApi, $phone);
+    $nodeJson = $nodeRes['json'];
+    if ($nodeRes['code'] === 200 && is_array($nodeJson) && ($nodeJson['status'] ?? '') === 'success' && !empty($nodeJson['data'])) {
+        $d = $nodeJson['data'];
+        $submitted = $d['timeline'][0]['at'] ?? null;
+        $found = true;
+        $leadDetails = [
+            'timestamp' => $submitted ? (new DateTime($submitted))->setTimezone(new DateTimeZone('Asia/Kolkata'))->format('Y-m-d H:i:s') : '',
+            'name' => $d['name'] ?? 'Loan Applicant',
+            'amount' => $d['amount'] ?? null,
+            'status' => $d['status'] ?? 'Under Review',
+            'reference_id' => $d['reference_id'] ?? '',
+            'next_step' => $d['next_step'] ?? ''
+        ];
+    } elseif ($nodeRes['code'] !== 404) {
+        // Node unreachable or errored: say so instead of claiming "no application"
+        $serviceError = true;
     }
 }
 
@@ -75,11 +76,14 @@ if ($isJsonRequest) {
             'data' => [
                 'name' => htmlspecialchars($leadDetails['name']),
                 'status' => htmlspecialchars($leadDetails['status']),
-                'amount' => number_format((float)$leadDetails['amount']),
+                'amount' => $leadDetails['amount'] !== null ? number_format((float)$leadDetails['amount']) : '—',
                 'reference_id' => strtoupper($leadDetails['reference_id']),
-                'date' => date('d M Y', strtotime($leadDetails['timestamp']))
+                'date' => $leadDetails['timestamp'] ? date('d M Y', strtotime($leadDetails['timestamp'])) : ''
             ]
         ]);
+    } elseif ($serviceError) {
+        http_response_code(503);
+        echo json_encode(['status' => 'error', 'message' => 'Status service is temporarily unavailable. Please try again shortly.']);
     } else {
         echo json_encode([
             'status' => 'not_found',
@@ -172,11 +176,11 @@ include 'includes/header.php';
                     </div>
                     <div>
                         <span style="font-size: 0.8rem; color: var(--text-muted); display: block;">Requested Amount</span>
-                        <strong style="color: var(--accent-color);">₹<?php echo number_format((float)$leadDetails['amount']); ?></strong>
+                        <strong style="color: var(--accent-color);"><?php echo $leadDetails['amount'] !== null ? '₹' . number_format((float)$leadDetails['amount']) : '—'; ?></strong>
                     </div>
                     <div>
                         <span style="font-size: 0.8rem; color: var(--text-muted); display: block;">Date Submitted</span>
-                        <strong style="color: var(--text-dark);"><?php echo date('d M Y, h:i A', strtotime($leadDetails['timestamp'])); ?></strong>
+                        <strong style="color: var(--text-dark);"><?php echo $leadDetails['timestamp'] ? date('d M Y, h:i A', strtotime($leadDetails['timestamp'])) : '—'; ?></strong>
                     </div>
                     <div>
                         <span style="font-size: 0.8rem; color: var(--text-muted); display: block;">Mobile Number</span>
@@ -186,6 +190,12 @@ include 'includes/header.php';
 
                 <div style="text-align: center; margin-top: 1.5rem;">
                     <a href="loan-offers.php?lead_id=<?php echo urlencode($leadDetails['reference_id']); ?>" class="btn btn-primary" style="background: var(--primary-color); color: #fff; padding: 0.75rem 2rem; border-radius: var(--border-radius-pill); text-decoration: none; font-weight: 600; display: inline-block;">View Pre-Approved Loan Offers &rarr;</a>
+                </div>
+            </div>
+        <?php elseif (!empty($phone) && $serviceError): ?>
+            <div style="border-top: 1px dashed var(--border-color); padding-top: 1.5rem; text-align: center;">
+                <div style="background: #FEF2F2; color: #DC2626; padding: 1rem; border-radius: 8px; font-weight: 600;">
+                    Status service is temporarily unavailable. Please try again in a few minutes.
                 </div>
             </div>
         <?php elseif (!empty($phone)): ?>

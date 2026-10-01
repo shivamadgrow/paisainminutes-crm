@@ -58,21 +58,21 @@ import {
   getISTDateKey
 } from '../utils/amountHelpers';
 import {
-  fetchApi,
   deleteLeadsApi,
   updateLoanApplication,
   submitLoanApplication,
   buildLeadPayload,
-  KNOWN_LENDERS,
-  resolveLenderName,
+  getLendersFromBackend,
   maskPan,
   normalizeStatus,
   formatStatusLabel,
   CRM_STATUS_MAP,
   CRM_STATUS_STAGES,
-  mapBackendLead,
   getLeadsFromBackend
 } from '../utils/apiConfig';
+import { listPartnerEvents, pushLeadToPartnerApi } from '../utils/crmApi';
+import { getServerPartnerId } from '../data/affiliatePartners';
+import { hasPermission } from '../utils/permissions';
 
 const INITIAL_FULL_LEADS = [];
 
@@ -262,9 +262,22 @@ export default function LeadsView({
   const [partnerFilterQuery, setPartnerFilterQuery] = useState('');
   const [leadEvents, setLeadEvents] = useState([]);
   const [isPushingApi, setIsPushingApi] = useState(false);
+  const [lenders, setLenders] = useState([]);
+  const [, setIsCustomDatePickerOpen] = useState(false);
+  const canDeleteLeads = hasPermission(currentUser, 'leads.delete') && ['SUPER_ADMIN', 'ADMIN'].includes(currentUser?.serverRole);
+  const canEditLeads = hasPermission(currentUser, 'leads.update');
   const [toastMessage, setToastMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const LEADS_PER_PAGE = 10;
+
+  // Real Lender rows from the server (a lender id is never a partner slug or name)
+  useEffect(() => {
+    let alive = true;
+    getLendersFromBackend().then((list) => {
+      if (alive) setLenders(list);
+    });
+    return () => { alive = false; };
+  }, []);
 
   const showToast = (msg, isError = false) => {
     setToastMessage({ text: msg, isError });
@@ -277,13 +290,12 @@ export default function LeadsView({
     if (isManualSyncing) return;
     setIsManualSyncing(true);
     try {
-      const partnerScope = currentUser?.role === 'Partner' ? currentUser.partnerId : undefined;
-      const res = await getLeadsFromBackend({ partnerId: partnerScope });
+      const res = await getLeadsFromBackend({});
       if (res && res.success && Array.isArray(res.leads)) {
         if (setLeads) setLeads(res.leads);
         showToast(`Sync complete! Fetched ${res.leads.length} live leads.`);
       } else {
-        showToast('Live leads up to date.');
+        showToast((res && res.error) || 'Could not sync leads from the server.', true);
       }
     } catch (e) {
       showToast('Error syncing leads: ' + e.message, true);
@@ -292,37 +304,29 @@ export default function LeadsView({
     }
   };
 
-  const fetchLeadEvents = (leadId) => {
-    if (!leadId) return;
-    const cleanId = String(leadId).trim();
-    let localEvents = [];
-    try {
-      localEvents = JSON.parse(localStorage.getItem(`pim_tracking_${cleanId}`) || '[]');
-      if (cleanId.includes('6033')) {
-        const yEvents = JSON.parse(localStorage.getItem('pim_tracking_PIM-260930-6033') || '[]');
-        localEvents = [...localEvents, ...yEvents];
-      }
-    } catch (e) {}
-
-    setLeadEvents(localEvents);
-
-    fetch(`/crm/api/partner-events.php?lead_id=${encodeURIComponent(cleanId)}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.success && Array.isArray(data.events)) {
-          setLeadEvents(prev => {
-            const combined = [...data.events, ...prev];
-            const seen = new Set();
-            return combined.filter(ev => {
-              const k = `${ev.partner_id || ev.partner}_${ev.created_at || ev.timestamp}`;
-              if (seen.has(k)) return false;
-              seen.add(k);
-              return true;
-            });
-          });
+  // Partner timeline for the open lead, from the server (append-only partner events)
+  const fetchLeadEvents = async (applicationId) => {
+    if (!applicationId) return;
+    const res = await listPartnerEvents({ applicationId: String(applicationId).trim(), limit: 100 });
+    if (res.success) {
+      setLeadEvents(res.events.map((ev) => ({
+        id: ev.id,
+        event_type: ev.eventType,
+        status: ev.status,
+        partner_id: ev.partnerSlug || ev.partnerId,
+        partner_name: ev.partnerName,
+        created_at: ev.createdAt ? new Date(ev.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '',
+        ip: ev.metadata && ev.metadata.ip,
+        details: {
+          remarks: ev.remarks,
+          status: ev.status,
+          target_url: ev.metadata && ev.metadata.target_url
         }
-      })
-      .catch(() => { });
+      })));
+    } else {
+      setLeadEvents([]);
+      showToast(`Could not load partner events: ${res.error}`, true);
+    }
   };
 
   useEffect(() => {
@@ -330,39 +334,25 @@ export default function LeadsView({
       setLeadEvents([]);
       return;
     }
-    const leadId = getLeadId(selectedLeadForOverview);
-    fetchLeadEvents(leadId);
-  }, [selectedLeadForOverview]);
+    fetchLeadEvents(selectedLeadForOverview.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedLeadForOverview && selectedLeadForOverview.id]);
 
   const handleManualApiPush = async (lead) => {
     if (!lead) return;
-    setIsPushingApi(true);
-    const targetLeadId = getLeadId(lead);
-    const partnerId = lead.clicked_partner || lead.assignedCompany || 'rupay91';
-
-    try {
-      const res = await fetch('/crm/api/delivery-logs.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'retry',
-          lead_id: targetLeadId,
-          partner_id: partnerId
-        })
-      });
-      const data = await res.json();
-      if (data && data.success) {
-        showToast(`Lead successfully pushed to ${partnerId} API!`);
-        fetchLeadEvents(targetLeadId);
-      } else {
-        showToast(data.error || data.message || 'API push failed. Logged in Delivery Logs.', true);
-        fetchLeadEvents(targetLeadId);
-      }
-    } catch (e) {
-      showToast('Error pushing lead to API', true);
-    } finally {
-      setIsPushingApi(false);
+    if (!lead.assignedPartnerId) {
+      showToast('Assign this lead to a partner before pushing it to the partner API.', true);
+      return;
     }
+    setIsPushingApi(true);
+    const res = await pushLeadToPartnerApi({ applicationId: lead.id, partnerId: lead.assignedPartnerId });
+    setIsPushingApi(false);
+    if (res.success) {
+      showToast(`Lead successfully pushed to ${lead.assignedCompany} API!`);
+    } else {
+      showToast(res.error || 'API push failed. Logged in Delivery Logs.', true);
+    }
+    fetchLeadEvents(lead.id);
   };
 
   // Close custom popovers when clicking outside, background scrolling, window resizing, or pressing Escape
@@ -472,11 +462,6 @@ export default function LeadsView({
   const [testShowFullFields, setTestShowFullFields] = useState(false);
   const [isSubmittingTest, setIsSubmittingTest] = useState(false);
   const [testFeedback, setTestFeedback] = useState(null);
-  const [testToken, setTestToken] = useState(() => {
-    try {
-      return localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token') || '';
-    } catch (e) { return ''; }
-  });
 
   // New Lead Manual Modal form state
   const [newMobile, setNewMobile] = useState('');
@@ -486,11 +471,6 @@ export default function LeadsView({
   const [newCity, setNewCity] = useState('');
   const [newSource, setNewSource] = useState('Apply Now Website');
   const [newCompany, setNewCompany] = useState('Rupay91');
-  const [newToken, setNewToken] = useState(() => {
-    try {
-      return localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token') || '';
-    } catch (e) { return ''; }
-  });
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
   const [manualFeedback, setManualFeedback] = useState(null);
 
@@ -572,7 +552,7 @@ export default function LeadsView({
         const matchesName = (item.name || '').toLowerCase().includes(q);
         const matchesMobile = (item.mobile || '').includes(q);
         const matchesEmail = (item.email || '').toLowerCase().includes(q);
-        const matchesId = getLeadId(item, idx).toLowerCase().includes(q);
+        const matchesId = getLeadId(item, idx).toLowerCase().includes(q) || String(item.leadCode || item.displayId || '').toLowerCase().includes(q);
         const matchesCity = (item.city || '').toLowerCase().includes(q);
         const matchesCompany = (item.assignedCompany || '').toLowerCase().includes(q);
         const matchesSource = (item.source || '').toLowerCase().includes(q) ||
@@ -725,231 +705,109 @@ export default function LeadsView({
   };
   const handleSelectOne = handleSelectRow;
 
-  // API Call helper for Deleting
-  const callDeleteApi = async (bodyPayload, onSuccess) => {
-    console.log('%c[CRM DELETE] 🗑️ Initiating delete operation...', 'color: #dc2626; font-weight: bold;', bodyPayload);
-    try {
-      const res = await deleteLeadsApi(bodyPayload);
-      console.log('%c[CRM DELETE] 📥 Server deletion result:', 'color: #059669; font-weight: bold;', res);
-      if (res && res.success) {
-        onSuccess(res);
-      } else {
-        console.warn('[CRM DELETE] ⚠️ Server deletion returned unsuccessful status, executing local state cleanup anyway.');
-        onSuccess(res);
-      }
-    } catch (e) {
-      console.error('[CRM DELETE] ❌ Delete API call exception:', e);
-      onSuccess(null);
-    }
-  };
-
-  const handleDeleteSingle = (item, idx) => {
+  const handleDeleteSingle = async (item, idx) => {
     const itemId = getLeadId(item, idx);
-    const phone = String(item.phone || item.mobile || '').replace(/\D/g, '').slice(-10);
-    console.log(`%c[CRM DELETE SINGLE] 🗑️ User requested deletion of lead: ${item.name || itemId} (ID: ${itemId})`, 'color: #e11d48; font-weight: bold;');
-    if (confirm(`Are you sure you want to delete lead ${item.name || itemId}?`)) {
-      // 1. Immediately remove from React state
-      if (setLeads) {
-        setLeads(prev => prev.filter((l, i) => {
-          const lId = getLeadId(l, i);
-          const lPhone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
-          return lId !== itemId && (!phone || lPhone !== phone);
-        }));
-      }
+    if (!canDeleteLeads) return;
+    if (!confirm(`Are you sure you want to delete lead ${item.name || itemId}?`)) return;
+    const res = await deleteLeadsApi({ id: item.id });
+    if (res.success) {
+      if (setLeads) setLeads(prev => prev.filter(l => l.id !== item.id));
       setSelectedLeadIds(prev => prev.filter(id => id !== itemId));
-
-      // 2. Call delete API (which automatically blacklists locally and on server)
-      callDeleteApi({ action: 'single', id: itemId, leadId: itemId, phone: phone }, (serverRes) => {
-        console.log(`[CRM STATE] 🧹 Lead ${itemId} permanently deleted. Server response:`, serverRes);
-      });
+      showToast('Lead deleted.');
+    } else {
+      showToast(res.error || 'Could not delete the lead.', true);
     }
   };
 
-  const handleDeleteSelected = () => {
-    if (selectedLeadIds.length === 0) return;
-    console.log(`%c[CRM BULK DELETE] 🗑️ User requested deletion of ${selectedLeadIds.length} selected leads:`, 'color: #e11d48; font-weight: bold;', selectedLeadIds);
-    if (confirm(`Delete ${selectedLeadIds.length} selected lead(s)?`)) {
-      const toDelete = new Set(selectedLeadIds);
-      if (setLeads) {
-        setLeads(prev => prev.filter((l, i) => !toDelete.has(getLeadId(l, i))));
-      }
-      const idsToDelete = [...selectedLeadIds];
+  const handleDeleteSelected = async () => {
+    if (selectedLeadIds.length === 0 || !canDeleteLeads) return;
+    if (!confirm(`Delete ${selectedLeadIds.length} selected lead(s)?`)) return;
+    const res = await deleteLeadsApi({ ids: [...selectedLeadIds] });
+    if (res.success) {
+      const gone = new Set([...(res.deletedIds || []), ...(res.notFound || [])]);
+      if (setLeads) setLeads(prev => prev.filter(l => !gone.has(l.id)));
       setSelectedLeadIds([]);
-
-      callDeleteApi({ action: 'selected', ids: idsToDelete }, (serverRes) => {
-        console.log(`[CRM STATE] 🧹 Bulk delete permanently completed. Server response:`, serverRes);
-      });
+      showToast(`${(res.deletedIds || []).length} lead(s) deleted.`);
+    } else {
+      showToast(res.error || 'Could not delete the selected leads.', true);
     }
   };
 
-  const handleClearAllLeads = () => {
+  const handleClearAllLeads = async () => {
+    if (!canDeleteLeads) return;
     if (leads.length === 0) {
       alert('No leads to delete! The list is already empty.');
       return;
     }
-    console.log(`%c[CRM CLEAR ALL] 🚨 User triggered "DELETE ALL LEADS" for ${leads.length} leads!`, 'color: #dc2626; font-weight: bold;');
-    if (confirm(`⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE ALL ${leads.length} LEADS? This cannot be undone.`)) {
-      const allIds = leads.map((l, i) => getLeadId(l, i));
-      const allPhones = leads.map(l => String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10)).filter(Boolean);
+    if (!confirm(`⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE ALL leads? This cannot be undone.`)) return;
+    const typed = window.prompt('Type DELETE ALL LEADS to confirm');
+    if (typed !== 'DELETE ALL LEADS') {
+      showToast('Delete all cancelled.', true);
+      return;
+    }
+    const res = await deleteLeadsApi({ clear_all: true });
+    if (res.success) {
       if (setLeads) setLeads([]);
       setSelectedLeadIds([]);
-
-      callDeleteApi({ clear_all: true, action: 'reset_all', all: true, ids: allIds, phones: allPhones }, (serverRes) => {
-        console.log('[CRM STATE] 🧹 All leads cleared from state and server store.');
-      });
+      showToast(`All leads deleted (${res.deletedCount ?? 'all'}).`);
+    } else {
+      showToast(res.error || 'Could not delete all leads.', true);
     }
   };
 
-  // Re-assign Partner Company
+  const applyUpdatedLead = (backendId, updated) => {
+    if (updated && setLeads) setLeads(prev => prev.map(l => (l.id === backendId ? updated : l)));
+  };
+
+  // Assign (or un-assign) the partner a lead is routed to. Only the server decides; state changes after success.
   const handleReassignCompany = async (leadId, newCompany) => {
-    console.log(`%c[CRM REASSIGN] 🔀 Reassigning lead ${leadId} -> ${newCompany}`, 'color: #7c3aed; font-weight: bold;');
-    try {
-      const targetLead = leads.find((l, i) => getLeadId(l, i) === leadId);
-      const backendId = targetLead?.id || leadId;
-      const displayId = String(targetLead?.displayId || targetLead?.loanNo || targetLead?.id || leadId);
-      const phone = targetLead ? String(targetLead.phone || targetLead.mobile || '').replace(/\D/g, '').slice(-10) : '';
-      const selectedLenderId = (!newCompany || newCompany === 'Pending Selection') ? null : newCompany;
-      const isUnassigning = !newCompany || newCompany === 'Pending Selection';
-
-      // 1. Instantly update React state for responsive UX
-      if (setLeads) {
-        setLeads(prev => prev.map((l, i) => {
-          const lPhone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
-          if (getLeadId(l, i) === leadId || (phone && lPhone === phone)) {
-            return {
-              ...l,
-              assignedCompany: isUnassigning ? 'Pending Selection' : newCompany,
-              partner_name: isUnassigning ? 'Pending Selection' : newCompany,
-              appliedTo: isUnassigning ? 'Not Applied Yet' : newCompany,
-              delivery_status: isUnassigning ? 'none' : 'delivered',
-              selectedLenderId: selectedLenderId
-            };
-          }
-          return l;
-        }));
+    const targetLead = leads.find((l, i) => getLeadId(l, i) === leadId);
+    if (!targetLead) return;
+    const isUnassigning = !newCompany || newCompany === 'Pending Selection';
+    let serverPartnerId = null;
+    if (!isUnassigning) {
+      const meta = AFFILIATE_PARTNERS.find(p => p.name === newCompany || p.id === newCompany);
+      serverPartnerId = meta ? getServerPartnerId(meta.id) : null;
+      if (!serverPartnerId) {
+        showToast(`"${newCompany}" is not registered on the server yet.`, true);
+        return;
       }
-
-      setReassigningLeadId(null);
-
-      // 2. Comprehensive Tracking: Track whichever partner PIM-260930-6033 goes to
-      const trackingRecord = {
-        id: `trk_${Date.now()}`,
-        lead_id: displayId,
-        leadId: displayId,
-        displayId: displayId,
-        phone: phone,
-        applicantName: targetLead?.name || targetLead?.applicantName || 'Applicant',
-        partner_id: newCompany,
-        partner: newCompany,
-        action: 'partner_assigned',
-        status: isUnassigning ? 'UNASSIGNED' : 'ASSIGNED',
-        timestamp: new Date().toISOString(),
-        created_at: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-        details: {
-          lead_id: displayId,
-          partner: newCompany,
-          remarks: `Lead ${displayId} dispatched to partner ${newCompany}`,
-          target_url: isUnassigning ? null : getPartnerTrackingUrl(newCompany, { leadId: displayId, phone: phone })
-        }
-      };
-
-      try {
-        const histKey = `pim_tracking_${displayId}`;
-        const prevHist = JSON.parse(localStorage.getItem(histKey) || '[]');
-        prevHist.unshift(trackingRecord);
-        localStorage.setItem(histKey, JSON.stringify(prevHist));
-
-        // Specifically track PIM-260930-6033
-        if (displayId.includes('6033') || phone === '8810606033') {
-          const yKey = 'pim_tracking_PIM-260930-6033';
-          const yHist = JSON.parse(localStorage.getItem(yKey) || '[]');
-          yHist.unshift(trackingRecord);
-          localStorage.setItem(yKey, JSON.stringify(yHist));
-        }
-
-        const globalLog = JSON.parse(localStorage.getItem('pim_partner_routing_history') || '[]');
-        globalLog.unshift(trackingRecord);
-        localStorage.setItem('pim_partner_routing_history', JSON.stringify(globalLog.slice(0, 100)));
-      } catch (e) {}
-
-      // Fire tracking events to server
-      try {
-        fetch('/crm/api/partner-events.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(trackingRecord)
-        }).catch(() => {});
-
-        fetch('/crm/api/delivery-logs.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'partner_assignment',
-            lead_id: displayId,
-            partner_id: newCompany,
-            status: isUnassigning ? 'none' : 'delivered'
-          })
-        }).catch(() => {});
-      } catch (e) {}
-
-      // Refresh overview modal events if open
-      if (selectedLeadForOverview && getLeadId(selectedLeadForOverview) === leadId) {
-        fetchLeadEvents(displayId);
-      }
-
-      // 3. Call PATCH /api/loan-applications/{id}
-      const patchRes = await updateLoanApplication(backendId, { selectedLenderId });
-      console.log('[CRM REASSIGN] 📥 Server PATCH response:', patchRes);
-
-      if (patchRes && patchRes.success && patchRes.data) {
-        const updated = mapBackendLead(patchRes.data);
-        if (updated && setLeads) {
-          setLeads(prev => prev.map((l, i) => (getLeadId(l, i) === leadId ? { ...l, ...updated } : l)));
-        }
-      }
-    } catch (e) {
-      console.error('[CRM REASSIGN] ❌ Error:', e);
-      setReassigningLeadId(null);
+    }
+    const patchRes = await updateLoanApplication(targetLead.id, { assignedPartnerId: serverPartnerId });
+    if (patchRes.success && patchRes.lead) {
+      applyUpdatedLead(targetLead.id, patchRes.lead);
+      showToast(isUnassigning ? 'Partner assignment removed.' : `Lead assigned to ${newCompany}.`);
+      if (selectedLeadForOverview && selectedLeadForOverview.id === targetLead.id) fetchLeadEvents(targetLead.id);
+    } else {
+      showToast(patchRes.error || 'Could not update the partner assignment.', true);
     }
   };
 
-  // Quick Status Change
+  // Choose the real lender (Lender table id) for a lead
+  const handleLenderChange = async (leadId, lenderId) => {
+    const targetLead = leads.find((l, i) => getLeadId(l, i) === leadId);
+    if (!targetLead) return;
+    const selectedLenderId = !lenderId || lenderId === 'Pending Selection' ? null : lenderId;
+    const patchRes = await updateLoanApplication(targetLead.id, { selectedLenderId });
+    if (patchRes.success && patchRes.lead) {
+      applyUpdatedLead(targetLead.id, patchRes.lead);
+      showToast('Lender updated.');
+    } else {
+      showToast(patchRes.error || 'Could not update the lender.', true);
+    }
+  };
+
+  // Quick status change (the seven canonical CRM statuses only)
   const handleStatusChange = async (leadId, newStatus) => {
     const canonicalStatus = normalizeStatus(newStatus);
-    const displayLabel = formatStatusLabel(newStatus);
-    console.log(`%c[CRM STATUS CHANGE] 🔄 Changing lead ${leadId} status -> ${canonicalStatus} (${displayLabel})`, 'color: #2563eb; font-weight: bold;');
-    try {
-      const targetLead = leads.find((l, i) => getLeadId(l, i) === leadId);
-      const backendId = targetLead?.id || leadId;
-      const phone = targetLead ? String(targetLead.phone || targetLead.mobile || '').replace(/\D/g, '').slice(-10) : '';
-
-      // 1. Instantly update React state
-      if (setLeads) {
-        setLeads(prev => prev.map((l, i) => {
-          const lPhone = String(l.phone || l.mobile || '').replace(/\D/g, '').slice(-10);
-          if (getLeadId(l, i) === leadId || (phone && lPhone === phone)) {
-            return {
-              ...l,
-              status: canonicalStatus,
-              statusLabel: displayLabel
-            };
-          }
-          return l;
-        }));
-      }
-
-      // 2. Call PATCH /api/loan-applications/{id}
-      const patchRes = await updateLoanApplication(backendId, { status: canonicalStatus });
-      console.log('[CRM STATUS CHANGE] 📥 Server PATCH response:', patchRes);
-
-      if (patchRes && patchRes.success && patchRes.data) {
-        const updated = mapBackendLead(patchRes.data);
-        if (updated && setLeads) {
-          setLeads(prev => prev.map((l, i) => (getLeadId(l, i) === leadId ? { ...l, ...updated } : l)));
-        }
-      }
-    } catch (e) {
-      console.error('[CRM STATUS CHANGE] ❌ Error:', e);
+    const targetLead = leads.find((l, i) => getLeadId(l, i) === leadId);
+    if (!targetLead) return;
+    const patchRes = await updateLoanApplication(targetLead.id, { status: canonicalStatus });
+    if (patchRes.success && patchRes.lead) {
+      applyUpdatedLead(targetLead.id, patchRes.lead);
+      showToast(`Status changed to ${formatStatusLabel(canonicalStatus)}.`);
+    } else {
+      showToast(patchRes.error || 'Could not update the status.', true);
     }
   };
 
@@ -970,15 +828,9 @@ export default function LeadsView({
     return activeOverviewLead ? getEligibilityInfo(activeOverviewLead) : null;
   }, [activeOverviewLead]);
 
-  const handleReassignCompanyInModal = async (leadId, newCompany) => {
-    await handleReassignCompany(leadId, newCompany);
-    setSelectedLeadForOverview(prev => prev ? { ...prev, assignedCompany: newCompany, partner_name: newCompany } : null);
-  };
+  const handleReassignCompanyInModal = (leadId, newCompany) => handleReassignCompany(leadId, newCompany);
 
-  const handleStatusChangeInModal = async (leadId, newStatus) => {
-    await handleStatusChange(leadId, newStatus);
-    setSelectedLeadForOverview(prev => prev ? { ...prev, status: newStatus } : null);
-  };
+  const handleStatusChangeInModal = (leadId, newStatus) => handleStatusChange(leadId, newStatus);
 
   // Test Website Lead Submit Handler (Supports minimal and complete canonical payloads)
   const handleTestApplySubmit = async (e) => {
@@ -1010,12 +862,10 @@ export default function LeadsView({
       pan: testPan || undefined,
       cibilScore: testCibil,
       selectedLenderId: testSelectedLenderId || (testAssignedCompany !== 'AUTO' ? testAssignedCompany : undefined),
-      lenderApplicationId: testLenderApplicationId || undefined,
-      token: testToken || undefined
+      lenderApplicationId: testLenderApplicationId || undefined
     };
 
     const payload = buildLeadPayload(rawInput);
-    if (testToken) payload.token = testToken;
     // Secure logging: never log raw PAN
     const logSafe = { ...payload };
     if (logSafe.pan) logSafe.pan = maskPan(logSafe.pan);
@@ -1026,8 +876,16 @@ export default function LeadsView({
       setIsSubmittingTest(false);
 
       if (result && result.success && result.lead) {
+        let createdLead = result.lead;
+        if ((testSelectedLenderId || testLenderApplicationId) && canEditLeads) {
+          const upd = await updateLoanApplication(createdLead.id, {
+            ...(testSelectedLenderId ? { selectedLenderId: testSelectedLenderId } : {}),
+            ...(testLenderApplicationId ? { lenderApplicationId: testLenderApplicationId } : {})
+          });
+          if (upd.success && upd.lead) createdLead = upd.lead;
+        }
         if (setLeads) {
-          setLeads(prev => [result.lead, ...prev.filter(l => l.id !== result.lead.id)]);
+          setLeads(prev => [createdLead, ...prev.filter(l => l.id !== createdLead.id)]);
         }
         setTestFeedback({
           type: 'success',
@@ -1071,13 +929,10 @@ export default function LeadsView({
       monthlyIncome: newSalary || 30000,
       city: newCity || undefined,
       leadSource: newSource || 'Direct Manual Entry',
-      utmSource: 'crm_manual',
-      selectedLenderId: newCompany,
-      token: newToken || undefined
+      utmSource: 'crm_manual'
     };
 
     const payload = buildLeadPayload(rawInput);
-    if (newToken) payload.token = newToken;
     const logSafe = { ...payload };
     if (logSafe.pan) logSafe.pan = maskPan(logSafe.pan);
     console.log('%c[CRM MANUAL SUBMIT] 📝 Creating Manual Lead with canonical payload:', 'color: #0d9488; font-weight: bold;', logSafe);
@@ -1086,8 +941,16 @@ export default function LeadsView({
       const result = await submitLoanApplication(rawInput);
       setIsSubmittingManual(false);
       if (result && result.success && result.lead) {
+        let createdLead = result.lead;
+        // Optional partner choice from the form: applied through the real assignment field
+        const chosen = AFFILIATE_PARTNERS.find(p => p.name === newCompany || p.id === newCompany);
+        const chosenServerId = chosen ? getServerPartnerId(chosen.id) : null;
+        if (chosenServerId && canEditLeads) {
+          const assignRes = await updateLoanApplication(createdLead.id, { assignedPartnerId: chosenServerId });
+          if (assignRes.success && assignRes.lead) createdLead = assignRes.lead;
+        }
         if (setLeads) {
-          setLeads(prev => [result.lead, ...prev.filter(l => l.id !== result.lead.id)]);
+          setLeads(prev => [createdLead, ...prev.filter(l => l.id !== createdLead.id)]);
         }
         setManualFeedback({
           type: 'success',
@@ -1120,6 +983,13 @@ export default function LeadsView({
   return (
     <div className="space-y-6 animate-fade-in pb-16">
 
+      {toastMessage && (
+        <div className={`fixed top-20 right-6 z-[80] px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 text-xs font-semibold border ${toastMessage.isError ? 'bg-rose-600 text-white border-rose-300' : 'bg-[#0A3977] text-white border-blue-400'}`}>
+          {toastMessage.isError ? <AlertCircle className="w-4 h-4 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />}
+          <span>{toastMessage.text}</span>
+        </div>
+      )}
+
       {/* Top FinTech Command Strip */}
       <div className="bg-gradient-to-r from-slate-900 via-[#0A3977] to-slate-900 text-white p-4 sm:p-5 rounded-3xl shadow-xl border border-blue-600/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
@@ -1134,11 +1004,11 @@ export default function LeadsView({
                 <span>Live Lending Operations & Routing Engine</span>
               </span>
               <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
-                100% Realtime Cloud Sync
+                Live from server
               </span>
             </div>
             <p className="text-xs text-slate-300 mt-0.5 font-medium">
-              Real-time website applications from <span className="text-amber-300 font-bold">paisainminutes.com</span> automatically dispatched to <span className="text-white font-bold">Rupay91</span>.
+              Real-time website applications from <span className="text-amber-300 font-bold">paisainminutes.com</span> routed to the partner you assign.
             </p>
           </div>
         </div>
@@ -1161,6 +1031,7 @@ export default function LeadsView({
             <span>Export CSV</span>
           </button>
 
+          {canDeleteLeads && (
           <button
             onClick={handleClearAllLeads}
             className="px-3.5 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/30 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
@@ -1169,6 +1040,7 @@ export default function LeadsView({
             <Trash2 className="w-3.5 h-3.5 text-rose-400" />
             <span>Clear All</span>
           </button>
+          )}
 
           <button
             onClick={() => setIsAddModalOpen(true)}
@@ -1210,13 +1082,13 @@ export default function LeadsView({
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-black text-slate-900">
-              {leads.filter(l => l.assignedCompany && l.assignedCompany !== 'Pending Details' && l.assignedCompany !== 'Unassigned').length}
+              {leads.filter(l => l.assignedPartnerId).length}
             </span>
             <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-200">
-              Exclusive Partner
+              Assigned
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-1 font-medium">Rupay91</p>
+          <p className="text-[11px] text-slate-500 mt-1 font-medium">Leads with a partner assigned</p>
         </div>
 
         {/* Metric 3: Prime CIBIL */}
@@ -1269,6 +1141,7 @@ export default function LeadsView({
           </div>
 
           <div className="flex items-center gap-2.5">
+            {canDeleteLeads && (
             <button
               onClick={handleDeleteSelected}
               className="px-4 py-1.5 bg-white text-rose-700 hover:bg-rose-50 text-xs font-extrabold rounded-xl shadow transition flex items-center gap-2 cursor-pointer"
@@ -1276,6 +1149,7 @@ export default function LeadsView({
               <Trash2 className="w-4 h-4 text-rose-600" />
               <span>Delete Selected ({selectedLeadIds.length})</span>
             </button>
+            )}
             <button
               onClick={() => setSelectedLeadIds([])}
               className="px-3 py-1.5 bg-rose-800/80 hover:bg-rose-900 text-white border border-rose-400/50 text-xs font-semibold rounded-xl transition cursor-pointer"
@@ -1938,6 +1812,7 @@ export default function LeadsView({
                             <MessageCircle className="w-3.5 h-3.5" />
                           </a>
                         )}
+                        {canDeleteLeads && (
                         <button
                           onClick={() => handleDeleteSingle(item, idx)}
                           className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
@@ -1945,6 +1820,7 @@ export default function LeadsView({
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
+                        )}
                       </div>
                     </td>
 
@@ -1965,7 +1841,7 @@ export default function LeadsView({
                     <button
                       onClick={() => {
                         setSelectedPartnerFilter('ALL');
-                        setActiveFilter('All Leads');
+                        handleFilterClick('All Leads');
                         setSearchQuery('');
                         setSelectedDatePreset('ALL');
                         setCustomStartDate('');
@@ -2275,7 +2151,7 @@ export default function LeadsView({
                         className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white font-bold"
                       >
                         <option value="">None / Pending Selection</option>
-                        {KNOWN_LENDERS.map(l => (
+                        {lenders.map(l => (
                           <option key={l.id} value={l.id}>
                             {l.name} (ID: {l.id})
                           </option>
@@ -2310,22 +2186,6 @@ export default function LeadsView({
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
-                  <span>Bearer JWT Token (Authentication)</span>
-                  <span className="text-[10px] text-amber-600 font-semibold">Required by backend</span>
-                </label>
-                <input
-                  type="password"
-                  placeholder="Paste Bearer JWT token if available..."
-                  value={testToken}
-                  onChange={(e) => {
-                    setTestToken(e.target.value);
-                    try { localStorage.setItem('pim_jwt_token', e.target.value.trim()); } catch(err) {}
-                  }}
-                  className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-slate-50"
-                />
-              </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
@@ -2424,22 +2284,6 @@ export default function LeadsView({
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1 flex items-center justify-between">
-                  <span>Bearer JWT Token</span>
-                  <span className="text-[10px] text-slate-400">If authenticated</span>
-                </label>
-                <input
-                  type="password"
-                  placeholder="Bearer JWT Token..."
-                  value={newToken}
-                  onChange={(e) => {
-                    setNewToken(e.target.value);
-                    try { localStorage.setItem('pim_jwt_token', e.target.value.trim()); } catch(err) {}
-                  }}
-                  className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-slate-50"
-                />
-              </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
                 <button
@@ -2899,11 +2743,11 @@ export default function LeadsView({
                     </label>
                     <select
                       value={activeOverviewLead.selectedLenderId || 'Pending Selection'}
-                      onChange={(e) => handleReassignCompanyInModal(getLeadId(activeOverviewLead), e.target.value)}
+                      onChange={(e) => handleLenderChange(getLeadId(activeOverviewLead), e.target.value)}
                       className="w-full px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#0A3977] cursor-pointer shadow-2xs"
                     >
                       <option value="Pending Selection">Pending Selection</option>
-                      {KNOWN_LENDERS.map(l => (
+                      {lenders.map(l => (
                         <option key={l.id} value={l.id}>
                           {l.name} (ID: {l.id})
                         </option>
@@ -3032,7 +2876,7 @@ export default function LeadsView({
                     </div>
                     <div className="text-[11px] text-slate-500 mt-0.5">
                       {activeOverviewLead.assignedCompany && activeOverviewLead.assignedCompany !== 'Pending Selection'
-                        ? `Lead assigned to ${activeOverviewLead.assignedCompany}. Outbound clicks and API routing are tracked.`
+                        ? `Lead assigned to ${activeOverviewLead.assignedCompany}. Partner status: ${activeOverviewLead.partnerStatusLabel || 'Assigned'}. Outbound clicks and API routing are tracked.`
                         : 'No partner assigned yet. Status is Pending Selection.'}
                     </div>
                   </div>
@@ -3050,7 +2894,7 @@ export default function LeadsView({
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-600 mt-0.5">
-                        Internal route <code className="bg-slate-100 px-1 rounded text-purple-700 font-mono">/go/{activeOverviewLead.clicked_partner || 'partner'}</code> triggered 302 redirect with <code className="bg-slate-100 px-1 rounded font-mono">sub_id={getLeadId(activeOverviewLead)}</code>.
+                        Internal route <code className="bg-slate-100 px-1 rounded text-purple-700 font-mono">/api/public/redirect/{activeOverviewLead.assignedPartnerSlug || 'partner'}</code> triggered 302 redirect with <code className="bg-slate-100 px-1 rounded font-mono">sub_id={getLeadId(activeOverviewLead)}</code>.
                       </div>
                     </div>
                   ) : (

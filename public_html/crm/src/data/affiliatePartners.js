@@ -1,4 +1,5 @@
 import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers.js';
+import { api, BACKEND_BASE } from '../utils/apiClient.js';
 
 export const AFFILIATE_PARTNERS = [
   {
@@ -21,7 +22,6 @@ export const AFFILIATE_PARTNERS = [
     applyUrl: 'https://www.rupay91.com/applynow.php?source=paisainminutes&utm_source=paisainminutes&ref=paisainminutes&affiliate=paisainminutes&sub_id=CRM&channel=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=rupay91_crm',
     commissionRate: '6.0%',
     commissionPct: 0.06,
-    paymentStatus: 'Paid'
   },
   {
     id: 'borrowera',
@@ -43,7 +43,6 @@ export const AFFILIATE_PARTNERS = [
     applyUrl: 'https://www.borrowera.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=borrowera_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '6.0%',
     commissionPct: 0.06,
-    paymentStatus: 'Pending'
   },
   {
     id: 'easyfincare',
@@ -65,7 +64,6 @@ export const AFFILIATE_PARTNERS = [
     applyUrl: 'https://www.easyfincare.com/apply-now?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=easyfincare_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '6.0%',
     commissionPct: 0.06,
-    paymentStatus: 'Paid'
   },
   {
     id: 'loanwithin',
@@ -87,7 +85,6 @@ export const AFFILIATE_PARTNERS = [
     applyUrl: 'https://www.loanwithin.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=loanwithin_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '6.0%',
     commissionPct: 0.06,
-    paymentStatus: 'Pending'
   },
   {
     id: 'instarupees',
@@ -109,7 +106,6 @@ export const AFFILIATE_PARTNERS = [
     applyUrl: 'https://www.instarupees.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=instarupees_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '6.0%',
     commissionPct: 0.06,
-    paymentStatus: 'Pending'
   },
   {
     id: 'shubhcash',
@@ -131,7 +127,6 @@ export const AFFILIATE_PARTNERS = [
     applyUrl: 'https://www.shubhcash.com/apply-now?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=shubhcash_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '6.0%',
     commissionPct: 0.06,
-    paymentStatus: 'Paid'
   },
   {
     id: 'udhaarnow',
@@ -153,7 +148,6 @@ export const AFFILIATE_PARTNERS = [
     applyUrl: 'https://www.udhaarnow.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=udhaarnow_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '6.0%',
     commissionPct: 0.06,
-    paymentStatus: 'Paid'
   },
   {
     id: 'jhatpatloans',
@@ -175,7 +169,6 @@ export const AFFILIATE_PARTNERS = [
     applyUrl: 'https://www.jhatpatloans.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=jhatpatloans_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '6.0%',
     commissionPct: 0.06,
-    paymentStatus: 'Paid'
   },
   {
     id: 'ticket2loan',
@@ -197,9 +190,71 @@ export const AFFILIATE_PARTNERS = [
     applyUrl: 'https://www.ticket2loan.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=ticket2loan_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '6.0%',
     commissionPct: 0.06,
-    paymentStatus: 'Pending'
   }
 ];
+
+const DEFAULT_PARTNER_STYLES = [
+  { badgeClass: 'bg-purple-50 text-purple-700 border border-purple-200', pillClass: 'bg-purple-600 text-white', accentColor: '#7C3AED', accentBg: 'bg-purple-50', gradient: 'from-purple-600 to-indigo-700' },
+  { badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200', pillClass: 'bg-emerald-600 text-white', accentColor: '#059669', accentBg: 'bg-emerald-50', gradient: 'from-emerald-600 to-teal-700' },
+  { badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200', pillClass: 'bg-amber-600 text-white', accentColor: '#D97706', accentBg: 'bg-amber-50', gradient: 'from-amber-600 to-orange-700' }
+];
+
+/**
+ * Merges the partner records returned by the Node server (`GET /api/crm/partners`) into AFFILIATE_PARTNERS.
+ * The list above keeps the presentation data (colours, eligibility rules); the server owns name, website,
+ * status, commission rate and the partner id used in every API call (`serverId`).
+ * The UI keys partners by slug (`id`), which is also what the server accepts in its partner routes.
+ */
+export function syncPartnersFromServer(serverPartners) {
+  if (!Array.isArray(serverPartners)) return AFFILIATE_PARTNERS;
+  serverPartners.forEach((sp, index) => {
+    const slug = String(sp.slug || '').toLowerCase();
+    if (!slug) return;
+    const rate = Number(sp.commissionRate);
+    const rateFields = Number.isFinite(rate) ? { commissionRate: `${rate.toFixed(1)}%`, commissionPct: rate / 100 } : {};
+    let existing = AFFILIATE_PARTNERS.find((p) => p.id === slug);
+    if (!existing) {
+      const style = DEFAULT_PARTNER_STYLES[index % DEFAULT_PARTNER_STYLES.length];
+      existing = {
+        id: slug,
+        code: slug.toUpperCase().slice(0, 12),
+        tagline: sp.name,
+        ...style,
+        minCibil: 600,
+        minSalary: 25000,
+        maxLoan: 100000,
+        interestRate: '—',
+        tenure: '—',
+        description: sp.name,
+        commissionRate: '0.0%',
+        commissionPct: 0,
+      };
+      AFFILIATE_PARTNERS.push(existing);
+    }
+    Object.assign(existing, {
+      serverId: sp.id,
+      name: sp.name || existing.name,
+      website: sp.website || existing.website,
+      applyUrl: sp.applyUrl || existing.applyUrl,
+      status: sp.status,
+      ...rateFields
+    });
+  });
+  return AFFILIATE_PARTNERS;
+}
+
+/** Server id of a partner given its UI id (slug), or null when it is not known to the server. */
+export function getServerPartnerId(slugOrId) {
+  const key = String(slugOrId || '').toLowerCase();
+  const found = AFFILIATE_PARTNERS.find((p) => p.id === key || p.serverId === slugOrId);
+  return found && found.serverId ? found.serverId : null;
+}
+
+/** UI id (slug) for a server partner id. */
+export function getPartnerSlugByServerId(serverId) {
+  const found = AFFILIATE_PARTNERS.find((p) => p.serverId === serverId);
+  return found ? found.id : null;
+}
 
 // Helper to find partner metadata by name or id
 export function getPartnerMeta(partnerNameOrId) {
@@ -220,7 +275,6 @@ export function getPartnerMeta(partnerNameOrId) {
       gradient: 'from-slate-600 to-slate-700',
       commissionRate: '0%',
       commissionPct: 0,
-      paymentStatus: 'Pending'
     };
   }
 
@@ -247,7 +301,6 @@ export function getPartnerMeta(partnerNameOrId) {
     gradient: 'from-purple-600 to-indigo-700',
     commissionRate: '6.0%',
     commissionPct: 0.06,
-    paymentStatus: 'Pending'
   };
 }
 
@@ -404,9 +457,9 @@ export function getSalaryMatchedOffers(salaryInput) {
 }
 
 /**
- * Builds the outbound tracking URL routed through /redirect.php with full UTM parameters.
- * Clicking this logs the click to data/clicks.json and clicks_log.csv,
- * then 302 redirects to the partner's official apply page.
+ * Builds the outbound tracking URL served by the Node server (`GET /api/public/redirect/:partnerSlug`).
+ * The server logs the click, assigns the lead to the partner and 302-redirects to the partner's stored URL
+ * (the target never comes from the query string).
  */
 export function getPartnerTrackingUrl(partnerOrId, options = {}) {
   const meta = getPartnerMeta(partnerOrId);
@@ -416,12 +469,7 @@ export function getPartnerTrackingUrl(partnerOrId, options = {}) {
   const campaign = options.campaign || 'paisainminutes_crm';
   const term = options.term || `${partnerSlug}_crm`;
 
-  const isBrowser = typeof window !== 'undefined';
-  const isPimDomain = isBrowser && window.location.hostname.includes('paisainminutes.com');
-  const baseUrl = isPimDomain ? '/redirect.php' : 'https://paisainminutes.com/redirect.php';
-
   const params = new URLSearchParams({
-    partner: partnerSlug,
     ref: 'paisainminutes',
     source: source,
     lead_id: String(leadId),
@@ -435,11 +483,13 @@ export function getPartnerTrackingUrl(partnerOrId, options = {}) {
     params.set('phone', String(options.phone).replace(/\D/g, '').slice(-10));
   }
 
-  return `${baseUrl}?${params.toString()}`;
+  return `${BACKEND_BASE}/api/public/redirect/${encodeURIComponent(partnerSlug)}?${params.toString()}`;
 }
 
 /**
- * Asynchronously logs outbound partner click in background via Beacon or API.
+ * Records an outbound partner click on the Node server (`POST /api/public/partner-click`).
+ * Idempotent on the server (same partner + lead + source within 10 minutes counts once). A failure is
+ * logged to the console only: the visitor's navigation must never be blocked by tracking.
  */
 export async function trackPartnerClick(partnerOrId, options = {}) {
   const meta = getPartnerMeta(partnerOrId);
@@ -448,40 +498,19 @@ export async function trackPartnerClick(partnerOrId, options = {}) {
     partner: partnerSlug,
     ref: 'paisainminutes',
     source: options.source || 'crm',
-    lead_id: String(options.leadId || 'CRM'),
+    leadId: String(options.leadId || 'CRM'),
     phone: options.phone ? String(options.phone).replace(/\D/g, '').slice(-10) : '',
     utm_source: 'paisainminutes',
     utm_medium: 'affiliate',
     utm_campaign: options.campaign || 'paisainminutes_crm',
-    utm_term: options.term || `${partnerSlug}_crm`,
-    format: 'json'
+    utm_term: options.term || `${partnerSlug}_crm`
   };
 
-  try {
-    if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-      navigator.sendBeacon('/crm/api/track-click.php', blob);
-      navigator.sendBeacon('/redirect.php?format=json', blob);
-    }
-  } catch (e) {
-    // ignore beacon error
+  const res = await api('/api/public/partner-click', { method: 'POST', auth: false, body: payload, timeoutMs: 8000 });
+  if (!res.ok) {
+    console.warn('[partner click] not recorded:', res.error);
   }
-
-  try {
-    fetch('/crm/api/track-click.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    }).catch(() => {
-      fetch('https://paisainminutes.com/redirect.php?format=json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }).catch(() => {});
-    });
-  } catch (e) {
-    // ignore
-  }
+  return res;
 }
 
 /**

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Search, 
@@ -14,25 +14,45 @@ import {
   X,
   Eye
 } from 'lucide-react';
-import { INITIAL_INVOICES } from '../data/invoicesData';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
+import { fetchAllPages, apiPost } from '../utils/crmApi';
+import { invoiceFromServer, toPaise, serverPartnerId } from '../utils/financeMappers';
 
-export default function InvoicesRaisedView({ invoices: propInvoices, setInvoices: propSetInvoices }) {
-  const [localInvoices, setLocalInvoices] = useState(INITIAL_INVOICES);
-  const invoices = propInvoices !== undefined ? propInvoices : localInvoices;
-  const setInvoices = propSetInvoices !== undefined ? propSetInvoices : setLocalInvoices;
+export default function InvoicesRaisedView({ onChanged }) {
+  const [invoices, setInvoices] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [previewInvoice, setPreviewInvoice] = useState(null);
 
   const [newInv, setNewInv] = useState({
-    partnerId: 'instarupees',
+    partnerId: (AFFILIATE_PARTNERS[0] && AFFILIATE_PARTNERS[0].id) || '',
     netCommission: '',
-    period: '01/08/2026 - 15/08/2026',
+    period: '',
     description: 'Affiliate commission for retail personal loans'
   });
+
+  // Invoices live on the server; GST and totals are calculated there
+  const loadInvoices = async () => {
+    setIsLoading(true);
+    const res = await fetchAllPages('/api/crm/invoices', 'invoices');
+    if (res.success) {
+      setInvoices(res.items.map(invoiceFromServer));
+      setLoadError('');
+    } else {
+      setLoadError(res.error || 'Could not load invoices.');
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadInvoices();
+  }, []);
 
   const filtered = invoices.filter(inv => {
     if (searchQuery) {
@@ -45,32 +65,30 @@ export default function InvoicesRaisedView({ invoices: propInvoices, setInvoices
     return true;
   });
 
-  const handleGenerateInvoice = (e) => {
+  const handleGenerateInvoice = async (e) => {
     e.preventDefault();
-    const partner = AFFILIATE_PARTNERS.find(p => p.id === newInv.partnerId) || { name: 'Partner' };
-    const net = Number(newInv.netCommission) || 50000;
-    const gst = Math.round(net * 0.18);
-    const total = net + gst;
-
-    const created = {
-      invoiceNo: `INV-2026-${Math.floor(100 + Math.random() * 900)}`,
-      partnerId: newInv.partnerId,
-      partnerName: partner.name,
-      period: newInv.period,
-      dateIssued: new Date().toISOString().slice(0, 10),
-      dueDate: new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10),
-      netCommission: net,
-      gstRate: 18,
-      gstAmount: gst,
-      totalPayable: total,
-      status: 'Unpaid',
-      sacCode: '998311',
-      description: newInv.description || 'Affiliate lead distribution fee'
-    };
-
-    setInvoices(prev => [created, ...prev]);
-    setIsGenerateOpen(false);
-    setNewInv({ partnerId: 'instarupees', netCommission: '', period: '01/08/2026 - 15/08/2026', description: 'Affiliate commission for retail personal loans' });
+    setActionError('');
+    const partnerServerId = serverPartnerId(newInv.partnerId);
+    if (!partnerServerId) {
+      setActionError('This partner is not registered on the server yet.');
+      return;
+    }
+    setIsSaving(true);
+    const res = await apiPost('/api/crm/invoices', {
+      partnerId: partnerServerId,
+      netCommissionPaise: toPaise(newInv.netCommission),
+      periodLabel: newInv.period || undefined,
+      description: newInv.description || undefined
+    });
+    setIsSaving(false);
+    if (res.ok && res.data && res.data.invoice) {
+      await loadInvoices();
+      setIsGenerateOpen(false);
+      setNewInv({ ...newInv, netCommission: '', period: '' });
+      if (onChanged) onChanged();
+    } else {
+      setActionError(res.error || 'The invoice could not be raised.');
+    }
   };
 
   const handleExportCsv = () => {
@@ -118,6 +136,13 @@ export default function InvoicesRaisedView({ invoices: propInvoices, setInvoices
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {(loadError || actionError) && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>{loadError || actionError}</span>
+          <button onClick={loadError ? loadInvoices : () => setActionError('')} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">{loadError ? 'Retry' : 'Dismiss'}</button>
+        </div>
+      )}
+      {isLoading && <div className="text-xs text-slate-500">Loading invoices from the server…</div>}
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -245,6 +270,9 @@ export default function InvoicesRaisedView({ invoices: propInvoices, setInvoices
                       <div className="font-bold text-slate-900">{inv.partnerName}</div>
                       <div className="text-[10px] text-slate-400">Due: {inv.dueDate}</div>
                     </td>
+                    <td className="py-3.5 px-4 font-mono text-slate-600 text-[11px]">
+                      {inv.period || '—'}
+                    </td>
                     <td className="py-3.5 px-4 font-mono text-slate-700">
                       ₹{Number(inv.netCommission || 0).toLocaleString('en-IN')}
                     </td>
@@ -285,6 +313,10 @@ export default function InvoicesRaisedView({ invoices: propInvoices, setInvoices
             <p className="text-xs text-slate-500 mb-4">Calculate net commission, auto-apply 18% GST and issue invoice</p>
 
             <form onSubmit={handleGenerateInvoice} className="space-y-4">
+              {actionError && (
+                <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">{actionError}</div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Select Lending Partner</label>
                 <select

@@ -22,28 +22,53 @@ $userSalaryStr = isset($_GET['salary']) ? trim($_GET['salary']) : ($_SESSION['pi
 $userCibilStr = isset($_GET['cibil']) ? trim($_GET['cibil']) : (isset($_GET['cibil_score']) ? trim($_GET['cibil_score']) : ($_SESSION['pim_lead_cibil'] ?? ''));
 $userAmountStr = isset($_GET['loan_amount']) ? trim($_GET['loan_amount']) : ($_SESSION['pim_lead_amount'] ?? '₹50,000');
 
-// Fallback: If empty, lookup from data/leads.json
-if ((empty($phone) || empty($userSalaryStr) || empty($userCibilStr)) && !empty($leadId)) {
-    $jsonLeadsFile = __DIR__ . '/data/leads.json';
-    if (file_exists($jsonLeadsFile)) {
-        $leadsList = json_decode(file_get_contents($jsonLeadsFile), true) ?: [];
-        foreach ($leadsList as $ld) {
-            if ((!empty($leadId) && isset($ld['lead_id']) && $ld['lead_id'] === $leadId) ||
-                (!empty($phone) && isset($ld['phone']) && $ld['phone'] === $phone)) {
-                if (empty($phone) && !empty($ld['phone'])) {
-                    $phone = $ld['phone'];
-                }
-                if ((empty($userName) || $userName === 'Applicant') && !empty($ld['name'])) {
-                    $userName = $ld['name'];
-                }
-                if (empty($userSalaryStr) && !empty($ld['monthly_salary'])) {
-                    $userSalaryStr = $ld['monthly_salary'];
-                }
-                if (empty($userCibilStr) && !empty($ld['cibil_score'])) {
-                    $userCibilStr = $ld['cibil_score'];
-                }
-                break;
-            }
+// Node server (single backend). The page no longer reads or writes any lead data file.
+require_once __DIR__ . '/config/env.php';
+$pimNodeApi = rtrim((string) getEnvVal('BACKEND_API_URL', 'https://api.paisainminutes.tech'), '/');
+
+/**
+ * Looks the applicant up on the Node server (phone + lead reference). Short timeout; null on any failure
+ * so the page falls back to the values in the URL / session.
+ */
+if (!function_exists('pimNodeLeadLookup')) {
+    function pimNodeLeadLookup($base, $phone, $leadCode) {
+        if (!function_exists('curl_init') || strlen($phone) !== 10) {
+            return null;
+        }
+        $url = $base . '/api/public/leads/lookup?phone=' . urlencode($phone) . ($leadCode ? '&leadCode=' . urlencode($leadCode) : '');
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 1,
+            CURLOPT_TIMEOUT => 3,
+            CURLOPT_HTTPHEADER => ['Accept: application/json'],
+        ]);
+        $body = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($body === false || $code !== 200) {
+            return null;
+        }
+        $json = json_decode($body, true);
+        return (is_array($json) && !empty($json['success']) && isset($json['data']) && is_array($json['data'])) ? $json['data'] : null;
+    }
+}
+
+// If details are missing from the URL/session, fetch them from Node
+if ((empty($userSalaryStr) || empty($userCibilStr) || $userName === 'Applicant') && !empty($phone) && strpos((string) $leadId, 'PIM-') === 0) {
+    $nodeLead = pimNodeLeadLookup($pimNodeApi, $phone, $leadId);
+    if ($nodeLead) {
+        if (($userName === 'Applicant' || empty($userName)) && !empty($nodeLead['name'])) {
+            $userName = htmlspecialchars($nodeLead['name']);
+        }
+        if (empty($userSalaryStr) && !empty($nodeLead['salary'])) {
+            $userSalaryStr = (string) $nodeLead['salary'];
+        }
+        if (empty($userCibilStr) && !empty($nodeLead['cibil'])) {
+            $userCibilStr = (string) $nodeLead['cibil'];
+        }
+        if (empty($_GET['loan_amount']) && !empty($nodeLead['amount'])) {
+            $userAmountStr = (string) $nodeLead['amount'];
         }
     }
 }
@@ -86,115 +111,8 @@ if (!function_exists('parseCibilVal')) {
 $userSalVal = parseSalaryVal($userSalaryStr);
 $userCibilVal = parseCibilVal($userCibilStr);
 
-// Auto-Save / Ensure actual applicant lead is persisted in CRM data stores whenever landing on loan-offers
-if (!empty($phone) && strlen($phone) === 10 && in_array($phone[0], ['6','7','8','9'])) {
-    $jsonLeadsFile = __DIR__ . '/data/leads.json';
-    $crmLeadsFile = __DIR__ . '/crm/leads_store.json';
-    $leadsDir = __DIR__ . '/data';
-    if (!is_dir($leadsDir)) {
-        @mkdir($leadsDir, 0755, true);
-    }
-    
-    $leadsList = file_exists($jsonLeadsFile) ? (json_decode(file_get_contents($jsonLeadsFile), true) ?: []) : [];
-    
-    $existingIndex = -1;
-    foreach ($leadsList as $idx => $ld) {
-        $ldPhone = preg_replace('/\D/', '', (string)($ld['phone'] ?? $ld['mobile'] ?? ''));
-        if ($ldPhone === $phone) {
-            $existingIndex = $idx;
-            break;
-        }
-    }
-    
-    $assignedComp = (isset($_GET['company']) && $_GET['company'] !== 'AUTO' && $_GET['company'] !== '—') ? trim($_GET['company']) : ($userCibilVal >= 750 ? 'Rupay91' : 'Jhatpat Loans');
-    $cleanLoan = (int)preg_replace('/\D/', '', $userAmountStr) ?: 25000;
-    $initials = 'SH';
-    $nameParts = preg_split('/\s+/', $userName);
-    if (count($nameParts) >= 2 && !empty($nameParts[0]) && !empty($nameParts[1])) {
-        $initials = strtoupper(substr($nameParts[0], 0, 1) . substr($nameParts[1], 0, 1));
-    } elseif (!empty($userName)) {
-        $initials = strtoupper(substr($userName, 0, min(2, strlen($userName))));
-    }
-    
-    $effectiveEmail = $_SESSION['pim_lead_email'] ?? (isset($_GET['email']) ? trim($_GET['email']) : '—');
-    if (strpos($effectiveEmail, '@paisainminutes.com') !== false || empty($effectiveEmail)) {
-        $effectiveEmail = '—';
-    }
-    
-    $newRecord = [
-        'id'                => $leadId,
-        'loanNo'            => $leadId,
-        'lead_id'           => $leadId,
-        'name'              => $userName,
-        'fullName'          => $userName,
-        'initials'          => $initials,
-        'avatarBg'          => 'bg-blue-600',
-        'phone'             => $phone,
-        'mobile'            => '+91 ' . $phone,
-        'email'             => $effectiveEmail,
-        'emailAddress'      => $effectiveEmail,
-        'creditManager'     => 'Unassigned',
-        'pan'               => '—',
-        'loan_amount'       => $userAmountStr,
-        'loanAmount'        => $cleanLoan,
-        'applied'           => $cleanLoan,
-        'cibil_score'       => $userCibilStr ?: '700+',
-        'cibil'             => $userCibilStr ?: '700+',
-        'cibilScore'        => $userCibilStr ?: '700+',
-        'monthly_salary'    => $userSalaryStr ?: '₹35,000',
-        'monthlySalary'     => $userSalVal,
-        'salary'            => $userSalVal,
-        'sal_val'           => $userSalVal,
-        'pincode'           => '—',
-        'city'              => '—',
-        'state'             => 'India',
-        'employmentType'    => 'Salaried',
-        'assignedCompany'   => $assignedComp,
-        'partner_name'      => $assignedComp,
-        'purpose'           => 'Personal Loan',
-        'status'            => 'Fresh',
-        'source'            => 'Check Eligibility Website',
-        'created'           => date('d M Y, h:i A'),
-        'created_at'        => date('Y-m-d H:i:s'),
-        'date'              => date('Y-m-d')
-    ];
-    
-    if ($existingIndex >= 0) {
-        if ($userName !== 'Applicant') {
-            $leadsList[$existingIndex]['name'] = $userName;
-            $leadsList[$existingIndex]['fullName'] = $userName;
-            $leadsList[$existingIndex]['initials'] = $initials;
-        }
-        if (!empty($userSalaryStr)) {
-            $leadsList[$existingIndex]['monthly_salary'] = $userSalaryStr;
-            $leadsList[$existingIndex]['salary'] = $userSalVal;
-            $leadsList[$existingIndex]['monthlySalary'] = $userSalVal;
-            $leadsList[$existingIndex]['sal_val'] = $userSalVal;
-        }
-        if (!empty($userCibilStr)) {
-            $leadsList[$existingIndex]['cibil'] = $userCibilStr;
-            $leadsList[$existingIndex]['cibilScore'] = $userCibilStr;
-            $leadsList[$existingIndex]['cibil_score'] = $userCibilStr;
-        }
-        if (!empty($assignedComp) && $assignedComp !== 'Pending Details') {
-            $leadsList[$existingIndex]['assignedCompany'] = $assignedComp;
-            $leadsList[$existingIndex]['partner_name'] = $assignedComp;
-        }
-        if (!empty($userAmountStr)) {
-            $leadsList[$existingIndex]['loan_amount'] = $userAmountStr;
-            $leadsList[$existingIndex]['loanAmount'] = $cleanLoan;
-            $leadsList[$existingIndex]['applied'] = $cleanLoan;
-        }
-    } else {
-        array_unshift($leadsList, $newRecord);
-    }
-    
-    @file_put_contents($jsonLeadsFile, json_encode($leadsList, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-    
-    if (file_exists($crmLeadsFile) || is_dir(__DIR__ . '/crm')) {
-        @file_put_contents($crmLeadsFile, json_encode($leadsList, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-    }
-}
+// (The page used to create/update the lead in data/leads.json here. Lead creation now happens only through
+// the Node intake route POST /api/public/leads, called by apply-now / check-eligibility.)
 
 // Exact 8-Slab Mapping as requested by User
 if ($userCibilVal >= 850 || ($userCibilVal === 0 && $userSalVal >= 90000)) {
@@ -1035,7 +953,7 @@ include 'includes/header.php';
                     </div>
 
                     <!-- Call To Action Button -->
-                    <a href="/go/<?php echo urlencode($slug); ?>?lead_id=<?php echo urlencode($leadId); ?>&phone=<?php echo urlencode($phone); ?>&ref=<?php echo urlencode($affId); ?>" 
+                    <a href="<?php echo htmlspecialchars($pimNodeApi); ?>/api/public/redirect/<?php echo urlencode($slug); ?>?lead_id=<?php echo urlencode($leadId); ?>&phone=<?php echo urlencode($phone); ?>&ref=<?php echo urlencode($affId); ?>&source=loan_offers" 
                        target="_blank" 
                        rel="noopener"
                        class="btn-apply-partner"
@@ -1195,27 +1113,20 @@ function filterOffers(filterType, btnEl) {
 }
 
 function recordOfferClick(slug, phone, leadId) {
+    // The redirect route also records the click; this keepalive call makes sure it is logged even if the
+    // new tab is slow to open. The server de-duplicates (same partner + lead + source within 10 minutes).
     try {
-        const payload = JSON.stringify({
-            partner: slug,
-            phone: phone || '',
-            lead_id: leadId || '',
-            source: 'loan_offers_apply_btn',
-            format: 'json'
-        });
-        if (navigator.sendBeacon) {
-            const blob = new Blob([payload], { type: 'application/json' });
-            navigator.sendBeacon('/go/' + encodeURIComponent(slug) + '?format=json&lead_id=' + encodeURIComponent(leadId), blob);
-            navigator.sendBeacon('/redirect.php?format=json', blob);
-            navigator.sendBeacon('/api/track-click.php', blob);
-        } else {
-            fetch('/go/' + encodeURIComponent(slug) + '?format=json&lead_id=' + encodeURIComponent(leadId), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: payload,
-                keepalive: true
-            }).catch(() => {});
-        }
+        fetch((window.backend_server_url || '') + '/api/public/partner-click', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                partner: slug,
+                phone: phone || '',
+                leadId: leadId || '',
+                source: 'loan_offers'
+            }),
+            keepalive: true
+        }).catch(() => {});
     } catch(e) {}
 }
 </script>

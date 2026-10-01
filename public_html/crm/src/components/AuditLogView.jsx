@@ -1,31 +1,81 @@
 import React, { useState, useEffect } from 'react';
 import { FileSpreadsheet, Search, Filter, Clock, ShieldCheck, Activity, Calendar } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
+import { fetchAllPages } from '../utils/crmApi';
 
-export const INITIAL_ACTIVITY_LOGS = [];
+// Server audit entity -> the module names used by the filter
+const ENTITY_MODULE = {
+  LoanApplication: 'Leads',
+  ContactMessage: 'Leads',
+  AffiliatePartner: 'Partners',
+  PartnerAssignment: 'Partners',
+  PartnerAgreement: 'Partners',
+  PartnerEvent: 'Partners',
+  DeliveryLog: 'Partners',
+  Commission: 'Commissions',
+  RateCard: 'Commissions',
+  PayoutRequest: 'Payouts',
+  Settlement: 'Payouts',
+  Invoice: 'Payouts',
+  StaffUser: 'Administration',
+  Role: 'Administration',
+  Setting: 'Administration',
+  NotificationTemplate: 'Administration'
+};
 
+const humanize = (action) => String(action || '')
+  .replace(/[._]/g, ' ')
+  .replace(/\b\w/g, c => c.toUpperCase());
+
+// Server audit row -> row shape this screen renders
+const mapAuditLog = (l) => {
+  const meta = l.meta || {};
+  const ref = meta.leadCode || meta.slug || meta.key || l.entityId || '';
+  const dt = l.createdAt ? new Date(l.createdAt) : null;
+  return {
+    id: l.id,
+    when: dt ? dt.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '',
+    date: dt ? new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(dt) : '',
+    who: l.actorName || l.actorRole || 'System',
+    module: ENTITY_MODULE[l.entity] || l.entity || 'Other',
+    type: humanize(l.action),
+    activity: `${humanize(l.action)}${ref ? ` — ${ref}` : ''}${meta.fields ? ` (${meta.fields.join(', ')})` : ''}`
+  };
+};
 
 export default function AuditLogView() {
-  const [logs, setLogs] = useState(() => {
-    try {
-      const saved = localStorage.getItem('paisa_crm_activity_log');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {}
-    return INITIAL_ACTIVITY_LOGS;
-  });
+  const [logs, setLogs] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
 
   const [moduleFilter, setModuleFilter] = useState('All modules');
   const [searchQuery, setSearchQuery] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
+  // The audit trail is written by the server only; this screen is read-only
+  const loadLogs = async () => {
+    setIsLoading(true);
+    const res = await fetchAllPages('/api/crm/audit-logs', 'logs', {
+      ...(fromDate ? { from: fromDate } : {}),
+      ...(toDate ? { to: toDate } : {})
+    });
+    if (res.success) {
+      setLogs(res.items.map(mapAuditLog));
+      setLoadError('');
+    } else {
+      setLoadError(res.error || 'Could not load the activity log.');
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fromDate, toDate]);
+
   const filteredLogs = logs.filter(item => {
     if (moduleFilter !== 'All modules' && item.module !== moduleFilter) return false;
-    if (fromDate && item.date && item.date < fromDate) return false;
-    if (toDate && item.date && item.date > toDate) return false;
 
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -47,6 +97,13 @@ export default function AuditLogView() {
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {loadError && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>{loadError}</span>
+          <button onClick={loadLogs} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">Retry</button>
+        </div>
+      )}
+      {isLoading && <div className="text-xs text-slate-500">Loading the audit trail from the server…</div>}
       {/* Title & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>

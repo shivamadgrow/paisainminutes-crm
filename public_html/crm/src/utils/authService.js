@@ -1,560 +1,147 @@
-import { INITIAL_STAFF_MEMBERS } from '../data/staffData';
-import { checkLoginAllowed, logSecurityIncident, isOffHours, getIndianTime } from './shiftSecurity';
-import { getLiveSecurityDetails } from './geoService';
+/**
+ * Authentication and account management against the Node server.
+ *
+ * Login is email/username + password checked by the server (bcrypt). No password, account list or role
+ * decision lives in the browser any more. The only things kept in the tab are the token pair
+ * (see apiClient.js) and a cached copy of the signed-in user's non-sensitive profile.
+ */
+import { api, getTokens, setTokens, clearTokens, endSession, revokeTokens, SESSION_EVENT } from './apiClient';
+import { syncPartnersFromServer } from '../data/affiliatePartners';
 
-export const STAFF_STORAGE_KEY = 'paisa_crm_staff_list';
 export const SESSION_STORAGE_KEY = 'paisa_crm_user';
-export const AUTH_VERSION = 'v11_update_admin_password';
 
-/**
- * Purge all stale, duplicate, and unused client-side caches and storage keys
- */
-export function purgeAllClientCaches() {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('pim_deleted_leads');
-      localStorage.removeItem('paisa_crm_lead_overrides');
-      localStorage.removeItem('paisa_security_incidents');
-      localStorage.removeItem(STAFF_STORAGE_KEY);
-      localStorage.removeItem('paisa_crm_active_tab');
-      localStorage.removeItem('paisa_crm_payout_requests');
-      localStorage.removeItem('paisa_crm_settlements');
-      localStorage.removeItem('paisa_crm_invoices');
-      localStorage.removeItem('paisa_crm_activity_log');
-    }
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.clear();
-    }
-    console.log('[CRM CLEAN SLATE] 🧹 Purged all client caches and local lead/staff overrides.');
-  } catch (e) {}
-}
+const ROLE_LABELS = {
+  SUPER_ADMIN: 'Super Admin',
+  ADMIN: 'Admin',
+  STAFF: 'Staff',
+  PARTNER: 'Partner',
+};
 
-/**
- * Enforces a global logout and cleans stale/duplicate cache across all browsers/devices
- */
-export function checkAndEnforceGlobalLogout() {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      if (localStorage.getItem('paisa_crm_auth_version') !== AUTH_VERSION) {
-        purgeAllClientCaches();
-        localStorage.removeItem(SESSION_STORAGE_KEY);
-        try { sessionStorage.removeItem(SESSION_STORAGE_KEY); } catch (e) {}
-        localStorage.setItem('paisa_crm_auth_version', AUTH_VERSION);
-        if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('paisa_session_changed', { detail: null }));
-        }
-        return true;
-      }
-    }
-  } catch (e) {}
-  return false;
-}
+const AVATAR_COLORS = {
+  SUPER_ADMIN: 'bg-[#0A3977]',
+  ADMIN: 'bg-indigo-600',
+  STAFF: 'bg-blue-600',
+  PARTNER: 'bg-emerald-600',
+};
 
-/**
- * Helper to identify if a staff user is a Super Admin
- * Super Admin cannot be deleted, deactivated or disabled by any user.
- */
-export function isSuperAdmin(user) {
-  if (!user) return false;
-  const role = String(user.role || '').trim().toLowerCase();
-  const roles = Array.isArray(user.roles) ? user.roles.map(r => String(r).trim().toLowerCase()) : [];
-  const email = String(user.email || '').trim().toLowerCase();
-  const username = String(user.username || '').trim().toLowerCase();
-  const name = String(user.name || '').trim().toLowerCase();
-  const id = String(user.id || '');
-
+function initialsOf(name) {
   return (
-    role === 'super admin' ||
-    roles.includes('super admin') ||
-    user.isSuperAdmin === true ||
-    id === '1' ||
-    email === 'info@adgrowmedia.com' ||
-    username === 'info@adgrowmedia.com' ||
-    name === 'super admin' ||
-    name.includes('super admin')
+    String(name || '')
+      .split(' ')
+      .filter(Boolean)
+      .map((n) => n[0].toUpperCase())
+      .join('')
+      .slice(0, 2) || 'US'
   );
 }
 
-/**
- * Helper to identify if user has Partner role
- */
-export function isPartnerUser(user) {
-  if (!user) return false;
-  const role = String(user.role || '').trim().toLowerCase();
-  const roles = Array.isArray(user.roles) ? user.roles.map(r => String(r).trim().toLowerCase()) : [];
-  return role === 'partner' || roles.includes('partner') || Boolean(user.partnerId);
-}
-
-export const DEFAULT_PARTNER_USERS = [
-  {
-    id: 'usr_partner_rupay91',
-    name: 'RuPay91 Operations',
-    username: 'rupay91_partner',
-    email: 'partner@rupay91.com',
-    password: 'Partner@2026',
-    role: 'Partner',
-    roles: ['Partner'],
-    partnerId: 'rupay91',
-    partnerName: 'Rupay 91',
-    status: 'Active',
-    initials: 'RP',
-    avatarBg: 'bg-indigo-600',
-    branch: 'Partner Portal',
-    permissions: ['view_partner_leads', 'update_status']
-  },
-  {
-    id: 'usr_partner_borrowera',
-    name: 'Borrowera Team',
-    username: 'borrowera_partner',
-    email: 'partner@borrowera.com',
-    password: 'Partner@2026',
-    role: 'Partner',
-    roles: ['Partner'],
-    partnerId: 'borrowera',
-    partnerName: 'Borrowera',
-    status: 'Active',
-    initials: 'BW',
-    avatarBg: 'bg-purple-600',
-    branch: 'Partner Portal',
-    permissions: ['view_partner_leads', 'update_status']
-  },
-  {
-    id: 'usr_partner_easyfincare',
-    name: 'Easy Fincare Team',
-    username: 'easyfincare_partner',
-    email: 'partner@easyfincare.com',
-    password: 'Partner@2026',
-    role: 'Partner',
-    roles: ['Partner'],
-    partnerId: 'easyfincare',
-    partnerName: 'Easy Fincare',
-    status: 'Active',
-    initials: 'EF',
-    avatarBg: 'bg-cyan-600',
-    branch: 'Partner Portal',
-    permissions: ['view_partner_leads', 'update_status']
-  }
-];
-
-/**
- * Retrieve list of partner accounts
- */
-export function getPartnerAccounts() {
-  const staffList = getStaffList();
-  return staffList.filter(u => isPartnerUser(u));
-}
-
-/**
- * Create a new partner account linked to partner_id
- */
-export function createPartnerAccount(userData) {
-  const staffList = getStaffList();
-  const username = (userData.username || '').trim();
-  const email = (userData.email || `${username.toLowerCase()}@paisainminutes.com`).trim().toLowerCase();
-
-  const isDuplicate = staffList.some(
-    u => (u.username || '').toLowerCase() === username.toLowerCase() ||
-         (u.email || '').toLowerCase() === email
+function formatDateTime(value) {
+  if (!value) return 'Never';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return 'Never';
+  return (
+    d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' }) +
+    ', ' +
+    d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
   );
-  if (isDuplicate) {
-    return { success: false, error: `Account with username "${username}" or email "${email}" already exists!` };
-  }
+}
 
-  const partnerId = userData.partnerId || 'rupay91';
-  const partnerName = userData.partnerName || 'Partner';
-  const name = userData.name || `${partnerName} Portal`;
+function formatDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' });
+}
 
-  const initials = name
-    .split(' ')
-    .filter(Boolean)
-    .map(n => n[0].toUpperCase())
-    .join('')
-    .slice(0, 2) || partnerName.slice(0, 2).toUpperCase() || 'PA';
-
-  const newPartnerUser = {
-    id: `usr_partner_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-    name: name,
-    username: username,
-    email: email,
-    mobile: userData.mobile || '',
-    password: userData.password || 'Partner@2026',
-    initials: initials,
-    role: 'Partner',
-    roles: ['Partner'],
-    partnerId: partnerId,
-    partnerName: partnerName,
-    branch: 'Partner Portal',
-    status: userData.status || 'Active',
-    lastLogin: 'Never',
-    created: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-    avatarBg: userData.avatarBg || 'bg-emerald-600',
-    permissions: ['view_partner_leads', 'update_status']
+/** Converts a server account (login `user`, `/crm/me` user or `/crm/staff` row) to the shape the screens use. */
+export function mapServerUser(u, roleNames = {}) {
+  if (!u) return null;
+  const serverRole = u.role;
+  const humanizedKey = u.roleKey ? String(u.roleKey).replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : null;
+  const roleLabel = (u.roleKey && roleNames[u.roleKey]) || (serverRole === 'STAFF' && humanizedKey) || ROLE_LABELS[serverRole] || String(serverRole || 'Staff');
+  return {
+    id: u.id,
+    name: u.name || u.email || u.username,
+    username: u.username || u.email,
+    email: u.email,
+    mobile: u.mobile || '',
+    role: serverRole === 'PARTNER' ? 'Partner' : roleLabel,
+    roles: [roleLabel],
+    serverRole,
+    roleKey: u.roleKey || null,
+    permissions: Array.isArray(u.permissions) ? u.permissions : [],
+    partnerIds: Array.isArray(u.partnerIds) ? u.partnerIds : [],
+    status: u.status === 'ACTIVE' ? 'Active' : 'Disabled',
+    mustChangePassword: !!u.mustChangePassword,
+    initials: initialsOf(u.name || u.email),
+    avatarBg: AVATAR_COLORS[serverRole] || 'bg-[#0A3977]',
+    branch: u.branch || 'Delhi Head Office',
+    lastLogin: formatDateTime(u.lastLoginAt),
+    created: formatDate(u.createdAt),
   };
-
-  const updatedList = [...staffList, newPartnerUser];
-  saveStaffList(updatedList);
-
-  // Sync to backend partner-users.php
-  try {
-    fetch('/crm/api/partner-users.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'create',
-        partner_id: partnerId,
-        partner_name: partnerName,
-        username: username,
-        email: email,
-        name: name,
-        password: newPartnerUser.password
-      })
-    }).catch(() => {});
-  } catch (e) {}
-
-  return { success: true, user: newPartnerUser };
 }
 
-/**
- * Toggle Partner Account status (Active <-> Disabled)
- */
-export function togglePartnerAccountStatus(id) {
-  const staffList = getStaffList();
-  let updatedUser = null;
-  let nextStatus = 'Active';
-
-  const updatedList = staffList.map(u => {
-    if (String(u.id) === String(id)) {
-      nextStatus = u.status === 'Active' ? 'Disabled' : 'Active';
-      updatedUser = { ...u, status: nextStatus };
-      return updatedUser;
-    }
-    return u;
-  });
-
-  saveStaffList(updatedList);
-
-  // Sync to backend
-  try {
-    fetch('/crm/api/partner-users.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'toggle_status', id: id, status: nextStatus })
-    }).catch(() => {});
-  } catch (e) {}
-
-  return { success: true, status: nextStatus, user: updatedUser };
+/** Helper: is this the (server-defined) Super Admin? */
+export function isSuperAdmin(user) {
+  return !!user && user.serverRole === 'SUPER_ADMIN';
 }
 
-const DUMMY_USER_NAMES = [
-  'accounts_team', 'collection_lead', 
-  'credit_evaluator', 'telecaller_riya', 'ops_supervisor', 'telecaller_rahul'
-];
+/** Helper: is this a partner-portal account? */
+export function isPartnerUser(user) {
+  return !!user && (user.serverRole === 'PARTNER' || user.role === 'Partner');
+}
 
-/**
- * Retrieve all registered staff accounts from localStorage or initial seed
- */
-export function getStaffList() {
-  checkAndEnforceGlobalLogout();
+// ---------------------------------------------------------------- session cache
 
+export function getCurrentUser() {
   try {
-    const raw = localStorage.getItem(STAFF_STORAGE_KEY);
+    if (!getTokens()) return null;
+    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        let needsResave = false;
-        // Filter out legacy dummy users and ensure Super Admin info@adgrowmedia.com exists & is Active
-        const cleaned = parsed
-          .filter(u => u && u.name && !DUMMY_USER_NAMES.includes(u.name.toLowerCase().trim()))
-          .map(u => {
-            const isSuper = isSuperAdmin(u);
-            const status = isSuper ? 'Active' : (u.status || 'Active');
-            if (isSuper && u.status !== 'Active') {
-              needsResave = true;
-            }
-            if ((isSuper && u.password !== 'EepAVV@*#1!oo$9') || u.password === 'Jazz@123') {
-              needsResave = true;
-            }
-            return {
-              ...u,
-              username: u.username || u.email || u.name,
-              password: (u.email === 'info@adgrowmedia.com' || u.username === 'info@adgrowmedia.com' || u.role === 'Super Admin' || isSuper) ? 'EepAVV@*#1!oo$9' : (u.password === 'Jazz@123' ? 'EepAVV@*#1!oo$9' : (u.password || 'EepAVV@*#1!oo$9')),
-              roles: Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : [u.role || 'Super Admin'],
-              status: status,
-              branch: u.branch || 'Delhi Head Office'
-            };
-          });
-
-        // Ensure at least Super Admin info@adgrowmedia.com exists
-        const hasSuperAdmin = cleaned.some(u => (u.username || u.email || '').toLowerCase() === 'info@adgrowmedia.com');
-        if (!hasSuperAdmin) {
-          cleaned.unshift(INITIAL_STAFF_MEMBERS[0]);
-          needsResave = true;
-        }
-
-        // Seed default partner accounts if none exist
-        const hasPartnerAccount = cleaned.some(u => isPartnerUser(u));
-        if (!hasPartnerAccount) {
-          cleaned.push(...DEFAULT_PARTNER_USERS);
-          needsResave = true;
-        }
-
-        if (needsResave) {
-          saveStaffList(cleaned);
-        }
-
-        return cleaned;
-      }
+      if (parsed && (parsed.id || parsed.email)) return parsed;
     }
   } catch (e) {
-    console.error('Error reading staff list from localStorage:', e);
+    // ignore
   }
-
-  // Fallback to initial staff members + partner users
-  const initial = [
-    ...INITIAL_STAFF_MEMBERS.map(u => ({
-      ...u,
-      username: u.username || u.email || u.name,
-      password: u.password || 'EepAVV@*#1!oo$9',
-      roles: u.roles || [u.role],
-      status: u.status || 'Active'
-    })),
-    ...DEFAULT_PARTNER_USERS
-  ];
-  saveStaffList(initial);
-  return initial;
+  return null;
 }
 
-/**
- * Persist staff list to localStorage and trigger global sync event
- */
-export function saveStaffList(list) {
+export function setCurrentUserSession(user) {
   try {
-    localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(list || []));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('paisa_staff_updated', { detail: list }));
-    }
+    if (user) sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(user));
+    else sessionStorage.removeItem(SESSION_STORAGE_KEY);
   } catch (e) {
-    console.error('Error writing staff list to localStorage:', e);
+    // ignore
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(SESSION_EVENT, { detail: user }));
   }
 }
 
-/**
- * Create a new staff profile
- */
-export function addStaffUser(userData) {
-  const staffList = getStaffList();
-  const username = (userData.username || userData.name || '').trim();
-  const email = (userData.email || `${username.toLowerCase()}@paisainminutes.com`).trim().toLowerCase();
-
-  // Validate duplicate username or email
-  const isDuplicate = staffList.some(
-    u => (u.username || u.name || '').toLowerCase() === username.toLowerCase() ||
-         (u.email || '').toLowerCase() === email
-  );
-
-  if (isDuplicate) {
-    return { success: false, error: `User with username "${username}" or email "${email}" already exists!` };
-  }
-
-  const initials = username
-    .split(' ')
-    .filter(Boolean)
-    .map(n => n[0].toUpperCase())
-    .join('')
-    .slice(0, 2) || username.slice(0, 2).toUpperCase() || 'ST';
-
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-  const role = userData.role || (Array.isArray(userData.roles) ? userData.roles[0] : 'Admin');
-  const roles = Array.isArray(userData.roles) && userData.roles.length > 0 ? userData.roles : [role];
-
-  const newUser = {
-    id: `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-    name: username,
-    username: username,
-    email: email,
-    mobile: userData.mobile || '7982967240',
-    password: userData.password || `Paisa@${Math.floor(1000 + Math.random() * 9000)}`,
-    initials,
-    role: role,
-    roles: roles,
-    branch: userData.branch || 'Delhi Head Office',
-    status: userData.status || 'Active',
-    lastLogin: 'Never',
-    created: dateStr,
-    avatarBg: userData.avatarBg || 'bg-[#0A3977]',
-    permissions: userData.permissions || (role.includes('Admin') ? ['all'] : ['view_leads', 'edit_status'])
-  };
-
-  const updatedList = [...staffList, newUser];
-  saveStaffList(updatedList);
-
-  return { success: true, user: newUser };
+export function clearCurrentUserSession() {
+  endSession();
 }
 
-/**
- * Update an existing staff profile
- */
-export function updateStaffUser(id, updatedFields) {
-  const staffList = getStaffList();
-  let updatedUser = null;
-
-  const updatedList = staffList.map(u => {
-    if (String(u.id) === String(id)) {
-      const isSuper = isSuperAdmin(u);
-
-      const initials = (updatedFields.name || u.name)
-        .split(' ')
-        .filter(Boolean)
-        .map(n => n[0].toUpperCase())
-        .join('')
-        .slice(0, 2) || u.initials || 'US';
-
-      let role = updatedFields.role || (Array.isArray(updatedFields.roles) ? updatedFields.roles[0] : u.role);
-      let roles = Array.isArray(updatedFields.roles) && updatedFields.roles.length > 0 ? updatedFields.roles : (u.roles || [role]);
-
-      // Protect Super Admin: Must always stay Active and retain Super Admin role
-      let status = updatedFields.status || u.status || 'Active';
-      if (isSuper) {
-        status = 'Active';
-        if (!roles.includes('Super Admin')) {
-          roles = ['Super Admin', ...roles];
-        }
-        role = 'Super Admin';
-      }
-
-      updatedUser = {
-        ...u,
-        ...updatedFields,
-        initials,
-        role,
-        roles,
-        status
-      };
-      return updatedUser;
-    }
-    return u;
-  });
-
-  saveStaffList(updatedList);
-
-  // If current logged-in user is updated, update session
-  const currentUser = getCurrentUser();
-  if (currentUser && String(currentUser.id) === String(id) && updatedUser) {
-    setCurrentUserSession(updatedUser);
-  }
-
-  return { success: true, user: updatedUser };
-}
-
-/**
- * Reset password for a staff member
- */
-export function resetStaffPassword(id, newPassword) {
-  const staffList = getStaffList();
-  let targetUser = null;
-
-  const updatedList = staffList.map(u => {
-    if (String(u.id) === String(id)) {
-      targetUser = { ...u, password: newPassword };
-      return targetUser;
-    }
-    return u;
-  });
-
-  if (!targetUser) {
-    return { success: false, error: 'User not found' };
-  }
-
-  saveStaffList(updatedList);
-
-  // Update session if self
-  const currentUser = getCurrentUser();
-  if (currentUser && String(currentUser.id) === String(id)) {
-    setCurrentUserSession(targetUser);
-  }
-
-  return { success: true, user: targetUser };
-}
-
-/**
- * Delete a staff user profile
- * Protected: Super Admin accounts CANNOT be deleted by anyone!
- */
-export function deleteStaffUser(id) {
-  const staffList = getStaffList();
-  const targetUser = staffList.find(u => String(u.id) === String(id));
-
-  if (targetUser && isSuperAdmin(targetUser)) {
-    console.warn('[SECURITY] Attempted to delete protected Super Admin account:', targetUser.name);
-    return { success: false, error: 'Super Admin account is permanently protected and cannot be deleted!' };
-  }
-
-  const filtered = staffList.filter(u => String(u.id) !== String(id));
-  saveStaffList(filtered);
-
-  // If deleted user was active session, logout
-  const currentUser = getCurrentUser();
-  if (currentUser && String(currentUser.id) === String(id)) {
-    clearCurrentUserSession();
-  }
-
-  return { success: true };
-}
-
-/**
- * Toggle Active / Disabled status for a staff profile
- * Protected: Super Admin accounts CANNOT be disabled by anyone!
- */
-export function toggleUserStatus(id) {
-  const staffList = getStaffList();
-  const targetCheck = staffList.find(u => String(u.id) === String(id));
-
-  if (targetCheck && isSuperAdmin(targetCheck)) {
-    console.warn('[SECURITY] Attempted to disable protected Super Admin account:', targetCheck.name);
-    return { 
-      success: false, 
-      status: 'Active', 
-      error: 'Super Admin account is permanently active and cannot be disabled!' 
-    };
-  }
-
-  let nextStatus = 'Active';
-  let targetUser = null;
-
-  const updatedList = staffList.map(u => {
-    if (String(u.id) === String(id)) {
-      if (isSuperAdmin(u)) {
-        targetUser = { ...u, status: 'Active' };
-        return targetUser;
-      }
-      nextStatus = u.status === 'Active' ? 'Disabled' : 'Active';
-      targetUser = { ...u, status: nextStatus };
-      return targetUser;
-    }
-    return u;
-  });
-
-  saveStaffList(updatedList);
-
-  // If current user is disabled, end their session
-  const currentUser = getCurrentUser();
-  if (currentUser && String(currentUser.id) === String(id)) {
-    if (nextStatus === 'Disabled') {
-      clearCurrentUserSession();
-    } else {
-      setCurrentUserSession(targetUser);
+/** Adds the partner slug/name for PARTNER accounts and keeps the partner directory up to date. */
+async function attachPartnerScope(user) {
+  const res = await api('/api/crm/partners', { query: { limit: 500 } });
+  if (res.ok && res.data && Array.isArray(res.data.partners)) {
+    syncPartnersFromServer(res.data.partners);
+    if (isPartnerUser(user)) {
+      const own = res.data.partners.find((p) => user.partnerIds.includes(p.id)) || res.data.partners[0];
+      if (own) return { ...user, partnerId: own.slug, partnerName: own.name, serverPartnerId: own.id };
     }
   }
-
-  return { success: true, status: nextStatus, user: targetUser };
+  return user;
 }
 
+// ---------------------------------------------------------------- login / logout
+
 /**
- * Authenticate staff member credentials (Username / Email + Password)
+ * Staff / partner login. Resolves to `{ success:true, user }` or `{ success:false, error, blocked? }`.
  */
-export async function authenticateStaff(usernameOrEmail, password, isSimulatingOffHours = false) {
+export async function authenticateStaff(usernameOrEmail, password) {
   if (!usernameOrEmail || !usernameOrEmail.trim()) {
     return { success: false, error: 'Please enter your User ID / Username or Email' };
   }
@@ -562,118 +149,164 @@ export async function authenticateStaff(usernameOrEmail, password, isSimulatingO
     return { success: false, error: 'Please enter your Password' };
   }
 
-  const staffList = getStaffList();
-  const input = usernameOrEmail.trim().toLowerCase();
+  const identifier = usernameOrEmail.trim();
+  const res = await api('/api/auth/staff/login', {
+    method: 'POST',
+    auth: false,
+    body: { email: identifier, password },
+  });
 
-  // Find matching user by username, name, email or Super Admin alias
-  const user = staffList.find(u => 
-    (u.username && u.username.toLowerCase() === input) ||
-    (u.name && u.name.toLowerCase() === input) ||
-    (u.email && u.email.toLowerCase() === input) ||
-    (input === 'info@adgrowmedia.com' && (u.role === 'Super Admin' || u.email === 'info@adgrowmedia.com')) ||
-    (input === 'super admin' && u.role === 'Super Admin') ||
-    (input === 'superadmin' && u.role === 'Super Admin') ||
-    (input === 'admin' && u.role === 'Super Admin')
-  );
-
-  if (!user) {
-    return { success: false, error: `Invalid User ID or Email "${usernameOrEmail}". Account not found.` };
+  if (!res.ok || !res.data || !res.data.token) {
+    if (res.status === 401) return { success: false, error: 'Incorrect User ID or Password. Please check and try again.' };
+    if (res.status === 423) return { success: false, error: 'Too many failed attempts. This account is locked for a few minutes — please try again later.' };
+    if (res.status === 429) return { success: false, error: 'Too many login attempts. Please wait a few minutes and try again.' };
+    if (res.status === 403 && /working hours/i.test(res.error || '')) {
+      return { success: false, error: res.error, blocked: { user: identifier, reason: res.error, at: new Date() } };
+    }
+    if (res.status === 403) return { success: false, error: 'Your staff account is currently Disabled. Please contact Super Admin.' };
+    return { success: false, error: res.error || 'Authentication failed. Please check credentials.' };
   }
 
-  // Check password - accepts current password or Jazz@123
-  const expectedPassword = user.password || 'EepAVV@*#1!oo$9';
-  const isSuper = isSuperAdmin(user) || input === 'info@adgrowmedia.com';
-  const isPasswordValid = (password === expectedPassword || password.trim() === expectedPassword.trim()) ||
-    (isSuper && (password === 'Jazz@123' || password.trim() === 'Jazz@123' || password === 'EepAVV@*#1!oo$9' || password.trim() === 'EepAVV@*#1!oo$9'));
-
-  if (!isPasswordValid) {
-    return { success: false, error: 'Incorrect Password. Please check and try again.' };
-  }
-
-  // Check account status - Super Admin can NEVER be disabled
-  if (isSuperAdmin(user) || (user.email && user.email.toLowerCase() === 'info@adgrowmedia.com') || (user.username && user.username.toLowerCase() === 'info@adgrowmedia.com')) {
-    user.status = 'Active';
-  } else if (user.status === 'Disabled') {
-    return { success: false, error: 'Your staff account is currently Disabled. Please contact Super Admin.' };
-  }
-
-  // Check Shift Security Policy (6:35 PM - 9:27 AM IST)
-  const shiftCheck = checkLoginAllowed(user, isSimulatingOffHours);
-  if (!shiftCheck.allowed) {
-    const geo = await getLiveSecurityDetails();
-    const incident = logSecurityIncident(user, geo);
-    return {
-      success: false,
-      blockedIncident: {
-        ...incident,
-        reason: shiftCheck.reason,
-        currentTime: shiftCheck.currentTime,
-        resumeTime: shiftCheck.resumeTime
-      }
-    };
-  }
-
-  // Update last login
-  const now = new Date();
-  const timeStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }) + ', ' + 
-                  now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-  
-  const updatedUser = {
-    ...user,
-    lastLogin: timeStr
-  };
-
-  // Update in staff list
-  const updatedList = staffList.map(u => String(u.id) === String(user.id) ? updatedUser : u);
-  saveStaffList(updatedList);
-
-  // Set active session
-  setCurrentUserSession(updatedUser);
-
-  return { success: true, user: updatedUser };
+  // Switching accounts: close the previous account's server session first (best effort).
+  const previous = getTokens();
+  if (previous) await revokeTokens(previous);
+  setTokens({ accessToken: res.data.token, refreshToken: res.data.refreshToken });
+  let user = mapServerUser(res.data.user);
+  user = await attachPartnerScope(user);
+  setCurrentUserSession(user);
+  return { success: true, user };
 }
 
-/**
- * Get active logged-in user session
- */
-export function getCurrentUser() {
-  checkAndEnforceGlobalLogout();
-
-  try {
-    // Only check active tab sessionStorage so fresh browser/incognito windows always require credentials
-    const raw = sessionStorage.getItem(SESSION_STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && (parsed.name || parsed.username || parsed.email)) return parsed;
-    }
-  } catch (e) {}
-  return null;
+/** Loads the signed-in account from the server (used on page load so a stale or revoked session is detected). */
+export async function restoreSession() {
+  if (!getTokens()) return null;
+  const res = await api('/api/crm/me');
+  if (!res.ok || !res.data || !res.data.user) {
+    if (res.status === 0) return getCurrentUser(); // offline: keep the cached view until the server answers
+    return null;
+  }
+  const user = await attachPartnerScope(mapServerUser(res.data.user));
+  setCurrentUserSession(user);
+  return user;
 }
 
-/**
- * Set active logged-in user session
- */
-export function setCurrentUserSession(user) {
+export async function logoutStaff() {
+  const tokens = getTokens();
+  if (tokens) {
+    await api('/api/auth/staff/logout', { method: 'POST', body: { refreshToken: tokens.refreshToken } });
+  }
+  endSession();
+}
+
+/** Replaces a password. The server revokes every session afterwards, so the caller must sign in again. */
+export async function changeOwnPassword(currentPassword, newPassword) {
+  const res = await api('/api/auth/staff/change-password', { method: 'POST', body: { currentPassword, newPassword } });
+  if (res.ok) {
+    clearTokens();
+    return { success: true };
+  }
+  return { success: false, error: res.error };
+}
+
+/** Clears browser-side UI preferences and the tab session (does not delete any server data). */
+export function purgeAllClientCaches() {
   try {
-    if (user) {
-      sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(user));
-      // Remove from localStorage so it never persists across new windows/tabs automatically
-      try { localStorage.removeItem(SESSION_STORAGE_KEY); } catch (e) {}
-    } else {
-      try { sessionStorage.removeItem(SESSION_STORAGE_KEY); } catch (e) {}
-      try { localStorage.removeItem(SESSION_STORAGE_KEY); } catch (e) {}
-    }
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('paisa_session_changed', { detail: user }));
-    }
+    ['paisa_crm_active_tab', 'paisa_crm_sidebar_sections'].forEach((key) => localStorage.removeItem(key));
+    sessionStorage.clear();
   } catch (e) {
-    console.error('Error saving session:', e);
+    // ignore
   }
+  clearTokens();
 }
 
-/**
- * Clear user session (Logout)
- */
-export function clearCurrentUserSession() {
-  setCurrentUserSession(null);
+// ---------------------------------------------------------------- staff accounts (/api/crm/staff)
+
+let roleNameCache = {};
+
+export async function loadRoleNames() {
+  const res = await api('/api/crm/roles', { query: { limit: 500 } });
+  if (res.ok && res.data && Array.isArray(res.data.roles)) {
+    roleNameCache = Object.fromEntries(res.data.roles.map((r) => [r.key, r.name]));
+    return { success: true, roles: res.data.roles };
+  }
+  return { success: false, roles: [], error: res.error };
+}
+
+export async function listStaffAccounts() {
+  const res = await api('/api/crm/staff', { query: { limit: 500 } });
+  if (!res.ok) return { success: false, error: res.error, staff: [] };
+  return { success: true, staff: (res.data.staff || []).map((s) => mapServerUser(s, roleNameCache)) };
+}
+
+export async function createStaffAccount({ name, email, roleKey, mobile, branch }) {
+  const res = await api('/api/crm/staff', { method: 'POST', body: { name, email, roleKey, mobile, branch } });
+  if (!res.ok) return { success: false, error: res.error };
+  return { success: true, user: mapServerUser(res.data.user, roleNameCache), temporaryPassword: res.data.temporaryPassword };
+}
+
+export async function updateStaffAccount(id, fields) {
+  const res = await api(`/api/crm/staff/${encodeURIComponent(id)}`, { method: 'PATCH', body: fields });
+  if (!res.ok) return { success: false, error: res.error };
+  return { success: true, user: mapServerUser(res.data.user, roleNameCache) };
+}
+
+export async function resetStaffAccountPassword(id) {
+  const res = await api(`/api/crm/staff/${encodeURIComponent(id)}/reset-password`, { method: 'POST' });
+  if (!res.ok) return { success: false, error: res.error };
+  return { success: true, temporaryPassword: res.data.temporaryPassword };
+}
+
+/** "Delete" in the UI disables the account on the server (history and audit entries are kept). */
+export async function disableStaffAccount(id) {
+  const res = await api(`/api/crm/staff/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if (!res.ok) return { success: false, error: res.error };
+  return { success: true, user: mapServerUser(res.data.user, roleNameCache) };
+}
+
+// ---------------------------------------------------------------- partner portal accounts (/api/crm/partners/users)
+
+function mapPartnerUser(u, partners = []) {
+  const base = mapServerUser(u);
+  const partner = partners.find((p) => (u.partnerIds || []).includes(p.id));
+  return {
+    ...base,
+    partnerId: partner ? partner.slug : (u.partnerIds || [])[0] || '',
+    partnerName: partner ? partner.name : 'Partner',
+    serverPartnerId: partner ? partner.id : (u.partnerIds || [])[0] || null,
+  };
+}
+
+export async function listPartnerAccounts() {
+  const [users, partners] = await Promise.all([
+    api('/api/crm/partners/users', { query: { limit: 500 } }),
+    api('/api/crm/partners', { query: { limit: 500 } }),
+  ]);
+  if (!users.ok) return { success: false, error: users.error, accounts: [] };
+  const partnerList = partners.ok && partners.data ? partners.data.partners || [] : [];
+  const rows = users.data.users || users.data.partnerUsers || [];
+  return { success: true, accounts: rows.map((u) => mapPartnerUser(u, partnerList)) };
+}
+
+export async function createPartnerAccount({ serverPartnerId, name, email, username }) {
+  const res = await api('/api/crm/partners/users', {
+    method: 'POST',
+    body: { partnerIds: [serverPartnerId], name, email, username: username || undefined },
+  });
+  if (!res.ok) return { success: false, error: res.error };
+  return { success: true, user: res.data.user, temporaryPassword: res.data.temporaryPassword };
+}
+
+export async function setPartnerAccountStatus(id, status) {
+  const res = await api(`/api/crm/partners/users/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: { status: status === 'Active' ? 'ACTIVE' : 'DISABLED' },
+  });
+  if (!res.ok) return { success: false, error: res.error };
+  return { success: true, user: res.data.user };
+}
+
+export async function resetPartnerAccountPassword(id) {
+  const res = await api(`/api/crm/partners/users/${encodeURIComponent(id)}/reset-password`, { method: 'POST' });
+  if (!res.ok) return { success: false, error: res.error };
+  return { success: true, temporaryPassword: res.data.temporaryPassword };
 }

@@ -564,8 +564,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const cibilBadge = document.getElementById('eligCibilBadge');
     let cibilLookupTimeout = null;
 
+    // Node server base URL (credit check + lead intake)
+    const NODE_API = <?php echo json_encode($pim_node_api_url); ?>;
+
+    // The bureau is queried only after the applicant has ticked the agreement checkboxes
+    function hasBureauConsent() {
+        const a1 = document.getElementById('eligAgreeTerms1');
+        const a2 = document.getElementById('eligAgreeTerms2');
+        return Boolean(a1 && a1.checked && a2 && a2.checked);
+    }
+
     function autoCheckCibil(phoneNum) {
-        if (!phoneNum || phoneNum.length !== 10 || !/^[6-9]/.test(phoneNum)) {
+        if (!phoneNum || phoneNum.length !== 10 || !/^[6-9]/.test(phoneNum) || !hasBureauConsent()) {
             if (cibilBadge) cibilBadge.style.display = 'none';
             return;
         }
@@ -578,7 +588,11 @@ document.addEventListener('DOMContentLoaded', () => {
             cibilBadge.style.border = '1px solid #BFDBFE';
             cibilBadge.innerHTML = '<span>⚡</span> <span>Checking bureau credit score...</span>';
         }
-        fetch('/api/fetch-cibil.php?phone=' + encodeURIComponent(phoneNum))
+        fetch(NODE_API + '/api/public/credit-check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ phone: phoneNum, consent: true })
+        })
             .then(r => r.json())
             .then(res => {
                 if (res && res.success && res.score) {
@@ -598,6 +612,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (cibilBadge) cibilBadge.style.display = 'none';
             });
     }
+
+    ['eligAgreeTerms1', 'eligAgreeTerms2'].forEach(function(id) {
+        const box = document.getElementById(id);
+        if (box) {
+            box.addEventListener('change', function() {
+                if (phoneInput && phoneInput.value.length === 10) autoCheckCibil(phoneInput.value);
+            });
+        }
+    });
 
     if (phoneInput) {
         phoneInput.addEventListener('input', function() {
@@ -799,8 +822,6 @@ document.addEventListener('DOMContentLoaded', () => {
             manualLink.href = fallbackRedirectUrl;
         }
 
-        const jwtToken = localStorage.getItem('pim_jwt_token') || sessionStorage.getItem('pim_jwt_token') || '';
-
         // Complete Lead Payload
         // 1. Detect UTM Source (Priority: URL query > sessionStorage > localStorage)
         const urlParams = new URLSearchParams(window.location.search);
@@ -855,16 +876,14 @@ document.addEventListener('DOMContentLoaded', () => {
             utm_source: finalUtmSource,
             lead_source: finalLeadSource,
             source: finalSource,
-            status: "Fresh",
-            token: jwtToken
+            status: "Fresh"
         };
 
-        // Submit to backends
+        // One submission to the Node server (it replaces the three separate posts the page used to make)
         const submitToCrm = () => {
-            // 1. Root submit-lead.php
-            fetch('/submit-lead.php', {
+            fetch(NODE_API + '/api/public/leads', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                 body: JSON.stringify(leadPayload),
                 keepalive: true
             }).then(r => r.json()).then(data => {
@@ -872,31 +891,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     finalRedirectUrl = data.redirect_url || data.data.redirect_url;
                     if (manualLink) manualLink.href = finalRedirectUrl;
                 }
-            }).catch(() => {});
-
-            // 2. Admin submit-lead.php
-            fetch('/admin/api/submit-lead.php', {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(leadPayload),
-                keepalive: true
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data && (data.redirect_url || (data.data && data.data.redirect_url))) {
-                    finalRedirectUrl = data.redirect_url || data.data.redirect_url;
-                    if (manualLink) manualLink.href = finalRedirectUrl;
-                }
-            })
-            .catch(() => {});
-
-            // 3. Subdomain direct sync if accessible
-            fetch('https://crm.paisainminutes.com/api/submit-lead.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(leadPayload),
-                mode: 'cors',
-                keepalive: true
             }).catch(() => {});
         };
 

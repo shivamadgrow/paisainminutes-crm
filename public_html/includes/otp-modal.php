@@ -321,8 +321,8 @@ window.PimOtpService = (function() {
     let isSendingOtp = false;
 
     const OTP_CONFIG = {
-        apiSendUrl: 'https://api.paisainminutes.tech/api/auth/send-otp',
-        apiVerifyUrl: 'https://api.paisainminutes.tech/api/auth/verify-otp'
+        apiSendUrl: (window.backend_server_url || 'https://api.paisainminutes.tech') + '/api/auth/send-otp',
+        apiVerifyUrl: (window.backend_server_url || 'https://api.paisainminutes.tech') + '/api/auth/verify-otp'
     };
 
     let overlay = null;

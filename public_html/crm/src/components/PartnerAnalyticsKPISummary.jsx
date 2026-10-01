@@ -16,52 +16,49 @@ import {
   IndianRupee,
   ShieldCheck
 } from 'lucide-react';
-import { AFFILIATE_PARTNERS, getPartnerMeta } from '../data/affiliatePartners';
-import { cleanLoanAmount } from '../utils/amountHelpers';
+import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
+import { getPartnerKpiSummary } from '../utils/crmApi';
 
-export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany }) {
+const PERIOD_OPTIONS = [
+  { id: 'this_month', label: 'This Month' },
+  { id: 'last_month', label: 'Last Month' },
+  { id: 'this_fy', label: 'This FY' }
+];
+
+// Today's calendar date in Asia/Kolkata (YYYY-MM-DD)
+const todayIst = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+const rupees = (paise) => Math.round((Number(paise) || 0) / 100);
+
+export default function PartnerAnalyticsKPISummary({ onSelectCompany }) {
   const [expandedAll, setExpandedAll] = useState(false);
   const [openCard, setOpenCard] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [sortField, setSortField] = useState('commissionEarned');
   const [sortDirection, setSortDirection] = useState('desc');
   const [apiData, setApiData] = useState(null);
+  const [loadError, setLoadError] = useState('');
+  const [period, setPeriod] = useState('this_fy');
+  const [asOf, setAsOf] = useState(todayIst);
 
-  // Compute or fetch partner metrics
-  const fetchKPIData = async (isManualRefresh = false) => {
+  // GET /api/crm/partner-analytics/kpi-summary: period and asOf come from the selector / today's date (IST)
+  const fetchKPIData = async () => {
     setIsLoading(true);
-    const endpoints = [
-      '/api/partner-analytics/kpi-summary?period=FY2026-27&asOf=2026-08-20',
-      'api/partner-analytics-kpi.php?period=FY2026-27&asOf=2026-08-20',
-      '/api/partner-analytics-kpi.php?period=FY2026-27&asOf=2026-08-20'
-    ];
-    for (const url of endpoints) {
-      try {
-        const res = await fetch(url, {
-          headers: { 'Cache-Control': 'no-cache' }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.partners) {
-            setApiData(data);
-            setIsLoading(false);
-            return;
-          }
-        }
-      } catch (e) {
-        // Fallback to next endpoint
-      }
+    const asOfDate = todayIst();
+    setAsOf(asOfDate);
+    const res = await getPartnerKpiSummary({ period, asOf: asOfDate });
+    if (res.success) {
+      setApiData(res);
+      setLoadError('');
+    } else {
+      setLoadError(res.error || 'Could not load the partner KPI summary.');
     }
-
-    // Client computation fallback based on live leads
-    setTimeout(() => {
-      setIsLoading(false);
-    }, isManualRefresh ? 350 : 150);
+    setIsLoading(false);
   };
 
   useEffect(() => {
     fetchKPIData();
-  }, [leads]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period]);
 
   const toggleCard = (id) => {
     setOpenCard(prev => ({ ...prev, [id]: !prev[id] }));
@@ -69,128 +66,46 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
 
   const isCardOpen = (id) => expandedAll || !!openCard[id];
 
-  // Derive consolidated affiliate metrics from leads & partner metadata (or API data if available)
+  const periodLabel = (PERIOD_OPTIONS.find(o => o.id === period) || {}).label || period;
+  const asOfDisplay = asOf.split('-').reverse().join('/');
+
+  // Consolidated affiliate metrics: every number comes from the server (money converted from paise to rupees)
   const affiliateMetrics = useMemo(() => {
-    if (apiData && (apiData.summary || apiData.partners) && Array.isArray(apiData.partners) && apiData.partners.length > 0) {
-      const partnerList = AFFILIATE_PARTNERS.map(partner => {
-        const found = apiData.partners.find(p => p.id === partner.id || (p.name && p.name.toLowerCase() === partner.name.toLowerCase()));
-        if (found) {
-          return {
-            ...partner,
-            ...found,
-            leadsSent: Number(found.leadsSent) || 0,
-            approved: Number(found.approved) || 0,
-            conversionRate: Number(found.conversionRate) || 0,
-            disbursal: Number(found.disbursal) || 0,
-            commissionEarned: Number(found.commissionEarned) || 0,
-            paymentStatus: found.paymentStatus || partner.paymentStatus || 'Pending'
-          };
-        }
-        return {
-          ...partner,
-          leadsSent: 0,
-          approved: 0,
-          conversionRate: 0,
-          disbursal: 0,
-          commissionEarned: 0,
-          commissionRate: partner.commissionRate,
-          paymentStatus: partner.paymentStatus
-        };
-      });
-
-      const s = apiData.summary || apiData;
-      const sortedByCommission = [...partnerList].sort((a, b) => b.commissionEarned - a.commissionEarned || b.disbursal - a.disbursal);
-      const topPartner = (sortedByCommission.length > 0 && sortedByCommission[0].commissionEarned > 0)
-        ? { name: sortedByCommission[0].name, amount: sortedByCommission[0].commissionEarned }
-        : { name: partnerList[0]?.name || 'Rupay91', amount: 0 };
-
+    const serverPartners = (apiData && Array.isArray(apiData.partners)) ? apiData.partners : [];
+    const partnerList = serverPartners.map(sp => {
+      const meta = AFFILIATE_PARTNERS.find(p => p.id === sp.slug) || {};
       return {
-        totalLeadsSent: Number(s.totalLeadsSent) || partnerList.reduce((sum, p) => sum + p.leadsSent, 0),
-        totalApproved: Number(s.totalApproved) || partnerList.reduce((sum, p) => sum + p.approved, 0),
-        totalDisbursal: Number(s.totalDisbursal) || partnerList.reduce((sum, p) => sum + p.disbursal, 0),
-        totalCommissionEarned: Number(s.totalCommissionEarned) || partnerList.reduce((sum, p) => sum + p.commissionEarned, 0),
-        conversionRate: Number(s.conversionRate) || 0,
-        avgCommissionPerLead: Number(s.avgCommissionPerLead) || 0,
-        commissionReceived: Number(s.commissionReceived) || 0,
-        commissionPending: Number(s.commissionPending) || 0,
-        settlementsCount: partnerList.filter(p => p.paymentStatus === 'Paid' && p.commissionEarned > 0).length,
-        pendingItemsCount: partnerList.filter(p => p.paymentStatus !== 'Paid' && p.commissionEarned > 0).length,
-        topPartner,
-        partners: partnerList
-      };
-    }
-
-    const partnerList = AFFILIATE_PARTNERS.map(partner => {
-      // Match leads assigned to this partner
-      const pLeads = leads.filter(l => {
-        const assigned = String(l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
-        const partnerNameClean = partner.name.toLowerCase().replace(/[\s\-_]/g, '');
-        const partnerIdClean = partner.id.toLowerCase().replace(/[\s\-_]/g, '');
-        return assigned === partnerIdClean || assigned === partnerNameClean || (assigned && assigned.includes(partnerIdClean));
-      });
-
-      const leadsSent = pLeads.length;
-      const approvedLeads = pLeads.filter(l => l.status === 'Approved' || l.status === 'Disbursed');
-      const approved = approvedLeads.length;
-      const conversionRate = leadsSent > 0 ? Number(((approved / leadsSent) * 100).toFixed(1)) : 0;
-      
-      const disbursal = approvedLeads.reduce((sum, l) => {
-        return sum + cleanLoanAmount(l.loanAmount || l.applied || 50000);
-      }, 0);
-
-      const ratePct = partner.commissionPct || 0.06;
-      const commissionEarned = Math.round(disbursal * ratePct);
-
-      return {
-        ...partner,
-        leadsSent,
-        approved,
-        conversionRate,
-        disbursal,
-        commissionEarned,
-        commissionRate: partner.commissionRate || `${(ratePct * 100).toFixed(1)}%`,
-        paymentStatus: partner.paymentStatus || 'Pending'
+        ...meta,
+        id: sp.slug || sp.id || 'unassigned',
+        name: sp.name,
+        accentColor: meta.accentColor || '#64748B',
+        leadsSent: Number(sp.leadsSent) || 0,
+        approved: Number(sp.approved) || 0,
+        conversionRate: Number(sp.conversionRate) || 0,
+        disbursal: rupees(sp.disbursalPaise),
+        commissionEarned: rupees(sp.commissionEarnedPaise),
+        commissionRate: `${Number(sp.commissionRatePercent || 0).toFixed(1)}%`,
+        paymentStatus: sp.paymentStatus === 'None' ? 'Pending' : (sp.paymentStatus || 'Pending')
       };
     });
 
-    const totalLeadsSent = partnerList.reduce((sum, p) => sum + p.leadsSent, 0);
-    const totalApproved = partnerList.reduce((sum, p) => sum + p.approved, 0);
-    const totalDisbursal = partnerList.reduce((sum, p) => sum + p.disbursal, 0);
-    const totalCommissionEarned = partnerList.reduce((sum, p) => sum + p.commissionEarned, 0);
-    const conversionRate = totalLeadsSent > 0 ? Number(((totalApproved / totalLeadsSent) * 100).toFixed(1)) : 0;
-    const avgCommissionPerLead = totalApproved > 0 ? Math.round(totalCommissionEarned / totalApproved) : 0;
-
-    const commissionReceived = partnerList
-      .filter(p => p.paymentStatus === 'Paid')
-      .reduce((sum, p) => sum + p.commissionEarned, 0);
-
-    const commissionPending = partnerList
-      .filter(p => p.paymentStatus !== 'Paid')
-      .reduce((sum, p) => sum + p.commissionEarned, 0);
-
-    const settlementsCount = partnerList.filter(p => p.paymentStatus === 'Paid' && p.commissionEarned > 0).length;
-    const pendingItemsCount = partnerList.filter(p => p.paymentStatus !== 'Paid' && p.commissionEarned > 0).length;
-
-    const sortedByCommission = [...partnerList].sort((a, b) => b.commissionEarned - a.commissionEarned || b.disbursal - a.disbursal);
-    const topPartner = (sortedByCommission.length > 0 && sortedByCommission[0].commissionEarned > 0)
-      ? { name: sortedByCommission[0].name, amount: sortedByCommission[0].commissionEarned }
-      : { name: partnerList[0]?.name || 'Rupay91', amount: 0 };
-
+    const s = (apiData && apiData.summary) || {};
+    const top = s.topPartner;
     return {
-      totalLeadsSent,
-      totalApproved,
-      totalDisbursal,
-      totalCommissionEarned,
-      conversionRate,
-      avgCommissionPerLead,
-      commissionReceived,
-      commissionPending,
-      settlementsCount,
-      pendingItemsCount,
-      topPartner,
+      totalLeadsSent: Number(s.totalLeadsSent) || 0,
+      totalApproved: Number(s.totalApproved) || 0,
+      totalDisbursal: rupees(s.totalDisbursalPaise),
+      totalCommissionEarned: rupees(s.totalCommissionEarnedPaise),
+      conversionRate: Number(s.conversionRate) || 0,
+      avgCommissionPerLead: rupees(s.avgCommissionPerLeadPaise),
+      commissionReceived: rupees(s.commissionReceivedPaise),
+      commissionPending: rupees(s.commissionPendingPaise),
+      settlementsCount: partnerList.filter(p => p.paymentStatus === 'Paid' && p.commissionEarned > 0).length,
+      pendingItemsCount: partnerList.filter(p => p.paymentStatus !== 'Paid' && p.commissionEarned > 0).length,
+      topPartner: top ? { name: top.name, amount: rupees(top.amountPaise) } : { name: '—', amount: 0 },
       partners: partnerList
     };
-  }, [leads]);
+  }, [apiData]);
 
   // Handle table sorting
   const handleSort = (field) => {
@@ -237,6 +152,13 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
             <span>Overdue</span>
           </span>
         );
+      case 'Partial':
+        return (
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+            <Clock className="w-3 h-3 text-blue-600" />
+            <span>Partial</span>
+          </span>
+        );
       case 'Pending':
       default:
         return (
@@ -250,6 +172,13 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+
+      {loadError && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>Could not load the partner KPI summary: {loadError}</span>
+          <button onClick={() => fetchKPIData()} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">Retry</button>
+        </div>
+      )}
       
       {/* 1. Title & Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -261,11 +190,19 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
             </span>
           </h1>
           <p className="text-xs text-slate-500 mt-1 font-mono">
-            <span className="text-purple-600 font-semibold">FY 2026-27</span> as at 20/08/2026 — every figure is an IST calendar period
+            <span className="text-purple-600 font-semibold">{periodLabel}</span> as at {asOfDisplay} — every figure is an IST calendar period
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold shadow-2xs cursor-pointer"
+            title="Reporting period"
+          >
+            {PERIOD_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
+          </select>
           <button
             type="button"
             onClick={() => setExpandedAll(!expandedAll)}
@@ -275,7 +212,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
           </button>
           <button
             type="button"
-            onClick={() => fetchKPIData(true)}
+            onClick={() => fetchKPIData()}
             className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-[#0A3977]' : ''}`} />
@@ -301,7 +238,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               )}
             </div>
             <div className="text-xs text-slate-500">
-              {affiliateMetrics.totalLeadsSent} leads · August 2026
+              {affiliateMetrics.totalLeadsSent} leads · {periodLabel}
             </div>
           </div>
 
@@ -391,7 +328,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               )}
             </div>
             <div className="text-xs text-slate-500">
-              {affiliateMetrics.totalApproved} cases · August 2026
+              {affiliateMetrics.totalApproved} cases · {periodLabel}
             </div>
           </div>
 
@@ -441,7 +378,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               )}
             </div>
             <div className="text-xs text-amber-700/80 font-medium">
-              August 2026 · <span className="italic">excludes TDS</span>
+              {periodLabel} · <span className="italic">excludes TDS</span>
             </div>
           </div>
 
@@ -529,7 +466,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               )}
             </div>
             <div className="text-[11px] text-slate-500">
-              August 2026
+              {periodLabel}
             </div>
           </div>
           <div className="border-t border-slate-100 bg-slate-50/50">
@@ -571,7 +508,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               )}
             </div>
             <div className="text-[11px] text-slate-500">
-              {affiliateMetrics.settlementsCount} settlements · August 2026
+              {affiliateMetrics.settlementsCount} settlements · {periodLabel}
             </div>
           </div>
           <div className="border-t border-slate-100 bg-slate-50/50">
@@ -649,7 +586,7 @@ export default function PartnerAnalyticsKPISummary({ leads = [], onSelectCompany
               )}
             </div>
             <div className="text-[11px] text-slate-500">
-              ₹{Number(affiliateMetrics?.topPartner?.amount || 0).toLocaleString('en-IN')} · August 2026
+              ₹{Number(affiliateMetrics?.topPartner?.amount || 0).toLocaleString('en-IN')} · {periodLabel}
             </div>
           </div>
           <div className="border-t border-slate-100 bg-slate-50/50">

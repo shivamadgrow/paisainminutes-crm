@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Search, 
@@ -13,23 +13,44 @@ import {
   Filter,
   Plus
 } from 'lucide-react';
-import { INITIAL_AGREEMENTS } from '../data/agreementsData';
-import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
+import { AFFILIATE_PARTNERS, getPartnerSlugByServerId } from '../data/affiliatePartners';
+import { fetchAllPages, apiPost } from '../utils/crmApi';
 
 export default function PartnerAgreementsView({ onOpenOnboarding }) {
-  const [agreements, setAgreements] = useState(INITIAL_AGREEMENTS);
+  const [agreements, setAgreements] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [newAgr, setNewAgr] = useState({
-    partnerId: 'rupay91',
+    partnerId: (AFFILIATE_PARTNERS[0] && AFFILIATE_PARTNERS[0].id) || '',
     agreementNumber: '',
     signedDate: new Date().toISOString().slice(0, 10),
-    validUntil: '2027-03-31',
-    rateSheet: '6.0% Flat',
+    validUntil: '',
+    rateSheet: '',
     paymentTerms: 'Bi-monthly',
     fileName: ''
   });
+
+  // Agreement records (metadata only) are stored on the server; status is derived from the expiry date
+  const loadAgreements = async () => {
+    setIsLoading(true);
+    const res = await fetchAllPages('/api/crm/agreements', 'agreements');
+    if (res.success) {
+      setAgreements(res.items.map(a => ({ ...a, partnerId: getPartnerSlugByServerId(a.partnerId) || a.partnerId })));
+      setLoadError('');
+    } else {
+      setLoadError(res.error || 'Could not load partner agreements.');
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadAgreements();
+  }, []);
 
   const filtered = agreements.filter(item => {
     if (searchQuery) {
@@ -46,26 +67,31 @@ export default function PartnerAgreementsView({ onOpenOnboarding }) {
     return true;
   });
 
-  const handleCreateAgreement = (e) => {
+  const handleCreateAgreement = async (e) => {
     e.preventDefault();
-    const partner = AFFILIATE_PARTNERS.find(p => p.id === newAgr.partnerId) || { name: 'Partner' };
-    const created = {
-      id: `agr-${Date.now()}`,
-      partnerId: newAgr.partnerId,
-      partnerName: partner.name,
-      agreementNumber: newAgr.agreementNumber || `PIM-AGR-2026-${Math.floor(100 + Math.random() * 900)}`,
+    setActionError('');
+    const partner = AFFILIATE_PARTNERS.find(p => p.id === newAgr.partnerId);
+    if (!partner || !partner.serverId) {
+      setActionError('This partner is not registered on the server yet.');
+      return;
+    }
+    setIsSaving(true);
+    const res = await apiPost('/api/crm/agreements', {
+      partnerId: partner.serverId,
+      agreementNumber: newAgr.agreementNumber || undefined,
       signedDate: newAgr.signedDate,
       validUntil: newAgr.validUntil,
-      status: 'Active',
-      rateSheet: newAgr.rateSheet,
-      paymentTerms: newAgr.paymentTerms,
-      agreementFile: newAgr.fileName || `${partner.id}_contract_${new Date().getFullYear()}.pdf`,
-      fileSize: '2.1 MB',
-      contactPerson: 'Authorized Signatory'
-    };
-
-    setAgreements(prev => [created, ...prev]);
-    setUploadModalOpen(false);
+      rateSheet: newAgr.rateSheet || undefined,
+      paymentTerms: newAgr.paymentTerms || undefined,
+      agreementFile: newAgr.fileName || undefined
+    });
+    setIsSaving(false);
+    if (res.ok) {
+      await loadAgreements();
+      setUploadModalOpen(false);
+    } else {
+      setActionError(res.error || 'The agreement record could not be saved.');
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -97,6 +123,13 @@ export default function PartnerAgreementsView({ onOpenOnboarding }) {
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {(loadError || actionError) && !uploadModalOpen && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>{loadError || actionError}</span>
+          <button onClick={loadError ? loadAgreements : () => setActionError('')} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">{loadError ? 'Retry' : 'Dismiss'}</button>
+        </div>
+      )}
+      {isLoading && <div className="text-xs text-slate-500">Loading agreements from the server…</div>}
       {/* Title Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -257,6 +290,9 @@ export default function PartnerAgreementsView({ onOpenOnboarding }) {
             <p className="text-xs text-slate-500 mb-4">Attach executed contract deed or updated commission rate schedule</p>
             
             <form onSubmit={handleCreateAgreement} className="space-y-4">
+              {actionError && (
+                <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">{actionError}</div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Select Lending Partner</label>
                 <select
@@ -295,6 +331,7 @@ export default function PartnerAgreementsView({ onOpenOnboarding }) {
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Renewal / Expiry Date</label>
                   <input 
                     type="date" 
+                    required
                     value={newAgr.validUntil}
                     onChange={(e) => setNewAgr(p => ({ ...p, validUntil: e.target.value }))}
                     className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"

@@ -178,10 +178,15 @@ document.addEventListener('DOMContentLoaded', function() {
             submitBtn.innerHTML = '<span>Sending...</span>';
 
             const formData = new FormData(contactForm);
+            const contactBody = {};
+            formData.forEach(function(value, key) { contactBody[key] = value; });
+            contactBody.agree_consent = agree ? '1' : '';
 
-            fetch('/submit-contact.php', {
+            // Posted straight to the Node server (replaces the old /submit-contact.php data file)
+            fetch(<?php echo json_encode($pim_node_api_url); ?> + '/api/public/contact', {
                 method: 'POST',
-                body: formData
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(contactBody)
             })
             .then(response => response.json())
             .then(data => {
@@ -192,7 +197,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     showStatus(data.message || 'Thank you! Your message has been sent successfully.', 'success');
                     contactForm.reset();
                 } else {
-                    showStatus(data.message || 'Failed to send message. Please try again.', 'error');
+                    showStatus(data.message || data.error || 'Failed to send message. Please try again.', 'error');
                 }
             })
             .catch(error => {

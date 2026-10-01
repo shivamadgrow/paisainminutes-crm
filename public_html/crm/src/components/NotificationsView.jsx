@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RefreshCw, Mail, Send, FileText, History, Smartphone, CheckCircle2, Eye, Copy, Check, Search, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
-import { NOTIFICATION_TEMPLATES } from '../data/notificationTemplates';
+import { apiGet } from '../utils/crmApi';
 
 // Official Original WhatsApp Vector Icon
 const WhatsAppOriginalIcon = ({ className = "w-3.5 h-3.5" }) => (
@@ -14,6 +14,35 @@ const WhatsAppOriginalIcon = ({ className = "w-3.5 h-3.5" }) => (
 );
 
 export default function NotificationsView() {
+  // Notification templates are stored on the server (GET /api/crm/settings/notification-templates)
+  const [NOTIFICATION_TEMPLATES, setTemplates] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadTemplates = async () => {
+    setIsLoading(true);
+    const res = await apiGet('/api/crm/settings/notification-templates', { limit: 500 });
+    if (res.ok && res.data && Array.isArray(res.data.templates)) {
+      setTemplates(res.data.templates.map(t => ({
+        id: t.key,
+        channel: t.channel,
+        name: t.name,
+        subject: t.subject || '',
+        body: t.body,
+        tokens: t.tokens || [],
+        enabled: t.enabled
+      })));
+      setLoadError('');
+    } else {
+      setLoadError(res.error || 'Could not load notification templates.');
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
   const [activeTab, setActiveTab] = useState('Send');
   const [channelFilter, setChannelFilter] = useState('All channels');
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
@@ -84,7 +113,14 @@ export default function NotificationsView() {
 
   return (
     <div className="space-y-6 animate-fade-in text-slate-800">
-      
+      {loadError && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>{loadError}</span>
+          <button onClick={loadTemplates} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">Retry</button>
+        </div>
+      )}
+      {isLoading && <div className="text-xs text-slate-500">Loading templates from the server…</div>}
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-20 right-6 z-50 bg-[#0A3977] text-white px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 text-xs font-semibold animate-bounce">
@@ -107,7 +143,7 @@ export default function NotificationsView() {
         {/* 3 KPI Small Cards */}
         <div className="flex items-center gap-3">
           <div className="crm-card p-3 bg-white px-4 text-center border border-slate-200/80 rounded-2xl shadow-2xs">
-            <div className="text-lg font-bold text-slate-900">8</div>
+            <div className="text-lg font-bold text-slate-900">{NOTIFICATION_TEMPLATES.length}</div>
             <div className="text-[10px] text-slate-400 font-medium">Templates</div>
           </div>
           <div className="crm-card p-3 bg-white px-4 text-center border border-slate-200/80 rounded-2xl shadow-2xs">
@@ -139,7 +175,7 @@ export default function NotificationsView() {
           }`}
         >
           <FileText className="w-3.5 h-3.5" />
-          <span>Templates <strong className="text-slate-700">8</strong></span>
+          <span>Templates <strong className="text-slate-700">{NOTIFICATION_TEMPLATES.length}</strong></span>
         </button>
         <button
           onClick={() => setActiveTab('History')}

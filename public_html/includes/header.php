@@ -11,6 +11,9 @@ if (!headers_sent()) {
 
 require_once __DIR__ . '/affiliate_tracker.php';
 require_once __DIR__ . '/../config/financials.php';
+require_once __DIR__ . '/../config/env.php';
+// Node server base URL (single backend). Pages call it directly from the browser or server-side with a short timeout.
+$pim_node_api_url = rtrim((string) getEnvVal('BACKEND_API_URL', 'https://api.paisainminutes.tech'), '/');
 
 // Always use root-relative base path '/' for sitewide consistency across all URL depths
 $base_path = '/';
@@ -214,8 +217,9 @@ if (!isset($page_og_image) || empty($page_og_image)) {
     <script>
         window.site_base_path = "/";
         window.api_base_url = "/api";
-        window.backend_server_url = "https://api.paisainminutes.tech";
-        window.otp_api_base_url = "/api/auth-proxy.php";
+        window.backend_server_url = <?php echo json_encode($pim_node_api_url); ?>;
+        // OTP routes are served by the Node server directly (/api/auth/send-otp, /api/auth/verify-otp)
+        window.otp_api_base_url = window.backend_server_url;
 
         // Global UTM & Campaign Source Capture
         (function() {

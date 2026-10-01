@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Users, 
@@ -11,45 +11,97 @@ import {
   KeyRound,
   FileSpreadsheet
 } from 'lucide-react';
-import { INITIAL_ROLE_DEFINITIONS, MODULE_PERMISSIONS_CONFIG } from '../data/rolesPermissionsData';
+import { MODULE_PERMISSIONS_CONFIG } from '../data/rolesPermissionsData';
+import { getCurrentUser } from '../utils/authService';
+import { hasPermission } from '../utils/permissions';
+import { apiGet, apiPatch } from '../utils/crmApi';
 
 export default function RolesPermissionsView() {
-  const [roles, setRoles] = useState(INITIAL_ROLE_DEFINITIONS);
-  const [selectedRole, setSelectedRole] = useState(roles[0]);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [roles, setRoles] = useState([]);
+  const [selectedRoleId, setSelectedRoleId] = useState(null);
+  const [changedRoleIds, setChangedRoleIds] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [saveToast, setSaveToast] = useState(false);
+  const canEditRoles = hasPermission(getCurrentUser(), 'roles.manage');
+
+  // Roles and their permission matrices are stored on the server
+  const loadRoles = async () => {
+    setIsLoading(true);
+    const res = await apiGet('/api/crm/roles', { limit: 500 });
+    if (res.ok && res.data && Array.isArray(res.data.roles)) {
+      setRoles(res.data.roles);
+      setSelectedRoleId(prev => prev || (res.data.roles[0] && res.data.roles[0].id) || null);
+      setChangedRoleIds([]);
+      setLoadError('');
+    } else {
+      setLoadError(res.error || 'Could not load roles.');
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadRoles();
+  }, []);
+
+  const selectedRole = roles.find(r => r.id === selectedRoleId) || roles[0] || null;
+  const hasUnsavedChanges = changedRoleIds.length > 0;
 
   const handleTogglePermission = (moduleKey, action) => {
+    if (!selectedRole) return;
     if (selectedRole.isLocked) {
       alert('Super Admin permissions are locked to full system access and cannot be revoked.');
       return;
     }
+    if (!canEditRoles) return;
 
-    const currentVal = !!selectedRole.permissions[moduleKey]?.[action];
+    const currentVal = !!(selectedRole.permissions || {})[moduleKey]?.[action];
     const updatedRole = {
       ...selectedRole,
       permissions: {
-        ...selectedRole.permissions,
+        ...(selectedRole.permissions || {}),
         [moduleKey]: {
-          ...(selectedRole.permissions[moduleKey] || {}),
+          ...((selectedRole.permissions || {})[moduleKey] || {}),
           [action]: !currentVal
         }
       }
     };
 
-    setSelectedRole(updatedRole);
     setRoles(prev => prev.map(r => r.id === updatedRole.id ? updatedRole : r));
-    setHasUnsavedChanges(true);
+    setChangedRoleIds(prev => (prev.includes(updatedRole.id) ? prev : [...prev, updatedRole.id]));
   };
 
-  const handleSaveMatrix = () => {
-    setHasUnsavedChanges(false);
+  // Each changed role is saved on the server, which re-derives the permissions of every staff member holding it
+  const handleSaveMatrix = async () => {
+    setIsSaving(true);
+    setSaveError('');
+    for (const id of changedRoleIds) {
+      const role = roles.find(r => r.id === id);
+      if (!role) continue;
+      const res = await apiPatch(`/api/crm/roles/${encodeURIComponent(id)}`, { permissions: role.permissions });
+      if (!res.ok) {
+        setSaveError(`${role.name}: ${res.error}`);
+        setIsSaving(false);
+        return;
+      }
+    }
+    setIsSaving(false);
     setSaveToast(true);
     setTimeout(() => setSaveToast(false), 3000);
+    await loadRoles();
   };
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {(loadError || saveError) && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>{loadError || saveError}</span>
+          <button onClick={loadError ? loadRoles : () => setSaveError('')} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">{loadError ? 'Retry' : 'Dismiss'}</button>
+        </div>
+      )}
+      {isLoading && <div className="text-xs text-slate-500">Loading roles from the server…</div>}
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -71,7 +123,7 @@ export default function RolesPermissionsView() {
             className="px-4 py-2 bg-[#0A3977] hover:bg-[#072956] text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer animate-pulse"
           >
             <Check className="w-4 h-4" />
-            <span>Save Matrix Changes</span>
+            <span>{isSaving ? 'Saving…' : 'Save Matrix Changes'}</span>
           </button>
         )}
       </div>
@@ -86,11 +138,11 @@ export default function RolesPermissionsView() {
       {/* Role Selection Tabs */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
         {roles.map(role => {
-          const isSelected = selectedRole.id === role.id;
+          const isSelected = selectedRole && selectedRole.id === role.id;
           return (
             <div
               key={role.id}
-              onClick={() => setSelectedRole(role)}
+              onClick={() => setSelectedRoleId(role.id)}
               className={`p-4 rounded-xl border transition cursor-pointer select-none ${
                 isSelected 
                   ? 'bg-white border-[#0A3977] shadow-md ring-2 ring-[#0A3977]/10' 
@@ -108,7 +160,7 @@ export default function RolesPermissionsView() {
                 )}
               </div>
               <div className="text-[11px] text-slate-500 mt-2 line-clamp-2 leading-relaxed">
-                {role.description}
+                {role.description || ''}
               </div>
               <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
                 <span>{role.userCount} Assigned User(s)</span>
@@ -120,6 +172,7 @@ export default function RolesPermissionsView() {
       </div>
 
       {/* Permissions Matrix */}
+      {selectedRole && (
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-2xs overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
           <div>
@@ -148,8 +201,8 @@ export default function RolesPermissionsView() {
 
                 <div className="flex flex-wrap items-center gap-2 sm:w-2/3 justify-start sm:justify-end">
                   {mod.actions.map(action => {
-                    const isGranted = !!selectedRole.permissions[mod.moduleKey]?.[action];
-                    const isLocked = selectedRole.isLocked;
+                    const isGranted = !!(selectedRole.permissions || {})[mod.moduleKey]?.[action];
+                    const isLocked = selectedRole.isLocked || !canEditRoles;
 
                     return (
                       <button
@@ -178,6 +231,7 @@ export default function RolesPermissionsView() {
           ))}
         </div>
       </div>
+      )}
     </div>
   );
 }

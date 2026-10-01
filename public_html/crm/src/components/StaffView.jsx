@@ -27,121 +27,176 @@ import {
   Building2
 } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
-import { INITIAL_ROLES } from '../data/staffData';
-import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
+import { AFFILIATE_PARTNERS, getServerPartnerId } from '../data/affiliatePartners';
 import { getLiveSecurityDetails } from '../utils/geoService';
-import { getSecurityIncidents } from '../utils/shiftSecurity';
-import { 
-  getStaffList, 
-  addStaffUser, 
-  updateStaffUser, 
-  resetStaffPassword, 
-  deleteStaffUser, 
-  toggleUserStatus,
+import {
+  loadRoleNames,
+  listStaffAccounts,
+  createStaffAccount,
+  updateStaffAccount,
+  resetStaffAccountPassword,
+  disableStaffAccount,
   isSuperAdmin,
-  setCurrentUserSession,
-  getPartnerAccounts,
+  listPartnerAccounts,
   createPartnerAccount,
-  togglePartnerAccountStatus
+  setPartnerAccountStatus,
+  resetPartnerAccountPassword
 } from '../utils/authService';
+import { fetchAllPages } from '../utils/crmApi';
+import TempPasswordModal from './TempPasswordModal';
 
-export default function StaffView({ onSwitchUser, currentUser }) {
+const ROLE_FALLBACK_COLOR = 'bg-blue-600';
+
+export default function StaffView({ onSwitchUser, onPreviewPartner, currentUser }) {
   const [activeTab, setActiveTab] = useState('Users');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Live dynamic staff list from authService / localStorage
-  const [staffList, setStaffList] = useState(() => getStaffList());
-
-  // Listen to cross-app staff list updates
-  useEffect(() => {
-    const handleStaffUpdated = (e) => {
-      if (e.detail) {
-        setStaffList(e.detail);
-      } else {
-        setStaffList(getStaffList());
-      }
-    };
-    window.addEventListener('paisa_staff_updated', handleStaffUpdated);
-    return () => window.removeEventListener('paisa_staff_updated', handleStaffUpdated);
-  }, []);
+  // Accounts and roles come from the Node server (no browser-held staff list or passwords)
+  const [staffList, setStaffList] = useState([]);
+  const [roleList, setRoleList] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isBusy, setIsBusy] = useState(false);
+  const [tempPasswordInfo, setTempPasswordInfo] = useState(null);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Partner Accounts state
-  const [partnerAccounts, setPartnerAccounts] = useState(() => getPartnerAccounts());
+  const [partnerAccounts, setPartnerAccounts] = useState([]);
   const [isAddPartnerOpen, setIsAddPartnerOpen] = useState(false);
   const [partnerForm, setPartnerForm] = useState({
-    partnerId: (AFFILIATE_PARTNERS[0] && AFFILIATE_PARTNERS[0].id) || 'rupay91',
+    partnerId: (AFFILIATE_PARTNERS[0] && AFFILIATE_PARTNERS[0].id) || '',
     name: '',
     username: '',
     email: '',
-    password: 'Partner@2026',
     mobile: ''
   });
   const [partnerFormError, setPartnerFormError] = useState('');
 
-  const refreshPartnerAccounts = () => {
-    setPartnerAccounts(getPartnerAccounts());
+  // Real sign-in events from the server audit trail (Login History tab)
+  const [loginEvents, setLoginEvents] = useState([]);
+  const [loginEventsError, setLoginEventsError] = useState('');
+
+  const [toastMessage, setToastMessage] = useState(null);
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4000);
   };
 
-  const handleCreatePartnerAccountSubmit = (e) => {
+  const reloadAll = async () => {
+    setIsLoading(true);
+    const [roles, staff, partners] = await Promise.all([loadRoleNames(), listStaffAccounts(), listPartnerAccounts()]);
+    if (roles.success) setRoleList(roles.roles);
+    if (staff.success) {
+      setStaffList(staff.staff);
+      setLoadError('');
+    } else {
+      setLoadError(staff.error || 'Could not load staff accounts.');
+    }
+    if (partners.success) setPartnerAccounts(partners.accounts);
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    reloadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const reloadLoginEvents = async () => {
+    const res = await fetchAllPages('/api/crm/audit-logs', 'logs', { action: 'auth.*', limit: 100 });
+    if (res.success) {
+      setLoginEvents(res.items.slice(0, 200));
+      setLoginEventsError('');
+    } else {
+      setLoginEventsError(res.error || 'Audit log is not available for your account.');
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'Login History') reloadLoginEvents();
+  }, [activeTab]);
+
+  const refreshPartnerAccounts = async () => {
+    const partners = await listPartnerAccounts();
+    if (partners.success) setPartnerAccounts(partners.accounts);
+  };
+
+  const handleCreatePartnerAccountSubmit = async (e) => {
     e.preventDefault();
     setPartnerFormError('');
-    if (!partnerForm.username.trim()) {
-      setPartnerFormError('Please enter a username for the partner account');
+    const partnerObj = AFFILIATE_PARTNERS.find(p => p.id === partnerForm.partnerId) || { name: 'Partner' };
+    const serverPartnerId = getServerPartnerId(partnerForm.partnerId);
+    if (!serverPartnerId) {
+      setPartnerFormError('This partner is not registered on the server yet.');
       return;
     }
-    const partnerObj = AFFILIATE_PARTNERS.find(p => p.id === partnerForm.partnerId) || { name: 'Partner' };
-    const res = createPartnerAccount({
-      partnerId: partnerForm.partnerId,
-      partnerName: partnerObj.name,
+    if (!partnerForm.email.trim()) {
+      setPartnerFormError('Please enter the partner user\'s email address');
+      return;
+    }
+    setIsBusy(true);
+    const res = await createPartnerAccount({
+      serverPartnerId,
       name: partnerForm.name.trim() || `${partnerObj.name} Portal`,
-      username: partnerForm.username.trim(),
-      email: partnerForm.email.trim() || `${partnerForm.username.trim()}@paisainminutes.com`,
-      password: partnerForm.password.trim() || 'Partner@2026',
-      mobile: partnerForm.mobile.trim()
+      email: partnerForm.email.trim(),
+      username: partnerForm.username.trim()
     });
-
+    setIsBusy(false);
     if (!res.success) {
       setPartnerFormError(res.error || 'Failed to create partner account');
       return;
     }
-
-    refreshPartnerAccounts();
+    await refreshPartnerAccounts();
     setIsAddPartnerOpen(false);
     setPartnerForm({
-      partnerId: (AFFILIATE_PARTNERS[0] && AFFILIATE_PARTNERS[0].id) || 'rupay91',
+      partnerId: (AFFILIATE_PARTNERS[0] && AFFILIATE_PARTNERS[0].id) || '',
       name: '',
       username: '',
       email: '',
-      password: 'Partner@2026',
       mobile: ''
     });
-    showToast(`✅ Partner account created for ${partnerObj.name}! Login: ${res.user.username}`);
+    setTempPasswordInfo({
+      title: `Partner account created for ${partnerObj.name}`,
+      subtitle: `Sign-in ID: ${res.user?.username || res.user?.email}`,
+      password: res.temporaryPassword
+    });
   };
 
-  const handleTogglePartnerStatus = (account) => {
-    const res = togglePartnerAccountStatus(account.id);
+  const handleTogglePartnerStatus = async (account) => {
+    const next = account.status === 'Active' ? 'Disabled' : 'Active';
+    const res = await setPartnerAccountStatus(account.id, next);
     if (res.success) {
-      refreshPartnerAccounts();
-      showToast(`⚡ Account ${account.username} is now ${res.status}`);
+      await refreshPartnerAccounts();
+      showToast(`⚡ Account ${account.username} is now ${next}`);
+    } else {
+      showToast(`⚠️ ${res.error}`);
     }
   };
 
-  // Live Location / Geo-Security state
+  const handleResetPartnerPassword = async (account) => {
+    if (!window.confirm(`Generate a new temporary password for ${account.username}? Their current sessions will be signed out.`)) return;
+    const res = await resetPartnerAccountPassword(account.id);
+    if (res.success) {
+      setTempPasswordInfo({ title: `New password for ${account.name}`, subtitle: `Sign-in ID: ${account.username}`, password: res.temporaryPassword });
+    } else {
+      showToast(`⚠️ ${res.error}`);
+    }
+  };
+
+  // Live Location / Geo-Security state (this device only; shown for information)
   const [liveGeo, setLiveGeo] = useState({
-    ip: '103.246.40.12',
-    city: 'New Delhi',
-    region: 'Delhi',
-    country: 'India',
-    countryCode: 'IN',
-    latitude: 28.6139,
-    longitude: 77.2090,
-    browser: 'Chrome',
-    os: 'Windows 11',
+    ip: '—',
+    city: '—',
+    region: '',
+    country: '',
+    countryCode: '',
+    latitude: '—',
+    longitude: '—',
+    browser: 'Browser',
+    os: '',
     device: 'Desktop',
-    accuracy: 'GPS Verified',
-    isp: 'Airtel Broadband / Local Network'
+    accuracy: '',
+    isp: ''
   });
   const [isFetchingGeo, setIsFetchingGeo] = useState(false);
 
@@ -156,6 +211,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
           setLiveGeo(details);
         }
       } catch (e) {
+        // geolocation is informational only
       } finally {
         if (isMounted) setIsFetchingGeo(false);
       }
@@ -182,18 +238,15 @@ export default function StaffView({ onSwitchUser, currentUser }) {
   // Modals state for Edit & Reset Password
   const [editingUser, setEditingUser] = useState(null);
   const [resettingUser, setResettingUser] = useState(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [isCopied, setIsCopied] = useState(false);
-  const [toastMessage, setToastMessage] = useState(null);
+
+  // Roles an account can be given from here (partner accounts are managed in "Partner Accounts")
+  const assignableRoles = roleList.filter(r => r.key !== 'partner' && (isSuperAdmin(currentUser) || r.key !== 'super-admin'));
 
   // New user form state
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newMobile, setNewMobile] = useState('');
-  const [newPass, setNewPass] = useState('');
-  const [showNewPass, setShowNewPass] = useState(true);
-  const [newRole, setNewRole] = useState('Admin');
-  const [newRoles, setNewRoles] = useState(['Admin']);
+  const [newRoleKey, setNewRoleKey] = useState('');
   const [newBranch, setNewBranch] = useState('Delhi Head Office');
   const [addError, setAddError] = useState('');
 
@@ -201,24 +254,18 @@ export default function StaffView({ onSwitchUser, currentUser }) {
   const [editName, setEditName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editMobile, setEditMobile] = useState('');
-  const [editRoles, setEditRoles] = useState(['Admin']);
+  const [editRoleKey, setEditRoleKey] = useState('');
   const [editBranch, setEditBranch] = useState('Delhi Head Office');
   const [editStatus, setEditStatus] = useState('Active');
 
-  const showToast = (msg) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
-  };
-
   // Compute live role counts
-  const roleCounts = INITIAL_ROLES.map(r => ({
+  const roleCounts = roleList.map(r => ({
     ...r,
-    userCount: staffList.filter(u => {
-      if (u.roles && Array.isArray(u.roles)) {
-        return u.roles.some(roleName => roleName.toLowerCase() === r.name.toLowerCase());
-      }
-      return (u.role || '').toLowerCase() === r.name.toLowerCase();
-    }).length
+    id: r.id,
+    code: (r.name || r.key || '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+    color: ROLE_FALLBACK_COLOR,
+    desc: r.description || '',
+    userCount: r.userCount ?? 0
   }));
 
   const filteredStaff = staffList.filter(u => {
@@ -233,71 +280,55 @@ export default function StaffView({ onSwitchUser, currentUser }) {
       (u.branch && u.branch.toLowerCase().includes(q));
   });
 
-  const generateRandomPassword = () => {
-    return `Paisa@${Math.floor(1000 + Math.random() * 9000)}`;
-  };
-
   const handleOpenAddModal = () => {
     setNewName('');
     setNewEmail('');
-    setNewMobile('7982967240');
-    setNewPass(generateRandomPassword());
-    setShowNewPass(true);
-    setNewRole('Admin');
-    setNewRoles(['Admin']);
+    setNewMobile('');
+    setNewRoleKey((assignableRoles[0] && assignableRoles[0].key) || '');
     setNewBranch('Delhi Head Office');
     setAddError('');
     setIsAddModalOpen(true);
   };
 
-  const toggleNewRole = (roleName) => {
-    setNewRoles(prev => {
-      if (prev.includes(roleName)) {
-        if (prev.length === 1) return prev;
-        return prev.filter(r => r !== roleName);
-      } else {
-        return [...prev, roleName];
-      }
-    });
-    setNewRole(roleName);
-  };
-
-  const handleAddUserSubmit = (e) => {
+  const handleAddUserSubmit = async (e) => {
     e.preventDefault();
     setAddError('');
 
     if (!newName.trim()) {
-      setAddError('Please enter username or full name');
+      setAddError('Please enter the full name');
       return;
     }
-    if (!newPass.trim()) {
-      setAddError('Please specify a password for this user');
+    if (!newEmail.trim()) {
+      setAddError('Please enter an email address (it is the sign-in ID)');
+      return;
+    }
+    if (!newRoleKey) {
+      setAddError('Please select a role');
       return;
     }
 
-    const email = newEmail.trim() || `${newName.trim().toLowerCase().replace(/\s+/g, '_')}@paisainminutes.com`;
-
-    const result = addStaffUser({
+    setIsBusy(true);
+    const result = await createStaffAccount({
       name: newName.trim(),
-      username: newName.trim().toLowerCase().replace(/\s+/g, '_'),
-      email: email,
-      mobile: newMobile.trim() || '7982967240',
-      password: newPass.trim(),
-      role: newRoles[0] || newRole || 'Admin',
-      roles: newRoles,
-      branch: newBranch || 'Delhi Head Office',
-      status: 'Active'
+      email: newEmail.trim(),
+      roleKey: newRoleKey,
+      mobile: newMobile.trim() || undefined,
+      branch: newBranch || undefined
     });
+    setIsBusy(false);
 
     if (!result.success) {
       setAddError(result.error);
       return;
     }
 
-    // Refresh state
-    setStaffList(getStaffList());
+    await reloadAll();
     setIsAddModalOpen(false);
-    showToast(`✅ Profile "${result.user.name}" created! User ID: ${result.user.username} | Pass: ${result.user.password}`);
+    setTempPasswordInfo({
+      title: `Profile "${result.user.name}" created`,
+      subtitle: `Sign-in ID: ${result.user.email}`,
+      password: result.temporaryPassword
+    });
   };
 
   // Open Edit Modal
@@ -305,147 +336,101 @@ export default function StaffView({ onSwitchUser, currentUser }) {
     setEditingUser(user);
     setEditName(user.name || user.username || '');
     setEditEmail(user.email || '');
-    setEditMobile(user.mobile || '7982967240');
+    setEditMobile(user.mobile || '');
     setEditStatus(user.status === 'Disabled' ? 'Inactive' : (user.status || 'Active'));
-    setEditRoles(user.roles && user.roles.length > 0 ? user.roles : [user.role || 'Admin']);
+    setEditRoleKey(user.roleKey || '');
     setEditBranch(user.branch || 'Delhi Head Office');
   };
 
-  const toggleEditRole = (roleName) => {
-    if (isSuperAdmin(editingUser) && roleName === 'Super Admin') {
-      showToast('🛡️ Super Admin role is permanently attached to this master account!');
-      return;
-    }
-    setEditRoles(prev => {
-      if (prev.includes(roleName)) {
-        if (prev.length === 1) return prev;
-        return prev.filter(r => r !== roleName);
-      } else {
-        return [...prev, roleName];
-      }
-    });
-  };
-
   // Save Edit
-  const handleSaveEdit = (e) => {
+  const handleSaveEdit = async (e) => {
     e.preventDefault();
     if (!editingUser) return;
 
-    const isSuper = isSuperAdmin(editingUser) || 
-      String(editingUser?.name || '').toLowerCase().includes('super admin') ||
-      String(editingUser?.email || '').toLowerCase() === 'info@adgrowmedia.com' ||
-      String(editingUser?.role || '').toLowerCase() === 'super admin';
-    const finalRoles = isSuper && !editRoles.includes('Super Admin') ? ['Super Admin', ...editRoles] : editRoles;
-    const primaryRole = isSuper ? 'Super Admin' : (finalRoles[0] || 'Admin');
-    const finalStatus = isSuper ? 'Active' : (editStatus === 'Inactive' ? 'Disabled' : 'Active');
-
-    const result = updateStaffUser(editingUser.id, {
+    const isSuper = isSuperAdmin(editingUser);
+    const fields = {
       name: editName.trim(),
-      username: editName.trim().toLowerCase().replace(/\s+/g, '_'),
-      email: editEmail.trim(),
       mobile: editMobile.trim(),
-      role: primaryRole,
-      roles: finalRoles,
-      branch: editBranch,
-      status: finalStatus
-    });
+      branch: editBranch
+    };
+    if (!isSuper) fields.status = editStatus === 'Inactive' ? 'DISABLED' : 'ACTIVE';
+    if (!isSuper && editRoleKey && editRoleKey !== editingUser.roleKey) fields.roleKey = editRoleKey;
+
+    setIsBusy(true);
+    const result = await updateStaffAccount(editingUser.id, fields);
+    setIsBusy(false);
 
     if (result.success) {
-      setStaffList(getStaffList());
+      await reloadAll();
       if (currentUser?.id === editingUser.id && onSwitchUser) {
-        onSwitchUser(result.user);
+        onSwitchUser({ ...currentUser, name: result.user.name, mobile: result.user.mobile, branch: result.user.branch });
       }
       showToast(`User "${editName}" updated successfully!`);
       setEditingUser(null);
-    }
-  };
-
-  // Toggle Disable / Enable
-  const handleToggleDisable = (user) => {
-    const isSuper = isSuperAdmin(user) || 
-      String(user?.name || '').toLowerCase().includes('super admin') ||
-      String(user?.email || '').toLowerCase() === 'info@adgrowmedia.com' ||
-      String(user?.username || '').toLowerCase() === 'info@adgrowmedia.com' ||
-      String(user?.role || '').toLowerCase() === 'super admin';
-    if (isSuper) {
-      showToast(`🛡️ Super Admin cannot be disabled! This account is permanently active.`);
-      return;
-    }
-    const result = toggleUserStatus(user.id);
-    if (result.success) {
-      setStaffList(getStaffList());
-      showToast(`User "${user.name}" is now ${result.status}!`);
-    } else if (result.error) {
+    } else {
       showToast(`⚠️ ${result.error}`);
     }
   };
 
-  // Open Reset Password Modal
-  const handleOpenReset = (user) => {
-    setResettingUser(user);
-    setNewPassword(generateRandomPassword());
-    setIsCopied(false);
-  };
-
-  // Submit Password Reset
-  const handleSaveResetPassword = (e) => {
-    e.preventDefault();
-    if (!resettingUser || !newPassword.trim()) return;
-
-    const result = resetStaffPassword(resettingUser.id, newPassword.trim());
+  // Toggle Disable / Enable
+  const handleToggleDisable = async (user) => {
+    if (isSuperAdmin(user)) {
+      showToast(`🛡️ Super Admin cannot be disabled! This account is permanently active.`);
+      return;
+    }
+    const next = user.status === 'Disabled' ? 'ACTIVE' : 'DISABLED';
+    const result = await updateStaffAccount(user.id, { status: next });
     if (result.success) {
-      setStaffList(getStaffList());
-      showToast(`🔑 Password for ${resettingUser.name} reset to: ${newPassword}`);
-      setResettingUser(null);
+      await reloadAll();
+      showToast(`User "${user.name}" is now ${next === 'ACTIVE' ? 'Active' : 'Disabled'}!`);
+    } else {
+      showToast(`⚠️ ${result.error}`);
     }
   };
 
-  const handleDeleteUser = (userToDelete) => {
-    const isSuper = isSuperAdmin(userToDelete) || 
-      String(userToDelete?.name || '').toLowerCase().includes('super admin') ||
-      String(userToDelete?.email || '').toLowerCase() === 'info@adgrowmedia.com' ||
-      String(userToDelete?.username || '').toLowerCase() === 'info@adgrowmedia.com' ||
-      String(userToDelete?.role || '').toLowerCase() === 'super admin';
-    if (isSuper) {
+  // Open Reset Password confirmation
+  const handleOpenReset = (user) => {
+    setResettingUser(user);
+  };
+
+  // The server generates the temporary password and shows it once
+  const handleSaveResetPassword = async (e) => {
+    e.preventDefault();
+    if (!resettingUser) return;
+    setIsBusy(true);
+    const result = await resetStaffAccountPassword(resettingUser.id);
+    setIsBusy(false);
+    if (result.success) {
+      setTempPasswordInfo({
+        title: `New password for ${resettingUser.name}`,
+        subtitle: `Sign-in ID: ${resettingUser.email}`,
+        password: result.temporaryPassword
+      });
+      setResettingUser(null);
+      setEditingUser(null);
+    } else {
+      showToast(`⚠️ ${result.error}`);
+    }
+  };
+
+  // "Delete" disables the account on the server; its history and audit entries are kept.
+  const handleDeleteUser = async (userToDelete) => {
+    if (isSuperAdmin(userToDelete)) {
       showToast(`🛡️ Super Admin cannot be deleted! This master account is protected.`);
       return;
     }
-    if (confirm(`Are you sure you want to permanently delete user "${userToDelete.name}"?`)) {
-      const result = deleteStaffUser(userToDelete.id);
+    if (window.confirm(`Remove user "${userToDelete.name}"? The account is disabled and can no longer sign in; its history is kept.`)) {
+      const result = await disableStaffAccount(userToDelete.id);
       if (result.success) {
-        setStaffList(getStaffList());
-        showToast(`🗑️ User "${userToDelete.name}" deleted successfully!`);
-      } else if (result.error) {
+        await reloadAll();
+        showToast(`🗑️ User "${userToDelete.name}" removed (account disabled).`);
+      } else {
         showToast(`⚠️ ${result.error}`);
       }
     }
   };
 
-  const handleCopyPassword = () => {
-    navigator.clipboard.writeText(newPassword);
-    setIsCopied(true);
-    setTimeout(() => setIsCopied(false), 2000);
-  };
-
   const allBranchOptions = ['Delhi Head Office'];
-
-  // City helper for staff login simulation
-  const getUserLocation = (user, idx) => {
-    if (user.name === currentUser?.name && liveGeo.city) {
-      return {
-        city: `${liveGeo.city}, ${liveGeo.region || 'India'}`,
-        coords: `${liveGeo.latitude}, ${liveGeo.longitude}`,
-        ip: liveGeo.ip,
-        isLive: true
-      };
-    }
-    return {
-      city: `${liveGeo.city || 'Delhi'}, ${liveGeo.region || 'India'}`,
-      coords: `${liveGeo.latitude || '28.6139'}, ${liveGeo.longitude || '77.2090'}`,
-      ip: liveGeo.ip || '103.246.40.12',
-      isLive: false
-    };
-  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -465,7 +450,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
             Staff
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            <span className="font-bold text-slate-800">{staffList.length} users</span> · <span className="font-bold text-slate-800">{INITIAL_ROLES.length} roles</span>
+            <span className="font-bold text-slate-800">{staffList.length} users</span> · <span className="font-bold text-slate-800">{roleList.length} roles</span>
           </p>
         </div>
 
@@ -477,6 +462,16 @@ export default function StaffView({ onSwitchUser, currentUser }) {
           <span>Add user</span>
         </button>
       </div>
+
+      {loadError && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>Could not load accounts: {loadError}</span>
+          <button onClick={reloadAll} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">Retry</button>
+        </div>
+      )}
+      {isLoading && !loadError && (
+        <div className="text-xs text-slate-500">Loading accounts from the server…</div>
+      )}
 
       {/* Sub-tabs */}
       <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl w-fit text-xs font-semibold text-slate-600">
@@ -544,14 +539,8 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {filteredStaff.map((user) => {
-                    const isLogged = currentUser?.name === user.name || currentUser?.username === user.username;
-                    const isSuper = isSuperAdmin(user) || 
-                      String(user?.name || '').toLowerCase().includes('super admin') ||
-                      String(user?.email || '').toLowerCase() === 'info@adgrowmedia.com' ||
-                      String(user?.username || '').toLowerCase() === 'info@adgrowmedia.com' ||
-                      String(user?.role || '').toLowerCase() === 'super admin' ||
-                      (Array.isArray(user?.roles) && user.roles.some(r => String(r).toLowerCase() === 'super admin')) ||
-                      String(user?.id) === '1';
+                    const isLogged = currentUser?.id === user.id;
+                    const isSuper = isSuperAdmin(user);
                     const isDisabled = !isSuper && (user.status === 'Disabled' || user.status === 'Inactive');
                     return (
                       <tr key={user.id} className={`hover:bg-slate-50/80 transition ${isLogged ? 'bg-blue-50/40' : ''}`}>
@@ -581,7 +570,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                         {/* Roles Pill */}
                         <td className="p-3.5">
                           <div className="flex flex-wrap gap-1">
-                            {(user.roles || [user.role || 'Admin']).map((r, idx) => (
+                            {(user.roles || [user.role || 'Staff']).map((r, idx) => (
                               <span 
                                 key={idx}
                                 className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-[#0A3977] border border-blue-100"
@@ -746,8 +735,8 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                         </td>
 
                         <td className="p-3.5 font-mono text-xs text-slate-600">
-                          <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                            {account.password}
+                          <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200" title="Passwords are never stored or shown. Use Reset to issue a new temporary password.">
+                            ••••••••
                           </span>
                         </td>
 
@@ -777,15 +766,20 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                           >
                             {isActive ? 'Disable Account' : 'Enable Account'}
                           </button>
-                          {onSwitchUser && (
+                          <button
+                            onClick={() => handleResetPartnerPassword(account)}
+                            className="px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer text-slate-600 hover:text-amber-600 hover:bg-amber-50 border border-slate-200"
+                          >
+                            Reset Password
+                          </button>
+                          {onPreviewPartner && (
                             <button
                               onClick={() => {
-                                onSwitchUser(account);
-                                showToast(`🚀 Switched to Partner Portal as ${account.name}`);
+                                onPreviewPartner(account);
                               }}
                               className="px-2.5 py-1 text-xs font-bold text-[#0A3977] bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition cursor-pointer"
                             >
-                              Login As Partner
+                              Preview Portal
                             </button>
                           )}
                         </td>
@@ -841,11 +835,10 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Username (Login ID) *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Username (Login ID)</label>
                     <input
                       type="text"
-                      required
-                      placeholder="e.g. rupay91_partner"
+                      placeholder="optional (defaults to the email)"
                       value={partnerForm.username}
                       onChange={(e) => setPartnerForm(prev => ({ ...prev, username: e.target.value }))}
                       className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
@@ -864,16 +857,19 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Portal Password *</label>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Email *</label>
                     <input
-                      type="text"
+                      type="email"
                       required
-                      value={partnerForm.password}
-                      onChange={(e) => setPartnerForm(prev => ({ ...prev, password: e.target.value }))}
-                      className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 font-mono"
+                      placeholder="contact@partner.com"
+                      value={partnerForm.email}
+                      onChange={(e) => setPartnerForm(prev => ({ ...prev, email: e.target.value }))}
+                      className="w-full text-xs p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500"
                     />
                   </div>
-
+                  <p className="text-[11px] text-slate-500">
+                    A one-time temporary password is generated by the server and shown once after the account is created.
+                  </p>
                   <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
                     <button
                       type="button"
@@ -965,90 +961,52 @@ export default function StaffView({ onSwitchUser, currentUser }) {
             </button>
           </div>
 
-          {/* Login History Table Box */}
+          {/* Login History Table Box (real sign-in events from the server audit trail) */}
           <div className="crm-card bg-white overflow-hidden shadow-xs border border-slate-200/80 rounded-2xl">
+            {loginEventsError && (
+              <div className="p-3 text-xs text-rose-700 bg-rose-50 border-b border-rose-200 font-semibold">
+                {loginEventsError}
+              </div>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-50/80 text-slate-400 font-bold tracking-wider text-[10px] uppercase border-b border-slate-200">
                     <th className="p-3.5">USER</th>
                     <th className="p-3.5">ROLE</th>
-                    <th className="p-3.5 min-w-[220px]">LIVE LOCATION (GPS / CITY)</th>
-                    <th className="p-3.5">IP ADDRESS</th>
-                    <th className="p-3.5">BROWSER / OS</th>
+                    <th className="p-3.5">EVENT</th>
                     <th className="p-3.5">TIMESTAMP</th>
                     <th className="p-3.5">SECURITY STATUS</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700 font-mono text-[11px]">
-                  {staffList.map((user, idx) => {
-                    const loc = getUserLocation(user, idx);
-                    const isLogged = currentUser?.name === user.name;
+                  {loginEvents.length === 0 && !loginEventsError && (
+                    <tr><td colSpan={5} className="p-6 text-center text-slate-400 font-sans">No sign-in events recorded yet.</td></tr>
+                  )}
+                  {loginEvents.map((ev) => {
+                    const ok = ev.action === 'auth.login' || ev.action === 'auth.logout' || ev.action === 'auth.change_password';
+                    const labels = {
+                      'auth.login': 'Signed in',
+                      'auth.logout': 'Signed out',
+                      'auth.login_failed': 'Failed sign-in',
+                      'auth.locked': 'Account locked',
+                      'auth.off_hours_blocked': 'Blocked (off hours)',
+                      'auth.change_password': 'Password changed'
+                    };
                     return (
-                      <tr key={user.id} className={`hover:bg-slate-50/80 transition ${isLogged ? 'bg-blue-50/30' : ''}`}>
-                        <td className="p-3.5 font-sans font-bold text-slate-900 flex items-center gap-2">
-                          <div className={`w-6 h-6 rounded-full ${user.avatarBg || 'bg-[#0A3977]'} text-white text-[10px] flex items-center justify-center font-bold shrink-0`}>
-                            {user.initials || 'US'}
-                          </div>
-                          <span>{user.name}</span>
-                          {isLogged && (
-                            <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[9px] font-extrabold rounded-full font-sans">
-                              Active
-                            </span>
-                          )}
-                        </td>
-
+                      <tr key={ev.id} className="hover:bg-slate-50/80 transition">
+                        <td className="p-3.5 font-sans font-bold text-slate-900">{ev.actorName || ev.actorId || '—'}</td>
                         <td className="p-3.5 font-sans">
-                          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-semibold">
-                            {user.role}
-                          </span>
+                          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-semibold">{ev.actorRole || '—'}</span>
                         </td>
-
-                        <td className="p-3.5 font-sans">
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                            <div>
-                              <div className="font-bold text-slate-900 text-xs flex items-center gap-1">
-                                <span>{loc.city}</span>
-                                {loc.isLive && (
-                                  <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-[10px] text-slate-400 font-mono">
-                                GPS: {loc.coords}
-                              </div>
-                            </div>
-                            <a
-                              href={`https://www.google.com/maps?q=${loc.coords}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="ml-auto p-1 text-slate-400 hover:text-blue-600 transition"
-                              title="View on Google Maps"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          </div>
-                        </td>
-
-                        <td className="p-3.5 text-slate-600 font-mono">
-                          {loc.ip}
-                        </td>
-
-                        <td className="p-3.5 text-slate-600 font-sans">
-                          {liveGeo.browser} · {liveGeo.os}
-                        </td>
-
+                        <td className="p-3.5 font-sans">{labels[ev.action] || ev.action}</td>
                         <td className="p-3.5 text-slate-500 font-mono">
-                          {user.lastLogin && user.lastLogin !== 'Never' ? user.lastLogin : 'Active'}
+                          {new Date(ev.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
                         </td>
-
                         <td className="p-3.5">
-                          <span className="px-2.5 py-0.5 text-[9px] font-bold rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1 w-fit font-sans">
-                            <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                            <span>Verified</span>
+                          <span className={`px-2.5 py-0.5 text-[9px] font-bold rounded-full flex items-center gap-1 w-fit font-sans ${ok ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                            {ok ? <ShieldCheck className="w-3 h-3 text-emerald-600" /> : <ShieldAlert className="w-3 h-3 text-rose-600" />}
+                            <span>{ok ? 'Verified' : 'Flagged'}</span>
                           </span>
                         </td>
                       </tr>
@@ -1087,39 +1045,38 @@ export default function StaffView({ onSwitchUser, currentUser }) {
             )}
 
             <form onSubmit={handleAddUserSubmit} className="space-y-4 text-xs">
-              {/* Row 1: Username & Email */}
+              {/* Row 1: Name & Email */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    Username / Full Name *
+                    Full Name *
                   </label>
                   <input 
                     type="text"
                     required
-                    placeholder="e.g. rohit_credit or priya_telecaller"
+                    placeholder="e.g. Rohit Sharma"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-medium"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">Used as sign-in ID</p>
                 </div>
-
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    Official Email
+                    Official Email *
                   </label>
                   <input 
                     type="email"
+                    required
                     placeholder="user@paisainminutes.com"
                     value={newEmail}
                     onChange={(e) => setNewEmail(e.target.value)}
                     className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-medium"
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">Optional secondary sign-in</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Used as sign-in ID</p>
                 </div>
               </div>
 
-              {/* Row 2: Mobile & Password */}
+              {/* Row 2: Mobile & temporary password note */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
@@ -1133,54 +1090,25 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                     className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-medium"
                   />
                 </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-bold text-slate-700">
-                      Login Password *
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setNewPass(generateRandomPassword())}
-                      className="text-[10px] text-[#0A3977] hover:underline font-bold flex items-center gap-1 cursor-pointer"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      <span>Auto Generate</span>
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <input 
-                      type={showNewPass ? 'text' : 'password'}
-                      required
-                      value={newPass}
-                      onChange={(e) => setNewPass(e.target.value)}
-                      placeholder="e.g. Paisa@4921"
-                      className="w-full pl-3 pr-8 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-mono font-bold"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPass(prev => !prev)}
-                      className="absolute inset-y-0 right-2 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
+                <div className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                  <div className="font-bold text-slate-700 mb-0.5">Login Password</div>
+                  A one-time temporary password is generated by the server and shown once after saving. The user must choose their own at first sign-in.
                 </div>
               </div>
 
               {/* Row 3: Role Selection */}
               <div>
                 <label className="block font-bold text-slate-700 mb-1.5">
-                  Select Role(s) *
+                  Select Role *
                 </label>
                 <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 bg-slate-50 rounded-xl border border-slate-200">
-                  {INITIAL_ROLES.map(r => {
-                    const isSelected = newRoles.includes(r.name);
+                  {assignableRoles.map(r => {
+                    const isSelected = newRoleKey === r.key;
                     return (
                       <button
-                        key={r.id}
+                        key={r.key}
                         type="button"
-                        onClick={() => toggleNewRole(r.name)}
+                        onClick={() => setNewRoleKey(r.key)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                           isSelected
                             ? 'bg-[#0A3977] text-white border-[#0A3977] shadow-xs'
@@ -1228,9 +1156,10 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-[#0A3977] hover:bg-blue-900 text-white font-bold rounded-xl shadow cursor-pointer active:scale-95"
+                  disabled={isBusy}
+                  className="px-6 py-2 bg-[#0A3977] hover:bg-blue-900 disabled:bg-slate-400 text-white font-bold rounded-xl shadow cursor-pointer active:scale-95"
                 >
-                  Create Profile & Save
+                  {isBusy ? 'Saving…' : 'Create Profile & Save'}
                 </button>
               </div>
             </form>
@@ -1258,7 +1187,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
             <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Username *</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Full Name *</label>
                   <input 
                     type="text"
                     required
@@ -1269,13 +1198,13 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Email *</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Email (sign-in ID)</label>
                   <input 
                     type="email"
-                    required
+                    readOnly
+                    disabled
                     value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-medium"
+                    className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-medium"
                   />
                 </div>
               </div>
@@ -1293,7 +1222,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
 
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Status</label>
-                  {(isSuperAdmin(editingUser) || String(editingUser?.name || '').toLowerCase().includes('super admin') || String(editingUser?.email || '').toLowerCase() === 'info@adgrowmedia.com' || String(editingUser?.role || '').toLowerCase() === 'super admin') ? (
+                  {(isSuperAdmin(editingUser)) ? (
                     <div className="flex items-center gap-2 pt-0.5">
                       <span className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1.5 shadow-2xs">
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
@@ -1330,26 +1259,30 @@ export default function StaffView({ onSwitchUser, currentUser }) {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1.5">Roles *</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {INITIAL_ROLES.map((r) => {
-                    const isSelected = editRoles.includes(r.name);
-                    return (
-                      <button
-                        key={r.id}
-                        type="button"
-                        onClick={() => toggleEditRole(r.name)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                          isSelected 
-                            ? 'border-[#0A3977] bg-blue-50 text-[#0A3977] font-bold ring-1 ring-[#0A3977]' 
-                            : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-                        }`}
-                      >
-                        {r.name}
-                      </button>
-                    );
-                  })}
-                </div>
+                <label className="block font-semibold text-slate-700 mb-1.5">Role *</label>
+                {isSuperAdmin(editingUser) ? (
+                  <div className="text-[11px] text-slate-500">🛡️ Super Admin role is permanently attached to this master account.</div>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {assignableRoles.map((r) => {
+                      const isSelected = editRoleKey === r.key;
+                      return (
+                        <button
+                          key={r.key}
+                          type="button"
+                          onClick={() => setEditRoleKey(r.key)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                            isSelected 
+                              ? 'border-[#0A3977] bg-blue-50 text-[#0A3977] font-bold ring-1 ring-[#0A3977]' 
+                              : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                          }`}
+                        >
+                          {r.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1375,7 +1308,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
               <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3">
                 <div>
                   <div className="font-bold text-slate-800 text-xs">Password Management</div>
-                  <div className="text-[11px] text-slate-500">Reset or set a new password for this user</div>
+                  <div className="text-[11px] text-slate-500">Issue a new one-time temporary password for this user</div>
                 </div>
                 <button
                   type="button"
@@ -1428,40 +1361,9 @@ export default function StaffView({ onSwitchUser, currentUser }) {
             </div>
 
             <form onSubmit={handleSaveResetPassword} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">New Password</label>
-                <div className="relative">
-                  <input 
-                    type="text"
-                    required
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full pl-3 pr-24 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0A3977] text-slate-800 font-mono font-bold tracking-wider"
-                  />
-                  <div className="absolute inset-y-0 right-1 flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => setNewPassword(generateRandomPassword())}
-                      className="p-1.5 text-slate-400 hover:text-[#0A3977] hover:bg-slate-100 rounded-lg transition"
-                      title="Generate new random password"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCopyPassword}
-                      className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold flex items-center gap-1 transition cursor-pointer"
-                    >
-                      {isCopied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
-                      <span>{isCopied ? 'Copied!' : 'Copy'}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-[11px] space-y-1">
                 <p className="font-semibold">Security Note:</p>
-                <p>The user can sign in immediately using this new password with their User ID <strong>{resettingUser.username || resettingUser.name}</strong>.</p>
+                <p>The server generates a new one-time temporary password and shows it once. {resettingUser.name}'s current sessions are signed out and they must choose a new password at next sign-in (ID: <strong>{resettingUser.email}</strong>).</p>
               </div>
 
               <div className="pt-2 flex justify-end gap-2">
@@ -1474,9 +1376,10 @@ export default function StaffView({ onSwitchUser, currentUser }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#0A3977] hover:bg-blue-900 text-white font-bold rounded-xl shadow cursor-pointer active:scale-95"
+                  disabled={isBusy}
+                  className="px-5 py-2 bg-[#0A3977] hover:bg-blue-900 disabled:bg-slate-400 text-white font-bold rounded-xl shadow cursor-pointer active:scale-95"
                 >
-                  Confirm & Save Password
+                  {isBusy ? 'Working…' : 'Generate temporary password'}
                 </button>
               </div>
             </form>
@@ -1484,6 +1387,7 @@ export default function StaffView({ onSwitchUser, currentUser }) {
         </div>
       )}
 
+      <TempPasswordModal info={tempPasswordInfo} onClose={() => setTempPasswordInfo(null)} />
     </div>
   );
 }

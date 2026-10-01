@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   CheckCircle2, 
   Search, 
@@ -11,30 +11,51 @@ import {
   Filter,
   DollarSign
 } from 'lucide-react';
-import { INITIAL_SETTLEMENTS } from '../data/settlementsData';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
+import { fetchAllPages, apiPost } from '../utils/crmApi';
+import { settlementFromServer, toPaise, serverPartnerId } from '../utils/financeMappers';
 
-export default function SettlementsView({ settlements: propSettlements, setSettlements: propSetSettlements }) {
-  const [localSettlements, setLocalSettlements] = useState(INITIAL_SETTLEMENTS);
-  const settlements = propSettlements !== undefined ? propSettlements : localSettlements;
-  const setSettlements = propSetSettlements !== undefined ? propSetSettlements : setLocalSettlements;
+export default function SettlementsView({ onChanged }) {
+  const [settlements, setSettlements] = useState([]);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isRecordOpen, setIsRecordOpen] = useState(false);
-  const [newSet, setNewSet] = useState({
-    partnerId: 'rupay91',
+  const emptyForm = {
+    partnerId: (AFFILIATE_PARTNERS[0] && AFFILIATE_PARTNERS[0].id) || '',
     expectedAmount: '',
     receivedAmount: '',
     bankRef: '',
-    period: '01/08/2026 - 15/08/2026',
+    period: '',
     notes: ''
-  });
+  };
+  const [newSet, setNewSet] = useState(emptyForm);
+
+  // Settlements are bank records stored on the server (immutable once recorded)
+  const loadSettlements = async () => {
+    setIsLoading(true);
+    const res = await fetchAllPages('/api/crm/settlements', 'settlements');
+    if (res.success) {
+      setSettlements(res.items.map(settlementFromServer));
+      setLoadError('');
+    } else {
+      setLoadError(res.error || 'Could not load settlements.');
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    loadSettlements();
+  }, []);
 
   const filtered = settlements.filter(s => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      if (!s.partnerName.toLowerCase().includes(q) && !s.id.toLowerCase().includes(q) && !s.bankRef.toLowerCase().includes(q)) {
+      if (!s.partnerName.toLowerCase().includes(q) && !s.id.toLowerCase().includes(q) && !(s.bankRef || '').toLowerCase().includes(q)) {
         return false;
       }
     }
@@ -42,34 +63,34 @@ export default function SettlementsView({ settlements: propSettlements, setSettl
     return true;
   });
 
-  const handleRecordSettlement = (e) => {
+  // Variance and reconciliation status are computed by the server
+  const handleRecordSettlement = async (e) => {
     e.preventDefault();
-    const partner = AFFILIATE_PARTNERS.find(p => p.id === newSet.partnerId) || { name: 'Partner' };
-    const exp = Number(newSet.expectedAmount) || 0;
-    const rec = Number(newSet.receivedAmount) || 0;
-    const variance = rec - exp;
-
-    let reconciledStatus = 'Matched';
-    if (variance < 0) reconciledStatus = 'Variance Flagged';
-    else if (variance > 0) reconciledStatus = 'Surplus';
-
-    const created = {
-      id: `SET-2026-${Math.floor(100 + Math.random() * 900)}`,
-      partnerId: newSet.partnerId,
-      partnerName: partner.name,
+    setActionError('');
+    const partnerServerId = serverPartnerId(newSet.partnerId);
+    if (!partnerServerId) {
+      setActionError('This partner is not registered on the server yet.');
+      return;
+    }
+    setIsSaving(true);
+    const res = await apiPost('/api/crm/settlements', {
+      partnerId: partnerServerId,
+      expectedAmountPaise: toPaise(newSet.expectedAmount),
+      receivedAmountPaise: toPaise(newSet.receivedAmount),
       settlementDate: new Date().toISOString().slice(0, 10),
-      expectedAmount: exp,
-      receivedAmount: rec,
-      variance,
-      bankRef: newSet.bankRef || `NEFT-${Math.floor(100000000 + Math.random() * 900000000)}`,
-      reconciledStatus,
-      period: newSet.period,
-      notes: newSet.notes || 'Reconciled in CRM'
-    };
-
-    setSettlements(prev => [created, ...prev]);
-    setIsRecordOpen(false);
-    setNewSet({ partnerId: 'rupay91', expectedAmount: '', receivedAmount: '', bankRef: '', period: '01/08/2026 - 15/08/2026', notes: '' });
+      bankRef: newSet.bankRef || undefined,
+      periodLabel: newSet.period || undefined,
+      notes: newSet.notes || undefined
+    });
+    setIsSaving(false);
+    if (res.ok && res.data && res.data.settlement) {
+      await loadSettlements();
+      setIsRecordOpen(false);
+      setNewSet({ ...emptyForm, partnerId: newSet.partnerId });
+      if (onChanged) onChanged();
+    } else {
+      setActionError(res.error || 'The settlement could not be recorded.');
+    }
   };
 
   const handleExportCsv = () => {
@@ -91,6 +112,13 @@ export default function SettlementsView({ settlements: propSettlements, setSettl
 
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {(loadError || actionError) && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
+          <span>{loadError || actionError}</span>
+          <button onClick={loadError ? loadSettlements : () => setActionError('')} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">{loadError ? 'Retry' : 'Dismiss'}</button>
+        </div>
+      )}
+      {isLoading && <div className="text-xs text-slate-500">Loading settlements from the server…</div>}
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -279,6 +307,10 @@ export default function SettlementsView({ settlements: propSettlements, setSettl
             <p className="text-xs text-slate-500 mb-4">Log received bank credit and compare against expected commission</p>
 
             <form onSubmit={handleRecordSettlement} className="space-y-4">
+              {actionError && (
+                <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">{actionError}</div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Select Partner</label>
                 <select

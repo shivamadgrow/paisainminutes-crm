@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings, 
   Building2, 
@@ -13,11 +13,54 @@ import {
   MapPin,
   Sparkles
 } from 'lucide-react';
-import { INITIAL_GENERAL_SETTINGS } from '../data/generalSettingsData';
+import { apiGet, apiPatch } from '../utils/crmApi';
+
+// Blank form values until the server's saved settings arrive (nothing is pre-filled from static data)
+const EMPTY_SETTINGS = {
+  fyPeriod: '',
+  timezone: 'Asia/Kolkata (IST +05:30)',
+  companyName: '',
+  parentEntity: '',
+  cinNumber: '',
+  gstNumber: '',
+  supportEmail: '',
+  supportMobile: '',
+  headOffice: '',
+  defaultCommissionRate: '',
+  defaultGstRate: '',
+  currency: 'INR (₹)',
+  shiftStartTime: '09:00',
+  shiftEndTime: '18:00',
+  shiftLockEnabled: false,
+  ipWhitelistingEnabled: false,
+  autoDisbursalNotification: false,
+  smsGatewayProvider: ''
+};
 
 export default function GeneralSettingsView() {
-  const [settings, setSettings] = useState(INITIAL_GENERAL_SETTINGS);
+  const [settings, setSettings] = useState(EMPTY_SETTINGS);
   const [savedToast, setSavedToast] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // General settings are stored on the server (any staff can read, `settings.manage` to change)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const res = await apiGet('/api/crm/settings/general');
+      if (!alive) return;
+      if (res.ok && res.data) {
+        setSettings(prev => ({ ...prev, ...(res.data.settings || {}) }));
+        setLoadError('');
+      } else {
+        setLoadError(res.error || 'Could not load the platform settings.');
+      }
+      setIsLoading(false);
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -27,10 +70,34 @@ export default function GeneralSettingsView() {
     }));
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    setSavedToast(true);
-    setTimeout(() => setSavedToast(false), 3000);
+    setSaveError('');
+    // Only fields the server accepts; blank optional text is left out so it never overwrites a saved value
+    const body = {};
+    ['fyPeriod', 'companyName', 'parentEntity', 'cinNumber', 'gstNumber', 'supportMobile', 'headOffice', 'smsGatewayProvider'].forEach((key) => {
+      if (settings[key] !== '' && settings[key] !== undefined) body[key] = String(settings[key]);
+    });
+    if (settings.supportEmail) body.supportEmail = settings.supportEmail;
+    ['defaultCommissionRate', 'defaultGstRate'].forEach((key) => {
+      if (settings[key] !== '' && settings[key] !== undefined) body[key] = Number(settings[key]);
+    });
+    if (settings.shiftStartTime) body.shiftStartTime = settings.shiftStartTime;
+    if (settings.shiftEndTime) body.shiftEndTime = settings.shiftEndTime;
+    body.shiftLockEnabled = !!settings.shiftLockEnabled;
+    body.ipWhitelistingEnabled = !!settings.ipWhitelistingEnabled;
+    body.autoDisbursalNotification = !!settings.autoDisbursalNotification;
+
+    setIsSaving(true);
+    const res = await apiPatch('/api/crm/settings/general', body);
+    setIsSaving(false);
+    if (res.ok) {
+      setSettings(prev => ({ ...prev, ...(res.data.settings || {}) }));
+      setSavedToast(true);
+      setTimeout(() => setSavedToast(false), 3000);
+    } else {
+      setSaveError(res.error || 'The settings could not be saved.');
+    }
   };
 
   return (
@@ -55,9 +122,14 @@ export default function GeneralSettingsView() {
           className="px-4 py-2 bg-[#0A3977] hover:bg-[#072956] text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
         >
           <Save className="w-4 h-4" />
-          <span>Save Changes</span>
+          <span>{isSaving ? 'Saving…' : 'Save Changes'}</span>
         </button>
       </div>
+
+      {(loadError || saveError) && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">{loadError || saveError}</div>
+      )}
+      {isLoading && <div className="text-xs text-slate-500">Loading platform settings from the server…</div>}
 
       {savedToast && (
         <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
@@ -83,6 +155,9 @@ export default function GeneralSettingsView() {
                 onChange={handleChange}
                 className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white"
               >
+                {settings.fyPeriod && !['FY 2026-27', 'FY 2025-26', 'FY 2027-28'].includes(settings.fyPeriod) && (
+                  <option value={settings.fyPeriod}>{settings.fyPeriod}</option>
+                )}
                 <option value="FY 2026-27">FY 2026-27 (Current)</option>
                 <option value="FY 2025-26">FY 2025-26 (Audited)</option>
                 <option value="FY 2027-28">FY 2027-28 (Upcoming)</option>
@@ -257,9 +332,23 @@ export default function GeneralSettingsView() {
           <div className="pt-3 border-t border-slate-100 flex items-center gap-3">
             <input 
               type="checkbox"
+              id="shiftLockEnabled"
+              name="shiftLockEnabled"
+              checked={!!settings.shiftLockEnabled}
+              onChange={handleChange}
+              className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+            />
+            <label htmlFor="shiftLockEnabled" className="text-xs text-slate-700 font-medium cursor-pointer">
+              Block sign-in outside the shift hours above (Super Admin, Admin and Partner accounts are exempt)
+            </label>
+          </div>
+
+          <div className="pt-3 border-t border-slate-100 flex items-center gap-3">
+            <input 
+              type="checkbox"
               id="autoDisbursalNotification"
               name="autoDisbursalNotification"
-              checked={settings.autoDisbursalNotification}
+              checked={!!settings.autoDisbursalNotification}
               onChange={handleChange}
               className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
             />

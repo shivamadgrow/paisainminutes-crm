@@ -13,6 +13,8 @@ import {
   Calendar,
   Sparkles
 } from 'lucide-react';
+import { createPartner, apiPost } from '../utils/crmApi';
+import { syncPartnersFromServer } from '../data/affiliatePartners';
 
 export default function PartnerOnboardingModal({ isOpen, onClose, onAddPartner }) {
   const [formData, setFormData] = useState({
@@ -36,6 +38,7 @@ export default function PartnerOnboardingModal({ isOpen, onClose, onAddPartner }
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   if (!isOpen) return null;
 
@@ -57,43 +60,66 @@ export default function PartnerOnboardingModal({ isOpen, onClose, onAddPartner }
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
-    setIsSubmitting(true);
+    setErrorMsg('');
     const partnerId = formData.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-    const cleanRate = formData.model === 'per_lead' 
-      ? `₹${formData.perLeadFee} / lead` 
-      : `${(Number(formData.commissionPct) * 100).toFixed(1)}%`;
+    if (partnerId.length < 2) {
+      setErrorMsg('Please enter a partner name with at least 2 letters or digits.');
+      return;
+    }
+    const ratePercent = Math.round(Number(formData.commissionPct) * 10000) / 100;
+    const isHttp = (v) => /^https?:\/\//i.test(String(v || '').trim());
 
-    const newPartner = {
-      id: partnerId,
+    setIsSubmitting(true);
+    // The partner is created on the Node server; the screen only reflects what the server accepted.
+    const created = await createPartner({
+      slug: partnerId,
       name: formData.name.trim(),
-      code: formData.code.trim().toUpperCase() || partnerId.toUpperCase().slice(0, 4),
-      category: formData.category,
-      commissionRate: cleanRate,
-      commissionPct: Number(formData.commissionPct) || 0.025,
-      accentColor: formData.accentColor,
-      paymentStatus: 'Pending',
-      contactPerson: formData.contactPerson,
-      email: formData.email,
-      mobile: formData.mobile,
-      apiEndpoint: formData.apiEndpoint,
-      webhookUrl: formData.webhookUrl,
-      agreementFileName: formData.agreementFileName || `${partnerId}_agreement.pdf`,
-      renewalDate: formData.renewalDate
-    };
+      status: 'ACTIVE',
+      commissionRate: Number.isFinite(ratePercent) ? ratePercent : 0,
+      ...(isHttp(formData.apiEndpoint) ? { apiEndpoint: formData.apiEndpoint.trim() } : {}),
+      ...(isHttp(formData.webhookUrl) ? { webhookUrl: formData.webhookUrl.trim() } : {}),
+      ...(formData.email.trim() ? { dailyExportEmail: formData.email.trim() } : {})
+    });
 
-    setTimeout(() => {
-      if (onAddPartner) onAddPartner(newPartner);
+    if (!created.success) {
       setIsSubmitting(false);
-      setSuccessMsg('Partner successfully onboarded!');
-      setTimeout(() => {
-        setSuccessMsg('');
-        onClose();
-      }, 1000);
-    }, 400);
+      setErrorMsg(created.error || 'The server could not create this partner.');
+      return;
+    }
+
+    // Contract metadata (dates / terms / contact) is stored as the partner's agreement record.
+    const today = new Date().toISOString().slice(0, 10);
+    const agreement = await apiPost('/api/crm/agreements', {
+      partnerId: created.partner.id,
+      signedDate: today,
+      validUntil: formData.renewalDate,
+      paymentTerms: formData.paymentTerms,
+      contactPerson: formData.contactPerson || undefined,
+      agreementFile: formData.agreementFileName || undefined
+    });
+
+    const [synced] = [syncPartnersFromServer([created.partner])];
+    const stored = synced.find((p) => p.id === created.partner.slug);
+    if (stored) {
+      Object.assign(stored, {
+        code: formData.code.trim().toUpperCase() || stored.code,
+        category: formData.category,
+        accentColor: formData.accentColor,
+        accentBg: stored.accentBg
+      });
+    }
+
+    setIsSubmitting(false);
+    setSuccessMsg(agreement.ok ? 'Partner successfully onboarded!' : 'Partner created. The agreement record could not be saved: ' + agreement.error);
+    if (onAddPartner) onAddPartner({ id: created.partner.slug, name: created.partner.name });
+    setTimeout(() => {
+      setSuccessMsg('');
+      onClose();
+    }, agreement.ok ? 1000 : 2500);
   };
 
   return (
@@ -121,6 +147,11 @@ export default function PartnerOnboardingModal({ isOpen, onClose, onAddPartner }
 
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+          {errorMsg && (
+            <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold">
+              {errorMsg}
+            </div>
+          )}
           {successMsg && (
             <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center gap-2">
               <Check className="w-4 h-4 text-emerald-600" />
