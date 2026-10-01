@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 60" width="220" height="60">
+  <defs>
+    <linearGradient id="agdmGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <rect width="220" height="60" rx="10" fill="#ffffff"/>
+  <circle cx="32" cy="30" r="18" fill="url(#agdmGrad)"/>
+  <path d="M32 18l10 5v7c0 6-10 10-10 10s-10-4-10-10v-7l10-5z" fill="none" stroke="#ffffff" stroke-width="2" stroke-linejoin="round"/>
+  <text x="60" y="37" font-family="'Poppins', 'Inter', sans-serif" font-weight="800" font-size="22" fill="#0F172A">AG<tspan fill="#D97706">DM</tspan></text>
+</svg>

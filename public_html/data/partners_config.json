@@ -1,0 +1,155 @@
+{
+    "rupay91": {
+        "id": "rupay91",
+        "name": "Rupay 91",
+        "slug": "rupay91",
+        "api_url": "https://api.rupay91.com/v1/lead-ingest",
+        "api_key": "live_pk_rupay91_892b1a",
+        "payload_mapping": {
+            "full_name": "{name}",
+            "mobile_no": "{phone}",
+            "pan": "{pan}",
+            "requested_amount": "{loanAmount}",
+            "net_salary": "{monthlySalary}",
+            "cibil_score": "{cibil}",
+            "city": "{city}",
+            "pincode": "{pincode}",
+            "external_lead_id": "{leadId}"
+        },
+        "is_api_enabled": 1,
+        "secret_token": "sec_rupay91_2026",
+        "daily_export_email": "partners@rupay91.com"
+    },
+    "borrowera": {
+        "id": "borrowera",
+        "name": "Borrowera",
+        "slug": "borrowera",
+        "api_url": "https://api.borrowera.com/leads/receive",
+        "api_key": "bor_live_99214a",
+        "payload_mapping": {
+            "applicant_name": "{name}",
+            "phone": "{phone}",
+            "loan_amount": "{loanAmount}",
+            "monthly_income": "{monthlySalary}",
+            "sub_id": "{leadId}"
+        },
+        "is_api_enabled": 1,
+        "secret_token": "sec_borrowera_2026",
+        "daily_export_email": "leads@borrowera.com"
+    },
+    "easyfincare": {
+        "id": "easyfincare",
+        "name": "Easy Fincare",
+        "slug": "easyfincare",
+        "api_url": "https://partner.easyfincare.com/api/v2/webhook",
+        "api_key": "efc_live_key_310",
+        "payload_mapping": {
+            "name": "{name}",
+            "mobile": "{phone}",
+            "salary": "{monthlySalary}",
+            "cibil": "{cibil}",
+            "lead_ref": "{leadId}"
+        },
+        "is_api_enabled": 1,
+        "secret_token": "sec_easyfincare_2026",
+        "daily_export_email": "ops@easyfincare.com"
+    },
+    "loanwithin": {
+        "id": "loanwithin",
+        "name": "LoanWithin",
+        "slug": "loanwithin",
+        "api_url": "https://api.loanwithin.com/v1/inbound-lead",
+        "api_key": "lw_auth_781190",
+        "payload_mapping": {
+            "customer_name": "{name}",
+            "phone_number": "{phone}",
+            "cibil_score": "{cibil}",
+            "applied_amount": "{loanAmount}",
+            "source_ref": "{leadId}"
+        },
+        "is_api_enabled": 0,
+        "secret_token": "sec_loanwithin_2026",
+        "daily_export_email": "leads@loanwithin.com"
+    },
+    "instarupees": {
+        "id": "instarupees",
+        "name": "Insta Rupees",
+        "slug": "instarupees",
+        "api_url": "https://api.instarupees.com/leads",
+        "api_key": "ir_api_90112",
+        "payload_mapping": {
+            "fullName": "{name}",
+            "mobile": "{phone}",
+            "amount": "{loanAmount}",
+            "leadId": "{leadId}"
+        },
+        "is_api_enabled": 0,
+        "secret_token": "sec_instarupees_2026",
+        "daily_export_email": "paisa@instarupees.com"
+    },
+    "shubhcash": {
+        "id": "shubhcash",
+        "name": "ShubhCash",
+        "slug": "shubhcash",
+        "api_url": "https://api.shubhcash.com/v1/lead",
+        "api_key": "shubh_k8912",
+        "payload_mapping": {
+            "name": "{name}",
+            "phone": "{phone}",
+            "salary": "{monthlySalary}",
+            "sub_id": "{leadId}"
+        },
+        "is_api_enabled": 0,
+        "secret_token": "sec_shubhcash_2026",
+        "daily_export_email": "leads@shubhcash.com"
+    },
+    "udhaarnow": {
+        "id": "udhaarnow",
+        "name": "UdhaarNow",
+        "slug": "udhaarnow",
+        "api_url": "https://api.udhaarnow.com/partner/leads",
+        "api_key": "un_tok_99182",
+        "payload_mapping": {
+            "name": "{name}",
+            "mobile": "{phone}",
+            "loan_amount": "{loanAmount}",
+            "lead_id": "{leadId}"
+        },
+        "is_api_enabled": 0,
+        "secret_token": "sec_udhaarnow_2026",
+        "daily_export_email": "credit@udhaarnow.com"
+    },
+    "jhatpatloans": {
+        "id": "jhatpatloans",
+        "name": "Jhatpat Loans",
+        "slug": "jhatpatloans",
+        "api_url": "https://api.jhatpatloans.com/webhook/pim",
+        "api_key": "jhatpat_sec_4412",
+        "payload_mapping": {
+            "name": "{name}",
+            "mobile": "{phone}",
+            "amount": "{loanAmount}",
+            "cibil": "{cibil}",
+            "ref": "{leadId}"
+        },
+        "is_api_enabled": 0,
+        "secret_token": "sec_jhatpatloans_2026",
+        "daily_export_email": "ops@jhatpatloans.com"
+    },
+    "ticket2loan": {
+        "id": "ticket2loan",
+        "name": "Ticket 2 Loan",
+        "slug": "ticket2loan",
+        "api_url": "https://api.ticket2loan.com/leads/receive",
+        "api_key": "t2l_key_7718",
+        "payload_mapping": {
+            "borrower": "{name}",
+            "contact": "{phone}",
+            "amount": "{loanAmount}",
+            "tracking_code": "{leadId}"
+        },
+        "is_api_enabled": 0,
+        "secret_token": "sec_ticket2loan_2026",
+        "daily_export_email": "affiliates@ticket2loan.com"
+    }
+}

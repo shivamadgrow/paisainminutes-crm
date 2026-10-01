@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 60" width="220" height="60">
+  <defs>
+    <linearGradient id="irGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
+    </linearGradient>
+  </defs>
+  <rect width="220" height="60" rx="10" fill="#ffffff"/>
+  <circle cx="32" cy="30" r="18" fill="url(#irGrad)"/>
+  <path d="M26 22h12M26 27h12M26 22l8 16" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="60" y="37" font-family="'Poppins', 'Inter', sans-serif" font-weight="800" font-size="19" fill="#0F172A">Insta<tspan fill="#4F46E5">Rupees</tspan></text>
+</svg>

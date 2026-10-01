@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+
+# Private admin, CRM, data & API endpoints
+Disallow: /admin/
+Disallow: /crm/
+Disallow: /api/
+Disallow: /data/
+Disallow: /deploy_update/
+Disallow: /go/
+Disallow: /postback/
+Disallow: /submit-lead
+Disallow: /submit-contact
+Disallow: /redirect
+
+Sitemap: https://paisainminutes.com/sitemap.xml

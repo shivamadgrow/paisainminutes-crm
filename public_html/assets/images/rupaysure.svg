@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 60" width="220" height="60">
+  <defs>
+    <linearGradient id="rsGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+  </defs>
+  <rect width="220" height="60" rx="10" fill="#ffffff"/>
+  <circle cx="32" cy="30" r="18" fill="url(#rsGrad)"/>
+  <path d="M25 30l4 4 10-10" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="60" y="37" font-family="'Poppins', 'Inter', sans-serif" font-weight="800" font-size="20" fill="#0F172A">RuPay<tspan fill="#10B981">Sure</tspan></text>
+</svg>

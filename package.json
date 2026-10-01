@@ -1,27 +1,9 @@
 {
-  "name": "paisacrm20-08-26",
+  "name": "paisainminutes-root",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
   "scripts": {
-    "dev": "node -e \"const fs=require('fs'); if(fs.existsSync('index.dev.html')) fs.copyFileSync('index.dev.html', 'index.html');\" && vite",
-    "build": "node -e \"const fs=require('fs'); if(fs.existsSync('index.dev.html')) fs.copyFileSync('index.dev.html', 'index.html');\" && vite build && node -e \"const fs=require('fs'); const t=Date.now(); let h=fs.readFileSync('index.html','utf8'); h=h.replace(/\\.\\/assets\\/index\\.js/g, './assets/index.js?v=' + t).replace(/\\.\\/assets\\/index\\.css/g, './assets/index.css?v=' + t); fs.writeFileSync('index.html', h);\"",
-    "lint": "oxlint",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@tailwindcss/vite": "^4.3.3",
-    "lucide-react": "^1.33.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "recharts": "^3.10.1",
-    "tailwindcss": "^4.3.3"
-  },
-  "devDependencies": {
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.4",
-    "oxlint": "^1.75.0",
-    "vite": "^8.2.0"
+    "dev": "npm --prefix public_html/crm run dev",
+    "build": "npm --prefix public_html/crm run build"
   }
 }

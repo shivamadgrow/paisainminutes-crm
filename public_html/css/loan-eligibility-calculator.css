@@ -1,0 +1,255 @@
+/**
+ * Paisa in Minutes - Loan Eligibility Calculator Stylesheet
+ * Scoped, tokenized design system for the Loan Eligibility Calculator Widget.
+ */
+
+:root {
+    --calc-primary-blue: #4A8DFF;
+    --calc-primary-blue-hover: #2970E6;
+    --calc-navy-dark: #1B2A6B;
+    --calc-navy-text: #1E293B;
+    --calc-text-muted: #64748B;
+    --calc-text-light: #94A3B8;
+    --calc-bg-white: #FFFFFF;
+    --calc-bg-card-summary: #F8FAFC;
+    --calc-border-color: #E2E8F0;
+    --calc-border-dashed: #CBD5E1;
+    --calc-slider-track: #E2E8F0;
+    --calc-slider-thumb-size: 22px;
+    --calc-card-radius: 20px;
+    --calc-card-shadow: 0 15px 35px -5px rgba(27, 42, 107, 0.08), 0 5px 15px -3px rgba(0, 0, 0, 0.04);
+    --calc-font-heading: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --calc-font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.loan-eligibility-widget {
+    font-family: var(--calc-font-body);
+    width: 100%;
+}
+
+.loan-eligibility-widget .calc-card {
+    background: var(--calc-bg-white);
+    border-radius: var(--calc-card-radius);
+    box-shadow: var(--calc-card-shadow);
+    border: 1px solid var(--calc-border-color);
+    padding: 2.5rem;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.loan-eligibility-widget .calc-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 3rem;
+    align-items: stretch;
+}
+
+/* Control Group Header & Input Displays */
+.loan-eligibility-widget .calc-control-group {
+    margin-bottom: 1.5rem;
+}
+
+.loan-eligibility-widget .calc-control-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.65rem;
+    gap: 0.75rem;
+}
+
+.loan-eligibility-widget .calc-label {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--calc-navy-text);
+    margin: 0;
+    line-height: 1.3;
+}
+
+.loan-eligibility-widget .calc-input-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    background: #F1F5F9;
+    border: 1.5px solid #CBD5E1;
+    border-radius: 8px;
+    padding: 0.35rem 0.65rem;
+    min-width: 115px;
+    max-width: 150px;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.loan-eligibility-widget .calc-input-pill:focus-within {
+    border-color: var(--calc-primary-blue);
+    background: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(74, 141, 255, 0.15);
+}
+
+.loan-eligibility-widget .calc-pill-prefix,
+.loan-eligibility-widget .calc-pill-suffix {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--calc-text-muted);
+    user-select: none;
+}
+
+.loan-eligibility-widget .calc-pill-prefix {
+    margin-right: 0.35rem;
+}
+
+.loan-eligibility-widget .calc-pill-suffix {
+    margin-left: 0.25rem;
+}
+
+.loan-eligibility-widget .calc-num-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-weight: 800;
+    color: var(--calc-navy-dark);
+    text-align: right;
+    font-size: 1rem;
+    outline: none;
+    padding: 0;
+    font-family: inherit;
+    -moz-appearance: textfield;
+}
+
+.loan-eligibility-widget .calc-num-input::-webkit-outer-spin-button,
+.loan-eligibility-widget .calc-num-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Range Sliders */
+.loan-eligibility-widget .calc-slider {
+    width: 100%;
+    height: 6px;
+    background: var(--calc-slider-track);
+    border-radius: 4px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0.4rem 0 0 0;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.loan-eligibility-widget .calc-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: var(--calc-slider-thumb-size);
+    height: var(--calc-slider-thumb-size);
+    border-radius: 50%;
+    background: var(--calc-primary-blue);
+    cursor: pointer;
+    border: 2px solid #FFFFFF;
+    box-shadow: 0 2px 6px rgba(74, 141, 255, 0.45);
+    transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.loan-eligibility-widget .calc-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+    background: var(--calc-primary-blue-hover);
+    box-shadow: 0 0 0 5px rgba(74, 141, 255, 0.2);
+}
+
+.loan-eligibility-widget .calc-slider::-moz-range-thumb {
+    width: var(--calc-slider-thumb-size);
+    height: var(--calc-slider-thumb-size);
+    border-radius: 50%;
+    background: var(--calc-primary-blue);
+    cursor: pointer;
+    border: 2px solid #FFFFFF;
+    box-shadow: 0 2px 6px rgba(74, 141, 255, 0.45);
+    transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.loan-eligibility-widget .calc-slider::-moz-range-thumb:hover {
+    transform: scale(1.15);
+    background: var(--calc-primary-blue-hover);
+    box-shadow: 0 0 0 5px rgba(74, 141, 255, 0.2);
+}
+
+/* Summary Card Panel */
+.loan-eligibility-widget .calc-summary-panel {
+    background: var(--calc-bg-card-summary);
+    border-radius: 16px;
+    border: 1px solid var(--calc-border-color);
+    padding: 2.25rem 2rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+.loan-eligibility-widget .calc-summary-title {
+    font-family: var(--calc-font-heading);
+    font-size: 1.45rem;
+    font-weight: 800;
+    color: var(--calc-navy-dark);
+    margin: 0 0 1.5rem 0;
+    text-align: center;
+    letter-spacing: -0.01em;
+}
+
+.loan-eligibility-widget .calc-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.95rem 0;
+    border-bottom: 1px dashed var(--calc-border-dashed);
+}
+
+.loan-eligibility-widget .calc-summary-row.total-row {
+    border-bottom: none;
+    border-top: 2px solid var(--calc-border-color);
+    margin-top: 0.75rem;
+    padding-top: 1.25rem;
+    padding-bottom: 0.25rem;
+}
+
+.loan-eligibility-widget .calc-summary-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--calc-text-muted);
+}
+
+.loan-eligibility-widget .calc-summary-label.total-label {
+    color: var(--calc-navy-text);
+    font-weight: 800;
+    font-size: 1.05rem;
+}
+
+.loan-eligibility-widget .calc-summary-val {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--calc-navy-dark);
+    font-feature-settings: "tnum";
+    font-variant-numeric: tabular-nums;
+}
+
+.loan-eligibility-widget .calc-summary-val.highlight-total {
+    font-size: 1.75rem;
+    color: var(--calc-primary-blue);
+    font-weight: 850;
+    letter-spacing: -0.02em;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 991px) {
+    .loan-eligibility-widget .calc-card {
+        padding: 1.75rem 1.25rem;
+        border-radius: 16px;
+    }
+    .loan-eligibility-widget .calc-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+    .loan-eligibility-widget .calc-summary-panel {
+        padding: 1.75rem 1.25rem;
+    }
+    .loan-eligibility-widget .calc-summary-val.highlight-total {
+        font-size: 1.5rem;
+    }
+}

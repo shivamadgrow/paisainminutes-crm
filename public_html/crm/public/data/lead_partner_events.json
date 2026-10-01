@@ -1,0 +1,590 @@
+[
+    {
+        "id": "EVT-STA-20260929124544-8148",
+        "lead_id": "9be6765b-712f-46f3-8875-9a2381040c8d",
+        "partner_id": "partner",
+        "partner_slug": "partner",
+        "partner_name": "Partner",
+        "event_type": "status_updated",
+        "ip": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36",
+        "status": "Fresh",
+        "details": {
+            "status": "Fresh",
+            "remarks": "",
+            "updated_by": "CRM User"
+        },
+        "created_at": "2026-09-29 12:45:44"
+    },
+    {
+        "id": "EVT-PAR-20260926110906-3303",
+        "lead_id": "PIM-593642",
+        "partner_id": "system",
+        "partner_slug": "system",
+        "partner_name": "Paisa in Minutes System",
+        "event_type": "partner_offers_viewed",
+        "ip": "127.0.0.1",
+        "user_agent": "Go-http-client/1.1",
+        "status": "completed",
+        "details": {
+            "displayed_offers": [
+                "rupay91",
+                "jhatpatloans",
+                "instarupees",
+                "udhaarnow",
+                "loanwithin",
+                "shubhcash",
+                "borrowera",
+                "easyfincare",
+                "ticket2loan"
+            ],
+            "ineligible_offers": [],
+            "salary": 50000,
+            "cibil": 700,
+            "eligible_count": 9,
+            "ineligible_count": 0
+        },
+        "created_at": "2026-09-26 11:09:06"
+    },
+    {
+        "id": "EVT-PAR-20260926110904-4332",
+        "lead_id": "PIM-659982",
+        "partner_id": "system",
+        "partner_slug": "system",
+        "partner_name": "Paisa in Minutes System",
+        "event_type": "partner_offers_viewed",
+        "ip": "127.0.0.1",
+        "user_agent": "Go-http-client/1.1",
+        "status": "completed",
+        "details": {
+            "displayed_offers": [
+                "rupay91",
+                "jhatpatloans",
+                "instarupees",
+                "udhaarnow",
+                "loanwithin",
+                "shubhcash",
+                "borrowera",
+                "easyfincare",
+                "ticket2loan"
+            ],
+            "ineligible_offers": [],
+            "salary": 50000,
+            "cibil": 750,
+            "eligible_count": 9,
+            "ineligible_count": 0
+        },
+        "created_at": "2026-09-26 11:09:04"
+    },
+    {
+        "id": "EVT-AUT-20260926110239-2530",
+        "lead_id": "PIM-TEST-WA-888",
+        "partner_id": "Pending Details",
+        "partner_slug": "pendingdetails",
+        "partner_name": "Pending Details",
+        "event_type": "auto_assigned",
+        "ip": "127.0.0.1",
+        "user_agent": "Web Application",
+        "status": "completed",
+        "details": {
+            "assigned_partner": "Pending Details",
+            "algorithm": "Matrix slab 0 (CIBIL: —, Salary: ₹0)",
+            "reason": "Internal follow-up assignment"
+        },
+        "created_at": "2026-09-26 11:02:39"
+    },
+    {
+        "id": "EVT-FOR-20260926110239-9433",
+        "lead_id": "PIM-TEST-WA-888",
+        "partner_id": "system",
+        "partner_slug": "system",
+        "partner_name": "Paisa in Minutes System",
+        "event_type": "form_submitted",
+        "ip": "127.0.0.1",
+        "user_agent": "Web Application",
+        "status": "completed",
+        "details": {
+            "name": "WhatsApp Applicant",
+            "phone": "9988773344",
+            "amount": 0,
+            "salary": "—",
+            "cibil": "—",
+            "slab": 0,
+            "eligibility": "Incomplete / Phone Only",
+            "form_type": "phone_only",
+            "source": "whatsapp"
+        },
+        "created_at": "2026-09-26 11:02:39"
+    },
+    {
+        "id": "EVT-SOU-20260926110236-2336",
+        "lead_id": "PIM-TEST-WA-888",
+        "partner_id": "system",
+        "partner_slug": "system",
+        "partner_name": "Paisa in Minutes System",
+        "event_type": "source_resolved",
+        "ip": "127.0.0.1",
+        "user_agent": "Web Application",
+        "status": "completed",
+        "details": {
+            "signal": "utm_source_param",
+            "utm_source": "whatsapp",
+            "referrer": "",
+            "gclid": "",
+            "fbclid": "",
+            "incoming_source": "WhatsApp",
+            "resolved_source": "whatsapp",
+            "resolved_channel": "WhatsApp"
+        },
+        "created_at": "2026-09-26 11:02:36"
+    },
+    {
+        "id": "EVT-API-20260926110236-4924",
+        "lead_id": "PIM-TEST-DIR-777",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay 91",
+        "event_type": "api_pushed",
+        "ip": "127.0.0.1",
+        "user_agent": "Internal System",
+        "status": "failed",
+        "details": {
+            "status": "failed",
+            "attempts": 3,
+            "http_code": 0,
+            "endpoint": "https://api.rupay91.com/v1/lead-ingest",
+            "delivery_log_id": "DLV-20260926110236-1496"
+        },
+        "created_at": "2026-09-26 11:02:36"
+    },
+    {
+        "id": "EVT-APP-20260926110235-5979",
+        "lead_id": "PIM-TEST-DIR-777",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay 91",
+        "event_type": "apply_now_clicked",
+        "ip": "127.0.0.1",
+        "user_agent": "Web Application",
+        "status": "Redirected to Rupay 91",
+        "details": {
+            "partner": "Rupay 91",
+            "partner_slug": "rupay91",
+            "target_url": "https://www.rupay91.com/applynow.php?source=crm&utm_source=paisainminutes&ref=paisainminutes&affiliate=paisainminutes&sub_id=PIM-TEST-DIR-777&channel=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=rupay91_crm",
+            "phone": "9988771122",
+            "aff_id": "paisainminutes",
+            "source": "crm",
+            "status": "Redirected to Rupay 91"
+        },
+        "created_at": "2026-09-26 11:02:35"
+    },
+    {
+        "id": "EVT-CLI-20260926110233-2880",
+        "lead_id": "PIM-TEST-DIR-777",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay 91",
+        "event_type": "clicked",
+        "ip": "127.0.0.1",
+        "user_agent": "Internal System",
+        "status": "Redirected to Rupay 91",
+        "details": {
+            "phone": "9988771122",
+            "partner_slug": "rupay91",
+            "target_url": "https://www.rupay91.com/applynow.php?source=crm&utm_source=paisainminutes&ref=paisainminutes&affiliate=paisainminutes&sub_id=PIM-TEST-DIR-777&channel=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=rupay91_crm",
+            "source": "crm",
+            "status": "Redirected to Rupay 91"
+        },
+        "created_at": "2026-09-26 11:02:33"
+    },
+    {
+        "id": "EVT-AUT-20260926110232-2536",
+        "lead_id": "PIM-TEST-DIR-777",
+        "partner_id": "Pending Details",
+        "partner_slug": "pendingdetails",
+        "partner_name": "Pending Details",
+        "event_type": "auto_assigned",
+        "ip": "127.0.0.1",
+        "user_agent": "Web Application",
+        "status": "completed",
+        "details": {
+            "assigned_partner": "Pending Details",
+            "algorithm": "Matrix slab 0 (CIBIL: —, Salary: ₹0)",
+            "reason": "Internal follow-up assignment"
+        },
+        "created_at": "2026-09-26 11:02:32"
+    },
+    {
+        "id": "EVT-FOR-20260926110232-2097",
+        "lead_id": "PIM-TEST-DIR-777",
+        "partner_id": "system",
+        "partner_slug": "system",
+        "partner_name": "Paisa in Minutes System",
+        "event_type": "form_submitted",
+        "ip": "127.0.0.1",
+        "user_agent": "Web Application",
+        "status": "completed",
+        "details": {
+            "name": "Direct Clean Applicant",
+            "phone": "9988771122",
+            "amount": 0,
+            "salary": "—",
+            "cibil": "—",
+            "slab": 0,
+            "eligibility": "Incomplete / Phone Only",
+            "form_type": "phone_only",
+            "source": "Direct/Website"
+        },
+        "created_at": "2026-09-26 11:02:32"
+    },
+    {
+        "id": "EVT-SOU-20260926110230-3113",
+        "lead_id": "PIM-TEST-DIR-777",
+        "partner_id": "system",
+        "partner_slug": "system",
+        "partner_name": "Paisa in Minutes System",
+        "event_type": "source_resolved",
+        "ip": "127.0.0.1",
+        "user_agent": "Web Application",
+        "status": "completed",
+        "details": {
+            "signal": "clean_direct_fallback",
+            "utm_source": "Direct",
+            "referrer": "",
+            "gclid": "",
+            "fbclid": "",
+            "incoming_source": "",
+            "resolved_source": "Direct/Website",
+            "resolved_channel": "Direct Website"
+        },
+        "created_at": "2026-09-26 11:02:30"
+    },
+    {
+        "id": "EVT-AUT-20260926110210-9176",
+        "lead_id": "PIM-TEST-DIR-3090",
+        "partner_id": "Pending Details",
+        "partner_slug": "pendingdetails",
+        "partner_name": "Pending Details",
+        "event_type": "auto_assigned",
+        "ip": "127.0.0.1",
+        "user_agent": "PHPUnit-TestSuite/1.0",
+        "status": "completed",
+        "details": {
+            "assigned_partner": "Pending Details",
+            "algorithm": "Matrix slab 0 (CIBIL: —, Salary: ₹0)",
+            "reason": "Internal follow-up assignment"
+        },
+        "created_at": "2026-09-26 11:02:10"
+    },
+    {
+        "id": "EVT-FOR-20260926110210-3358",
+        "lead_id": "PIM-TEST-DIR-3090",
+        "partner_id": "system",
+        "partner_slug": "system",
+        "partner_name": "Paisa in Minutes System",
+        "event_type": "form_submitted",
+        "ip": "127.0.0.1",
+        "user_agent": "PHPUnit-TestSuite/1.0",
+        "status": "completed",
+        "details": {
+            "name": "Test Direct User",
+            "phone": "9999010001",
+            "amount": 0,
+            "salary": "—",
+            "cibil": "—",
+            "slab": 0,
+            "eligibility": "Incomplete / Phone Only",
+            "form_type": "phone_only",
+            "source": "Direct/Website"
+        },
+        "created_at": "2026-09-26 11:02:10"
+    },
+    {
+        "id": "EVT-SOU-20260926110208-2088",
+        "lead_id": "PIM-TEST-DIR-3090",
+        "partner_id": "system",
+        "partner_slug": "system",
+        "partner_name": "Paisa in Minutes System",
+        "event_type": "source_resolved",
+        "ip": "127.0.0.1",
+        "user_agent": "PHPUnit-TestSuite/1.0",
+        "status": "completed",
+        "details": {
+            "signal": "clean_direct_fallback",
+            "utm_source": "Direct",
+            "referrer": "",
+            "gclid": "",
+            "fbclid": "",
+            "incoming_source": "",
+            "resolved_source": "Direct/Website",
+            "resolved_channel": "Direct Website"
+        },
+        "created_at": "2026-09-26 11:02:08"
+    },
+    {
+        "id": "EVT-POS-20260925102710-3112",
+        "lead_id": "PIM-764927",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay 91",
+        "event_type": "postback",
+        "ip": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-IN) WindowsPowerShell/5.1.19041.6456",
+        "status": "Disbursed",
+        "details": {
+            "status": "Disbursed",
+            "amount": 55000,
+            "received_status": "disbursed",
+            "timestamp": "2026-09-25 10:27:10"
+        },
+        "created_at": "2026-09-25 10:27:10"
+    },
+    {
+        "id": "EVT-API-20260925102654-4998",
+        "lead_id": "PIM-764927",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay 91",
+        "event_type": "api_pushed",
+        "ip": "127.0.0.1",
+        "user_agent": "Internal System",
+        "status": "failed",
+        "details": {
+            "status": "failed",
+            "attempts": 3,
+            "http_code": 0,
+            "endpoint": "https://api.rupay91.com/v1/lead-ingest",
+            "delivery_log_id": "DLV-20260925102654-6268"
+        },
+        "created_at": "2026-09-25 10:26:54"
+    },
+    {
+        "id": "EVT-CLI-20260925102651-9599",
+        "lead_id": "PIM-764927",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay 91",
+        "event_type": "clicked",
+        "ip": "127.0.0.1",
+        "user_agent": "Internal System",
+        "status": "Redirected to Rupay 91",
+        "details": {
+            "phone": "9749266468",
+            "partner_slug": "rupay91",
+            "target_url": "https://www.rupay91.com/applynow.php?source=crm&utm_source=paisainminutes&ref=paisainminutes&affiliate=paisainminutes&sub_id=PIM-764927&channel=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=rupay91_crm",
+            "source": "crm",
+            "status": "Redirected to Rupay 91"
+        },
+        "created_at": "2026-09-25 10:26:51"
+    },
+    {
+        "id": "EVT-POS-20260925102505-4029",
+        "lead_id": "PIM-TEST-1790312103",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay 91",
+        "event_type": "postback",
+        "ip": "127.0.0.1",
+        "user_agent": "Internal System",
+        "status": "Disbursed",
+        "details": {
+            "status": "Disbursed",
+            "amount": 60000,
+            "received_status": "disbursed",
+            "timestamp": "2026-09-25 10:25:05"
+        },
+        "created_at": "2026-09-25 10:25:05"
+    },
+    {
+        "id": "EVT-CLI-20260925102505-4842",
+        "lead_id": "PIM-TEST-1790312103",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay 91",
+        "event_type": "clicked",
+        "ip": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "status": "completed",
+        "details": {
+            "remarks": "Applicant clicked Apply Now redirecting to partner"
+        },
+        "created_at": "2026-09-25 10:25:05"
+    },
+    {
+        "id": "EVT-ASS-20260925102503-2413",
+        "lead_id": "PIM-TEST-1790312103",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay 91",
+        "event_type": "assigned",
+        "ip": "127.0.0.1",
+        "user_agent": "PHPUnit/Test-Suite",
+        "status": "completed",
+        "details": {
+            "remarks": "Assigned to Rupay91 via routing algorithm"
+        },
+        "created_at": "2026-09-25 10:25:03"
+    },
+    {
+        "id": "EVT-CLI-20260925102413-2278",
+        "lead_id": "PIM-TEST-1790312051",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay 91",
+        "event_type": "clicked",
+        "ip": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "status": "completed",
+        "details": {
+            "remarks": "Applicant clicked Apply Now redirecting to partner"
+        },
+        "created_at": "2026-09-25 10:24:13"
+    },
+    {
+        "id": "EVT-ASS-20260925102411-5239",
+        "lead_id": "PIM-TEST-1790312051",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay 91",
+        "event_type": "assigned",
+        "ip": "127.0.0.1",
+        "user_agent": "PHPUnit/Test-Suite",
+        "status": "completed",
+        "details": {
+            "remarks": "Assigned to Rupay91 via routing algorithm"
+        },
+        "created_at": "2026-09-25 10:24:11"
+    },
+    {
+        "id": "EVT-CLI-20260925102344-9867",
+        "lead_id": "PIM-TEST-1790312022",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay 91",
+        "event_type": "clicked",
+        "ip": "127.0.0.1",
+        "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "status": "completed",
+        "details": {
+            "remarks": "Applicant clicked Apply Now redirecting to partner"
+        },
+        "created_at": "2026-09-25 10:23:44"
+    },
+    {
+        "id": "EVT-ASS-20260925102342-9306",
+        "lead_id": "PIM-TEST-1790312022",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay 91",
+        "event_type": "assigned",
+        "ip": "127.0.0.1",
+        "user_agent": "PHPUnit/Test-Suite",
+        "status": "completed",
+        "details": {
+            "remarks": "Assigned to Rupay91 via routing algorithm"
+        },
+        "created_at": "2026-09-25 10:23:42"
+    },
+    {
+        "id": "EVT-ASN-1790312626261-9277",
+        "lead_id": "PIM-20260924-2043",
+        "partner_id": "loanwithin",
+        "partner_slug": "loanwithin",
+        "partner_name": "LoanWithin",
+        "event_type": "assigned",
+        "ip": "127.0.0.1",
+        "user_agent": "PaisaInMinutes-Routing/2.0",
+        "status": "Fresh",
+        "details": {
+            "remarks": "Assigned to LoanWithin via routing algorithm",
+            "cibil": "850–900",
+            "salary": 100000
+        },
+        "created_at": "2026-09-24 17:05:00"
+    },
+    {
+        "id": "EVT-ASN-1790312626262-3832",
+        "lead_id": "PIM-20260924-1294",
+        "partner_id": "jhatpatloans",
+        "partner_slug": "jhatpatloans",
+        "partner_name": "Jhatpat Loans",
+        "event_type": "assigned",
+        "ip": "127.0.0.1",
+        "user_agent": "PaisaInMinutes-Routing/2.0",
+        "status": "Fresh",
+        "details": {
+            "remarks": "Assigned to Jhatpat Loans via routing algorithm",
+            "cibil": "850–900",
+            "salary": 90000
+        },
+        "created_at": "2026-09-24 16:55:00"
+    },
+    {
+        "id": "EVT-ASN-1790312626262-6348",
+        "lead_id": "PIM-20260924-8370",
+        "partner_id": "shubhcash",
+        "partner_slug": "shubhcash",
+        "partner_name": "ShubhCash",
+        "event_type": "assigned",
+        "ip": "127.0.0.1",
+        "user_agent": "PaisaInMinutes-Routing/2.0",
+        "status": "Fresh",
+        "details": {
+            "remarks": "Assigned to ShubhCash via routing algorithm",
+            "cibil": "750–799",
+            "salary": 70000
+        },
+        "created_at": "2026-09-24 16:54:00"
+    },
+    {
+        "id": "EVT-ASN-1790312626262-2142",
+        "lead_id": "PIM-20260924-5677",
+        "partner_id": "udhaarnow",
+        "partner_slug": "udhaarnow",
+        "partner_name": "UdhaarNow",
+        "event_type": "assigned",
+        "ip": "127.0.0.1",
+        "user_agent": "PaisaInMinutes-Routing/2.0",
+        "status": "Fresh",
+        "details": {
+            "remarks": "Assigned to UdhaarNow via routing algorithm",
+            "cibil": "850–900",
+            "salary": 145000
+        },
+        "created_at": "2026-09-24 16:51:00"
+    },
+    {
+        "id": "EVT-ASN-1790312626262-5080",
+        "lead_id": "PIM-20260924-3753",
+        "partner_id": "rupay91",
+        "partner_slug": "rupay91",
+        "partner_name": "Rupay91",
+        "event_type": "assigned",
+        "ip": "127.0.0.1",
+        "user_agent": "PaisaInMinutes-Routing/2.0",
+        "status": "Fresh",
+        "details": {
+            "remarks": "Assigned to Rupay91 via routing algorithm",
+            "cibil": "850–900",
+            "salary": 135000
+        },
+        "created_at": "2026-09-24 16:47:00"
+    },
+    {
+        "id": "EVT-ASN-1790312626262-9577",
+        "lead_id": "PIM-20260924-8671",
+        "partner_id": "jhatpatloans",
+        "partner_slug": "jhatpatloans",
+        "partner_name": "Jhatpat Loans",
+        "event_type": "assigned",
+        "ip": "127.0.0.1",
+        "user_agent": "PaisaInMinutes-Routing/2.0",
+        "status": "Fresh",
+        "details": {
+            "remarks": "Assigned to Jhatpat Loans via routing algorithm",
+            "cibil": "750–799",
+            "salary": 70000
+        },
+        "created_at": "2026-09-24 16:47:00"
+    }
+]
