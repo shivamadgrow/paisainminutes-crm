@@ -23,6 +23,7 @@ import {
   Copy,
   Check,
   ChevronRight,
+  ChevronLeft,
   Mail,
   MapPin,
   Briefcase,
@@ -262,6 +263,8 @@ export default function LeadsView({
   const [leadEvents, setLeadEvents] = useState([]);
   const [isPushingApi, setIsPushingApi] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const LEADS_PER_PAGE = 10;
 
   const showToast = (msg, isError = false) => {
     setToastMessage({ text: msg, isError });
