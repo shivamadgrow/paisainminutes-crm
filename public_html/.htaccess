@@ -27,7 +27,7 @@
     RewriteRule ^crm/(data|api|src|public|crm_subdomain_update|node_modules)(/|$) - [R=404,L]
     # the old PHP API scripts (admin API, CRM API, public api/*.php)
     RewriteRule ^api/.+\.php$ - [R=404,L]
-    # old lead and click writers (replaced by the Node API); partner links /go and /postback stay for now
+    # old lead and click writers (removed; replaced by the Node API)
     RewriteRule ^(redirect|submit-lead)\.php$ - [R=404,L]
     RewriteRule ^crm/(redirect|submit-lead|submit_lead)\.php$ - [R=404,L]
     # data, log, document and config files anywhere
@@ -47,11 +47,7 @@
     RewriteCond %{REQUEST_URI} ^/(.+)/$
     RewriteRule ^(.*)/$ /%1 [R=301,L,NE]
 
-    # Partner Outbound Click Tracking: /go/{partner_slug}
-    RewriteRule ^go/([^/]+)/?$ /go.php?partner_slug=$1 [QSA,L]
 
-    # Partner Postback Conversion Webhook: /postback/{partner_slug}
-    RewriteRule ^postback/([^/]+)/?$ /postback.php?partner_slug=$1 [QSA,L]
 
     # 301 Redirects for Legacy Foreign Template URLs to protect topical authority
     RewriteRule ^about/?$ /about-us [R=301,L]
@@ -156,7 +152,7 @@
     Header set Vary "Accept-Encoding"
 
     # Strict NO-CACHE for Private Admin, CRM, APIs, and Lead Processing Endpoints
-    <FilesMatch "^(submit-lead|submit-contact|postback|go|router)\.php$">
+    <FilesMatch "^(submit-contact)\.php$">
         Header set Cache-Control "no-store, no-cache, must-revalidate, max-age=0"
         Header set Pragma "no-cache"
         Header set Expires "0"

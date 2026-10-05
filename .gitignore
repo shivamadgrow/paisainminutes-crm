@@ -32,3 +32,20 @@ Thumbs.db
 *.sln
 *.sw?
 *.zip
+
+# --- Data, logs and secrets must never be committed (fix F-4) ---
+public_html/data/
+public_html/crm/data/
+public_html/crm/public/data/
+**/leads_log.csv
+**/clicks_log.csv
+**/partner_assignments.json
+**/leads.json
+**/clicks.json
+public_html/.env
+public_html/crm/.env
+.env
+.env.*
+!.env.example
+tests/prod/shots/
+tests/prod/last-*.json
