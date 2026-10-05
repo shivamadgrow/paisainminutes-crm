@@ -1,0 +1,722 @@
+[
+ {
+  "m": "GET",
+  "p": "/api/health",
+  "auth": "public",
+  "sum": "Liveness check"
+ },
+ {
+  "m": "GET",
+  "p": "/api/health/ready",
+  "auth": "public",
+  "sum": "Readiness check (pings MongoDB)"
+ },
+ {
+  "m": "GET",
+  "p": "/metrics",
+  "auth": "Bearer METRICS_TOKEN (404 in production when METRICS_TOKEN is unset)",
+  "sum": "Prometheus metrics"
+ },
+ {
+  "m": "POST",
+  "p": "/api/auth/send-otp",
+  "auth": "public",
+  "sum": "Send an OTP SMS to an Indian mobile number"
+ },
+ {
+  "m": "POST",
+  "p": "/api/auth/verify-otp",
+  "auth": "public",
+  "sum": "Verify the OTP and receive tokens"
+ },
+ {
+  "m": "POST",
+  "p": "/api/auth/refresh",
+  "auth": "public",
+  "sum": "Rotate a refresh token (customer or staff) and get a new access token"
+ },
+ {
+  "m": "POST",
+  "p": "/api/auth/staff/login",
+  "auth": "public",
+  "sum": "Staff / partner login with email (or username) + password"
+ },
+ {
+  "m": "POST",
+  "p": "/api/auth/staff/logout",
+  "auth": "staff",
+  "sum": "Revoke a refresh token"
+ },
+ {
+  "m": "POST",
+  "p": "/api/auth/staff/change-password",
+  "auth": "staff",
+  "sum": "Change own password (clears mustChangePassword, revokes sessions)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/me",
+  "auth": "staff",
+  "sum": "Current staff user"
+ },
+ {
+  "m": "GET",
+  "p": "/api/users/me",
+  "auth": "customer",
+  "sum": "Own profile (PAN masked)"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/users/me",
+  "auth": "customer",
+  "sum": "Update own profile"
+ },
+ {
+  "m": "GET",
+  "p": "/api/users/me/bank-accounts",
+  "auth": "customer",
+  "sum": "Own bank accounts (account number masked)"
+ },
+ {
+  "m": "POST",
+  "p": "/api/users/me/bank-accounts",
+  "auth": "customer",
+  "sum": "Add a bank account"
+ },
+ {
+  "m": "POST",
+  "p": "/api/kyc/session",
+  "auth": "customer",
+  "sum": "Create a KYC session (mock provider)"
+ },
+ {
+  "m": "POST",
+  "p": "/api/kyc/aadhaar/start",
+  "auth": "customer",
+  "sum": "Start Aadhaar OTP (mock provider)"
+ },
+ {
+  "m": "POST",
+  "p": "/api/kyc/aadhaar/verify-otp",
+  "auth": "customer",
+  "sum": "Verify Aadhaar OTP (mock provider)"
+ },
+ {
+  "m": "POST",
+  "p": "/api/kyc/liveness/start",
+  "auth": "customer",
+  "sum": "Start liveness check (mock provider)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/kyc/:sessionId/status",
+  "auth": "customer",
+  "sum": "KYC session status (own sessions only)"
+ },
+ {
+  "m": "POST",
+  "p": "/api/kyc/pan/verify",
+  "auth": "customer",
+  "sum": "Verify PAN (mock provider)"
+ },
+ {
+  "m": "POST",
+  "p": "/api/credit-score/consent",
+  "auth": "customer",
+  "sum": "Record consent"
+ },
+ {
+  "m": "POST",
+  "p": "/api/credit-score/check",
+  "auth": "customer",
+  "sum": "Fetch a credit score from the bureau"
+ },
+ {
+  "m": "GET",
+  "p": "/api/credit-score/latest",
+  "auth": "customer",
+  "sum": "Own latest stored score"
+ },
+ {
+  "m": "GET",
+  "p": "/api/credit-score/history",
+  "auth": "customer",
+  "sum": "Own stored scores"
+ },
+ {
+  "m": "GET",
+  "p": "/api/credit-score/",
+  "auth": "customer",
+  "sum": "Not supported (405)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/documents/",
+  "auth": "customer",
+  "sum": "Own documents"
+ },
+ {
+  "m": "POST",
+  "p": "/api/documents/upload",
+  "auth": "customer",
+  "sum": "Upload a document (pdf/jpg/png, 5 MB)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/documents/:id/download",
+  "auth": "any",
+  "sum": "Download a document"
+ },
+ {
+  "m": "GET",
+  "p": "/api/lenders/",
+  "auth": "public",
+  "sum": "List lenders"
+ },
+ {
+  "m": "GET",
+  "p": "/api/lenders/offers",
+  "auth": "public",
+  "sum": "Indicative offers per lender"
+ },
+ {
+  "m": "GET",
+  "p": "/api/lenders/:id",
+  "auth": "public",
+  "sum": "One lender"
+ },
+ {
+  "m": "POST",
+  "p": "/api/loan-applications/",
+  "auth": "public",
+  "sum": "Create/update a lead (customer app or website)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/loan-applications/my",
+  "auth": "customer",
+  "sum": "Own applications"
+ },
+ {
+  "m": "GET",
+  "p": "/api/loan-applications/all",
+  "auth": "perm:leads.read",
+  "sum": "List leads (paged)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/loan-applications/phone/:phone",
+  "auth": "any",
+  "sum": "Leads for a phone, newest first"
+ },
+ {
+  "m": "GET",
+  "p": "/api/loan-applications/:id",
+  "auth": "any",
+  "sum": "One lead by id or leadCode"
+ },
+ {
+  "m": "POST",
+  "p": "/api/loan-applications/:id/refresh-score",
+  "auth": "staff",
+  "sum": "Force a new credit bureau call for a lead"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/loan-applications/:id",
+  "auth": "staff",
+  "sum": "Update a lead (role-limited allowlist)"
+ },
+ {
+  "m": "DELETE",
+  "p": "/api/loan-applications/all",
+  "auth": "role:SUPER_ADMIN,ADMIN with permission leads.delete",
+  "sum": "Delete every lead"
+ },
+ {
+  "m": "DELETE",
+  "p": "/api/loan-applications/",
+  "auth": "role:SUPER_ADMIN,ADMIN with permission leads.delete",
+  "sum": "Bulk delete by ids or leadCodes"
+ },
+ {
+  "m": "DELETE",
+  "p": "/api/loan-applications/:id",
+  "auth": "role:SUPER_ADMIN,ADMIN with permission leads.delete",
+  "sum": "Delete one lead"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/contact-messages",
+  "auth": "perm:leads.read",
+  "sum": "Messages from the website contact form"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/contact-messages/:id",
+  "auth": "perm:leads.update",
+  "sum": "Set message status"
+ },
+ {
+  "m": "POST",
+  "p": "/api/public/leads",
+  "auth": "public",
+  "sum": "Website lead intake (replaces submit-lead.php)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/public/leads/lookup",
+  "auth": "public",
+  "sum": "Offers-page lookup"
+ },
+ {
+  "m": "GET",
+  "p": "/api/public/leads/status",
+  "auth": "public",
+  "sum": "Customer application status (track-status.php)"
+ },
+ {
+  "m": "POST",
+  "p": "/api/public/contact",
+  "auth": "public",
+  "sum": "Contact form (submit-contact.php)"
+ },
+ {
+  "m": "POST",
+  "p": "/api/public/credit-check",
+  "auth": "public",
+  "sum": "Credit score for the eligibility pages (fetch-cibil.php)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/partners",
+  "auth": "perm:leads.read",
+  "sum": "List partners"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/partners",
+  "auth": "perm:partners.manage",
+  "sum": "Create a partner"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/partners/:id",
+  "auth": "perm:partners.manage",
+  "sum": "Update a partner"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/partners/:id/postback-secret/rotate",
+  "auth": "perm:partners.manage",
+  "sum": "Generate a new postback secret (returned once)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/partners/users",
+  "auth": "perm:partners.manage",
+  "sum": "List partner users"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/partners/users",
+  "auth": "perm:partners.manage",
+  "sum": "Create a partner user"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/partners/users/:id",
+  "auth": "perm:partners.manage",
+  "sum": "Update status / name / partners"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/partners/users/:id/reset-password",
+  "auth": "perm:partners.manage",
+  "sum": "Issue a new temporary password"
+ },
+ {
+  "m": "DELETE",
+  "p": "/api/crm/partners/users/:id",
+  "auth": "perm:partners.manage",
+  "sum": "Disable a partner user (soft delete)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/partner-assignments",
+  "auth": "perm:leads.read",
+  "sum": "List assignments"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/partner-assignments",
+  "auth": "perm:partners.manage",
+  "sum": "Assign a lead to a partner (idempotent)"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/partner-assignments/:id",
+  "auth": "perm:partners.manage",
+  "sum": "Reassign / cancel"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/partner-events",
+  "auth": "perm:leads.read",
+  "sum": "List partner events (timeline)"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/partner-events",
+  "auth": "staff",
+  "sum": "Append an event (append-only)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/delivery-logs",
+  "auth": "perm:leads.read",
+  "sum": "List delivery attempts with stats"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/delivery-logs",
+  "auth": "perm:partners.manage",
+  "sum": "Record a delivery log entry manually"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/delivery-logs/push",
+  "auth": "perm:partners.manage",
+  "sum": "Push a lead to a partner's API now"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/delivery-logs/:id/retry",
+  "auth": "perm:partners.manage",
+  "sum": "Retry a delivery"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/partners/:partnerId/leads/export",
+  "auth": "perm:leads.read",
+  "sum": "CSV export of a partner's leads"
+ },
+ {
+  "m": "POST",
+  "p": "/api/public/partner-click",
+  "auth": "public",
+  "sum": "Record an outbound partner click"
+ },
+ {
+  "m": "GET",
+  "p": "/api/public/redirect/:partnerSlug",
+  "auth": "public",
+  "sum": "Track a click and 302-redirect to the partner"
+ },
+ {
+  "m": "GET",
+  "p": "/api/public/postback/:partnerSlug",
+  "auth": "token",
+  "sum": "Partner conversion postback (GET)"
+ },
+ {
+  "m": "POST",
+  "p": "/api/public/postback/:partnerSlug",
+  "auth": "token",
+  "sum": "Partner conversion postback (POST)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/channel-summary",
+  "auth": "perm:leads.read",
+  "sum": "Leads by marketing channel and campaign"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/executive-overview",
+  "auth": "perm:leads.read",
+  "sum": "Executive dashboard numbers"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/partner-analytics/kpi-summary",
+  "auth": "perm:leads.read",
+  "sum": "Partner KPI summary"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/rate-cards",
+  "auth": "perm:finance.read",
+  "sum": "List rate cards"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/rate-cards",
+  "auth": "perm:finance.rates",
+  "sum": "Create a rate card"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/rate-cards/:id",
+  "auth": "perm:finance.rates",
+  "sum": "Update a rate card"
+ },
+ {
+  "m": "DELETE",
+  "p": "/api/crm/rate-cards/:id",
+  "auth": "perm:finance.rates",
+  "sum": "Delete a rate card"
+ },
+ {
+  "m": "PUT",
+  "p": "/api/crm/rate-cards",
+  "auth": "perm:finance.rates",
+  "sum": "Replace the whole rate-card set (validated, transactional)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/commissions",
+  "auth": "perm:finance.read",
+  "sum": "List commissions"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/commissions/calculate",
+  "auth": "perm:finance.write",
+  "sum": "Create/refresh commissions for approved and disbursed leads"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/commissions/:id",
+  "auth": "perm:finance.write",
+  "sum": "Cancel an ACCRUED commission"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/payout-requests",
+  "auth": "perm:finance.read",
+  "sum": "List payout requests"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/payout-requests/:id",
+  "auth": "perm:finance.read",
+  "sum": "One payout request (id or payoutCode)"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/payout-requests",
+  "auth": "perm:finance.write",
+  "sum": "Create a payout request"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/payout-requests/:id",
+  "auth": "perm:finance.write",
+  "sum": "Update status / details"
+ },
+ {
+  "m": "PUT",
+  "p": "/api/crm/payout-requests",
+  "auth": "perm:finance.write",
+  "sum": "Bulk upsert payout requests (by payoutCode)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/settlements",
+  "auth": "perm:finance.read",
+  "sum": "List settlements"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/settlements",
+  "auth": "perm:finance.write",
+  "sum": "Record a bank settlement"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/settlements/:id",
+  "auth": "perm:finance.write",
+  "sum": "Amend the notes of a settlement"
+ },
+ {
+  "m": "PUT",
+  "p": "/api/crm/settlements",
+  "auth": "perm:finance.write",
+  "sum": "Bulk create settlements (by settlementCode / bankRef)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/invoices",
+  "auth": "perm:finance.read",
+  "sum": "List invoices"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/invoices/:invoiceNo",
+  "auth": "perm:finance.read",
+  "sum": "One invoice"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/invoices",
+  "auth": "perm:finance.write",
+  "sum": "Raise an invoice"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/invoices/:invoiceNo",
+  "auth": "perm:finance.write",
+  "sum": "Mark paid / cancel / edit"
+ },
+ {
+  "m": "PUT",
+  "p": "/api/crm/invoices",
+  "auth": "perm:finance.write",
+  "sum": "Bulk create invoices (by invoiceNo)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/agreements",
+  "auth": "perm:partners.read",
+  "sum": "List partner agreements"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/agreements",
+  "auth": "perm:partners.manage",
+  "sum": "Add an agreement record"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/agreements/:id",
+  "auth": "perm:partners.manage",
+  "sum": "Update an agreement record"
+ },
+ {
+  "m": "DELETE",
+  "p": "/api/crm/agreements/:id",
+  "auth": "perm:partners.manage",
+  "sum": "Delete an agreement record"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/audit-logs",
+  "auth": "perm:audit.read",
+  "sum": "Audit trail"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/settings/general",
+  "auth": "staff",
+  "sum": "General CRM settings"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/settings/general",
+  "auth": "perm:settings.manage",
+  "sum": "Update general settings (merge)"
+ },
+ {
+  "m": "PUT",
+  "p": "/api/crm/settings/general",
+  "auth": "perm:settings.manage",
+  "sum": "Save general settings (same merge semantics as PATCH)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/settings/integrations",
+  "auth": "perm:settings.manage",
+  "sum": "Partner integrations"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/settings/integrations/:partnerId",
+  "auth": "perm:settings.manage",
+  "sum": "Update a partner integration"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/settings/notification-templates",
+  "auth": "staff",
+  "sum": "Notification templates"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/settings/notification-templates",
+  "auth": "perm:settings.manage",
+  "sum": "Create a template"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/settings/notification-templates/:id",
+  "auth": "perm:settings.manage",
+  "sum": "Update a template (id or key)"
+ },
+ {
+  "m": "DELETE",
+  "p": "/api/crm/settings/notification-templates/:id",
+  "auth": "perm:settings.manage",
+  "sum": "Delete a template (id or key)"
+ },
+ {
+  "m": "PUT",
+  "p": "/api/crm/settings/notification-templates",
+  "auth": "perm:settings.manage",
+  "sum": "Bulk upsert templates (by key, atomic)"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/roles",
+  "auth": "role/permission: staff.manage or roles.manage",
+  "sum": "Roles with their permission matrix"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/roles",
+  "auth": "perm:roles.manage",
+  "sum": "Create a role"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/roles/:id",
+  "auth": "perm:roles.manage",
+  "sum": "Edit a role (id or key)"
+ },
+ {
+  "m": "DELETE",
+  "p": "/api/crm/roles/:id",
+  "auth": "perm:roles.manage",
+  "sum": "Delete a role"
+ },
+ {
+  "m": "GET",
+  "p": "/api/crm/staff",
+  "auth": "perm:staff.manage",
+  "sum": "Staff accounts (partner users excluded)"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/staff",
+  "auth": "perm:staff.manage",
+  "sum": "Create a staff account"
+ },
+ {
+  "m": "PATCH",
+  "p": "/api/crm/staff/:id",
+  "auth": "perm:staff.manage",
+  "sum": "Update a staff account"
+ },
+ {
+  "m": "POST",
+  "p": "/api/crm/staff/:id/reset-password",
+  "auth": "perm:staff.manage",
+  "sum": "Issue a new temporary password"
+ },
+ {
+  "m": "DELETE",
+  "p": "/api/crm/staff/:id",
+  "auth": "perm:staff.manage",
+  "sum": "Disable a staff account"
+ }
+]

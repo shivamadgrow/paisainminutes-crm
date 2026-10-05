@@ -1,0 +1,3 @@
+# test output: may contain customer data or screenshots, never commit
+shots/
+last-*.json

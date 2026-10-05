@@ -49,3 +49,12 @@ public_html/crm/.env
 !.env.example
 tests/prod/shots/
 tests/prod/last-*.json
+
+# Security notes: vulnerability details, test phone numbers and test-run records. The GitHub repo is public:
+# keep these out of git until the repo is private.
+TEST_LOG.md
+TEST_PLAN.md
+FIX_PLAN.md
+REMAINING_STEPS.md
+GIT_CLEANUP.md
+tests/prod/created.jsonl
