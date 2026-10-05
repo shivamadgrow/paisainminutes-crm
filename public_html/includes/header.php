@@ -220,32 +220,9 @@ if (!isset($page_og_image) || empty($page_og_image)) {
         window.backend_server_url = <?php echo json_encode($pim_node_api_url); ?>;
         // OTP routes are served by the Node server directly (/api/auth/send-otp, /api/auth/verify-otp)
         window.otp_api_base_url = window.backend_server_url;
-
-        // Global UTM & Campaign Source Capture
-        (function() {
-            try {
-                var params = new URLSearchParams(window.location.search);
-                var utmSource = params.get('utm_source') || params.get('source');
-                if (!utmSource && document.referrer && document.referrer.toLowerCase().indexOf('whatsapp') !== -1) {
-                    utmSource = 'Whatsapp-AGM';
-                }
-                if (utmSource) {
-                    sessionStorage.setItem('pim_utm_source', utmSource);
-                    localStorage.setItem('pim_utm_source', utmSource);
-                }
-                var utmCampaign = params.get('utm_campaign');
-                if (utmCampaign) {
-                    sessionStorage.setItem('pim_utm_campaign', utmCampaign);
-                    localStorage.setItem('pim_utm_campaign', utmCampaign);
-                }
-                var utmMedium = params.get('utm_medium');
-                if (utmMedium) {
-                    sessionStorage.setItem('pim_utm_medium', utmMedium);
-                    localStorage.setItem('pim_utm_medium', utmMedium);
-                }
-            } catch(e) {}
-        })();
     </script>
+    <!-- Marketing attribution (UTM, gclid/fbclid, referrer) - adds channel data to lead submissions -->
+    <script src="/js/attribution.js?v=<?php echo @filemtime(__DIR__ . '/../js/attribution.js') ?: 1; ?>"></script>
 
     <!-- Comprehensive Agentic & SEO Structured Data (JSON-LD) -->
     <script type="application/ld+json">

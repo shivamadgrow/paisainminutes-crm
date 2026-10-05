@@ -382,8 +382,11 @@ export function mapBackendLead(item, index = 0) {
   else if (state) locationDisplay = state;
   else if (pincode) locationDisplay = `PIN: ${pincode}`;
 
+  // channel is derived on the server from the visitor's own UTM / click id / referrer; leads created before
+  // channel tracking have none and are shown as "Legacy" instead of a guessed source.
+  const channel = item.channel ? String(item.channel).trim() : null;
   const rawSource = String(item.leadSource || item.utmSource || item.source || '').trim();
-  const source = rawSource || 'Website Application';
+  const source = channel || rawSource || 'Website Application';
 
   const statusKey = normalizeStatus(item.status);
   const statusLabel = formatStatusLabel(item.status);
@@ -439,8 +442,16 @@ export function mapBackendLead(item, index = 0) {
     salary: cleanSalary,
     monthlySalary: cleanSalary,
     source,
+    channel,
     leadSource: item.leadSource || null,
     utmSource: item.utmSource || null,
+    utmMedium: item.utmMedium || null,
+    utmCampaign: item.utmCampaign || null,
+    utmTerm: item.utmTerm || null,
+    utmContent: item.utmContent || null,
+    entryPoint: item.entryPoint || null,
+    landingPage: item.landingPage || null,
+    firstChannel: item.firstChannel || null,
     cibilScore,
     cibilScoreUpdatedAt: item.cibilScoreUpdatedAt || null,
     cibil: cibilDisplay,

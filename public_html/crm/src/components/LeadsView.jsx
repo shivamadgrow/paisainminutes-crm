@@ -235,6 +235,41 @@ const getEligibilityInfo = (item) => {
   };
 };
 
+// ---- Marketing channel (set by the server from UTM / click id / referrer; old leads have none) ----
+const CHANNEL_TABS = ['Google Ads', 'Meta', 'SMS', 'RCS', 'WhatsApp', 'AI', 'Email', 'Organic Search', 'Referral', 'Website', 'Manual', 'Other', 'Legacy'];
+const CHANNEL_BADGE = {
+  'Google Ads': 'bg-amber-50 text-amber-800 border-amber-300',
+  Meta: 'bg-indigo-50 text-indigo-800 border-indigo-300',
+  SMS: 'bg-sky-50 text-sky-800 border-sky-300',
+  RCS: 'bg-cyan-50 text-cyan-800 border-cyan-300',
+  WhatsApp: 'bg-emerald-50 text-emerald-800 border-emerald-300',
+  AI: 'bg-violet-50 text-violet-800 border-violet-300',
+  Email: 'bg-rose-50 text-rose-800 border-rose-300',
+  'Organic Search': 'bg-lime-50 text-lime-800 border-lime-300',
+  Referral: 'bg-orange-50 text-orange-800 border-orange-300',
+  Website: 'bg-blue-50 text-blue-800 border-blue-200',
+  Manual: 'bg-teal-50 text-teal-800 border-teal-300',
+  Other: 'bg-slate-100 text-slate-700 border-slate-300',
+  Legacy: 'bg-slate-50 text-slate-500 border-slate-200',
+};
+const channelOf = (lead) => (lead && lead.channel) || 'Legacy';
+
+function ChannelBadge({ lead, showCampaign = false }) {
+  const channel = channelOf(lead);
+  const title = [channel, lead.utmMedium, lead.utmCampaign, lead.entryPoint && `via ${lead.entryPoint}`].filter(Boolean).join(' · ');
+  return (
+    <span className="inline-flex flex-col items-start gap-0.5" title={title}>
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-xl border shadow-2xs ${CHANNEL_BADGE[channel] || CHANNEL_BADGE.Other}`}>
+        {channel === 'WhatsApp' ? <MessageCircle className="w-3.5 h-3.5 shrink-0" /> : <ExternalLink className="w-3 h-3 shrink-0" />}
+        <span className="truncate max-w-[130px]">{channel}</span>
+      </span>
+      {showCampaign && (lead.utmCampaign || lead.utmMedium) && (
+        <span className="text-[10px] text-slate-500 font-medium truncate max-w-[150px]">{[lead.utmMedium, lead.utmCampaign].filter(Boolean).join(' / ')}</span>
+      )}
+    </span>
+  );
+}
+
 export default function LeadsView({
   leads: propLeads,
   setLeads,
@@ -557,7 +592,9 @@ export default function LeadsView({
         const matchesCompany = (item.assignedCompany || '').toLowerCase().includes(q);
         const matchesSource = (item.source || '').toLowerCase().includes(q) ||
           (item.utm_source || '').toLowerCase().includes(q) ||
-          (item.lead_source || '').toLowerCase().includes(q);
+          (item.lead_source || '').toLowerCase().includes(q) ||
+          channelOf(item).toLowerCase().includes(q) ||
+          (item.utmCampaign || '').toLowerCase().includes(q);
         if (!matchesName && !matchesMobile && !matchesEmail && !matchesId && !matchesCity && !matchesCompany && !matchesSource) {
           return false;
         }
@@ -606,16 +643,8 @@ export default function LeadsView({
           const pan = String(item.pan || '').trim().toUpperCase();
           const isDup = (phone && phoneCounts[phone] > 1) || (pan && pan !== '—' && panCounts[pan] > 1);
           if (!isDup) return false;
-        } else if (filterKey === 'whatsapp') {
-          const isWa = (item.source && item.source.toLowerCase().includes('whatsapp')) ||
-            (item.utm_source && item.utm_source.toLowerCase().includes('whatsapp')) ||
-            (item.lead_source && item.lead_source.toLowerCase().includes('whatsapp'));
-          if (!isWa) return false;
-        } else if (filterKey === 'direct website') {
-          const isWa = (item.source && item.source.toLowerCase().includes('whatsapp')) ||
-            (item.utm_source && item.utm_source.toLowerCase().includes('whatsapp')) ||
-            (item.lead_source && item.lead_source.toLowerCase().includes('whatsapp'));
-          if (isWa) return false;
+        } else if (CHANNEL_TABS.some(c => c.toLowerCase() === filterKey)) {
+          if (channelOf(item).toLowerCase() !== filterKey) return false;
         }
       }
 
@@ -658,7 +687,9 @@ export default function LeadsView({
       'City',
       'State',
       'Pincode',
-      'Source / Campaign',
+      'Channel',
+      'Medium',
+      'Campaign',
       'Status',
       'Date / Time'
     ];
@@ -676,8 +707,9 @@ export default function LeadsView({
       l.city || '',
       l.state || 'India',
       l.pincode || '',
-      l.source || 'Apply Now (Website)',
-      l.utm_source || 'Direct',
+      channelOf(l),
+      l.utmMedium || '',
+      l.utmCampaign || '',
       l.status || 'Fresh',
       l.created || l.date || ''
     ]);
@@ -1191,16 +1223,7 @@ export default function LeadsView({
                   return (phone && phoneCounts[phone] > 1) || (pan && pan !== '—' && panCounts[pan] > 1);
                 }).length
               },
-              {
-                id: 'WhatsApp',
-                label: 'WhatsApp',
-                count: leads.filter(l => (l.source && l.source.toLowerCase().includes('whatsapp')) || (l.utm_source && l.utm_source.toLowerCase().includes('whatsapp')) || (l.lead_source && l.lead_source.toLowerCase().includes('whatsapp'))).length
-              },
-              {
-                id: 'Direct Website',
-                label: 'Direct Website',
-                count: leads.filter(l => !((l.source && l.source.toLowerCase().includes('whatsapp')) || (l.utm_source && l.utm_source.toLowerCase().includes('whatsapp')) || (l.lead_source && l.lead_source.toLowerCase().includes('whatsapp')))).length
-              },
+              ...CHANNEL_TABS.map(ch => ({ id: ch, label: ch, count: leads.filter(l => channelOf(l) === ch).length })).filter(t => t.count > 0),
             ].map(tab => {
               const isSelected = activeFilter.toLowerCase().replace(/\s+/g, ' ') === tab.id.toLowerCase().replace(/\s+/g, ' ');
               return (
@@ -1713,23 +1736,9 @@ export default function LeadsView({
                       </div>
                     </td>
 
-                    {/* SOURCE */}
+                    {/* SOURCE / CHANNEL */}
                     <td className="py-4 px-4">
-                      {((item.source && item.source.toLowerCase().includes('whatsapp')) || (item.utm_source && item.utm_source.toLowerCase().includes('whatsapp')) || (item.lead_source && item.lead_source.toLowerCase().includes('whatsapp'))) ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-2xs">
-                          <MessageCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span className="truncate max-w-[130px]" title="WhatsApp">
-                            WhatsApp
-                          </span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-xl bg-blue-50 text-blue-800 border border-blue-200/80 shadow-2xs">
-                          <ExternalLink className="w-3 h-3 text-blue-500 shrink-0" />
-                          <span className="truncate max-w-[130px]" title={item.source || 'Website Application'}>
-                            {item.source || 'Website Application'}
-                          </span>
-                        </span>
-                      )}
+                      <ChannelBadge lead={item} showCampaign />
                     </td>
 
                     {/* STATUS (Custom React Popover Portal - ZERO clipping!) */}
@@ -2552,17 +2561,7 @@ export default function LeadsView({
 
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Source / Channel:</span>
-                      {((activeOverviewLead.source && activeOverviewLead.source.toLowerCase().includes('whatsapp')) || (activeOverviewLead.utm_source && activeOverviewLead.utm_source.toLowerCase().includes('whatsapp')) || (activeOverviewLead.lead_source && activeOverviewLead.lead_source.toLowerCase().includes('whatsapp'))) ? (
-                        <span className="px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-bold text-[11px] border border-emerald-300 flex items-center gap-1">
-                          <MessageCircle className="w-3 h-3 text-emerald-600" />
-                          <span>WhatsApp</span>
-                        </span>
-                      ) : (
-                        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 font-bold text-[11px] border border-blue-200 flex items-center gap-1">
-                          <ExternalLink className="w-3 h-3 text-blue-500" />
-                          <span>{activeOverviewLead.source || 'Website Application'}</span>
-                        </span>
-                      )}
+                      <ChannelBadge lead={activeOverviewLead} />
                     </div>
 
                     <div className="flex items-center justify-between">
