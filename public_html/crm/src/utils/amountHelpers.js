@@ -312,3 +312,20 @@ export function isDateInRange(dateInput, preset = 'ALL', customStart = '', custo
   return true;
 }
 
+
+/**
+ * The first and last day (YYYY-MM-DD, IST) a date preset covers, for asking the server for the same range as the
+ * list shows. Returns {} for "All Time".
+ */
+export function dateRangeKeys(preset = 'ALL', customStart = '', customEnd = '') {
+  if (!preset || preset === 'ALL') return {};
+  const now = new Date();
+  const key = (d) => getISTDateKey(d);
+  if (preset === 'TODAY') return { from: key(now), to: key(now) };
+  if (preset === 'YESTERDAY') { const y = new Date(now); y.setDate(y.getDate() - 1); return { from: key(y), to: key(y) }; }
+  if (preset === 'LAST_7_DAYS') { const p = new Date(now); p.setDate(p.getDate() - 6); return { from: key(p), to: key(now) }; }
+  if (preset === 'THIS_MONTH') return { from: key(new Date(now.getFullYear(), now.getMonth(), 1)), to: key(new Date(now.getFullYear(), now.getMonth() + 1, 0)) };
+  if (preset === 'LAST_MONTH') return { from: key(new Date(now.getFullYear(), now.getMonth() - 1, 1)), to: key(new Date(now.getFullYear(), now.getMonth(), 0)) };
+  if (preset === 'CUSTOM') return { ...(customStart ? { from: customStart } : {}), ...(customEnd ? { to: customEnd } : {}) };
+  return {};
+}

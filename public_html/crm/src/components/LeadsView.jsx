@@ -48,13 +48,14 @@ import {
   trackPartnerClick,
   getSalaryMatchedOffers
 } from '../data/affiliatePartners';
-import { exportToCsv } from '../utils/exportCsv';
+import { downloadFile, api as crmApi } from '../utils/apiClient';
 import {
   cleanLoanAmount,
   cleanSalary,
   formatToIST,
   isDateInRange,
   DATE_RANGE_PRESETS,
+  dateRangeKeys,
   getISTDateKey
 } from '../utils/amountHelpers';
 import {
@@ -302,6 +303,7 @@ export default function LeadsView({
   const [, setIsCustomDatePickerOpen] = useState(false);
   const canDeleteLeads = hasPermission(currentUser, 'leads.delete') && ['SUPER_ADMIN', 'ADMIN'].includes(currentUser?.serverRole);
   const canEditLeads = hasPermission(currentUser, 'leads.update');
+  const canExportLeads = hasPermission(currentUser, 'leads.export');
   const [toastMessage, setToastMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const LEADS_PER_PAGE = 10;
@@ -520,7 +522,9 @@ export default function LeadsView({
 
   const handleFilterClick = (filterId) => {
     setLocalFilter(filterId);
-    if (setActiveFilterTab) {
+    // Channel tabs only filter this screen. The app-level tab key decides which SCREEN is shown (App.jsx renders the
+    // lead list only for its known keys), so writing "google-ads" there threw the user to the dashboard (F-19).
+    if (setActiveFilterTab && !CHANNEL_TABS.includes(filterId)) {
       setActiveFilterTab(filterId.toLowerCase().replace(/\s+/g, '-'));
     }
   };
@@ -669,54 +673,21 @@ export default function LeadsView({
     });
   }, [leads, searchQuery, selectedPartnerFilter, activeFilter, isMyLeadsOnly, currentUser, phoneCounts, panCounts, selectedDatePreset, customStartDate, customEndDate]);
 
-  const handleExportExcel = () => {
-    if (!filteredLeads || filteredLeads.length === 0) {
-      alert("No leads found to export.");
-      return;
+  // Export is built by the server (F-21, F-22): it needs leads.export, never includes the PAN and neutralises formulas.
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExportExcel = async () => {
+    if (isExporting) return;
+    const query = { ...dateRangeKeys(selectedDatePreset, customStartDate, customEndDate) };
+    if (CHANNEL_TABS.includes(activeFilter)) query.channel = activeFilter;
+    else if (activeFilter !== 'All Leads') {
+      const status = normalizeStatus(activeFilter);
+      if (['FRESH', 'CALLBACK', 'INTERESTED', 'DOCS_RECEIVED', 'APPROVED', 'DISBURSED', 'REJECTED'].includes(status)) query.status = status;
     }
-    const headers = [
-      'Lead ID',
-      'Assigned Partner / Company',
-      'Eligibility Status',
-      'Applicant Name',
-      'Mobile Number',
-      'Email Address',
-      'Loan Amount (₹)',
-      'Monthly Salary (₹)',
-      'CIBIL Score',
-      'Employment Type',
-      'City',
-      'State',
-      'Pincode',
-      'Channel',
-      'Medium',
-      'Campaign',
-      'Status',
-      'Date / Time'
-    ];
-    const rows = filteredLeads.map((l, idx) => [
-      l.id || l.loanNo || getLeadId(l, idx),
-      l.assignedCompany || 'Unassigned',
-      l.eligibilityStatus || 'Eligible',
-      l.name || 'Applicant',
-      l.mobile || '',
-      l.email || '',
-      cleanLoanAmount(l.loanAmount || l.applied),
-      cleanSalary(l.salary, l.sal_val, l.salary_range),
-      l.cibil || '—',
-      l.employmentType || 'Salaried',
-      l.city || '',
-      l.state || 'India',
-      l.pincode || '',
-      channelOf(l),
-      l.utmMedium || '',
-      l.utmCampaign || '',
-      l.status || 'Fresh',
-      l.created || l.date || ''
-    ]);
-    const dateStr = new Date().toISOString().slice(0, 10);
-    const filterSlug = (activeFilter || 'all').toLowerCase().replace(/\s+/g, '-');
-    exportToCsv(`paisainminutes-leads-${filterSlug}-${dateStr}.csv`, headers, rows);
+    if (searchQuery && searchQuery.trim().length >= 2) query.q = searchQuery.trim();
+    setIsExporting(true);
+    const res = await downloadFile('/api/loan-applications/export', query, `paisainminutes-leads-${new Date().toISOString().slice(0, 10)}.csv`);
+    setIsExporting(false);
+    if (!res.ok) showToast(res.status === 403 ? 'You do not have permission to export leads.' : (res.error || 'Could not export leads.'), true);
   };
 
   const handleSelectAll = (e) => {
@@ -828,6 +799,23 @@ export default function LeadsView({
     } else {
       showToast(patchRes.error || 'Could not update the lender.', true);
     }
+  };
+
+  // Escape closes the lead panel (F-20).
+  useEffect(() => {
+    if (!selectedLeadForOverview) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setSelectedLeadForOverview(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedLeadForOverview]);
+
+  // End every device login of this lead's customer (lost phone, re-assigned number): their next visit needs a new OTP.
+  const handleSignOutCustomer = async (lead) => {
+    if (!lead) return;
+    if (!window.confirm('Sign this customer out of every device? They will need a new OTP next time they open their application.')) return;
+    const res = await crmApi(`/api/loan-applications/${encodeURIComponent(lead.id)}/sign-out-customer`, { method: 'POST', body: {} });
+    if (res.ok) showToast(`Customer signed out (${res.data?.devicesEnded ?? 0} device login(s) ended).`);
+    else showToast(res.error || 'Could not sign the customer out.', true);
   };
 
   // Manual override of the stored bureau result: one new paid call (a phone is normally checked once, reused 30 days).
@@ -1071,14 +1059,17 @@ export default function LeadsView({
             <span>Simulate Lead</span>
           </button>
 
+          {canExportLeads && (
           <button
             onClick={handleExportExcel}
-            className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+            disabled={isExporting}
+            className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
             title="Download CSV report"
           >
             <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Export CSV</span>
+            <span>{isExporting ? 'Exporting…' : 'Export CSV'}</span>
           </button>
+          )}
 
           {canDeleteLeads && (
           <button
@@ -2455,6 +2446,19 @@ export default function LeadsView({
                     >
                       <RotateCw className={`w-3 h-3 ${refreshingScoreId === activeOverviewLead.id ? 'animate-spin' : ''}`} />
                       {refreshingScoreId === activeOverviewLead.id ? 'Refreshing…' : 'Refresh score'}
+                    </button>
+                  )}
+                  {/after 3 attempts|in progress/i.test(activeOverviewLead.cibilStatus || '') && (
+                    <div className="text-[10px] text-amber-700 font-medium mt-0.5">{/after 3 attempts/i.test(activeOverviewLead.cibilStatus) ? 'Score pending: the bureau could not be reached 3 times. Use Refresh score.' : 'Score is being fetched…'}</div>
+                  )}
+                  {canEditLeads && (
+                    <button
+                      type="button"
+                      onClick={() => handleSignOutCustomer(activeOverviewLead)}
+                      className="mt-1 block text-[11px] font-bold text-slate-500 hover:text-rose-700 cursor-pointer"
+                      title="End every device login of this customer"
+                    >
+                      Sign customer out everywhere
                     </button>
                   )}
                 </div>

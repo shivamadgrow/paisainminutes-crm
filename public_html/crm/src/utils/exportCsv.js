@@ -9,7 +9,10 @@ export function exportToCsv(filename, headers, rows) {
 
   const escapeCell = (cell) => {
     if (cell === null || cell === undefined) return '""';
-    const str = String(cell).replace(/"/g, '""');
+    let text = String(cell);
+    // A cell that starts with = + - or @ would be run as a formula by Excel / Sheets (F-21): prefix an apostrophe.
+    if (/^[=+\-@\t\r]/.test(text) && !/^\+?\d[\d\s-]*$/.test(text)) text = `'${text}`;
+    const str = text.replace(/"/g, '""');
     return `"${str}"`;
   };
 
