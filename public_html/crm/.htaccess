@@ -3,3 +3,19 @@
     Header set Pragma "no-cache"
     Header set Expires 0
 </IfModule>
+
+# ----------------------------------------------------------------------
+# SECURITY (fix F-4, F-5): the CRM host serves only the built app. Never serve data, API
+# scripts, source, package files, logs or old copies. Answered as 404.
+# ----------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule (^|/)\.(?!well-known(/|$)) - [R=404,L]
+    RewriteRule ^(data|api|src|public|crm_subdomain_update|node_modules)(/|$) - [R=404,L]
+    RewriteRule ^(redirect|submit-lead|submit_lead)\.php$ - [R=404,L]
+    RewriteRule ^test_apply_now\.html$ - [R=404,L]
+    RewriteRule \.(csv|json|log|md|sql|sh|bak|zip|ini|lock|ya?ml|map)$ - [R=404,L]
+    RewriteCond %{REQUEST_URI} !^/(robots|ads|humans)\.txt$ [NC]
+    RewriteCond %{REQUEST_URI} !^/\.well-known/ [NC]
+    RewriteRule \.txt$ - [R=404,L]
+</IfModule>

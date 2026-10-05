@@ -14,6 +14,28 @@
     RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
     RewriteRule ^ https://paisainminutes.com%{REQUEST_URI} [R=301,L]
 
+    # ------------------------------------------------------------------
+    # SECURITY (fix F-4, F-5, F-6, F-7): never serve data, config, logs, docs, env files,
+    # developer folders or the old PHP admin API. The live site uses the Node API now.
+    # Answered as 404 so the paths do not even confirm they exist. Keep these rules first.
+    # ------------------------------------------------------------------
+    # dot files (.env, .git, .htpasswd ...) except .well-known
+    RewriteRule (^|/)\.(?!well-known(/|$)) - [R=404,L]
+    # folders that hold data, config, scripts or old copies of the site
+    RewriteRule ^(data|config|includes|scripts|scratch|deploy_update|node_modules)(/|$) - [R=404,L]
+    RewriteRule ^admin/(api|data)(/|$) - [R=404,L]
+    RewriteRule ^crm/(data|api|src|public|crm_subdomain_update|node_modules)(/|$) - [R=404,L]
+    # the old PHP API scripts (admin API, CRM API, public api/*.php)
+    RewriteRule ^api/.+\.php$ - [R=404,L]
+    # old lead and click writers (replaced by the Node API); partner links /go and /postback stay for now
+    RewriteRule ^(redirect|submit-lead)\.php$ - [R=404,L]
+    RewriteRule ^crm/(redirect|submit-lead|submit_lead)\.php$ - [R=404,L]
+    # data, log, document and config files anywhere
+    RewriteRule \.(csv|json|log|md|sql|sh|bak|zip|ini|lock|ya?ml|map)$ - [R=404,L]
+    RewriteCond %{REQUEST_URI} !^/(robots|ads|humans)\.txt$ [NC]
+    RewriteCond %{REQUEST_URI} !^/\.well-known/ [NC]
+    RewriteRule \.txt$ - [R=404,L]
+
     # 2. Redirect direct requests for *.php to clean extensionless version (except index.php & POST handlers)
     RewriteCond %{REQUEST_METHOD} !POST [NC]
     RewriteCond %{THE_REQUEST} \s/+(.+?)\.php[\s?] [NC]
