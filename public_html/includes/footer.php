@@ -278,6 +278,7 @@
     <?php include_once __DIR__ . '/otp-modal.php'; ?>
 
     <!-- JavaScripts (Minified with fallback) -->
+    <script src="/js/calc-clamp.js?v=<?php echo @filemtime(__DIR__ . '/../js/calc-clamp.js') ?: 1; ?>" defer></script>
     <script src="<?php echo file_exists(__DIR__ . '/../js/main.min.js') ? '/js/main.min.js?v=' . filemtime(__DIR__ . '/../js/main.min.js') : '/js/main.js?v=' . (file_exists(__DIR__ . '/../js/main.js') ? filemtime(__DIR__ . '/../js/main.js') : '1'); ?>" defer></script>
 </body>
 </html>
