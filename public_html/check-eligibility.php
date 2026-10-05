@@ -793,6 +793,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const numSalary = parseInt(salaryVal.replace(/\D/g, '')) || 35000;
         const numAmount = parseInt(loanAmountVal.replace(/\D/g, '')) || 50000;
         // Customer has not clicked/chosen an offer partner yet: mark as Pending Selection
+        // The mobile number must be verified on this device before the lead is sent (F-29): one OTP per device, for
+        // life. A device that already holds a login for this number is not asked again.
+        if (!(window.PIMAuth && window.PIMAuth.isVerifiedFor(phoneVal))) {
+            if (!window.PimOtpService) {
+                showError('We could not start the verification. Please reload the page and try again.', phoneInput);
+                return;
+            }
+            window.PimOtpService.open(phoneVal, function () { processSubmission(); });
+            return;
+        }
+
         let assignedCompany = 'Pending Selection';
 
         // Store in Session & Local Storage
@@ -803,18 +814,14 @@ document.addEventListener('DOMContentLoaded', () => {
             sessionStorage.setItem('pim_lead_email', emailVal);
             sessionStorage.setItem('pim_lead_salary', salaryVal);
             sessionStorage.setItem('pim_lead_amount', loanAmountVal);
-            sessionStorage.setItem('pim_lead_pan', panVal);
             sessionStorage.setItem('pim_assigned_company', assignedCompany);
             localStorage.setItem('pim_phone', phoneVal);
             localStorage.setItem('pim_lead_phone', phoneVal);
             localStorage.setItem('pim_lead_salary', salaryVal);
         } catch(e){}
 
-        const fallbackRedirectUrl = '/loan-offers?phone=' + encodeURIComponent(phoneVal) +
-                                    '&salary=' + encodeURIComponent(salaryVal) +
-                                    '&loan_amount=' + encodeURIComponent(loanAmountVal) +
-                                    '&name=' + encodeURIComponent(nameVal) +
-                                    '&company=' + encodeURIComponent(assignedCompany);
+        // No phone, name or salary in the URL (F-23): the offers page reads the lead with this device's login.
+        const fallbackRedirectUrl = '/loan-offers';
         let finalRedirectUrl = fallbackRedirectUrl;
         let hasRedirected = false;
 

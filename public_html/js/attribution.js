@@ -115,24 +115,33 @@
 
     window.PIMAttribution = { get: function () { return state; }, payload: payload };
 
-    // Add attribution to every lead submission, whichever form or script sends it.
+    // Add attribution to every lead submission, whichever form or script sends it. When this device holds a verified
+    // login (pim-auth.js) the request also carries it, which is what lets the server look up the credit score.
     if (typeof window.fetch === 'function') {
         var nativeFetch = window.fetch;
         window.fetch = function (input, init) {
-            try {
-                var url = typeof input === 'string' ? input : (input && input.url) || '';
-                var method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
-                if (method === 'POST' && url.indexOf('/api/public/leads') !== -1 && init && typeof init.body === 'string') {
-                    var body = JSON.parse(init.body);
-                    // Forms used to invent utm_source / lead_source; the stored visitor data is the only truth now.
-                    delete body.utm_source; delete body.utmSource; delete body.lead_source; delete body.leadSource;
-                    var extra = payload();
-                    for (var key in extra) body[key] = extra[key];
-                    body.entry_point = entryPoint();
-                    init = Object.assign({}, init, { body: JSON.stringify(body) });
-                }
-            } catch (e) { /* never block a lead because of tracking */ }
-            return nativeFetch.call(this, input, init);
+            var self = this;
+            return (async function () {
+                try {
+                    var url = typeof input === 'string' ? input : (input && input.url) || '';
+                    var method = String((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+                    if (method === 'POST' && url.indexOf('/api/public/leads') !== -1 && init && typeof init.body === 'string') {
+                        var body = JSON.parse(init.body);
+                        // Forms used to invent utm_source / lead_source; the stored visitor data is the only truth now.
+                        delete body.utm_source; delete body.utmSource; delete body.lead_source; delete body.leadSource;
+                        var extra = payload();
+                        for (var key in extra) body[key] = extra[key];
+                        body.entry_point = entryPoint();
+                        var headers = Object.assign({}, init.headers || {});
+                        if (window.PIMAuth && window.PIMAuth.hasLogin() && !headers.Authorization) {
+                            var token = await window.PIMAuth.accessToken();
+                            if (token) headers.Authorization = 'Bearer ' + token;
+                        }
+                        init = Object.assign({}, init, { body: JSON.stringify(body), headers: headers });
+                    }
+                } catch (e) { /* never block a lead because of tracking */ }
+                return nativeFetch.call(self, input, init);
+            })();
         };
     }
 })();

@@ -22,8 +22,13 @@ $serviceError = false;
 require_once __DIR__ . '/config/env.php';
 $pimNodeApi = rtrim((string) getEnvVal('BACKEND_API_URL', 'https://api.paisainminutes.tech'), '/');
 
+/**
+ * Asks the Node server for the status with the customer's own device login (cookie pim_at, set by js/pim-auth.js).
+ * The server answers only for the login's own phone (fixes F-26 and F-10): 401 = this device is not verified,
+ * 403 = the typed number is not the verified one, 404 = no application.
+ */
 if (!function_exists('pimNodeStatusLookup')) {
-    function pimNodeStatusLookup($base, $phone) {
+    function pimNodeStatusLookup($base, $phone, $token) {
         if (!function_exists('curl_init')) {
             return ['code' => 0, 'json' => null];
         }
@@ -32,7 +37,7 @@ if (!function_exists('pimNodeStatusLookup')) {
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 1,
             CURLOPT_TIMEOUT => 3,
-            CURLOPT_HTTPHEADER => ['Accept: application/json'],
+            CURLOPT_HTTPHEADER => ['Accept: application/json', 'Authorization: Bearer ' . $token],
         ]);
         $body = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -41,24 +46,36 @@ if (!function_exists('pimNodeStatusLookup')) {
     }
 }
 
+$needsVerify = false;
+$wrongNumber = false;
+$accessCookie = isset($_COOKIE['pim_at']) ? preg_replace('/[^A-Za-z0-9._-]/', '', (string) $_COOKIE['pim_at']) : '';
+
 if (!empty($phone) && preg_match("/^[6-9]\d{9}$/", $phone)) {
-    $nodeRes = pimNodeStatusLookup($pimNodeApi, $phone);
-    $nodeJson = $nodeRes['json'];
-    if ($nodeRes['code'] === 200 && is_array($nodeJson) && ($nodeJson['status'] ?? '') === 'success' && !empty($nodeJson['data'])) {
-        $d = $nodeJson['data'];
-        $submitted = $d['timeline'][0]['at'] ?? null;
-        $found = true;
-        $leadDetails = [
-            'timestamp' => $submitted ? (new DateTime($submitted))->setTimezone(new DateTimeZone('Asia/Kolkata'))->format('Y-m-d H:i:s') : '',
-            'name' => $d['name'] ?? 'Loan Applicant',
-            'amount' => $d['amount'] ?? null,
-            'status' => $d['status'] ?? 'Under Review',
-            'reference_id' => $d['reference_id'] ?? '',
-            'next_step' => $d['next_step'] ?? ''
-        ];
-    } elseif ($nodeRes['code'] !== 404) {
-        // Node unreachable or errored: say so instead of claiming "no application"
-        $serviceError = true;
+    if ($accessCookie === '') {
+        $needsVerify = true; // nothing is asked of the server without a verified login
+    } else {
+        $nodeRes = pimNodeStatusLookup($pimNodeApi, $phone, $accessCookie);
+        $nodeJson = $nodeRes['json'];
+        if ($nodeRes['code'] === 200 && is_array($nodeJson) && ($nodeJson['status'] ?? '') === 'success' && !empty($nodeJson['data'])) {
+            $d = $nodeJson['data'];
+            $submitted = $d['timeline'][0]['at'] ?? null;
+            $found = true;
+            $leadDetails = [
+                'timestamp' => $submitted ? (new DateTime($submitted))->setTimezone(new DateTimeZone('Asia/Kolkata'))->format('Y-m-d H:i:s') : '',
+                'name' => $d['name'] ?? 'Loan Applicant',
+                'amount' => $d['amount'] ?? null,
+                'status' => $d['status'] ?? 'Under Review',
+                'reference_id' => $d['reference_id'] ?? '',
+                'next_step' => $d['next_step'] ?? ''
+            ];
+        } elseif ($nodeRes['code'] === 401) {
+            $needsVerify = true;
+        } elseif ($nodeRes['code'] === 403) {
+            $wrongNumber = true;
+        } elseif ($nodeRes['code'] !== 404) {
+            // Node unreachable or errored: say so instead of claiming "no application"
+            $serviceError = true;
+        }
     }
 }
 
@@ -69,6 +86,12 @@ if ($isJsonRequest) {
         echo json_encode(['status' => 'error', 'message' => 'Please enter your registered mobile number.']);
     } elseif (!preg_match("/^[6-9]\d{9}$/", $phone)) {
         echo json_encode(['status' => 'error', 'message' => 'Please enter a valid 10-digit mobile number.']);
+    } elseif ($needsVerify) {
+        http_response_code(401);
+        echo json_encode(['status' => 'verification_required', 'message' => 'Please verify your mobile number to see your application status.']);
+    } elseif ($wrongNumber) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'You can only view the application of the mobile number you verified.']);
     } elseif ($found) {
         echo json_encode([
             'status' => 'success',
@@ -192,6 +215,21 @@ include 'includes/header.php';
                     <a href="loan-offers.php?lead_id=<?php echo urlencode($leadDetails['reference_id']); ?>" class="btn btn-primary" style="background: var(--primary-color); color: #fff; padding: 0.75rem 2rem; border-radius: var(--border-radius-pill); text-decoration: none; font-weight: 600; display: inline-block;">View Pre-Approved Loan Offers &rarr;</a>
                 </div>
             </div>
+        <?php elseif (!empty($phone) && $needsVerify): ?>
+            <div style="border-top: 1px dashed var(--border-color); padding-top: 1.5rem; text-align: center;">
+                <div style="background: #EFF6FF; color: #1E3A8A; padding: 1rem; border-radius: 8px; font-weight: 600; margin-bottom: 1rem;">
+                    Verify +91 <?php echo htmlspecialchars($phone); ?> to see your application status.
+                </div>
+                <p style="color: var(--text-muted); margin-bottom: 1rem;">We send a one-time code to this number. You only do this once on this device.</p>
+                <button type="button" id="trackVerifyBtn" class="btn btn-primary" style="background: var(--accent-color); color: #fff; padding: 0.75rem 2rem; border-radius: var(--border-radius-sm); border: none; font-weight: 600; cursor: pointer;">Verify with OTP</button>
+            </div>
+        <?php elseif (!empty($phone) && $wrongNumber): ?>
+            <div style="border-top: 1px dashed var(--border-color); padding-top: 1.5rem; text-align: center;">
+                <div style="background: #FEF2F2; color: #DC2626; padding: 1rem; border-radius: 8px; font-weight: 600;">
+                    This device is verified for a different mobile number. Verify +91 <?php echo htmlspecialchars($phone); ?> to see its status.
+                </div>
+                <button type="button" id="trackVerifyBtn" class="btn btn-primary" style="margin-top: 1rem; background: var(--accent-color); color: #fff; padding: 0.75rem 2rem; border-radius: var(--border-radius-sm); border: none; font-weight: 600; cursor: pointer;">Verify with OTP</button>
+            </div>
         <?php elseif (!empty($phone) && $serviceError): ?>
             <div style="border-top: 1px dashed var(--border-color); padding-top: 1.5rem; text-align: center;">
                 <div style="background: #FEF2F2; color: #DC2626; padding: 1rem; border-radius: 8px; font-weight: 600;">
@@ -213,6 +251,29 @@ include 'includes/header.php';
         <?php endif; ?>
     </div>
 </div>
+
+<script>
+(function () {
+    var form = document.querySelector('form[action="track-status"]');
+    var input = document.getElementById('phoneInput');
+    var verifyBtn = document.getElementById('trackVerifyBtn');
+    function digits() { return (input ? input.value : '').replace(/\D/g, '').slice(-10); }
+    // Status is personal: this device must hold a login for the typed number. One OTP per device, for life.
+    async function showStatus() {
+        var phone = digits();
+        if (phone.length !== 10) return;
+        if (window.PIMAuth && window.PIMAuth.isVerifiedFor(phone)) {
+            await window.PIMAuth.accessToken(); // puts the login cookie in place for the page
+            window.location.href = 'track-status?phone=' + encodeURIComponent(phone);
+            return;
+        }
+        if (!window.PimOtpService) { alert('We could not start the verification. Please reload the page and try again.'); return; }
+        window.PimOtpService.open(phone, function () { window.location.href = 'track-status?phone=' + encodeURIComponent(phone); });
+    }
+    if (form) form.addEventListener('submit', function (e) { e.preventDefault(); showStatus(); });
+    if (verifyBtn) verifyBtn.addEventListener('click', showStatus);
+})();
+</script>
 
 <?php include 'includes/footer.php'; ?>
 

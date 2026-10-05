@@ -464,7 +464,6 @@ window.PimOtpService = (function() {
         }
 
         try {
-            console.log('[PIM OTP] 🚀 Calling Backend Send OTP API for:', cleanDigits);
             const res = await fetch(OTP_CONFIG.apiSendUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -475,9 +474,13 @@ window.PimOtpService = (function() {
             lastSentTime = Date.now();
 
             const data = await res.json().catch(() => ({}));
-            console.log('[PIM OTP] 📥 Send OTP Response:', data);
 
-            if (res.ok && (data.ok || data.success || data.requestId)) {
+            if (res.ok && data.alreadyVerified) {
+                if (statusMsg) {
+                    statusMsg.className = 'pim-otp-status success';
+                    statusMsg.textContent = '✓ This device is already verified.';
+                }
+            } else if (res.ok && (data.ok || data.success || data.requestId)) {
                 if (statusMsg) {
                     statusMsg.className = 'pim-otp-status success';
                     statusMsg.textContent = '✓ OTP sent successfully to +91 ' + cleanDigits;
@@ -495,7 +498,6 @@ window.PimOtpService = (function() {
                 }
             }
         } catch (err) {
-            console.warn('[PIM OTP] ⚠️ Render API Send OTP info:', err);
             if (statusMsg) {
                 statusMsg.className = 'pim-otp-status info';
                 statusMsg.textContent = 'Enter the verification code sent to +91 ' + cleanDigits;
@@ -572,10 +574,10 @@ window.PimOtpService = (function() {
 
         let isSuccess = false;
         let authToken = null;
+        let refreshToken = null;
         let responseErrorMsg = null;
 
         try {
-            console.log('[PIM OTP] 🔐 Verifying OTP on Backend server:', { phone: activePhone, code: enteredOtp });
             const res = await fetch(OTP_CONFIG.apiVerifyUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -583,22 +585,17 @@ window.PimOtpService = (function() {
             });
 
             const resData = await res.json().catch(() => ({}));
-            console.log('[PIM OTP] 📥 Verify Response:', resData);
 
-            if (res.ok && (resData.token || resData.accessToken || resData.ok || resData.success)) {
+            // A phone counts as verified only when the SERVER accepted the code and issued a login for it.
+            if (res.ok && resData.token && resData.refreshToken) {
                 isSuccess = true;
-                authToken = resData.token || resData.accessToken || null;
+                authToken = resData.token;
+                refreshToken = resData.refreshToken;
             } else {
                 responseErrorMsg = resData.error || resData.message || (resData.errors && resData.errors[0] ? resData.errors[0].msg : null);
             }
         } catch (err) {
-            console.error('[PIM OTP] ❌ Live API verify error:', err);
             responseErrorMsg = 'Network error while verifying OTP.';
-        }
-
-        // Universal test/fallback verification code (e.g. 1234 or standard universal codes)
-        if (!isSuccess && (enteredOtp === '1234' || enteredOtp === '0000' || enteredOtp === '123456' || enteredOtp === '1111')) {
-            isSuccess = true;
         }
 
         // Handle Result
@@ -611,23 +608,21 @@ window.PimOtpService = (function() {
                 submitBtn.innerHTML = '<span>Verified ✓</span>';
             }
 
-            try {
-                if (authToken) localStorage.setItem('pim_jwt_token', authToken);
-                sessionStorage.setItem('pim_otp_verified_' + activePhone, 'true');
-                localStorage.setItem('pim_phone', activePhone);
-            } catch(e) {}
+            // This device now holds a verified login for this number, for life (js/pim-auth.js).
+            if (window.PIMAuth) window.PIMAuth.store({ token: authToken, refreshToken: refreshToken, phone: activePhone });
+            try { localStorage.setItem('pim_phone', activePhone); } catch(e) {}
             
             setTimeout(() => {
                 close();
                 if (typeof onSuccessCallback === 'function') {
-                    onSuccessCallback({ phone: activePhone, otp: enteredOtp, token: authToken });
+                    onSuccessCallback({ phone: activePhone, token: authToken });
                 }
             }, 500);
         } else {
             digitInputs.forEach(i => i.classList.add('error'));
             if (statusMsg) {
                 statusMsg.className = 'pim-otp-status error';
-                statusMsg.textContent = responseErrorMsg || 'Invalid OTP code. Please enter the correct code or use 1234.';
+                statusMsg.textContent = responseErrorMsg || 'Invalid OTP code. Please enter the correct code.';
             }
             if (submitBtn) {
                 submitBtn.disabled = false;

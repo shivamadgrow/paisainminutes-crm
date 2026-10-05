@@ -1103,10 +1103,18 @@ document.addEventListener('DOMContentLoaded', function() {
             btnSendOtp.disabled = true;
             btnSendOtp.textContent = 'Sending OTP...';
 
+            // This device is already verified for this number (an OTP is asked once per device, for life): no SMS.
+            if (window.PIMAuth && window.PIMAuth.isVerifiedFor(phone)) {
+                activateStep(3);
+                showApplicationForm(phone);
+                btnSendOtp.disabled = false;
+                btnSendOtp.textContent = 'Send OTP →';
+                return;
+            }
+
             // Open OTP Modal via existing PimOtpService
             if (window.PimOtpService) {
                 window.PimOtpService.open(phone, function(verifiedData) {
-                    try { sessionStorage.setItem('pim_otp_verified_' + phone, 'true'); } catch(e) {}
                     showApplicationForm(phone);
                 });
                 // Re-enable button if modal closed without verifying
@@ -1118,10 +1126,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }, 500);
             } else {
-                // Fallback: no OTP service loaded, proceed directly
-                console.warn('[Apply] PimOtpService not found — proceeding without OTP');
-                showApplicationForm(phone);
+                // The OTP is required: never continue without it.
                 btnSendOtp.disabled = false;
+                btnSendOtp.textContent = 'Send OTP →';
+                activateStep(1);
+                alert('We could not start the verification. Please reload the page and try again.');
             }
         });
     }
@@ -1129,13 +1138,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Auto-proceed if phone already verified in session (e.g. revisit) or prefilled via URL
     var prefillPhone = (applyPhoneInput ? applyPhoneInput.value : '').replace(/\D/g, '');
     if (prefillPhone.length === 10) {
-        try {
-            var alreadyVerified = sessionStorage.getItem('pim_otp_verified_' + prefillPhone);
-            if (alreadyVerified) {
-                activateStep(3);
-                showApplicationForm(prefillPhone);
-            }
-        } catch(e) {}
+        if (window.PIMAuth && window.PIMAuth.isVerifiedFor(prefillPhone)) {
+            activateStep(3);
+            showApplicationForm(prefillPhone);
+        }
     }
 
     // 1. Interactive Pill / Toggle Selector Buttons
@@ -1399,11 +1405,8 @@ document.addEventListener('DOMContentLoaded', function() {
             try { sessionStorage.setItem('pim_salary', salaryVal); } catch(e){}
 
             let hasNavigated = false;
-            let redirectUrl = '/loan-offers.php?phone=' + encodeURIComponent(phoneVal) + 
-                              '&name=' + encodeURIComponent(nameVal) + 
-                              '&salary=' + encodeURIComponent(salaryVal) + 
-                              '&amount=' + encodeURIComponent(loanAmtVal) +
-                              (finalUtmSource ? '&utm_source=' + encodeURIComponent(finalUtmSource) : '');
+            // No phone, name or salary in the URL (F-23): the offers page reads the lead with this device's login.
+            let redirectUrl = '/loan-offers.php';
 
             const navigateNext = () => {
                 if (hasNavigated) return;
@@ -1429,8 +1432,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 navigateNext();
             });
 
-            // Safety timeout after 1.8 seconds max to guarantee navigation
-            setTimeout(navigateNext, 1800);
+            // Safety timeout so the customer is never stuck (the lead request keeps going in the background)
+            setTimeout(navigateNext, 4000);
         });
     }
 });

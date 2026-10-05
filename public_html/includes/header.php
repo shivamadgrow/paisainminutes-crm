@@ -223,6 +223,8 @@ if (!isset($page_og_image) || empty($page_og_image)) {
     </script>
     <!-- Marketing attribution (UTM, gclid/fbclid, referrer) - adds channel data to lead submissions -->
     <script src="/js/attribution.js?v=<?php echo @filemtime(__DIR__ . '/../js/attribution.js') ?: 1; ?>"></script>
+    <!-- Device login for verified customers (OTP once per device; see js/pim-auth.js) -->
+    <script src="/js/pim-auth.js?v=<?php echo @filemtime(__DIR__ . '/../js/pim-auth.js') ?: 1; ?>"></script>
 
     <!-- Comprehensive Agentic & SEO Structured Data (JSON-LD) -->
     <script type="application/ld+json">

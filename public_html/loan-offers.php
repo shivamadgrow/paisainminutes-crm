@@ -12,10 +12,11 @@ $partners = require __DIR__ . '/config/partners.php';
 $leadId = isset($_GET['lead_id']) ? htmlspecialchars(trim($_GET['lead_id'])) : ($_SESSION['pim_lead_id'] ?? 'PIM-' . rand(100000, 999999));
 $affId = getPimAffiliateId();
 
-$phone = isset($_GET['phone']) ? preg_replace('/[^0-9]/', '', trim($_GET['phone'])) : ($_SESSION['pim_lead_phone'] ?? '');
-if (strlen($phone) > 10) {
-    $phone = substr($phone, -10);
-}
+// The phone number is no longer read from (or put into) the URL (F-23). It is only known after the customer's own
+// lookup below, and only its last four digits are shown.
+$phone = '';
+$phoneLast4 = '';
+$lookupNeedsAuth = false;
 
 $userName = isset($_GET['name']) ? htmlspecialchars(trim($_GET['name'])) : ($_SESSION['pim_lead_name'] ?? 'Applicant');
 $userSalaryStr = isset($_GET['salary']) ? trim($_GET['salary']) : ($_SESSION['pim_lead_salary'] ?? '');
@@ -27,44 +28,61 @@ require_once __DIR__ . '/config/env.php';
 $pimNodeApi = rtrim((string) getEnvVal('BACKEND_API_URL', 'https://api.paisainminutes.tech'), '/');
 
 /**
- * Looks the applicant up on the Node server (phone + lead reference). Short timeout; null on any failure
- * so the page falls back to the values in the URL / session.
+ * Looks the applicant up on the Node server with the customer's own device login (cookie pim_at, set by
+ * js/pim-auth.js). The server only answers for the login's own phone (fixes F-26 and F-10). Returns
+ * ['data' => array|null, 'code' => http status]; short timeout, so the page falls back to defaults on any failure.
  */
 if (!function_exists('pimNodeLeadLookup')) {
-    function pimNodeLeadLookup($base, $phone, $leadCode) {
-        if (!function_exists('curl_init') || strlen($phone) !== 10) {
-            return null;
+    function pimNodeLeadLookup($base, $token, $leadCode) {
+        if (!function_exists('curl_init') || $token === '') {
+            return ['data' => null, 'code' => 0];
         }
-        $url = $base . '/api/public/leads/lookup?phone=' . urlencode($phone) . ($leadCode ? '&leadCode=' . urlencode($leadCode) : '');
+        $url = $base . '/api/public/leads/lookup' . ($leadCode ? '?leadCode=' . urlencode($leadCode) : '');
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 1,
             CURLOPT_TIMEOUT => 3,
-            CURLOPT_HTTPHEADER => ['Accept: application/json'],
+            CURLOPT_HTTPHEADER => ['Accept: application/json', 'Authorization: Bearer ' . $token],
         ]);
         $body = curl_exec($ch);
         $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         if ($body === false || $code !== 200) {
-            return null;
+            return ['data' => null, 'code' => $code];
         }
         $json = json_decode($body, true);
-        return (is_array($json) && !empty($json['success']) && isset($json['data']) && is_array($json['data'])) ? $json['data'] : null;
+        $ok = is_array($json) && !empty($json['success']) && isset($json['data']) && is_array($json['data']);
+        return ['data' => $ok ? $json['data'] : null, 'code' => $code];
     }
 }
 
-// If details are missing from the URL/session, fetch them from Node
-if ((empty($userSalaryStr) || empty($userCibilStr) || $userName === 'Applicant') && !empty($phone) && strpos((string) $leadId, 'PIM-') === 0) {
-    $nodeLead = pimNodeLeadLookup($pimNodeApi, $phone, $leadId);
+// The customer's data comes from the Node server with their own login. Without a login cookie the page shows
+// default offers, and (if this device holds a login) asks it to refresh the cookie once and reload.
+$accessCookie = isset($_COOKIE['pim_at']) ? preg_replace('/[^A-Za-z0-9._-]/', '', (string) $_COOKIE['pim_at']) : '';
+$lookupLeadCode = (isset($_GET['lead_id']) && strpos((string) $_GET['lead_id'], 'PIM-') === 0) ? trim((string) $_GET['lead_id']) : '';
+if ($accessCookie === '') {
+    $lookupNeedsAuth = true;
+} else {
+    $lookup = pimNodeLeadLookup($pimNodeApi, $accessCookie, $lookupLeadCode);
+    $nodeLead = $lookup['data'];
+    if ($lookup['code'] === 401) {
+        $lookupNeedsAuth = true;
+    }
     if ($nodeLead) {
-        if (($userName === 'Applicant' || empty($userName)) && !empty($nodeLead['name'])) {
+        if (!empty($nodeLead['lead_id'])) {
+            $leadId = htmlspecialchars((string) $nodeLead['lead_id']);
+        }
+        if (!empty($nodeLead['phone_last4'])) {
+            $phoneLast4 = preg_replace('/\D/', '', (string) $nodeLead['phone_last4']);
+        }
+        if (!empty($nodeLead['name']) && $nodeLead['name'] !== 'Applicant') {
             $userName = htmlspecialchars($nodeLead['name']);
         }
-        if (empty($userSalaryStr) && !empty($nodeLead['salary'])) {
+        if (!empty($nodeLead['salary'])) {
             $userSalaryStr = (string) $nodeLead['salary'];
         }
-        if (empty($userCibilStr) && !empty($nodeLead['cibil'])) {
+        if (!empty($nodeLead['cibil'])) {
             $userCibilStr = (string) $nodeLead['cibil'];
         }
         if (empty($_GET['loan_amount']) && !empty($nodeLead['amount'])) {
@@ -211,6 +229,9 @@ if (!function_exists('getSvgIcon')) {
 }
 
 include 'includes/header.php';
+?>
+<script>window.PIM_NEEDS_AUTH = <?php echo !empty($lookupNeedsAuth) ? 'true' : 'false'; ?>;</script>
+<?php
 ?>
 
 <style>
@@ -774,9 +795,9 @@ include 'includes/header.php';
         <div class="user-badge-bar">
             <span class="pulse-dot"></span>
             <span style="font-weight: 700; color: #fff;"><?php echo !empty($userName) && $userName !== 'Applicant' ? htmlspecialchars($userName) : 'Applicant Profile'; ?></span>
-            <?php if (!empty($phone)): ?>
+            <?php if (!empty($phoneLast4)): ?>
                 <span class="ref-divider">|</span>
-                <span>+91 ******<?php echo htmlspecialchars(substr($phone, -4)); ?></span>
+                <span>+91 ******<?php echo htmlspecialchars($phoneLast4); ?></span>
             <?php endif; ?>
             <span class="ref-divider">|</span>
             <span class="badge-icon-wrap"><?php echo getSvgIcon('shield-check', '', 13, 13); ?></span>
@@ -953,11 +974,11 @@ include 'includes/header.php';
                     </div>
 
                     <!-- Call To Action Button -->
-                    <a href="<?php echo htmlspecialchars($pimNodeApi); ?>/api/public/redirect/<?php echo urlencode($slug); ?>?lead_id=<?php echo urlencode($leadId); ?>&phone=<?php echo urlencode($phone); ?>&ref=<?php echo urlencode($affId); ?>&source=loan_offers" 
+                    <a href="<?php echo htmlspecialchars($pimNodeApi); ?>/api/public/redirect/<?php echo urlencode($slug); ?>?lead_id=<?php echo urlencode($leadId); ?>&ref=<?php echo urlencode($affId); ?>&source=loan_offers" 
                        target="_blank" 
                        rel="noopener"
                        class="btn-apply-partner"
-                       onclick="recordOfferClick('<?php echo htmlspecialchars($slug, ENT_QUOTES); ?>', '<?php echo htmlspecialchars($phone, ENT_QUOTES); ?>', '<?php echo htmlspecialchars($leadId, ENT_QUOTES); ?>')">
+                       onclick="recordOfferClick('<?php echo htmlspecialchars($slug, ENT_QUOTES); ?>', '<?php echo htmlspecialchars($leadId, ENT_QUOTES); ?>')">
                        <span>Apply Now</span>
                        <?php echo getSvgIcon('arrow-right', '', 18, 18); ?>
                     </a>
@@ -1112,7 +1133,7 @@ function filterOffers(filterType, btnEl) {
     });
 }
 
-function recordOfferClick(slug, phone, leadId) {
+function recordOfferClick(slug, leadId) {
     // The redirect route also records the click; this keepalive call makes sure it is logged even if the
     // new tab is slow to open. The server de-duplicates (same partner + lead + source within 10 minutes).
     try {
@@ -1121,7 +1142,6 @@ function recordOfferClick(slug, phone, leadId) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 partner: slug,
-                phone: phone || '',
                 leadId: leadId || '',
                 source: 'loan_offers'
             }),
