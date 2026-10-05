@@ -60,6 +60,7 @@ import {
 import {
   deleteLeadsApi,
   updateLoanApplication,
+  refreshLeadScore,
   submitLoanApplication,
   buildLeadPayload,
   getLendersFromBackend,
@@ -826,6 +827,22 @@ export default function LeadsView({
       showToast('Lender updated.');
     } else {
       showToast(patchRes.error || 'Could not update the lender.', true);
+    }
+  };
+
+  // Manual override of the stored bureau result: one new paid call (a phone is normally checked once, reused 30 days).
+  const [refreshingScoreId, setRefreshingScoreId] = useState(null);
+  const handleRefreshScore = async (lead) => {
+    if (!lead || refreshingScoreId) return;
+    if (!window.confirm('Fetch a new credit score from the bureau? This is a paid call. The stored score is normally reused for 30 days.')) return;
+    setRefreshingScoreId(lead.id);
+    const res = await refreshLeadScore(lead.id);
+    setRefreshingScoreId(null);
+    if (res.success && res.lead) {
+      applyUpdatedLead(lead.id, res.lead);
+      showToast(res.bureau?.found ? `Score refreshed: ${res.bureau.score}.` : 'Bureau has no credit record for this number.');
+    } else {
+      showToast(res.error || 'Could not refresh the score.', true);
     }
   };
 
@@ -2423,6 +2440,23 @@ export default function LeadsView({
                   <div className="text-base sm:text-lg font-extrabold text-emerald-700">
                     {activeOverviewLead.cibilScore && Number(activeOverviewLead.cibilScore) > 0 ? activeOverviewLead.cibilScore : 'Not Available'}
                   </div>
+                  {activeOverviewLead.bureauCheckedAt && (
+                    <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+                      Checked {new Date(activeOverviewLead.bureauCheckedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </div>
+                  )}
+                  {canEditLeads && (
+                    <button
+                      type="button"
+                      onClick={() => handleRefreshScore(activeOverviewLead)}
+                      disabled={refreshingScoreId === activeOverviewLead.id}
+                      className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 hover:text-blue-900 disabled:opacity-50 cursor-pointer"
+                      title="Fetch a new score from the bureau (paid call)"
+                    >
+                      <RotateCw className={`w-3 h-3 ${refreshingScoreId === activeOverviewLead.id ? 'animate-spin' : ''}`} />
+                      {refreshingScoreId === activeOverviewLead.id ? 'Refreshing…' : 'Refresh score'}
+                    </button>
+                  )}
                 </div>
 
                 <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl">
