@@ -33,6 +33,8 @@ import {
 import { exportToCsv } from '../utils/exportCsv';
 import { cleanLoanAmount, cleanSalary, formatToIST, isDateInRange, DATE_RANGE_PRESETS } from '../utils/amountHelpers';
 import { updateLoanApplication, normalizeStatus, formatStatusLabel } from '../utils/apiConfig';
+import { getCurrentUser } from '../utils/authService';
+import { isSuperAdmin } from '../utils/permissions';
 
 export default function CompanyLeadsView({
   companyId,
@@ -40,6 +42,8 @@ export default function CompanyLeadsView({
   setLeads,
   onBackToHub
 }) {
+  const currentUser = getCurrentUser();
+  const canExportData = isSuperAdmin(currentUser);
   const partner = getPartnerMeta(companyId);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -137,19 +141,22 @@ export default function CompanyLeadsView({
     const total = companyLeads.length;
     const fresh = companyLeads.filter(l => normalizeStatus(l.status) === 'FRESH').length;
     const callback = companyLeads.filter(l => normalizeStatus(l.status) === 'CALLBACK').length;
-    const approved = companyLeads.filter(l => {
-      const s = normalizeStatus(l.status);
-      return s === 'APPROVED' || s === 'DISBURSED';
-    }).length;
+    const approved = companyLeads.filter(l => normalizeStatus(l.status) === 'APPROVED').length;
+    const disbursed = companyLeads.filter(l => normalizeStatus(l.status) === 'DISBURSED').length;
+    const interested = companyLeads.filter(l => normalizeStatus(l.status) === 'INTERESTED').length;
     const rejected = companyLeads.filter(l => normalizeStatus(l.status) === 'REJECTED').length;
     const volume = companyLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied || l.amount), 0);
     const avgTicket = total > 0 ? Math.round(volume / total) : 0;
 
-    return { total, fresh, callback, approved, rejected, volume, avgTicket };
+    return { total, fresh, callback, interested, approved, disbursed, rejected, volume, avgTicket };
   }, [companyLeads]);
 
   // Export CSV
   const handleExport = () => {
+    if (!canExportData) {
+      alert('403 Forbidden: Data export is strictly restricted to Super Admin only.');
+      return;
+    }
     if (filteredLeads.length === 0) {
       alert('No leads available to export.');
       return;
@@ -279,13 +286,15 @@ export default function CompanyLeadsView({
             </a>
           )}
 
-          <button
-            onClick={handleExport}
-            className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Export {partner.name} CSV</span>
-          </button>
+          {canExportData && (
+            <button
+              onClick={handleExport}
+              className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer active:scale-95"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Export {partner.name} CSV</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -306,8 +315,12 @@ export default function CompanyLeadsView({
 
         <div className="crm-card bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Approved / Disbursed</span>
-          <div className="text-2xl font-black text-emerald-600 mt-1">{stats.approved}</div>
-          <div className="text-[11px] text-emerald-700 mt-0.5">{stats.total > 0 ? Math.round((stats.approved / stats.total) * 100) : 0}% Conversion rate</div>
+          <div className="text-2xl font-black text-slate-900 mt-1 flex items-baseline gap-1.5">
+            <span className="text-blue-700">{stats.approved}</span>
+            <span className="text-slate-300 font-normal text-lg">/</span>
+            <span className="text-emerald-600">{stats.disbursed}</span>
+          </div>
+          <div className="text-[11px] text-slate-500 mt-0.5">{stats.approved} approved · {stats.disbursed} disbursed ({stats.total > 0 ? Math.round((stats.disbursed / stats.total) * 100) : 0}% Conv)</div>
         </div>
 
         <div className="crm-card bg-white p-4 rounded-2xl shadow-sm border border-slate-200/80">
@@ -379,9 +392,9 @@ export default function CompanyLeadsView({
             { id: 'all', label: `All Status (${companyLeads.length})` },
             { id: 'FRESH', label: `Fresh (${stats.fresh})` },
             { id: 'CALLBACK', label: `Callback (${stats.callback})` },
-            { id: 'INTERESTED', label: 'Interested' },
+            { id: 'INTERESTED', label: `Interested (${stats.interested || 0})` },
             { id: 'APPROVED', label: `Approved (${stats.approved})` },
-            { id: 'DISBURSED', label: 'Disbursed' },
+            { id: 'DISBURSED', label: `Disbursed (${stats.disbursed})` },
             { id: 'REJECTED', label: `Rejected (${stats.rejected})` },
           ].map(btn => (
             <button

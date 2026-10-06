@@ -69,11 +69,11 @@ export default function PartnerPortalView({ currentUser, leads = [], setLeads, o
     const total = scopedLeads.length;
     const clickedCount = scopedLeads.filter(l => ['REDIRECTED', 'CONTACTED', 'APPROVED', 'DISBURSED', 'REJECTED'].includes(l.partnerStatus)).length;
     const contactedCount = scopedLeads.filter(l => l.partnerStatus === 'CONTACTED').length;
-    const approvedCount = scopedLeads.filter(l => l.partnerStatus === 'APPROVED' || l.partnerStatus === 'DISBURSED').length;
+    const approvedCount = scopedLeads.filter(l => l.partnerStatus === 'APPROVED').length;
     const disbursedLeads = scopedLeads.filter(l => l.partnerStatus === 'DISBURSED');
     const disbursedCount = disbursedLeads.length;
     const totalDisbursedAmount = disbursedLeads.reduce((acc, l) => acc + (Number(l.disbursedAmountRupees) || cleanLoanAmount(l.loanAmount || l.applied || 0)), 0);
-    const conversionRate = total > 0 ? ((approvedCount / total) * 100).toFixed(1) : 0;
+    const conversionRate = total > 0 ? ((disbursedCount / total) * 100).toFixed(1) : 0;
     return { total, clickedCount, contactedCount, approvedCount, disbursedCount, totalDisbursedAmount, conversionRate };
   }, [scopedLeads]);
 

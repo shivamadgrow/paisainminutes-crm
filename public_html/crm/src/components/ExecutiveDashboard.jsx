@@ -34,11 +34,12 @@ import {
   CartesianGrid,
   Legend 
 } from 'recharts';
-import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
+import { AFFILIATE_PARTNERS, getServerPartnerId } from '../data/affiliatePartners';
 import { getExecutiveOverview } from '../utils/crmApi';
-import { formatToIST } from '../utils/amountHelpers';
+import { formatToIST, cleanLoanAmount } from '../utils/amountHelpers';
+import { normalizeStatus } from '../utils/apiConfig';
 
-export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub }) {
+export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, leads = [], stats }) {
   // Period filter state: 'this_month' | 'last_month' | 'this_fy' | 'custom'
   const [period, setPeriod] = useState('this_month');
   const [customStart, setCustomStart] = useState(() => {
@@ -113,21 +114,65 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub }
     interested: 'bg-cyan-500'
   }[code] || 'bg-blue-500');
 
-  // Per-partner rows: presentation (colours) from the partner list, numbers from the server
-  const partnerBreakdown = (apiData?.partners || []).map((p) => {
-    const meta = AFFILIATE_PARTNERS.find((x) => x.id === p.slug) || {};
-    return {
-      ...meta,
-      id: p.slug || 'unassigned',
-      name: p.name,
-      leads: p.leads || 0,
-      volume: p.volumeRupees || 0,
-      approved: p.approved || 0,
-      commission: Math.round((p.commissionPaise || 0) / 100),
-      accentColor: meta.accentColor || '#64748B',
-      badgeClass: meta.badgeClass || 'bg-slate-100 text-slate-600 border border-slate-200'
-    };
-  });
+  // Per-partner rows: synchronized with authoritative leads and server data
+  const partnerBreakdown = useMemo(() => {
+    const rawPartners = apiData?.partners || [];
+    const allPartners = [...AFFILIATE_PARTNERS];
+    rawPartners.forEach(p => {
+      if (p && p.slug && !allPartners.some(x => x.id === p.slug)) {
+        allPartners.push({ id: p.slug, name: p.name });
+      }
+    });
+
+    const hasLeadRecords = Array.isArray(leads) && leads.length > 0;
+
+    return allPartners.map((meta) => {
+      const p = rawPartners.find(x => x.slug === meta.id) || {};
+      const partnerSlug = meta.id;
+
+      const pLeads = (leads || []).filter(l => {
+        if (!l) return false;
+        if (l.assignedPartnerSlug && l.assignedPartnerSlug === partnerSlug) return true;
+        if (l.assignedPartnerId && getServerPartnerId(partnerSlug) === l.assignedPartnerId) return true;
+        const comp = String(l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
+        const pName = String(meta.name || '').toLowerCase().replace(/[\s\-_]/g, '');
+        const pCode = String(meta.code || '').toLowerCase().replace(/[\s\-_]/g, '');
+        const pId = String(meta.id || '').toLowerCase().replace(/[\s\-_]/g, '');
+        return Boolean(comp && (comp === pName || comp === pCode || comp === pId));
+      });
+
+      const leadsCount = hasLeadRecords ? pLeads.length : (p.leads || 0);
+      const approvedCount = hasLeadRecords
+        ? pLeads.filter(l => normalizeStatus(l.status) === 'APPROVED').length
+        : (p.approved || 0);
+      const disbursedCount = hasLeadRecords
+        ? pLeads.filter(l => normalizeStatus(l.status) === 'DISBURSED').length
+        : (p.disbursed || (p.volumeRupees > 0 ? 1 : 0));
+      const volumeAmt = hasLeadRecords
+        ? pLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied || 0), 0)
+        : (p.volumeRupees || 0);
+      const disbursalAmt = hasLeadRecords
+        ? pLeads.filter(l => normalizeStatus(l.status) === 'DISBURSED').reduce((sum, l) => sum + cleanLoanAmount(l.disbursedAmountRupees || l.loanAmount || l.applied || 0), 0)
+        : (p.disbursalRupees || 0);
+      const commissionPct = meta.commissionPct || 0.06;
+      const commissionAmt = disbursalAmt > 0
+        ? Math.round(disbursalAmt * commissionPct)
+        : (p.commissionPaise ? Math.round(p.commissionPaise / 100) : 0);
+
+      return {
+        ...meta,
+        id: meta.id,
+        name: p.name || meta.name,
+        leads: leadsCount,
+        volume: volumeAmt,
+        approved: approvedCount,
+        disbursed: disbursedCount,
+        commission: commissionAmt,
+        accentColor: meta.accentColor || '#64748B',
+        badgeClass: meta.badgeClass || 'bg-slate-100 text-slate-600 border border-slate-200'
+      };
+    });
+  }, [apiData, leads]);
 
   const leadsOverTime = apiData?.leadsOverTime || [];
   const recentActivity = (apiData?.recentActivity || []).map((a, idx) => ({
@@ -291,32 +336,34 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub }
             </div>
           </div>
           <div className="text-[11px] text-slate-500 mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2">
-            <span className="text-blue-700 font-bold">{freshCount} Fresh</span>
+            <span className="text-blue-700 font-bold">{stats ? stats.freshCount : freshCount} Fresh</span>
             <span>·</span>
-            <span className="text-emerald-600 font-bold">{totalApproved} Approved</span>
+            <span className="text-blue-600 font-bold">{stats ? stats.approvedCount : totalApproved} Approved</span>
+            <span>·</span>
+            <span className="text-emerald-600 font-bold">{stats ? stats.disbursedCount : 0} Disbursed</span>
           </div>
         </div>
 
-        {/* Card 2: [NEW] TOTAL APPROVED */}
+        {/* Card 2: TOTAL APPROVED */}
         <div className="crm-card p-4 bg-white rounded-2xl shadow-2xs border border-slate-200/90 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
                 TOTAL APPROVED
               </span>
-              <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
                 <CheckCircle className="w-3.5 h-3.5" />
               </div>
             </div>
             <div className="flex items-baseline gap-2">
               <div className="text-2xl font-black text-slate-900">
-                {totalApproved}
+                {stats ? stats.approvedCount : totalApproved}
               </div>
               <TrendBadge value={trends.totalApproved} />
             </div>
           </div>
           <div className="text-[11px] text-slate-500 mt-2 border-t border-slate-100 pt-2 truncate">
-            <span className="font-semibold text-emerald-700">{totalApproved}</span> of <span className="font-semibold">{totalLeads}</span> applied
+            <span className="font-semibold text-blue-700">{stats ? stats.approvedCount : totalApproved}</span> approved · <span className="font-semibold text-emerald-700">{stats ? stats.disbursedCount : 0}</span> disbursed
           </div>
         </div>
 
@@ -452,7 +499,7 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub }
                   Volume: <span className="font-bold text-slate-800">₹{Number(volumeAmt || 0).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="text-[11px] text-slate-500 mt-0.5">
-                  Approved: <span className="font-bold text-emerald-700">{approvedCount || 0}</span>
+                  Approved: <span className="font-bold text-blue-700">{approvedCount || 0}</span> · Disbursed: <span className="font-bold text-emerald-700">{p.disbursed || 0}</span>
                 </div>
                 <div className="text-[11px] text-slate-500 mt-0.5">
                   Commission: <span className="font-bold text-slate-800">₹{Number(commissionAmt || 0).toLocaleString('en-IN')}</span>

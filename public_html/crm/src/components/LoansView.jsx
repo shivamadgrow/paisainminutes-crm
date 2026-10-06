@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { FileSpreadsheet, RefreshCw, Search, Calendar, Inbox } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
+import { getCurrentUser } from '../utils/authService';
+import { isSuperAdmin } from '../utils/permissions';
 
 export default function LoansView({ type }) {
+  const currentUser = getCurrentUser();
+  const canExportData = isSuperAdmin(currentUser);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('All time');
 
@@ -77,17 +81,19 @@ export default function LoansView({ type }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => {
-              const headers = ['Loan No', 'Applicant', 'Mobile', 'Principal', 'Disbursed Amount', 'Interest', 'Outstanding', 'Collected', 'Status'];
-              exportToCsv(`paisa-crm-${type}-${new Date().toISOString().slice(0, 10)}.csv`, headers, []);
-            }}
-            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
-            title="Export loans to CSV"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Excel</span>
-          </button>
+          {canExportData && (
+            <button 
+              onClick={() => {
+                const headers = ['Loan No', 'Applicant', 'Mobile', 'Principal', 'Disbursed Amount', 'Interest', 'Outstanding', 'Collected', 'Status'];
+                exportToCsv(`paisa-crm-${type}-${new Date().toISOString().slice(0, 10)}.csv`, headers, []);
+              }}
+              className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
+              title="Export loans to CSV"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Excel</span>
+            </button>
+          )}
           <button
             onClick={() => alert(`Refreshed ${config.title}.`)}
             className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"

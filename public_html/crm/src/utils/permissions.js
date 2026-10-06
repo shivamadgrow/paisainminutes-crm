@@ -1,11 +1,40 @@
 /**
- * Menu / button visibility helpers. These only hide UI for convenience: the Node server re-checks every
- * request against the permissions of the signed-in account and is the real authority.
+ * Menu / button visibility helpers.
+ * Security Note: Data export functionality across all modules is strictly restricted to Super Admin only.
  */
+
+export function isSuperAdmin(user) {
+  if (!user) return false;
+  const sRole = String(user.serverRole || '').toUpperCase();
+  const uRole = String(user.role || '').toUpperCase();
+  return sRole === 'SUPER_ADMIN' || uRole === 'SUPER_ADMIN' || uRole === 'SUPER ADMIN';
+}
+
+export function isExportPermission(permission) {
+  if (!permission) return false;
+  const p = String(permission).toLowerCase();
+  return (
+    p === 'reports.export' ||
+    p === 'leads.export' ||
+    p === 'dashboards.export' ||
+    p === 'export' ||
+    p === 'exportdata' ||
+    (p.includes('export') && !p.includes('build'))
+  );
+}
+
+export function canExport(user) {
+  return isSuperAdmin(user);
+}
 
 export function hasPermission(user, permission) {
   if (!user) return false;
-  if (user.serverRole === 'SUPER_ADMIN') return true;
+  const isSuper = isSuperAdmin(user);
+  // All export actions are strictly restricted to Super Admin only
+  if (isExportPermission(permission)) {
+    return isSuper;
+  }
+  if (isSuper) return true;
   const list = Array.isArray(user.permissions) ? user.permissions : [];
   return list.includes(permission);
 }
@@ -35,12 +64,13 @@ const TAB_PERMISSIONS = {
   'admin-integrations': ['settings.manage'],
   'admin-notifications': ['settings.manage'],
   'admin-settings': ['settings.manage'],
-  reports: ['reports.build', 'reports.export', 'leads.read'],
+  reports: ['reports.build', 'leads.read'],
 };
 
 const LEAD_TABS = new Set([
   'all-leads', 'fresh', 'callback', 'no-answer', 'interested', 'not-interested',
-  'approved', 'rejected', 'rupay91', 'mobile-only', 'duplicate-leads',
+  'approved', 'disbursed', 'rejected', 'rupay91', 'mobile-only', 'duplicate-leads',
+  'organization',
 ]);
 
 export function canViewTab(user, tab) {

@@ -1,10 +1,33 @@
+import { isSuperAdmin } from './permissions.js';
+
+function getCurrentUserSession() {
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      const raw = sessionStorage.getItem('paisa_crm_user');
+      if (raw) return JSON.parse(raw);
+    }
+  } catch (e) {
+    // ignore
+  }
+  return null;
+}
+
 /**
  * Utility to export JavaScript array of objects to Excel-compatible CSV file.
+ * Security Note: Strictly restricted to Super Admin role.
  */
 export function exportToCsv(filename, headers, rows) {
+  const user = getCurrentUserSession();
+  if (!isSuperAdmin(user)) {
+    const errorMsg = '403 Forbidden: Data export is strictly restricted to Super Admin.';
+    console.error(errorMsg);
+    if (typeof alert === 'function') alert(errorMsg);
+    return { ok: false, status: 403, error: errorMsg };
+  }
+
   if (!rows || rows.length === 0) {
     alert('No data records available to export.');
-    return;
+    return { ok: false, status: 400, error: 'No data records available to export.' };
   }
 
   const escapeCell = (cell) => {

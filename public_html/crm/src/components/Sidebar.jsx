@@ -10,6 +10,7 @@ import {
   DollarSign, 
   Send, 
   CheckCircle2, 
+  CheckCheck,
   Receipt, 
   Sliders, 
   Users, 
@@ -541,15 +542,28 @@ export default function Sidebar({
               </button>
               )}
 
-              {/* Approved & Converted */}
+              {/* Approved */}
               {show('approved') && (
               <button onClick={() => handleNavClick('approved')} className={getNavItemClass('approved')}>
                 <div className="flex items-center gap-2.5">
-                  <CheckCircle2 className="w-4 h-4 text-slate-400 group-hover:text-slate-600" />
-                  <span>Approved & Converted</span>
+                  <CheckCircle2 className="w-4 h-4 text-slate-400 group-hover:text-emerald-600" />
+                  <span>Approved</span>
                 </div>
                 <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700">
                   {leadCounts?.approved ?? 0}
+                </span>
+              </button>
+              )}
+
+              {/* Disbursed */}
+              {show('disbursed') && (
+              <button onClick={() => handleNavClick('disbursed')} className={getNavItemClass('disbursed')}>
+                <div className="flex items-center gap-2.5">
+                  <CheckCheck className="w-4 h-4 text-slate-400 group-hover:text-teal-600" />
+                  <span>Disbursed</span>
+                </div>
+                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-teal-50 text-teal-700">
+                  {leadCounts?.disbursed ?? 0}
                 </span>
               </button>
               )}

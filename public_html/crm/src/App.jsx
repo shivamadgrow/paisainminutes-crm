@@ -227,10 +227,8 @@ export default function App() {
     const fresh = fullLeads.filter(l => normalizeStatus(l.status) === 'FRESH').length;
     const callback = fullLeads.filter(l => normalizeStatus(l.status) === 'CALLBACK').length;
     const interested = fullLeads.filter(l => normalizeStatus(l.status) === 'INTERESTED').length;
-    const approved = fullLeads.filter(l => {
-      const s = normalizeStatus(l.status);
-      return s === 'APPROVED' || s === 'DISBURSED';
-    }).length;
+    const approved = fullLeads.filter(l => normalizeStatus(l.status) === 'APPROVED').length;
+    const disbursed = fullLeads.filter(l => normalizeStatus(l.status) === 'DISBURSED').length;
     const rejected = fullLeads.filter(l => normalizeStatus(l.status) === 'REJECTED').length;
 
     // Mobile-only mini-form dropoffs
@@ -259,6 +257,7 @@ export default function App() {
       callback,
       interested,
       approved,
+      disbursed,
       rejected,
       duplicateLeads
     };
@@ -275,25 +274,25 @@ export default function App() {
 
   // Dashboard Stats calculation
   const stats = useMemo(() => {
-    const approvedList = leads.filter(l => {
-      const s = normalizeStatus(l.status);
-      return s === 'APPROVED' || s === 'DISBURSED';
-    });
+    const approvedList = leads.filter(l => normalizeStatus(l.status) === 'APPROVED');
+    const disbursedList = leads.filter(l => normalizeStatus(l.status) === 'DISBURSED');
     const freshList = leads.filter(l => normalizeStatus(l.status) === 'FRESH');
     const callbackList = leads.filter(l => normalizeStatus(l.status) === 'CALLBACK');
 
     const totalApplied = leads.reduce((sum, item) => sum + (Number(item.loanAmount || item.applied) || 0), 0);
     const approvedAmount = approvedList.reduce((sum, item) => sum + (Number(item.loanAmount || item.applied) || 0), 0);
+    const disbursedAmount = disbursedList.reduce((sum, item) => sum + (Number(item.disbursedAmountRupees || item.disbursedAmount || item.loanAmount || item.applied) || 0), 0);
 
     return {
       totalLeads: leads.length,
       freshCount: freshList.length,
       callbackCount: callbackList.length,
       approvedCount: approvedList.length,
-      disbursedCount: approvedList.length,
-      disbursedAmount: approvedAmount,
+      disbursedCount: disbursedList.length,
+      disbursedAmount,
+      approvedAmount,
       totalVolume: totalApplied,
-      conversionRate: leads.length > 0 ? ((approvedList.length / leads.length) * 100).toFixed(0) : 0
+      conversionRate: leads.length > 0 ? ((disbursedList.length / leads.length) * 100).toFixed(0) : 0
     };
   }, [leads]);
 
@@ -460,10 +459,12 @@ export default function App() {
       case 'interested':
       case 'not-interested':
       case 'approved':
+      case 'disbursed':
       case 'rejected':
       case 'rupay91':
       case 'mobile-only':
       case 'duplicate-leads':
+      case 'organization':
         return (
           <LeadsView 
             leads={leads} 

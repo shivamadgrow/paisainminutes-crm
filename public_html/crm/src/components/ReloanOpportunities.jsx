@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { FileSpreadsheet, RefreshCw, ChevronRight, ChevronDown, PhoneCall } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
+import { getCurrentUser } from '../utils/authService';
+import { isSuperAdmin } from '../utils/permissions';
 
 export default function ReloanOpportunities() {
+  const currentUser = getCurrentUser();
+  const canExportData = isSuperAdmin(currentUser);
   const [showCalculation, setShowCalculation] = useState(false);
 
   return (
@@ -20,17 +24,19 @@ export default function ReloanOpportunities() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              const headers = ['Month', 'Maturing Loans', 'Eligible for Re-loan', 'Avg Amount', 'Status'];
-              exportToCsv(`paisa-crm-reloan-opportunities-${new Date().toISOString().slice(0, 10)}.csv`, headers, []);
-            }}
-            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
-            title="Export Re-loan opportunities to Excel"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Excel</span>
-          </button>
+          {canExportData && (
+            <button
+              onClick={() => {
+                const headers = ['Month', 'Maturing Loans', 'Eligible for Re-loan', 'Avg Amount', 'Status'];
+                exportToCsv(`paisa-crm-reloan-opportunities-${new Date().toISOString().slice(0, 10)}.csv`, headers, []);
+              }}
+              className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
+              title="Export Re-loan opportunities to Excel"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Excel</span>
+            </button>
+          )}
           <button
             onClick={() => alert("Refreshed Re-loan opportunities.")}
             className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"

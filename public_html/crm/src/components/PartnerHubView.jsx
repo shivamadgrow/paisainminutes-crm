@@ -30,9 +30,10 @@ export default function PartnerHubView({ leads = [], onSelectCompany, onOpenTest
     const totalCount = partnerLeads.length;
     const totalVolume = partnerLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied), 0);
     const freshCount = partnerLeads.filter(l => normalizeStatus(l.status) === 'FRESH').length;
-    const approvedCount = partnerLeads.filter(l => ['APPROVED', 'DISBURSED'].includes(normalizeStatus(l.status))).length;
+    const approvedCount = partnerLeads.filter(l => normalizeStatus(l.status) === 'APPROVED').length;
+    const disbursedCount = partnerLeads.filter(l => normalizeStatus(l.status) === 'DISBURSED').length;
     const avgTicket = totalCount > 0 ? Math.round(totalVolume / totalCount) : 0;
-    const conversionRate = totalCount > 0 ? Math.round((approvedCount / totalCount) * 100) : 0;
+    const conversionRate = totalCount > 0 ? Math.round((disbursedCount / totalCount) * 100) : 0;
 
     return {
       ...partner,
@@ -41,6 +42,7 @@ export default function PartnerHubView({ leads = [], onSelectCompany, onOpenTest
       totalVolume,
       freshCount,
       approvedCount,
+      disbursedCount,
       avgTicket,
       conversionRate
     };

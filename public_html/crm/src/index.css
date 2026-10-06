@@ -58,6 +58,40 @@
   background: #64748b !important;
 }
 
+/* Specific visible horizontal scrollbar for Lead Status Filter */
+.status-filter-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #f1f5f9;
+}
+.status-filter-wrapper::-webkit-scrollbar {
+  height: 8px !important;
+  display: block !important;
+}
+.status-filter-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 9999px !important;
+}
+.status-filter-wrapper::-webkit-scrollbar-thumb {
+  background: #94a3b8 !important;
+  border-radius: 9999px !important;
+  border: 2px solid #f1f5f9 !important;
+}
+.status-filter-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+}
+.status-filter-list {
+  display: flex;
+  flex-wrap: nowrap;
+  width: max-content;
+  gap: 8px;
+}
+
 
 /* Card hover animation */
 .crm-card {

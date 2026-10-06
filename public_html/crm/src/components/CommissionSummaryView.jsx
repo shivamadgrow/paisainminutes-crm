@@ -14,11 +14,17 @@ import {
   Calendar,
   Building2
 } from 'lucide-react';
-import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
+import { AFFILIATE_PARTNERS, getServerPartnerId } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
 import { getPartnerKpiSummary } from '../utils/crmApi';
+import { cleanLoanAmount } from '../utils/amountHelpers';
+import { normalizeStatus } from '../utils/apiConfig';
+import { getCurrentUser } from '../utils/authService';
+import { isSuperAdmin } from '../utils/permissions';
 
-export default function CommissionSummaryView({ onSelectCompany }) {
+export default function CommissionSummaryView({ onSelectCompany, leads = [] }) {
+  const currentUser = getCurrentUser();
+  const canExportData = isSuperAdmin(currentUser);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [sortField, setSortField] = useState('commissionEarned');
@@ -28,8 +34,7 @@ export default function CommissionSummaryView({ onSelectCompany }) {
   const [loadError, setLoadError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Per-partner numbers come from the server's partner KPI report (this financial year, IST); nothing is
-  // recomputed in the browser, and a partner's payment status is derived by the server from settlements.
+  // Per-partner numbers come from the authoritative leads data and the server's partner KPI report (settlements)
   const loadKpi = async () => {
     setIsLoading(true);
     const res = await getPartnerKpiSummary({
@@ -52,34 +57,92 @@ export default function CommissionSummaryView({ onSelectCompany }) {
   const rupees = (paise) => Math.round((Number(paise) || 0) / 100);
 
   const partnerData = useMemo(() => {
-    return ((kpi && kpi.partners) || []).map(sp => {
-      const meta = AFFILIATE_PARTNERS.find(p => p.id === sp.slug) || {};
+    const serverPartners = (kpi && Array.isArray(kpi.partners)) ? kpi.partners : [];
+    const allPartners = [...AFFILIATE_PARTNERS];
+    serverPartners.forEach(sp => {
+      if (sp && sp.slug && !allPartners.some(p => p.id === sp.slug)) {
+        allPartners.push({
+          id: sp.slug,
+          name: sp.name,
+          code: String(sp.slug).toUpperCase(),
+          accentColor: '#64748B',
+          commissionRate: `${Number(sp.commissionRatePercent || 0).toFixed(1)}%`,
+          commissionPct: (Number(sp.commissionRatePercent) || 0) / 100
+        });
+      }
+    });
+
+    return allPartners.map(meta => {
+      const sp = serverPartners.find(p => p.slug === meta.id || p.id === meta.id);
+      const partnerSlug = meta.id;
+
+      // Match leads from the authoritative leads array
+      const pLeads = (leads || []).filter(l => {
+        if (!l) return false;
+        if (l.assignedPartnerSlug && l.assignedPartnerSlug === partnerSlug) return true;
+        if (l.assignedPartnerId && getServerPartnerId(partnerSlug) === l.assignedPartnerId) return true;
+        const comp = String(l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
+        const pName = String(meta.name || '').toLowerCase().replace(/[\s\-_]/g, '');
+        const pCode = String(meta.code || '').toLowerCase().replace(/[\s\-_]/g, '');
+        const pId = String(meta.id || '').toLowerCase().replace(/[\s\-_]/g, '');
+        return Boolean(comp && (comp === pName || comp === pCode || comp === pId));
+      });
+
+      const hasLeadRecords = Array.isArray(leads) && leads.length > 0;
+      const leadsSent = hasLeadRecords ? pLeads.length : (Number(sp?.leadsSent) || 0);
+      const approved = hasLeadRecords
+        ? pLeads.filter(l => normalizeStatus(l.status) === 'APPROVED').length
+        : (Number(sp?.approved) || 0);
+      const disbursed = hasLeadRecords
+        ? pLeads.filter(l => normalizeStatus(l.status) === 'DISBURSED').length
+        : (sp?.disbursalPaise > 0 ? 1 : 0);
+
+      const disbursalFromLeads = pLeads
+        .filter(l => normalizeStatus(l.status) === 'DISBURSED')
+        .reduce((sum, l) => sum + cleanLoanAmount(l.disbursedAmountRupees || l.disbursedAmount || l.loanAmount || l.applied || 0), 0);
+
+      const disbursal = hasLeadRecords
+        ? disbursalFromLeads
+        : rupees(sp?.disbursalPaise);
+
+      const commissionRateNum = sp?.commissionRatePercent !== undefined && sp?.commissionRatePercent !== null
+        ? Number(sp.commissionRatePercent)
+        : (meta.commissionPct ? meta.commissionPct * 100 : 6.0);
+
+      const commissionEarned = disbursal > 0
+        ? Math.round(disbursal * (commissionRateNum / 100))
+        : (hasLeadRecords ? 0 : rupees(sp?.commissionEarnedPaise));
+
+      const conversionRate = leadsSent > 0 ? Math.round((disbursed / leadsSent) * 100) : 0;
+
       return {
         ...meta,
-        id: sp.slug || sp.id,
-        name: sp.name,
-        code: meta.code || String(sp.slug || '').toUpperCase(),
-        leadsSent: Number(sp.leadsSent) || 0,
-        approved: Number(sp.approved) || 0,
-        conversionRate: Number(sp.conversionRate) || 0,
-        disbursal: rupees(sp.disbursalPaise),
-        commissionEarned: rupees(sp.commissionEarnedPaise),
-        commissionRate: `${Number(sp.commissionRatePercent || 0).toFixed(1)}%`,
-        paymentStatus: sp.paymentStatus === 'None' ? 'Pending' : (sp.paymentStatus || 'Pending')
+        id: meta.id,
+        name: sp?.name || meta.name,
+        code: meta.code || String(meta.id || '').toUpperCase(),
+        leadsSent,
+        approved,
+        disbursed,
+        conversionRate,
+        disbursal,
+        commissionEarned,
+        commissionRate: `${commissionRateNum.toFixed(1)}%`,
+        paymentStatus: sp?.paymentStatus === 'None' ? 'Pending' : (sp?.paymentStatus || 'Pending')
       };
     });
-  }, [kpi]);
+  }, [kpi, leads]);
 
   // Overall totals
   const totals = useMemo(() => {
     const leadsSent = partnerData.reduce((s, p) => s + p.leadsSent, 0);
     const approved = partnerData.reduce((s, p) => s + p.approved, 0);
+    const disbursed = partnerData.reduce((s, p) => s + p.disbursed, 0);
     const disbursal = partnerData.reduce((s, p) => s + p.disbursal, 0);
     const commissionEarned = partnerData.reduce((s, p) => s + p.commissionEarned, 0);
     const received = partnerData.filter(p => p.paymentStatus === 'Paid').reduce((s, p) => s + p.commissionEarned, 0);
     const pending = partnerData.filter(p => p.paymentStatus !== 'Paid').reduce((s, p) => s + p.commissionEarned, 0);
 
-    return { leadsSent, approved, disbursal, commissionEarned, received, pending };
+    return { leadsSent, approved, disbursed, disbursal, commissionEarned, received, pending };
   }, [partnerData]);
 
   // Filter and sort
@@ -118,12 +181,18 @@ export default function CommissionSummaryView({ onSelectCompany }) {
   };
 
   const handleExportCsv = () => {
-    const headers = ['Partner Name', 'Code', 'Leads Sent', 'Approved Leads', 'Conversion Rate %', 'Total Disbursal (INR)', 'Commission Rate', 'Commission Earned (INR)', 'Payment Status'];
+    if (!canExportData) {
+      alert('403 Forbidden: Data export is strictly restricted to Super Admin only.');
+      return;
+    }
+
+    const headers = ['Partner Name', 'Code', 'Leads Sent', 'Approved Leads', 'Disbursed Leads', 'Conversion Rate %', 'Total Disbursal (INR)', 'Commission Rate', 'Commission Earned (INR)', 'Payment Status'];
     const rows = filteredAndSorted.map(p => [
       p.name,
       p.code,
       p.leadsSent,
       p.approved,
+      p.disbursed,
       `${p.conversionRate}%`,
       p.disbursal,
       p.commissionRate,
@@ -184,13 +253,15 @@ export default function CommissionSummaryView({ onSelectCompany }) {
           </p>
         </div>
 
-        <button
-          onClick={handleExportCsv}
-          className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
-        >
-          <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-          <span>Export Excel</span>
-        </button>
+        {canExportData && (
+          <button
+            onClick={handleExportCsv}
+            className="px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span>Export Excel</span>
+          </button>
+        )}
       </div>
 
       {/* Primary KPI Row */}
@@ -279,6 +350,12 @@ export default function CommissionSummaryView({ onSelectCompany }) {
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
+                <th className="py-3 px-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('disbursed')}>
+                  <div className="flex items-center gap-1">
+                    <span>Disbursed</span>
+                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                  </div>
+                </th>
                 <th className="py-3 px-4 cursor-pointer hover:bg-slate-100" onClick={() => handleSort('conversionRate')}>
                   <div className="flex items-center gap-1">
                     <span>Conv. Rate %</span>
@@ -304,7 +381,7 @@ export default function CommissionSummaryView({ onSelectCompany }) {
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {filteredAndSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400">
+                  <td colSpan={9} className="py-8 text-center text-slate-400">
                     No partner records found.
                   </td>
                 </tr>
@@ -333,8 +410,11 @@ export default function CommissionSummaryView({ onSelectCompany }) {
                     <td className="py-3.5 px-4 font-mono font-medium">
                       {partner.leadsSent > 0 ? partner.leadsSent : '0'}
                     </td>
-                    <td className="py-3.5 px-4 font-mono font-bold text-emerald-700">
+                    <td className="py-3.5 px-4 font-mono font-bold text-blue-700">
                       {partner.approved > 0 ? partner.approved : '0'}
+                    </td>
+                    <td className="py-3.5 px-4 font-mono font-bold text-emerald-700">
+                      {partner.disbursed > 0 ? partner.disbursed : '0'}
                     </td>
                     <td className="py-3.5 px-4 font-mono">
                       {partner.leadsSent > 0 ? `${partner.conversionRate}%` : '—'}

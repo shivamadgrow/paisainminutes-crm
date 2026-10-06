@@ -19,8 +19,12 @@ import { exportToCsv } from '../utils/exportCsv';
 import { cleanLoanAmount, cleanSalary } from '../utils/amountHelpers';
 import { normalizeStatus } from '../utils/apiConfig';
 import { getPartnerKpiSummary } from '../utils/crmApi';
+import { getCurrentUser } from '../utils/authService';
+import { isSuperAdmin } from '../utils/permissions';
 
 export default function ReportsView({ leads = [] }) {
+  const currentUser = getCurrentUser();
+  const canExportData = isSuperAdmin(currentUser);
   const [partnerFilter, setPartnerFilter] = useState('All');
   const [stageFilter, setStageFilter] = useState('All');
   const [commissionStatusFilter, setCommissionStatusFilter] = useState('All');
@@ -56,7 +60,7 @@ export default function ReportsView({ leads = [] }) {
       if (stageFilter !== 'All') {
         const wanted = normalizeStatus(stageFilter);
         const current = normalizeStatus(l.status);
-        if (wanted === 'APPROVED' ? !['APPROVED', 'DISBURSED'].includes(current) : current !== wanted) return false;
+        if (current !== wanted) return false;
       }
 
       // Commission status filter
@@ -80,19 +84,26 @@ export default function ReportsView({ leads = [] }) {
   const metrics = useMemo(() => {
     const totalCount = filteredData.length;
     const totalApplied = filteredData.reduce((s, l) => s + cleanLoanAmount(l.loanAmount || l.applied || 0), 0);
-    const approvedLeads = filteredData.filter(l => ['APPROVED', 'DISBURSED'].includes(normalizeStatus(l.status)));
+    const approvedLeads = filteredData.filter(l => normalizeStatus(l.status) === 'APPROVED');
+    const disbursedLeads = filteredData.filter(l => normalizeStatus(l.status) === 'DISBURSED');
     const approvedCount = approvedLeads.length;
-    const approvedVolume = approvedLeads.reduce((s, l) => s + cleanLoanAmount(l.disbursedAmountRupees || l.loanAmount || l.applied || 0), 0);
-    // Estimate at each partner's own commission rate (from the server), not a flat guess
-    const estimatedCommission = Math.round(approvedLeads.reduce((s, l) => {
+    const disbursedCount = disbursedLeads.length;
+    const disbursedVolume = disbursedLeads.reduce((s, l) => s + cleanLoanAmount(l.disbursedAmountRupees || l.loanAmount || l.applied || 0), 0);
+    // Commission earned on disbursed loans only
+    const estimatedCommission = Math.round(disbursedLeads.reduce((s, l) => {
       const partner = AFFILIATE_PARTNERS.find(p => p.id === l.assignedPartnerSlug);
-      return s + cleanLoanAmount(l.disbursedAmountRupees || l.loanAmount || l.applied || 0) * ((partner && partner.commissionPct) || 0);
+      return s + cleanLoanAmount(l.disbursedAmountRupees || l.loanAmount || l.applied || 0) * ((partner && partner.commissionPct) || 0.06);
     }, 0));
 
-    return { totalCount, totalApplied, approvedCount, approvedVolume, estimatedCommission };
+    return { totalCount, totalApplied, approvedCount, disbursedCount, disbursedVolume, estimatedCommission };
   }, [filteredData]);
 
   const handleExportCsv = () => {
+    if (!canExportData) {
+      alert('403 Forbidden: Data export is strictly restricted to Super Admin only.');
+      return;
+    }
+
     const headers = [
       'Lead ID',
       'Applicant Name',
@@ -139,13 +150,16 @@ export default function ReportsView({ leads = [] }) {
           </p>
         </div>
 
-        <button
-          onClick={handleExportCsv}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-        >
-          <FileSpreadsheet className="w-4 h-4" />
-          <span>Export Excel / CSV ({filteredData.length})</span>
-        </button>
+        {canExportData && (
+          <button
+            onClick={handleExportCsv}
+            id="btn-export-reports"
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Export Data ({filteredData.length})</span>
+          </button>
+        )}
       </div>
 
       {/* Query Filter Builder Panel */}
@@ -182,7 +196,9 @@ export default function ReportsView({ leads = [] }) {
               <option value="All">All Lead Stages</option>
               <option value="fresh">Fresh Applications</option>
               <option value="callback">Callback</option>
-              <option value="approved">Approved & Converted</option>
+              <option value="interested">Interested</option>
+              <option value="approved">Approved</option>
+              <option value="disbursed">Disbursed</option>
               <option value="rejected">Rejected / Drop-off</option>
             </select>
           </div>
@@ -234,20 +250,25 @@ export default function ReportsView({ leads = [] }) {
       </div>
 
       {/* Aggregate Metrics Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-5 gap-4">
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Filtered Leads</div>
           <div className="text-2xl font-black text-[#0A3977] mt-1">{metrics.totalCount}</div>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Approved Disbursals</div>
-          <div className="text-2xl font-black text-emerald-600 mt-1">{metrics.approvedCount}</div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Approved</div>
+          <div className="text-2xl font-black text-blue-600 mt-1">{metrics.approvedCount}</div>
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
+          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Disbursed</div>
+          <div className="text-2xl font-black text-emerald-600 mt-1">{metrics.disbursedCount}</div>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Funded Loan Volume</div>
-          <div className="text-2xl font-black text-slate-900 mt-1">₹{(Number(metrics.approvedVolume || 0) / 100000).toFixed(2)} L</div>
+          <div className="text-2xl font-black text-slate-900 mt-1">₹{(Number(metrics.disbursedVolume || 0) / 100000).toFixed(2)} L</div>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">

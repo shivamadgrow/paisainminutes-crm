@@ -508,18 +508,20 @@ export default function StaffView({ onSwitchUser, onPreviewPartner, currentUser 
               />
             </div>
 
-            <button 
-              onClick={() => {
-                const headers = ['User Name', 'Email', 'Role', 'Branch', 'Status', 'Last Login', 'Created Date'];
-                const rows = filteredStaff.map(s => [s.name, s.email, s.role, s.branch, s.status, s.lastLogin, s.created]);
-                exportToCsv(`paisa-crm-staff-users-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
-              }}
-              className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
-              title="Export Staff Users to Excel"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5" />
-              <span>Excel</span>
-            </button>
+            {isSuperAdmin(currentUser) && (
+              <button 
+                onClick={() => {
+                  const headers = ['User Name', 'Email', 'Role', 'Branch', 'Status', 'Last Login', 'Created Date'];
+                  const rows = filteredStaff.map(s => [s.name, s.email, s.role, s.branch, s.status, s.lastLogin, s.created]);
+                  exportToCsv(`paisa-crm-staff-users-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+                }}
+                className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
+                title="Export Staff Users to Excel"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Excel</span>
+              </button>
+            )}
           </div>
 
           {/* Staff Table Box */}

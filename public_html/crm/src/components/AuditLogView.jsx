@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { FileSpreadsheet, Search, Filter, Clock, ShieldCheck, Activity, Calendar } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
 import { fetchAllPages } from '../utils/crmApi';
+import { getCurrentUser } from '../utils/authService';
+import { isSuperAdmin } from '../utils/permissions';
 
 // Server audit entity -> the module names used by the filter
 const ENTITY_MODULE = {
@@ -44,6 +46,8 @@ const mapAuditLog = (l) => {
 };
 
 export default function AuditLogView() {
+  const currentUser = getCurrentUser();
+  const canExportData = isSuperAdmin(currentUser);
   const [logs, setLogs] = useState([]);
   const [loadError, setLoadError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -90,6 +94,10 @@ export default function AuditLogView() {
   });
 
   const handleExportCsv = () => {
+    if (!canExportData) {
+      alert('403 Forbidden: Data export is strictly restricted to Super Admin only.');
+      return;
+    }
     const headers = ['Timestamp', 'Who (User / Actor)', 'Module', 'Action Type', 'Activity Description'];
     const rows = filteredLogs.map(l => [l.when, l.who, l.module, l.type, l.activity]);
     exportToCsv(`paisa-crm-activity-log-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
@@ -119,13 +127,15 @@ export default function AuditLogView() {
           </p>
         </div>
 
-        <button 
-          onClick={handleExportCsv}
-          className="px-3.5 py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
-        >
-          <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-          <span>Export Excel</span>
-        </button>
+        {canExportData && (
+          <button 
+            onClick={handleExportCsv}
+            className="px-3.5 py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span>Export Excel</span>
+          </button>
+        )}
       </div>
 
       {/* Filter Bar */}

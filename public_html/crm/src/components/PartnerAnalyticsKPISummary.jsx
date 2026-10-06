@@ -16,8 +16,10 @@ import {
   IndianRupee,
   ShieldCheck
 } from 'lucide-react';
-import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
+import { AFFILIATE_PARTNERS, getServerPartnerId } from '../data/affiliatePartners';
 import { getPartnerKpiSummary } from '../utils/crmApi';
+import { cleanLoanAmount } from '../utils/amountHelpers';
+import { normalizeStatus } from '../utils/apiConfig';
 
 const PERIOD_OPTIONS = [
   { id: 'this_month', label: 'This Month' },
@@ -29,7 +31,7 @@ const PERIOD_OPTIONS = [
 const todayIst = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
 const rupees = (paise) => Math.round((Number(paise) || 0) / 100);
 
-export default function PartnerAnalyticsKPISummary({ onSelectCompany }) {
+export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = [] }) {
   const [expandedAll, setExpandedAll] = useState(true);
   const [openCard, setOpenCard] = useState({});
   const [isLoading, setIsLoading] = useState(true);
@@ -69,43 +71,109 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany }) {
   const periodLabel = (PERIOD_OPTIONS.find(o => o.id === period) || {}).label || period;
   const asOfDisplay = asOf.split('-').reverse().join('/');
 
-  // Consolidated affiliate metrics: every number comes from the server (money converted from paise to rupees)
+  // Consolidated affiliate metrics: computed from authoritative leads and server settlements
   const affiliateMetrics = useMemo(() => {
     const serverPartners = (apiData && Array.isArray(apiData.partners)) ? apiData.partners : [];
-    const partnerList = serverPartners.map(sp => {
-      const meta = AFFILIATE_PARTNERS.find(p => p.id === sp.slug) || {};
+    const allPartners = [...AFFILIATE_PARTNERS];
+    serverPartners.forEach(sp => {
+      if (sp && sp.slug && !allPartners.some(p => p.id === sp.slug)) {
+        allPartners.push({
+          id: sp.slug,
+          name: sp.name,
+          accentColor: '#64748B',
+          commissionRatePercent: Number(sp.commissionRatePercent || 0)
+        });
+      }
+    });
+
+    const hasLeadRecords = Array.isArray(leads) && leads.length > 0;
+
+    const partnerList = allPartners.map(meta => {
+      const sp = serverPartners.find(p => p.slug === meta.id || p.id === meta.id);
+      const partnerSlug = meta.id;
+
+      const pLeads = (leads || []).filter(l => {
+        if (!l) return false;
+        if (l.assignedPartnerSlug && l.assignedPartnerSlug === partnerSlug) return true;
+        if (l.assignedPartnerId && getServerPartnerId(partnerSlug) === l.assignedPartnerId) return true;
+        const comp = String(l.assignedCompany || '').toLowerCase().replace(/[\s\-_]/g, '');
+        const pName = String(meta.name || '').toLowerCase().replace(/[\s\-_]/g, '');
+        const pCode = String(meta.code || '').toLowerCase().replace(/[\s\-_]/g, '');
+        const pId = String(meta.id || '').toLowerCase().replace(/[\s\-_]/g, '');
+        return Boolean(comp && (comp === pName || comp === pCode || comp === pId));
+      });
+
+      const leadsSent = hasLeadRecords ? pLeads.length : (Number(sp?.leadsSent) || 0);
+      const approved = hasLeadRecords
+        ? pLeads.filter(l => normalizeStatus(l.status) === 'APPROVED').length
+        : (Number(sp?.approved) || 0);
+      const disbursed = hasLeadRecords
+        ? pLeads.filter(l => normalizeStatus(l.status) === 'DISBURSED').length
+        : (sp?.disbursalPaise > 0 ? 1 : 0);
+
+      const disbursalFromLeads = pLeads
+        .filter(l => normalizeStatus(l.status) === 'DISBURSED')
+        .reduce((sum, l) => sum + cleanLoanAmount(l.disbursedAmountRupees || l.disbursedAmount || l.loanAmount || l.applied || 0), 0);
+
+      const disbursal = hasLeadRecords
+        ? disbursalFromLeads
+        : rupees(sp?.disbursalPaise);
+
+      const commissionRateNum = sp?.commissionRatePercent !== undefined && sp?.commissionRatePercent !== null
+        ? Number(sp.commissionRatePercent)
+        : (meta.commissionPct ? meta.commissionPct * 100 : 6.0);
+
+      const commissionEarned = disbursal > 0
+        ? Math.round(disbursal * (commissionRateNum / 100))
+        : (hasLeadRecords ? 0 : rupees(sp?.commissionEarnedPaise));
+
+      const conversionRate = leadsSent > 0 ? Math.round((disbursed / leadsSent) * 100) : 0;
+
       return {
         ...meta,
-        id: sp.slug || sp.id || 'unassigned',
-        name: sp.name,
+        id: meta.id,
+        name: sp?.name || meta.name,
         accentColor: meta.accentColor || '#64748B',
-        leadsSent: Number(sp.leadsSent) || 0,
-        approved: Number(sp.approved) || 0,
-        conversionRate: Number(sp.conversionRate) || 0,
-        disbursal: rupees(sp.disbursalPaise),
-        commissionEarned: rupees(sp.commissionEarnedPaise),
-        commissionRate: `${Number(sp.commissionRatePercent || 0).toFixed(1)}%`,
-        paymentStatus: sp.paymentStatus === 'None' ? 'Pending' : (sp.paymentStatus || 'Pending')
+        leadsSent,
+        approved,
+        disbursed,
+        conversionRate,
+        disbursal,
+        commissionEarned,
+        commissionRate: `${commissionRateNum.toFixed(1)}%`,
+        paymentStatus: sp?.paymentStatus === 'None' ? 'Pending' : (sp?.paymentStatus || 'Pending')
       };
     });
 
-    const s = (apiData && apiData.summary) || {};
-    const top = s.topPartner;
+    const totalLeadsSent = partnerList.reduce((s, p) => s + p.leadsSent, 0);
+    const totalApproved = partnerList.reduce((s, p) => s + p.approved, 0);
+    const totalDisbursed = partnerList.reduce((s, p) => s + p.disbursed, 0);
+    const totalDisbursal = partnerList.reduce((s, p) => s + p.disbursal, 0);
+    const totalCommissionEarned = partnerList.reduce((s, p) => s + p.commissionEarned, 0);
+    const conversionRate = totalLeadsSent > 0 ? Math.round((totalDisbursed / totalLeadsSent) * 100) : 0;
+    const avgCommissionPerLead = totalLeadsSent > 0 ? Math.round(totalCommissionEarned / totalLeadsSent) : 0;
+    const commissionReceived = partnerList.filter(p => p.paymentStatus === 'Paid').reduce((s, p) => s + p.commissionEarned, 0);
+    const commissionPending = partnerList.filter(p => p.paymentStatus !== 'Paid').reduce((s, p) => s + p.commissionEarned, 0);
+
+    const sortedByCommission = [...partnerList].sort((a, b) => b.commissionEarned - a.commissionEarned);
+    const top = sortedByCommission[0];
+
     return {
-      totalLeadsSent: Number(s.totalLeadsSent) || 0,
-      totalApproved: Number(s.totalApproved) || 0,
-      totalDisbursal: rupees(s.totalDisbursalPaise),
-      totalCommissionEarned: rupees(s.totalCommissionEarnedPaise),
-      conversionRate: Number(s.conversionRate) || 0,
-      avgCommissionPerLead: rupees(s.avgCommissionPerLeadPaise),
-      commissionReceived: rupees(s.commissionReceivedPaise),
-      commissionPending: rupees(s.commissionPendingPaise),
+      totalLeadsSent,
+      totalApproved,
+      totalDisbursed,
+      totalDisbursal,
+      totalCommissionEarned,
+      conversionRate,
+      avgCommissionPerLead,
+      commissionReceived,
+      commissionPending,
       settlementsCount: partnerList.filter(p => p.paymentStatus === 'Paid' && p.commissionEarned > 0).length,
       pendingItemsCount: partnerList.filter(p => p.paymentStatus !== 'Paid' && p.commissionEarned > 0).length,
-      topPartner: top ? { name: top.name, amount: rupees(top.amountPaise) } : { name: '—', amount: 0 },
+      topPartner: top && top.commissionEarned > 0 ? { name: top.name, amount: top.commissionEarned } : { name: '—', amount: 0 },
       partners: partnerList
     };
-  }, [apiData]);
+  }, [apiData, leads]);
 
   // Handle table sorting
   const handleSort = (field) => {
@@ -268,11 +336,11 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany }) {
           </div>
         </div>
 
-        {/* CARD 2: TOTAL APPROVED / CONVERTED */}
-        <div className="crm-card bg-white overflow-hidden rounded-2xl border border-slate-200/80 shadow-xs border-l-4 border-l-emerald-600 flex flex-col justify-between">
+        {/* CARD 2: TOTAL APPROVED */}
+        <div className="crm-card bg-white overflow-hidden rounded-2xl border border-slate-200/80 shadow-xs border-l-4 border-l-blue-600 flex flex-col justify-between">
           <div className="p-5">
             <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase block mb-1">
-              TOTAL APPROVED / CONVERTED
+              TOTAL APPROVED
             </span>
             <div className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">
               {isLoading ? (
@@ -282,7 +350,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany }) {
               )}
             </div>
             <div className="text-xs text-slate-500">
-              {affiliateMetrics.totalApproved} of {affiliateMetrics.totalLeadsSent} · {affiliateMetrics.conversionRate}%
+              {affiliateMetrics.totalApproved} active approved · {affiliateMetrics.totalDisbursed} disbursed
             </div>
           </div>
 
@@ -328,7 +396,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany }) {
               )}
             </div>
             <div className="text-xs text-slate-500">
-              {affiliateMetrics.totalApproved} cases · {periodLabel}
+              {affiliateMetrics.totalDisbursed} disbursed cases · {periodLabel}
             </div>
           </div>
 
@@ -668,6 +736,15 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany }) {
                   </div>
                 </th>
                 <th 
+                  onClick={() => handleSort('disbursed')}
+                  className="p-3.5 text-right cursor-pointer hover:text-slate-800 transition"
+                >
+                  <div className="flex items-center justify-end gap-1.5">
+                    <span>Disbursed</span>
+                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                  </div>
+                </th>
+                <th 
                   onClick={() => handleSort('conversionRate')}
                   className="p-3.5 text-right cursor-pointer hover:text-slate-800 transition"
                 >
@@ -717,6 +794,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany }) {
                     <td className="p-3.5"><div className="h-4 w-32 bg-slate-200 rounded"></div></td>
                     <td className="p-3.5 text-right"><div className="h-4 w-12 bg-slate-200 rounded ml-auto"></div></td>
                     <td className="p-3.5 text-right"><div className="h-4 w-12 bg-slate-200 rounded ml-auto"></div></td>
+                    <td className="p-3.5 text-right"><div className="h-4 w-12 bg-slate-200 rounded ml-auto"></div></td>
                     <td className="p-3.5 text-right"><div className="h-4 w-14 bg-slate-200 rounded ml-auto"></div></td>
                     <td className="p-3.5 text-right"><div className="h-4 w-20 bg-slate-200 rounded ml-auto"></div></td>
                     <td className="p-3.5 text-right"><div className="h-4 w-20 bg-slate-200 rounded ml-auto"></div></td>
@@ -757,8 +835,13 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany }) {
                     </td>
 
                     {/* Approved */}
-                    <td className="p-3.5 text-right font-mono font-semibold text-emerald-700">
+                    <td className="p-3.5 text-right font-mono font-semibold text-blue-700">
                       {partner.approved > 0 ? Number(partner.approved || 0).toLocaleString('en-IN') : '0'}
+                    </td>
+
+                    {/* Disbursed */}
+                    <td className="p-3.5 text-right font-mono font-semibold text-emerald-700">
+                      {partner.disbursed > 0 ? Number(partner.disbursed || 0).toLocaleString('en-IN') : '0'}
                     </td>
 
                     {/* Conversion % */}

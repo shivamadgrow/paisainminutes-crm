@@ -2,7 +2,7 @@
  * Thin wrappers for the `/api/crm/*` resources. Every function returns `{ success, error?, ...data }`
  * (never throws) so screens can show the server's message and only update their state after success.
  */
-import { api, apiGet, apiPost, apiPatch, apiPut, apiDelete, downloadFile } from './apiClient';
+import { api, apiGet, apiPost, apiPatch, apiPut, apiDelete, downloadFile, isSuperAdminSession } from './apiClient.js';
 
 const wrap = (res, pick) => {
   if (!res.ok) return { success: false, status: res.status, error: res.error };
@@ -39,8 +39,16 @@ export const createPartnerEvent = (body) => apiPost('/api/crm/partner-events', b
 export const listDeliveryLogs = (query) => apiGet('/api/crm/delivery-logs', { limit: 150, ...query }).then((r) => wrap(r));
 export const retryDeliveryLog = (id) => apiPost(`/api/crm/delivery-logs/${encodeURIComponent(id)}/retry`).then((r) => wrap(r));
 export const pushLeadToPartnerApi = (body) => apiPost('/api/crm/delivery-logs/push', body).then((r) => wrap(r));
-export const exportPartnerLeadsCsv = (partnerId) =>
-  downloadFile(`/api/crm/partners/${encodeURIComponent(partnerId)}/leads/export`, { format: 'csv' }, `partner-leads-${new Date().toISOString().slice(0, 10)}.csv`);
+export const exportPartnerLeadsCsv = (partnerId) => {
+  if (!isSuperAdminSession()) {
+    return Promise.resolve({
+      success: false,
+      status: 403,
+      error: '403 Forbidden: Only Super Admin can export partner leads.'
+    });
+  }
+  return downloadFile(`/api/crm/partners/${encodeURIComponent(partnerId)}/leads/export`, { format: 'csv' }, `partner-leads-${new Date().toISOString().slice(0, 10)}.csv`);
+};
 
 // ------------------------------------------------------------------ reporting
 

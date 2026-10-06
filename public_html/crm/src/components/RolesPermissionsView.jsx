@@ -13,10 +13,12 @@ import {
 } from 'lucide-react';
 import { MODULE_PERMISSIONS_CONFIG } from '../data/rolesPermissionsData';
 import { getCurrentUser } from '../utils/authService';
-import { hasPermission } from '../utils/permissions';
+import { hasPermission, isSuperAdmin } from '../utils/permissions';
 import { apiGet, apiPatch } from '../utils/crmApi';
 
 export default function RolesPermissionsView() {
+  const currentUser = getCurrentUser();
+  const isSuperAdminUser = isSuperAdmin(currentUser);
   const [roles, setRoles] = useState([]);
   const [selectedRoleId, setSelectedRoleId] = useState(null);
   const [changedRoleIds, setChangedRoleIds] = useState([]);
@@ -25,7 +27,7 @@ export default function RolesPermissionsView() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveToast, setSaveToast] = useState(false);
-  const canEditRoles = hasPermission(getCurrentUser(), 'roles.manage');
+  const canEditRoles = hasPermission(currentUser, 'roles.manage');
 
   // Roles and their permission matrices are stored on the server
   const loadRoles = async () => {
@@ -48,6 +50,12 @@ export default function RolesPermissionsView() {
 
   const selectedRole = roles.find(r => r.id === selectedRoleId) || roles[0] || null;
   const hasUnsavedChanges = changedRoleIds.length > 0;
+  const isSelectedSuperAdminRole =
+    !!selectedRole &&
+    (selectedRole.isLocked ||
+      selectedRole.key === 'super-admin' ||
+      selectedRole.id === 'super-admin' ||
+      String(selectedRole.name || '').toLowerCase().includes('super admin'));
 
   const handleTogglePermission = (moduleKey, action) => {
     if (!selectedRole) return;
@@ -56,6 +64,12 @@ export default function RolesPermissionsView() {
       return;
     }
     if (!canEditRoles) return;
+
+    const isExportAction = action === 'exportData' || action === 'export';
+    if (isExportAction && (!isSelectedSuperAdminRole || !isSuperAdminUser)) {
+      alert('403 Forbidden: Export permissions are strictly restricted to Super Admin only.');
+      return;
+    }
 
     const currentVal = !!(selectedRole.permissions || {})[moduleKey]?.[action];
     const updatedRole = {
@@ -80,7 +94,27 @@ export default function RolesPermissionsView() {
     for (const id of changedRoleIds) {
       const role = roles.find(r => r.id === id);
       if (!role) continue;
-      const res = await apiPatch(`/api/crm/roles/${encodeURIComponent(id)}`, { permissions: role.permissions });
+
+      const isTargetSuper =
+        role.isLocked ||
+        role.key === 'super-admin' ||
+        role.id === 'super-admin' ||
+        String(role.name || '').toLowerCase().includes('super admin');
+
+      let permsToSave = role.permissions || {};
+      if (!isTargetSuper) {
+        // Strip any export permissions for non-Super Admin roles
+        const cleanPerms = JSON.parse(JSON.stringify(permsToSave));
+        Object.keys(cleanPerms).forEach(m => {
+          if (cleanPerms[m]) {
+            delete cleanPerms[m].exportData;
+            delete cleanPerms[m].export;
+          }
+        });
+        permsToSave = cleanPerms;
+      }
+
+      const res = await apiPatch(`/api/crm/roles/${encodeURIComponent(id)}`, { permissions: permsToSave });
       if (!res.ok) {
         setSaveError(`${role.name}: ${res.error}`);
         setIsSaving(false);
@@ -200,7 +234,16 @@ export default function RolesPermissionsView() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 sm:w-2/3 justify-start sm:justify-end">
-                  {mod.actions.map(action => {
+                  {mod.actions
+                    .filter(action => {
+                      const isExportAction = action === 'exportData' || action === 'export';
+                      if (isExportAction) {
+                        // Export access is strictly restricted to Super Admin only
+                        return isSelectedSuperAdminRole && isSuperAdminUser;
+                      }
+                      return true;
+                    })
+                    .map(action => {
                     const isGranted = !!(selectedRole.permissions || {})[mod.moduleKey]?.[action];
                     const isLocked = selectedRole.isLocked || !canEditRoles;
 

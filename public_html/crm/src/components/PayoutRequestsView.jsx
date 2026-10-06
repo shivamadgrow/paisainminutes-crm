@@ -16,8 +16,12 @@ import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
 import { fetchAllPages, apiPost, apiPatch } from '../utils/crmApi';
 import { payoutFromServer, toPaise, serverPartnerId } from '../utils/financeMappers';
+import { getCurrentUser } from '../utils/authService';
+import { isSuperAdmin } from '../utils/permissions';
 
 export default function PayoutRequestsView({ onChanged }) {
+  const currentUser = getCurrentUser();
+  const canExportData = isSuperAdmin(currentUser);
   const [requests, setRequests] = useState([]);
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -104,6 +108,10 @@ export default function PayoutRequestsView({ onChanged }) {
   };
 
   const handleExportCsv = () => {
+    if (!canExportData) {
+      alert('403 Forbidden: Data export is strictly restricted to Super Admin only.');
+      return;
+    }
     const headers = ['Request ID', 'Partner Name', 'Amount (INR)', 'Requested Date', 'Status', 'Period', 'Invoice No', 'Paid Date'];
     const rows = filtered.map(r => [
       r.id,
@@ -176,13 +184,15 @@ export default function PayoutRequestsView({ onChanged }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleExportCsv}
-            className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            <span>Export</span>
-          </button>
+          {canExportData && (
+            <button
+              onClick={handleExportCsv}
+              className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              <span>Export</span>
+            </button>
+          )}
           <button
             onClick={() => setIsCreateOpen(true)}
             className="px-3.5 py-2 bg-[#0A3977] hover:bg-[#072956] text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"

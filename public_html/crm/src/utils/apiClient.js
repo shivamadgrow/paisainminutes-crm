@@ -175,6 +175,53 @@ export function endSession(reason) {
   }
 }
 
+function getSessionUser() {
+  try {
+    const raw = sessionStorage.getItem('paisa_crm_user');
+    if (raw) {
+      const u = JSON.parse(raw);
+      if (u) return u;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return null;
+}
+
+export function isSuperAdminSession() {
+  const u = getSessionUser();
+  if (!u) return false;
+  const sRole = String(u.serverRole || '').toUpperCase();
+  const uRole = String(u.role || '').toUpperCase();
+  return sRole === 'SUPER_ADMIN' || uRole === 'SUPER_ADMIN' || uRole === 'SUPER ADMIN';
+}
+
+export function isExportUrl(urlOrPath) {
+  if (!urlOrPath) return false;
+  const clean = String(urlOrPath).toLowerCase();
+  return /\/export(\?|$)/.test(clean) || clean.endsWith('/export') || clean.includes('/leads/export') || clean.includes('/loan-applications/export');
+}
+
+// Global fetch guard: reject direct browser calls to export endpoints if not Super Admin
+if (typeof window !== 'undefined' && window.fetch && !window.__paisaExportGuarded) {
+  const originalFetch = window.fetch;
+  window.fetch = async function (input, init) {
+    const urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+    if (isExportUrl(urlStr) && !isSuperAdminSession()) {
+      return new Response(
+        JSON.stringify({ error: '403 Forbidden: Data export is strictly restricted to Super Admin.' }),
+        {
+          status: 403,
+          statusText: 'Forbidden',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+    return originalFetch.apply(this, arguments);
+  };
+  window.__paisaExportGuarded = true;
+}
+
 // ---------------------------------------------------------------- main entry
 
 /**
@@ -191,6 +238,19 @@ export function endSession(reason) {
  */
 export async function api(path, options = {}) {
   const { method = 'GET', body, query, auth = true, timeoutMs, responseType = 'json', headers = {} } = options;
+
+  // Security enforcement: Data export is strictly restricted to Super Admin only
+  if (isExportUrl(path) && !isSuperAdminSession()) {
+    return {
+      ok: false,
+      status: 403,
+      data: { error: '403 Forbidden: Data export is strictly restricted to Super Admin.' },
+      blob: null,
+      headers: typeof Headers !== 'undefined' ? new Headers({ 'content-type': 'application/json' }) : null,
+      error: '403 Forbidden: Data export is strictly restricted to Super Admin.',
+    };
+  }
+
   const url = buildUrl(path, query);
   const hasBody = body !== undefined && body !== null;
 
@@ -235,6 +295,16 @@ export const apiDelete = (path, body, options = {}) => api(path, { ...options, m
 
 /** Downloads a protected file (e.g. CSV export) with the bearer token and saves it through a temporary blob URL. */
 export async function downloadFile(path, query, fallbackName = 'export.csv') {
+  if (isExportUrl(path) && !isSuperAdminSession()) {
+    return {
+      ok: false,
+      status: 403,
+      data: { error: '403 Forbidden: Data export is strictly restricted to Super Admin.' },
+      blob: null,
+      headers: typeof Headers !== 'undefined' ? new Headers({ 'content-type': 'application/json' }) : null,
+      error: '403 Forbidden: Data export is strictly restricted to Super Admin.',
+    };
+  }
   const res = await api(path, { query, responseType: 'blob', timeoutMs: 60000 });
   if (!res.ok || !res.blob) return res;
   let filename = fallbackName;

@@ -1,13 +1,21 @@
 import React, { useState } from 'react';
 import { FileSpreadsheet, RefreshCw, Search, CheckCircle2, Inbox } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
+import { getCurrentUser } from '../utils/authService';
+import { isSuperAdmin } from '../utils/permissions';
 
 export default function CollectionsView({ type }) {
+  const currentUser = getCurrentUser();
+  const canExportData = isSuperAdmin(currentUser);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeDateFilter, setActiveDateFilter] = useState('All dates');
   const [activeBucketFilter, setActiveBucketFilter] = useState('All');
 
   const handleExportCollections = (title = 'collection-data') => {
+    if (!canExportData) {
+      alert('403 Forbidden: Data export is strictly restricted to Super Admin only.');
+      return;
+    }
     const headers = ['Loan No', 'Applicant', 'Mobile', 'Collection Manager', 'City', 'Outstanding', 'Amount Due', 'DPD', 'Status', 'Penalty', 'Repay Date'];
     const rows = [];
     exportToCsv(`${title}-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
@@ -27,15 +35,17 @@ export default function CollectionsView({ type }) {
         </div>
 
         {/* Excel Button */}
-        <div>
-          <button 
-            onClick={() => handleExportCollections('paisa-crm-collections-queue')}
-            className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Excel</span>
-          </button>
-        </div>
+        {canExportData && (
+          <div>
+            <button 
+              onClick={() => handleExportCollections('paisa-crm-collections-queue')}
+              className="px-3.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Excel</span>
+            </button>
+          </div>
+        )}
 
         {/* Table Box */}
         <div className="crm-card bg-white overflow-hidden">
@@ -150,13 +160,15 @@ export default function CollectionsView({ type }) {
         </div>
 
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => handleExportCollections('paisa-crm-collection-workspace')}
-            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" />
-            <span>Excel</span>
-          </button>
+          {canExportData && (
+            <button 
+              onClick={() => handleExportCollections('paisa-crm-collection-workspace')}
+              className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Excel</span>
+            </button>
+          )}
           <button
             onClick={() => alert("Refreshed Collection Workspace.")}
             className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition"

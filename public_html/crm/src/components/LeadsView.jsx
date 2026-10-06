@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Plus,
@@ -84,12 +84,14 @@ const mapTabToFilterName = (tab) => {
   if (clean === 'callback') return 'Callback';
   if (clean === 'interested') return 'Interested';
   if (clean === 'approved') return 'Approved';
+  if (clean === 'disbursed') return 'Disbursed';
   if (clean === 'rejected') return 'Rejected';
   if (clean === 'no answer') return 'No Answer';
   if (clean === 'not interested') return 'Not Interested';
   if (clean === 'rupay91') return 'Rupay91';
   if (clean === 'mobile only') return 'Mobile-only';
   if (clean === 'duplicate leads' || clean === 'duplicates') return 'Duplicate Leads';
+  if (clean === 'organization' || clean === 'org') return 'Organization';
   if (clean === 'whatsapp') return 'WhatsApp';
   if (clean === 'direct website' || clean === 'direct' || clean === 'website') return 'Direct Website';
   return tab;
@@ -303,8 +305,29 @@ export default function LeadsView({
   const canEditLeads = hasPermission(currentUser, 'leads.update');
   const canExportLeads = hasPermission(currentUser, 'leads.export');
   const [toastMessage, setToastMessage] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const LEADS_PER_PAGE = 10;
+  const statusFilterRef = useRef(null);
+
+  // Smooth mouse wheel / trackpad horizontal scrolling support for Lead Status Filter row
+  useEffect(() => {
+    const el = statusFilterRef.current;
+    if (!el) return;
+    const onWheel = (e) => {
+      if (e.deltaY !== 0) {
+        if (el.scrollWidth > el.clientWidth) {
+          const isAtLeft = el.scrollLeft <= 0;
+          const isAtRight = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+          if ((e.deltaY < 0 && !isAtLeft) || (e.deltaY > 0 && !isAtRight)) {
+            e.preventDefault();
+            el.scrollLeft += e.deltaY;
+          }
+        }
+      }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, []);
 
   // Real Lender rows from the server (a lender id is never a partner slug or name)
   useEffect(() => {
@@ -450,10 +473,8 @@ export default function LeadsView({
     const total = leads.length;
     const fresh = leads.filter(l => normalizeStatus(l.status) === 'FRESH').length;
     const callbacks = leads.filter(l => normalizeStatus(l.status) === 'CALLBACK').length;
-    const approved = leads.filter(l => {
-      const s = normalizeStatus(l.status);
-      return s === 'APPROVED' || s === 'DISBURSED';
-    }).length;
+    const approved = leads.filter(l => normalizeStatus(l.status) === 'APPROVED').length;
+    const disbursed = leads.filter(l => normalizeStatus(l.status) === 'DISBURSED').length;
     const highCibil = leads.filter(l => {
       const c = String(l.cibil || '');
       const num = parseInt(c.replace(/\D/g, '').slice(0, 3), 10);
@@ -461,7 +482,7 @@ export default function LeadsView({
     }).length;
     const totalApplied = leads.reduce((acc, l) => acc + cleanLoanAmount(l.applied || l.loanAmount), 0);
 
-    return { total, fresh, callbacks, approved, highCibil, totalApplied };
+    return { total, fresh, callbacks, approved, disbursed, highCibil, totalApplied };
   }, [leads]);
 
   const handleCopy = (text, field) => {
@@ -635,7 +656,7 @@ export default function LeadsView({
           return false;
         } else if (filterKey === 'interested' && normStatus !== 'INTERESTED') {
           return false;
-        } else if (filterKey === 'approved' && normStatus !== 'APPROVED' && normStatus !== 'DISBURSED') {
+        } else if (filterKey === 'approved' && normStatus !== 'APPROVED') {
           return false;
         } else if (filterKey === 'disbursed' && normStatus !== 'DISBURSED') {
           return false;
@@ -648,6 +669,16 @@ export default function LeadsView({
           const pan = String(item.pan || '').trim().toUpperCase();
           const isDup = (phone && phoneCounts[phone] > 1) || (pan && pan !== '—' && panCounts[pan] > 1);
           if (!isDup) return false;
+        } else if (filterKey === 'organization') {
+          const matchesOrg = Boolean(
+            item.organization || 
+            item.company || 
+            item.companyName || 
+            item.employer || 
+            (item.channel && (item.channel.toLowerCase() === 'organization' || item.channel.toLowerCase() === 'organic search')) ||
+            (item.utm_source && item.utm_source.toLowerCase().includes('org'))
+          );
+          if (!matchesOrg) return false;
         } else if (CHANNEL_TABS.some(c => c.toLowerCase() === filterKey)) {
           if (channelOf(item).toLowerCase() !== filterKey) return false;
         }
@@ -686,6 +717,10 @@ export default function LeadsView({
   // Export is built by the server (F-21, F-22): it needs leads.export, never includes the PAN and neutralises formulas.
   const [isExporting, setIsExporting] = useState(false);
   const handleExportExcel = async () => {
+    if (!canExportLeads) {
+      showToast('403 Forbidden: Only Super Admin can export leads.', true);
+      return;
+    }
     if (isExporting) return;
     const query = { ...dateRangeKeys(selectedDatePreset, customStartDate, customEndDate) };
     if (CHANNEL_TABS.includes(activeFilter)) query.channel = activeFilter;
@@ -1213,11 +1248,12 @@ export default function LeadsView({
       {/* Unified Smart Control Center */}
       <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-4 space-y-3.5">
 
-        {/* Row 1: Workflow Status Tabs & Search Bar */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-
-          {/* Status Workflow Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+        {/* Row 1: Workflow Status Filter Tabs (Horizontal Scrollbar Directly Below) */}
+        <div
+          ref={statusFilterRef}
+          className="status-filter-wrapper w-full overflow-x-auto overflow-y-hidden whitespace-nowrap pb-2.5"
+        >
+          <div className="status-filter-list flex flex-nowrap items-center w-max gap-2">
             {[
               { id: 'All Leads', label: 'All Status', count: leads.filter(l => !isMobileOnlyLead(l)).length },
               {
@@ -1240,14 +1276,27 @@ export default function LeadsView({
                   return (phone && phoneCounts[phone] > 1) || (pan && pan !== '—' && panCounts[pan] > 1);
                 }).length
               },
-              ...CHANNEL_TABS.map(ch => ({ id: ch, label: ch, count: leads.filter(l => channelOf(l) === ch).length })).filter(t => t.count > 0),
+              {
+                id: 'Organization',
+                label: 'Organization',
+                count: leads.filter(l => !isMobileOnlyLead(l) && Boolean(
+                  l.organization ||
+                  l.company ||
+                  l.companyName ||
+                  l.employer ||
+                  (l.channel && (l.channel.toLowerCase() === 'organization' || l.channel.toLowerCase() === 'organic search')) ||
+                  (l.utm_source && l.utm_source.toLowerCase().includes('org'))
+                )).length
+              },
+              ...CHANNEL_TABS.map(ch => ({ id: ch, label: ch, count: leads.filter(l => channelOf(l) === ch).length })).filter(t => t.count > 0 && t.id.toLowerCase() !== 'organic search'),
             ].map(tab => {
               const isSelected = activeFilter.toLowerCase().replace(/\s+/g, ' ') === tab.id.toLowerCase().replace(/\s+/g, ' ');
               return (
                 <button
                   key={tab.id}
+                  data-selected={isSelected}
                   onClick={() => handleFilterClick(tab.id)}
-                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${isSelected
+                  className={`px-3.5 py-2 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer ${isSelected
                     ? 'bg-[#0A3977] text-white shadow-md shadow-blue-950/20 ring-2 ring-blue-400/30'
                     : 'bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200/70'
                     }`}
@@ -1261,9 +1310,11 @@ export default function LeadsView({
               );
             })}
           </div>
+        </div>
 
-          {/* Controls: Quick Date Selector & Search Bar */}
-          <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto shrink-0">
+        {/* Controls: Quick Date Selector & Search Bar */}
+        <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto flex-1">
             {/* Quick Date Dropdown */}
             <div className="relative flex items-center gap-1.5 px-3 py-2 bg-slate-50 border border-slate-200/90 rounded-2xl text-xs font-bold text-slate-700 shadow-2xs hover:bg-slate-100 transition shrink-0">
               <Calendar className="w-3.5 h-3.5 text-blue-600 shrink-0" />
@@ -1286,7 +1337,7 @@ export default function LeadsView({
             </div>
 
             {/* Search Bar */}
-            <div className="relative flex-1 lg:w-72">
+            <div className="relative flex-1 min-w-[200px] lg:max-w-md">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
@@ -1304,19 +1355,19 @@ export default function LeadsView({
                 </button>
               )}
             </div>
-
-            {/* Instant Live Sync / Refresh Button */}
-            <button
-              type="button"
-              onClick={handleManualSync}
-              disabled={isManualSyncing}
-              className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-[#0A3977] border border-blue-200/80 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-2xs transition active:scale-95 cursor-pointer shrink-0"
-              title="Click to instantly fetch new leads from server"
-            >
-              <RotateCw className={`w-3.5 h-3.5 ${isManualSyncing ? 'animate-spin text-blue-600' : 'text-[#0A3977]'}`} />
-              <span>{isManualSyncing ? 'Fetching...' : 'Sync Leads'}</span>
-            </button>
           </div>
+
+          {/* Instant Live Sync / Refresh Button */}
+          <button
+            type="button"
+            onClick={handleManualSync}
+            disabled={isManualSyncing}
+            className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-[#0A3977] border border-blue-200/80 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-2xs transition active:scale-95 cursor-pointer shrink-0"
+            title="Click to instantly fetch new leads from server"
+          >
+            <RotateCw className={`w-3.5 h-3.5 ${isManualSyncing ? 'animate-spin text-blue-600' : 'text-[#0A3977]'}`} />
+            <span>{isManualSyncing ? 'Fetching...' : 'Sync Leads'}</span>
+          </button>
         </div>
 
         {/* Row 2: Dedicated Date Range Filter Bar */}
