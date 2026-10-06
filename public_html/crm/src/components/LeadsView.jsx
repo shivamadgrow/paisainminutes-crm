@@ -70,8 +70,7 @@ import {
   formatStatusLabel,
   CRM_STATUS_MAP,
   CRM_STATUS_STAGES,
-  getLeadsFromBackend
-} from '../utils/apiConfig';
+  getLeadsFromBackend, isMobileOnlyLead } from '../utils/apiConfig';
 import { listPartnerEvents, pushLeadToPartnerApi } from '../utils/crmApi';
 import { getServerPartnerId } from '../data/affiliatePartners';
 import { hasPermission } from '../utils/permissions';
@@ -84,7 +83,6 @@ const mapTabToFilterName = (tab) => {
   if (clean === 'fresh') return 'Fresh';
   if (clean === 'callback') return 'Callback';
   if (clean === 'interested') return 'Interested';
-  if (clean === 'docs received') return 'Docs Received';
   if (clean === 'approved') return 'Approved';
   if (clean === 'rejected') return 'Rejected';
   if (clean === 'no answer') return 'No Answer';
@@ -531,6 +529,10 @@ export default function LeadsView({
 
   const getLeadId = (item, idx) => String(item?.id || item?.loanNo || item?.lead_id || `lead-${idx}`).trim();
 
+  // Pagination: 10 leads per page. Any change to the filters sends the list back to page 1.
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+
   // Multi-lead duplicate occurrence detection maps
   const phoneCounts = useMemo(() => {
     const counts = {};
@@ -614,6 +616,9 @@ export default function LeadsView({
         }
       }
 
+      // Mobile-only leads (phone verified, form not filled) live in their own tab; a search still finds them.
+      if (activeFilter.toLowerCase().replace(/[-_]/g, ' ') !== 'mobile only' && !searchQuery.trim() && isMobileOnlyLead(item)) return false;
+
       // 3. Status Tab Filter
       if (activeFilter !== 'All Leads') {
         const normStatus = normalizeStatus(item.status);
@@ -630,8 +635,6 @@ export default function LeadsView({
           return false;
         } else if (filterKey === 'interested' && normStatus !== 'INTERESTED') {
           return false;
-        } else if (filterKey === 'docs received' && normStatus !== 'DOCS_RECEIVED') {
-          return false;
         } else if (filterKey === 'approved' && normStatus !== 'APPROVED' && normStatus !== 'DISBURSED') {
           return false;
         } else if (filterKey === 'disbursed' && normStatus !== 'DISBURSED') {
@@ -639,10 +642,7 @@ export default function LeadsView({
         } else if (filterKey === 'rejected' && normStatus !== 'REJECTED') {
           return false;
         } else if (filterKey === 'mobile only') {
-          const isMobile = item.isPhoneOnly ||
-            (item.eligibilityStatus && item.eligibilityStatus.includes('Phone Only')) ||
-            ((!item.name || item.name === 'Applicant') && (!item.loanAmount || Number(item.loanAmount) === 0));
-          if (!isMobile) return false;
+          if (!isMobileOnlyLead(item)) return false;
         } else if (filterKey === 'duplicate leads') {
           const phone = String(item.phone || item.mobile || '').replace(/\D/g, '').slice(-10);
           const pan = String(item.pan || '').trim().toUpperCase();
@@ -673,6 +673,16 @@ export default function LeadsView({
     });
   }, [leads, searchQuery, selectedPartnerFilter, activeFilter, isMyLeadsOnly, currentUser, phoneCounts, panCounts, selectedDatePreset, customStartDate, customEndDate]);
 
+  const pageCount = Math.max(1, Math.ceil(filteredLeads.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pagedLeads = filteredLeads.slice(pageStart, pageStart + PAGE_SIZE);
+  useEffect(() => { setPage(1); }, [searchQuery, selectedPartnerFilter, activeFilter, isMyLeadsOnly, selectedDatePreset, customStartDate, customEndDate]);
+  const pageNumbers = (() => {
+    const nums = new Set([1, pageCount, currentPage - 1, currentPage, currentPage + 1]);
+    return [...nums].filter(n => n >= 1 && n <= pageCount).sort((a, b) => a - b);
+  })();
+
   // Export is built by the server (F-21, F-22): it needs leads.export, never includes the PAN and neutralises formulas.
   const [isExporting, setIsExporting] = useState(false);
   const handleExportExcel = async () => {
@@ -681,7 +691,7 @@ export default function LeadsView({
     if (CHANNEL_TABS.includes(activeFilter)) query.channel = activeFilter;
     else if (activeFilter !== 'All Leads') {
       const status = normalizeStatus(activeFilter);
-      if (['FRESH', 'CALLBACK', 'INTERESTED', 'DOCS_RECEIVED', 'APPROVED', 'DISBURSED', 'REJECTED'].includes(status)) query.status = status;
+      if (['FRESH', 'CALLBACK', 'INTERESTED', 'APPROVED', 'DISBURSED', 'REJECTED'].includes(status)) query.status = status;
     }
     if (searchQuery && searchQuery.trim().length >= 2) query.q = searchQuery.trim();
     setIsExporting(true);
@@ -1209,19 +1219,18 @@ export default function LeadsView({
           {/* Status Workflow Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
             {[
-              { id: 'All Leads', label: 'All Status', count: leads.length },
+              { id: 'All Leads', label: 'All Status', count: leads.filter(l => !isMobileOnlyLead(l)).length },
               {
                 id: 'Mobile-only',
-                label: 'Mobile-only',
-                count: leads.filter(l => l.isPhoneOnly || (l.eligibilityStatus && l.eligibilityStatus.includes('Phone Only')) || ((!l.name || l.name === 'Applicant') && (!l.loanAmount || Number(l.loanAmount) === 0))).length
+                label: 'Mobile leads',
+                count: leads.filter(isMobileOnlyLead).length
               },
-              { id: 'Fresh', label: 'Fresh', count: leads.filter(l => normalizeStatus(l.status) === 'FRESH').length },
-              { id: 'Callback', label: 'Callback', count: leads.filter(l => normalizeStatus(l.status) === 'CALLBACK').length },
-              { id: 'Interested', label: 'Interested', count: leads.filter(l => normalizeStatus(l.status) === 'INTERESTED').length },
-              { id: 'Docs Received', label: 'Docs Received', count: leads.filter(l => normalizeStatus(l.status) === 'DOCS_RECEIVED').length },
-              { id: 'Approved', label: 'Approved', count: leads.filter(l => normalizeStatus(l.status) === 'APPROVED').length },
-              { id: 'Disbursed', label: 'Disbursed', count: leads.filter(l => normalizeStatus(l.status) === 'DISBURSED').length },
-              { id: 'Rejected', label: 'Rejected', count: leads.filter(l => normalizeStatus(l.status) === 'REJECTED').length },
+              { id: 'Fresh', label: 'Fresh', count: leads.filter(l => !isMobileOnlyLead(l) && normalizeStatus(l.status) === 'FRESH').length },
+              { id: 'Callback', label: 'Callback', count: leads.filter(l => !isMobileOnlyLead(l) && normalizeStatus(l.status) === 'CALLBACK').length },
+              { id: 'Interested', label: 'Interested', count: leads.filter(l => !isMobileOnlyLead(l) && normalizeStatus(l.status) === 'INTERESTED').length },
+              { id: 'Approved', label: 'Approved', count: leads.filter(l => !isMobileOnlyLead(l) && normalizeStatus(l.status) === 'APPROVED').length },
+              { id: 'Disbursed', label: 'Disbursed', count: leads.filter(l => !isMobileOnlyLead(l) && normalizeStatus(l.status) === 'DISBURSED').length },
+              { id: 'Rejected', label: 'Rejected', count: leads.filter(l => !isMobileOnlyLead(l) && normalizeStatus(l.status) === 'REJECTED').length },
               {
                 id: 'Duplicate Leads',
                 label: 'Duplicate Leads',
@@ -1510,7 +1519,7 @@ export default function LeadsView({
       )}
 
       {/* Floating Luxury SaaS Data Grid */}
-      <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-200/90 overflow-x-auto">
+      <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-200/90 overflow-auto max-h-[70vh]">
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="bg-slate-50/90 text-slate-600 font-black tracking-wider text-[11px] uppercase border-b border-slate-200/90 sticky top-0 z-20 backdrop-blur-md">
@@ -1546,8 +1555,9 @@ export default function LeadsView({
           </thead>
           <tbody className="divide-y divide-slate-100 text-slate-700">
             {filteredLeads.length > 0 ? (
-              filteredLeads.map((item, idx) => {
+              pagedLeads.map((item, pageIdx) => {
                 if (!item) return null;
+                const idx = pageStart + pageIdx;
                 const itemId = getLeadId(item, idx);
                 const isSelected = selectedLeadIds.includes(itemId);
                 const eligInfo = getEligibilityInfo(item);
@@ -1875,6 +1885,22 @@ export default function LeadsView({
           </tbody>
         </table>
       </div>
+
+      {filteredLeads.length > PAGE_SIZE && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold text-slate-600">
+          <span>Showing {pageStart + 1}-{Math.min(pageStart + PAGE_SIZE, filteredLeads.length)} of {filteredLeads.length} leads (10 per page)</span>
+          <div className="flex items-center gap-1.5">
+            <button type="button" disabled={currentPage === 1} onClick={() => setPage(currentPage - 1)} className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">Previous</button>
+            {pageNumbers.map((n, i) => (
+              <React.Fragment key={n}>
+                {i > 0 && n - pageNumbers[i - 1] > 1 && <span className="px-1">…</span>}
+                <button type="button" onClick={() => setPage(n)} className={`min-w-8 px-2.5 py-1.5 rounded-lg border cursor-pointer ${n === currentPage ? 'bg-[#0A3977] text-white border-[#0A3977]' : 'bg-white border-slate-300 hover:bg-slate-50'}`}>{n}</button>
+              </React.Fragment>
+            ))}
+            <button type="button" disabled={currentPage === pageCount} onClick={() => setPage(currentPage + 1)} className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed">Next</button>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Test Website Lead Submit */}
       {isTestModalOpen && (
@@ -2805,7 +2831,6 @@ export default function LeadsView({
                       <option value="FRESH">Fresh</option>
                       <option value="CALLBACK">Callback</option>
                       <option value="INTERESTED">Interested</option>
-                      <option value="DOCS_RECEIVED">Docs Received</option>
                       <option value="APPROVED">Approved</option>
                       <option value="DISBURSED">Disbursed</option>
                       <option value="REJECTED">Rejected</option>
@@ -3231,7 +3256,6 @@ export default function LeadsView({
             { id: 'FRESH', label: 'Fresh', dot: 'bg-sky-500', bg: 'hover:bg-sky-50 text-sky-800' },
             { id: 'CALLBACK', label: 'Callback', dot: 'bg-amber-500', bg: 'hover:bg-amber-50 text-amber-800' },
             { id: 'INTERESTED', label: 'Interested', dot: 'bg-purple-500', bg: 'hover:bg-purple-50 text-purple-800' },
-            { id: 'DOCS_RECEIVED', label: 'Docs Received', dot: 'bg-indigo-500', bg: 'hover:bg-indigo-50 text-indigo-800' },
             { id: 'APPROVED', label: 'Approved', dot: 'bg-emerald-500', bg: 'hover:bg-emerald-50 text-emerald-800' },
             { id: 'DISBURSED', label: 'Disbursed', dot: 'bg-teal-500', bg: 'hover:bg-teal-50 text-teal-800' },
             { id: 'REJECTED', label: 'Rejected', dot: 'bg-rose-500', bg: 'hover:bg-rose-50 text-rose-800' },

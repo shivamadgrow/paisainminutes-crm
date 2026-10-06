@@ -96,7 +96,7 @@ return [
             'Direct Bank Account Disbursal',
             'Zero Paperwork Required'
         ],
-        'target_url' => 'https://www.rupay91.com/applynow.php?source={aff_id}&utm_source={aff_id}&ref={aff_id}&affiliate={aff_id}&sub_id={lead_id}&channel={aff_id}&utm_medium=affiliate&utm_campaign=paisainminutes&utm_term={lead_id}'
+        'target_url' => 'https://loans.rupay91.com/login'
     ],
     'jhatpatloans' => [
         'slug' => 'jhatpatloans',

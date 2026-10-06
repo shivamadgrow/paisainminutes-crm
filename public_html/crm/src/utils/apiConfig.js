@@ -17,7 +17,6 @@ export const CRM_STATUS_STAGES = [
   'FRESH',
   'CALLBACK',
   'INTERESTED',
-  'DOCS_RECEIVED',
   'APPROVED',
   'DISBURSED',
   'REJECTED'
@@ -27,7 +26,6 @@ export const CRM_STATUS_MAP = {
   FRESH: { key: 'FRESH', label: 'Fresh', dot: 'bg-sky-500', classes: 'bg-sky-50 text-sky-700 border-sky-200/80 hover:bg-sky-100/80', bg: 'hover:bg-sky-50 text-sky-800' },
   CALLBACK: { key: 'CALLBACK', label: 'Callback', dot: 'bg-amber-500', classes: 'bg-amber-50 text-amber-700 border-amber-200/80 hover:bg-amber-100/80', bg: 'hover:bg-amber-50 text-amber-800' },
   INTERESTED: { key: 'INTERESTED', label: 'Interested', dot: 'bg-purple-500', classes: 'bg-purple-50 text-purple-700 border-purple-200/80 hover:bg-purple-100/80', bg: 'hover:bg-purple-50 text-purple-800' },
-  DOCS_RECEIVED: { key: 'DOCS_RECEIVED', label: 'Docs Received', dot: 'bg-indigo-500', classes: 'bg-indigo-50 text-indigo-700 border-indigo-200/80 hover:bg-indigo-100/80', bg: 'hover:bg-indigo-50 text-indigo-800' },
   APPROVED: { key: 'APPROVED', label: 'Approved', dot: 'bg-emerald-500', classes: 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100/80', bg: 'hover:bg-emerald-50 text-emerald-800' },
   DISBURSED: { key: 'DISBURSED', label: 'Disbursed', dot: 'bg-teal-500', classes: 'bg-teal-50 text-teal-700 border-teal-200/80 hover:bg-teal-100/80', bg: 'hover:bg-teal-50 text-teal-800' },
   REJECTED: { key: 'REJECTED', label: 'Rejected', dot: 'bg-rose-500', classes: 'bg-rose-50 text-rose-700 border-rose-200/80 hover:bg-rose-100/80', bg: 'hover:bg-rose-50 text-rose-800' }
@@ -44,7 +42,6 @@ export function normalizeStatus(rawStatus) {
   if (clean === 'DRAFT' || clean === 'SUBMITTED' || clean === 'FRESH' || clean === 'NEW') return 'FRESH';
   if (clean === 'CALLBACK' || clean === 'CALL_BACK') return 'CALLBACK';
   if (clean === 'INTERESTED') return 'INTERESTED';
-  if (clean === 'DOCS_RECEIVED' || clean === 'DOCS' || clean === 'DOCUMENTATION' || clean === 'DOCUMENTS_RECEIVED') return 'DOCS_RECEIVED';
   if (clean === 'APPROVED' || clean === 'SANCTIONED') return 'APPROVED';
   if (clean === 'DISBURSED' || clean === 'DISBURSAL') return 'DISBURSED';
   if (clean === 'REJECTED' || clean === 'NOT_INTERESTED' || clean === 'DECLINED') return 'REJECTED';
@@ -52,7 +49,7 @@ export function normalizeStatus(rawStatus) {
 }
 
 /**
- * Returns human-readable status display label (e.g. "Docs Received", "Fresh")
+ * Returns human-readable status display label (e.g. "Interested", "Fresh")
  */
 export function formatStatusLabel(rawStatus) {
   const norm = normalizeStatus(rawStatus);
@@ -631,3 +628,16 @@ export async function deleteLeadsApi(payload = {}) {
   const res = await api('/api/loan-applications', { method: 'DELETE', body: { ids: unique, confirm: true } });
   return { success: res.ok, error: res.error, deletedIds: res.data?.deletedIds || [], notFound: res.data?.notFound || [] };
 }
+
+
+/**
+ * A "mobile-only" lead verified their phone number and nothing else (no name, loan amount or salary).
+ * They are kept apart from real leads and move across on their own once the form is filled in.
+ */
+export const isMobileOnlyLead = (l) => Boolean(
+  l && (
+    l.isPhoneOnly ||
+    (l.eligibilityStatus && String(l.eligibilityStatus).includes('Phone Only')) ||
+    ((!l.name || l.name === 'Applicant') && (!l.loanAmount || Number(l.loanAmount) === 0))
+  )
+);

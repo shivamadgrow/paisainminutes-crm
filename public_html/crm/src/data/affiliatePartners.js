@@ -19,7 +19,7 @@ export const AFFILIATE_PARTNERS = [
     tenure: '30 - 45 Days',
     description: 'Fast digital approvals for prime applicants with salary >= ₹50,000.',
     website: 'https://rupay91.com',
-    applyUrl: 'https://www.rupay91.com/applynow.php?source=paisainminutes&utm_source=paisainminutes&ref=paisainminutes&affiliate=paisainminutes&sub_id=CRM&channel=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=rupay91_crm',
+    applyUrl: 'https://loans.rupay91.com/login',
     commissionRate: '6.0%',
     commissionPct: 0.06,
   },

@@ -26,13 +26,6 @@ export default function PipelineView({ onSwitchToList, leads = [] }) {
       leads: leads.filter(l => normalizeStatus(l.status) === 'INTERESTED')
     },
     {
-      title: 'Docs Received',
-      subtext: 'Docs received & in verification',
-      dotColor: 'bg-indigo-500',
-      count: leads.filter(l => normalizeStatus(l.status) === 'DOCS_RECEIVED').length,
-      leads: leads.filter(l => normalizeStatus(l.status) === 'DOCS_RECEIVED')
-    },
-    {
       title: 'Approved',
       subtext: 'Credit approved, pending disbursal',
       dotColor: 'bg-emerald-500',

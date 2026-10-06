@@ -30,7 +30,7 @@ const todayIst = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkat
 const rupees = (paise) => Math.round((Number(paise) || 0) / 100);
 
 export default function PartnerAnalyticsKPISummary({ onSelectCompany }) {
-  const [expandedAll, setExpandedAll] = useState(false);
+  const [expandedAll, setExpandedAll] = useState(true);
   const [openCard, setOpenCard] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [sortField, setSortField] = useState('commissionEarned');

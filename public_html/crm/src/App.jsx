@@ -31,7 +31,7 @@ import GeneralSettingsView from './components/GeneralSettingsView';
 import ReportsView from './components/ReportsView';
 
 import { sanitizeLead } from './utils/amountHelpers';
-import { getLeadsFromBackend, normalizeStatus } from './utils/apiConfig';
+import { getLeadsFromBackend, normalizeStatus, isMobileOnlyLead } from './utils/apiConfig';
 import { SESSION_EVENT, SESSION_EXPIRED_EVENT } from './utils/apiClient';
 import {
   getCurrentUser,
@@ -223,22 +223,18 @@ export default function App() {
 
   // Compute live counts and stats dynamically from leads array
   const leadCounts = useMemo(() => {
-    const fresh = leads.filter(l => normalizeStatus(l.status) === 'FRESH').length;
-    const callback = leads.filter(l => normalizeStatus(l.status) === 'CALLBACK').length;
-    const interested = leads.filter(l => normalizeStatus(l.status) === 'INTERESTED').length;
-    const docsReceived = leads.filter(l => normalizeStatus(l.status) === 'DOCS_RECEIVED').length;
-    const approved = leads.filter(l => {
+    const fullLeads = leads.filter(l => !isMobileOnlyLead(l));
+    const fresh = fullLeads.filter(l => normalizeStatus(l.status) === 'FRESH').length;
+    const callback = fullLeads.filter(l => normalizeStatus(l.status) === 'CALLBACK').length;
+    const interested = fullLeads.filter(l => normalizeStatus(l.status) === 'INTERESTED').length;
+    const approved = fullLeads.filter(l => {
       const s = normalizeStatus(l.status);
       return s === 'APPROVED' || s === 'DISBURSED';
     }).length;
-    const rejected = leads.filter(l => normalizeStatus(l.status) === 'REJECTED').length;
+    const rejected = fullLeads.filter(l => normalizeStatus(l.status) === 'REJECTED').length;
 
     // Mobile-only mini-form dropoffs
-    const mobileOnly = leads.filter(l => 
-      l.isPhoneOnly || 
-      (l.eligibilityStatus && l.eligibilityStatus.includes('Phone Only')) || 
-      ((!l.name || l.name === 'Applicant') && (!l.loanAmount || Number(l.loanAmount) === 0))
-    ).length;
+    const mobileOnly = leads.filter(isMobileOnlyLead).length;
 
     // Duplicate leads count based on phone or PAN
     const phoneCounts = {};
@@ -262,7 +258,6 @@ export default function App() {
       fresh,
       callback,
       interested,
-      docsReceived,
       approved,
       rejected,
       duplicateLeads
@@ -286,7 +281,6 @@ export default function App() {
     });
     const freshList = leads.filter(l => normalizeStatus(l.status) === 'FRESH');
     const callbackList = leads.filter(l => normalizeStatus(l.status) === 'CALLBACK');
-    const docsList = leads.filter(l => normalizeStatus(l.status) === 'DOCS_RECEIVED');
 
     const totalApplied = leads.reduce((sum, item) => sum + (Number(item.loanAmount || item.applied) || 0), 0);
     const approvedAmount = approvedList.reduce((sum, item) => sum + (Number(item.loanAmount || item.applied) || 0), 0);
@@ -295,7 +289,6 @@ export default function App() {
       totalLeads: leads.length,
       freshCount: freshList.length,
       callbackCount: callbackList.length,
-      docsCount: docsList.length,
       approvedCount: approvedList.length,
       disbursedCount: approvedList.length,
       disbursedAmount: approvedAmount,
@@ -466,7 +459,6 @@ export default function App() {
       case 'no-answer':
       case 'interested':
       case 'not-interested':
-      case 'docs-received':
       case 'approved':
       case 'rejected':
       case 'rupay91':

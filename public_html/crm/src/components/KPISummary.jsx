@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { RefreshCw, Maximize2, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function KPISummary({ stats }) {
-  const [expandedAll, setExpandedAll] = useState(false);
+  const [expandedAll, setExpandedAll] = useState(true);
   const [openCard, setOpenCard] = useState({});
 
   const toggleCard = (id) => {

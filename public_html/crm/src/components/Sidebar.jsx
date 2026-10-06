@@ -469,12 +469,12 @@ export default function Sidebar({
               </button>
               )}
 
-              {/* [NEW] Mobile-only Leads */}
+              {/* [NEW] Mobile Leads */}
               {show('mobile-only') && (
               <button onClick={() => handleNavClick('mobile-only')} className={getNavItemClass('mobile-only')}>
                 <div className="flex items-center gap-2.5">
                   <Smartphone className="w-4 h-4 text-slate-400 group-hover:text-blue-600" />
-                  <span>Mobile-only Leads</span>
+                  <span>Mobile Leads</span>
                 </div>
                 <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-blue-50 text-blue-700">
                   {leadCounts?.mobileOnly ?? 0}
@@ -537,19 +537,6 @@ export default function Sidebar({
                 </div>
                 <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-purple-50 text-purple-700">
                   {leadCounts?.interested ?? 0}
-                </span>
-              </button>
-              )}
-
-              {/* Docs Received */}
-              {show('docs-received') && (
-              <button onClick={() => handleNavClick('docs-received')} className={getNavItemClass('docs-received')}>
-                <div className="flex items-center gap-2.5">
-                  <FileCheck className="w-4 h-4 text-slate-400 group-hover:text-slate-[#0A3977]" />
-                  <span>Docs Received</span>
-                </div>
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-purple-50 text-purple-700">
-                  {leadCounts?.docsReceived ?? 0}
                 </span>
               </button>
               )}

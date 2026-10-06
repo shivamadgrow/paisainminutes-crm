@@ -182,7 +182,6 @@ export default function ReportsView({ leads = [] }) {
               <option value="All">All Lead Stages</option>
               <option value="fresh">Fresh Applications</option>
               <option value="callback">Callback</option>
-              <option value="docs-received">Docs Received</option>
               <option value="approved">Approved & Converted</option>
               <option value="rejected">Rejected / Drop-off</option>
             </select>

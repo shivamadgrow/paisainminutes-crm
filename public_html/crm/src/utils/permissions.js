@@ -39,7 +39,7 @@ const TAB_PERMISSIONS = {
 };
 
 const LEAD_TABS = new Set([
-  'all-leads', 'fresh', 'callback', 'no-answer', 'interested', 'not-interested', 'docs-received',
+  'all-leads', 'fresh', 'callback', 'no-answer', 'interested', 'not-interested',
   'approved', 'rejected', 'rupay91', 'mobile-only', 'duplicate-leads',
 ]);
 

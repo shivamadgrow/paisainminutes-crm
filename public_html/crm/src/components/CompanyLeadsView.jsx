@@ -380,7 +380,6 @@ export default function CompanyLeadsView({
             { id: 'FRESH', label: `Fresh (${stats.fresh})` },
             { id: 'CALLBACK', label: `Callback (${stats.callback})` },
             { id: 'INTERESTED', label: 'Interested' },
-            { id: 'DOCS_RECEIVED', label: 'Docs Received' },
             { id: 'APPROVED', label: `Approved (${stats.approved})` },
             { id: 'DISBURSED', label: 'Disbursed' },
             { id: 'REJECTED', label: `Rejected (${stats.rejected})` },
@@ -528,7 +527,6 @@ export default function CompanyLeadsView({
                           <option value="FRESH">Fresh</option>
                           <option value="CALLBACK">Callback</option>
                           <option value="INTERESTED">Interested</option>
-                          <option value="DOCS_RECEIVED">Docs Received</option>
                           <option value="APPROVED">Approved</option>
                           <option value="DISBURSED">Disbursed</option>
                           <option value="REJECTED">Rejected</option>
