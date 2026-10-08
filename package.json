@@ -4,6 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "npm --prefix public_html/crm run dev",
-    "build": "npm --prefix public_html/crm run build"
+    "build": "npm --prefix public_html/crm run build",
+    "audit": "node public_html/scripts/audit-instant-cash-loan.mjs",
+    "flow-check": "node public_html/scripts/website-flow-check.mjs",
+    "test-landing": "node public_html/scripts/test-landing-page.js",
+    "verify-seo": "node public_html/scripts/verify-seo-accessibility.js",
+    "sitemap": "node public_html/scripts/generate-sitemap.js",
+    "validate-sitemap": "node public_html/scripts/validate-sitemap.js"
+  },
+  "dependencies": {
+    "jspdf": "^4.2.1"
   }
 }

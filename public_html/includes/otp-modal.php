@@ -262,7 +262,10 @@
         <h3 class="pim-otp-title">Verify Mobile Number</h3>
         <p class="pim-otp-desc">
             Enter the verification code sent to<br>
-            <span id="pimOtpPhoneDisplay" class="pim-otp-phone-badge">+91 —</span>
+            <span style="display: inline-flex; align-items: center; gap: 0.4rem; margin-top: 0.35rem;">
+                <span id="pimOtpPhoneDisplay" class="pim-otp-phone-badge">+91 —</span>
+                <button type="button" id="pimOtpChangePhoneBtn" class="pim-otp-change-phone-btn" style="background: none; border: none; color: #2563EB; font-size: 0.8rem; font-weight: 700; cursor: pointer; text-decoration: underline; padding: 0.2rem 0.4rem;">Change Number</button>
+            </span>
         </p>
 
         <!-- Live Server Info Badge -->
@@ -301,7 +304,7 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
             </svg>
-            <span>100% Secure & RBI Regulated Verification</span>
+            <span>100% Secure &amp; Digital Verification</span>
         </div>
     </div>
 </div>
@@ -390,6 +393,20 @@ window.PimOtpService = (function() {
 
         if (closeBtn) {
             closeBtn.addEventListener('click', close);
+        }
+
+        const changePhoneBtn = document.getElementById('pimOtpChangePhoneBtn');
+        if (changePhoneBtn) {
+            changePhoneBtn.addEventListener('click', function() {
+                close();
+                const primaryInput = document.getElementById('croMobileInput') || document.getElementById('phone') || document.querySelector('input[type="tel"]');
+                if (primaryInput) {
+                    setTimeout(() => {
+                        primaryInput.focus();
+                        if (typeof primaryInput.select === 'function') primaryInput.select();
+                    }, 100);
+                }
+            });
         }
 
         if (submitBtn) {

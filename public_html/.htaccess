@@ -36,7 +36,14 @@
     RewriteCond %{REQUEST_URI} !^/\.well-known/ [NC]
     RewriteRule \.txt$ - [R=404,L]
 
-    # 2. Redirect direct requests for *.php to clean extensionless version (except index.php & POST handlers)
+    # Ensure DirectoryIndex exclusively prioritizes index.php
+    DirectoryIndex index.php
+
+    # 1.5. Redirect direct requests for index.php or index.html to canonical root /
+    RewriteCond %{THE_REQUEST} \s/index\.(php|html)[\s?] [NC]
+    RewriteRule ^ / [R=301,L]
+
+    # 2. Redirect direct requests for *.php to clean extensionless version (except POST handlers)
     RewriteCond %{REQUEST_METHOD} !POST [NC]
     RewriteCond %{THE_REQUEST} \s/+(.+?)\.php[\s?] [NC]
     RewriteCond %{REQUEST_URI} !^/index\.php$ [NC]

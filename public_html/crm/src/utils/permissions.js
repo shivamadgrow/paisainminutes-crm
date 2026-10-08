@@ -1,6 +1,8 @@
 /**
  * Menu / button visibility helpers.
- * Security Note: Data export functionality across all modules is strictly restricted to Super Admin only.
+ * Security Note:
+ * 1. Data export functionality across all modules is strictly restricted to Super Admin only.
+ * 2. Complete Invoice Management (Generate, View, Edit, Delete, Download PDF, Print, Status) is strictly restricted to Super Admin only.
  */
 
 export function isSuperAdmin(user) {
@@ -23,7 +25,48 @@ export function isExportPermission(permission) {
   );
 }
 
+export function isInvoicePermission(permission) {
+  if (!permission) return false;
+  const p = String(permission).toLowerCase();
+  return (
+    p.startsWith('invoices.') ||
+    p.startsWith('invoice.') ||
+    p === 'invoices' ||
+    p === 'invoice' ||
+    p === 'invoices.manage' ||
+    p === 'invoices.read' ||
+    p === 'invoices.write' ||
+    p === 'invoices.generate' ||
+    p === 'invoices.delete' ||
+    p.includes('invoice')
+  );
+}
+
 export function canExport(user) {
+  return isSuperAdmin(user);
+}
+
+/**
+ * Complete Invoice Access: Strictly Super Admin only.
+ * Admin and all other roles must NOT have invoice management access.
+ */
+export function canManageInvoices(user) {
+  return isSuperAdmin(user);
+}
+
+export function canDeleteInvoice(user) {
+  return isSuperAdmin(user);
+}
+
+export function canGenerateInvoice(user) {
+  return isSuperAdmin(user);
+}
+
+export function canViewInvoices(user) {
+  return isSuperAdmin(user);
+}
+
+export function canEditInvoice(user) {
   return isSuperAdmin(user);
 }
 
@@ -32,6 +75,10 @@ export function hasPermission(user, permission) {
   const isSuper = isSuperAdmin(user);
   // All export actions are strictly restricted to Super Admin only
   if (isExportPermission(permission)) {
+    return isSuper;
+  }
+  // All invoice actions are strictly restricted to Super Admin only
+  if (isInvoicePermission(permission)) {
     return isSuper;
   }
   if (isSuper) return true;
@@ -54,7 +101,7 @@ const TAB_PERMISSIONS = {
   'commission-summary': ['finance.read'],
   'payout-requests': ['finance.read'],
   settlements: ['finance.read'],
-  'invoices-raised': ['finance.read'],
+  'invoices-raised': ['invoices.manage'],
   'rate-cards': ['finance.read'],
   pipeline: ['leads.read'],
   tracker: ['leads.read'],
@@ -78,8 +125,14 @@ export function canViewTab(user, tab) {
   if (tab === 'profile') return true;
   if (user.role === 'Partner') return tab === 'partner-leads';
   if (tab === 'partner-leads') return false;
+  // Invoice management tab is strictly restricted to Super Admin only
+  if (tab === 'invoices-raised' || tab === 'invoices') {
+    return isSuperAdmin(user);
+  }
   let required = TAB_PERMISSIONS[tab];
   if (!required && (LEAD_TABS.has(tab) || String(tab).startsWith('company-'))) required = ['leads.read'];
   if (!required) return true;
   return hasAnyPermission(user, required);
 }
+
+

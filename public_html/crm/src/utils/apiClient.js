@@ -202,11 +202,40 @@ export function isExportUrl(urlOrPath) {
   return /\/export(\?|$)/.test(clean) || clean.endsWith('/export') || clean.includes('/leads/export') || clean.includes('/loan-applications/export');
 }
 
-// Global fetch guard: reject direct browser calls to export endpoints if not Super Admin
-if (typeof window !== 'undefined' && window.fetch && !window.__paisaExportGuarded) {
+export function isInvoiceApiUrl(urlOrPath) {
+  if (!urlOrPath) return false;
+  const clean = String(urlOrPath).toLowerCase();
+  return (
+    clean.includes('/api/crm/invoices') ||
+    clean.includes('/api/invoices') ||
+    /\/invoices(\/|\?|$)/.test(clean) ||
+    clean.endsWith('/invoices') ||
+    clean.includes('/invoices/')
+  );
+}
+
+export function canDeleteInvoiceSession() {
+  return isSuperAdminSession();
+}
+
+export function canManageInvoicesSession() {
+  return isSuperAdminSession();
+}
+
+export function isInvoiceDeleteUrl(urlOrPath, method) {
+  if (!urlOrPath) return false;
+  const m = String(method || '').toUpperCase();
+  if (m !== 'DELETE') return false;
+  return isInvoiceApiUrl(urlOrPath);
+}
+
+// Global fetch guard: reject direct browser calls to export and invoice endpoints if not Super Admin
+if (typeof window !== 'undefined' && window.fetch && !window.__paisaApiGuarded) {
   const originalFetch = window.fetch;
   window.fetch = async function (input, init) {
     const urlStr = typeof input === 'string' ? input : (input && input.url ? input.url : '');
+    const method = (init && init.method) || (input && input.method) || 'GET';
+
     if (isExportUrl(urlStr) && !isSuperAdminSession()) {
       return new Response(
         JSON.stringify({ error: '403 Forbidden: Data export is strictly restricted to Super Admin.' }),
@@ -217,8 +246,21 @@ if (typeof window !== 'undefined' && window.fetch && !window.__paisaExportGuarde
         }
       );
     }
+
+    if (isInvoiceApiUrl(urlStr) && !isSuperAdminSession()) {
+      return new Response(
+        JSON.stringify({ error: '403 Forbidden: Invoice management is strictly restricted to Super Admin only.' }),
+        {
+          status: 403,
+          statusText: 'Forbidden',
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+    }
+
     return originalFetch.apply(this, arguments);
   };
+  window.__paisaApiGuarded = true;
   window.__paisaExportGuarded = true;
 }
 
@@ -251,8 +293,21 @@ export async function api(path, options = {}) {
     };
   }
 
+  // Security enforcement: Invoice management is strictly restricted to Super Admin only
+  if (isInvoiceApiUrl(path) && !isSuperAdminSession()) {
+    return {
+      ok: false,
+      status: 403,
+      data: { error: '403 Forbidden: Invoice management is strictly restricted to Super Admin only.' },
+      blob: null,
+      headers: typeof Headers !== 'undefined' ? new Headers({ 'content-type': 'application/json' }) : null,
+      error: '403 Forbidden: Invoice management is strictly restricted to Super Admin only.',
+    };
+  }
+
   const url = buildUrl(path, query);
   const hasBody = body !== undefined && body !== null;
+
 
   const send = () => {
     const h = { Accept: responseType === 'blob' ? '*/*' : 'application/json', ...headers };
@@ -303,6 +358,16 @@ export async function downloadFile(path, query, fallbackName = 'export.csv') {
       blob: null,
       headers: typeof Headers !== 'undefined' ? new Headers({ 'content-type': 'application/json' }) : null,
       error: '403 Forbidden: Data export is strictly restricted to Super Admin.',
+    };
+  }
+  if (isInvoiceApiUrl(path) && !isSuperAdminSession()) {
+    return {
+      ok: false,
+      status: 403,
+      data: { error: '403 Forbidden: Invoice management is strictly restricted to Super Admin only.' },
+      blob: null,
+      headers: typeof Headers !== 'undefined' ? new Headers({ 'content-type': 'application/json' }) : null,
+      error: '403 Forbidden: Invoice management is strictly restricted to Super Admin only.',
     };
   }
   const res = await api(path, { query, responseType: 'blob', timeoutMs: 60000 });

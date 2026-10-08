@@ -46,10 +46,10 @@ if (fs.existsSync(headerPath)) {
     }
 
     // Check JSON-LD Schemas
-    if ((content.includes('"@type": "Organization"') || content.includes('"@type": "FinancialService"')) && content.includes('"@type": "WebSite"') && content.includes('potentialAction')) {
-        pass('JSON-LD Schema contains FinancialService/Organization and WebSite with SearchAction');
+    if ((content.includes('"@type": "Organization"') || content.includes('"@type": "FinancialService"')) && content.includes('"@type": "WebSite"') && content.includes('"@type": "WebPage"')) {
+        pass('JSON-LD Schema contains FinancialService, WebSite, and WebPage graph entities');
     } else {
-        fail('JSON-LD Schema missing key Organization / WebSite entities');
+        fail('JSON-LD Schema missing key FinancialService / WebSite / WebPage entities');
     }
 } else {
     fail('includes/header.php not found');

@@ -162,7 +162,7 @@
         <div class="sec-hero-content">
             <span class="section-tag">Credit Builder</span>
             <h1 class="sec-hero-title">Secured Credit Cards</h1>
-            <p class="sec-hero-desc">Have a low credit score or no income proof? Apply for a secured credit card backed by a Fixed Deposit (FD). Enjoy guaranteed approvals, zero CIBIL checks, and rebuild your score fast.</p>
+            <p class="sec-hero-desc">Have a low credit score or no income proof? Apply for a secured credit card backed by a Fixed Deposit (FD). Enjoy high approval rates with minimal credit checks, earn bank interest on your deposit, and rebuild your credit score steadily.</p>
             <button class="btn btn-primary open-apply-modal" style="background: var(--white); color: var(--primary-color);">Apply for Secured Card</button>
         </div>
     </div>
@@ -176,8 +176,8 @@
                 <div class="feature-icon">
                     <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                 </div>
-                <h2 class="feature-title">Guaranteed Approval</h2>
-                <p class="feature-desc">Fulfill basic FD criteria to qualify for 100% approvals. Zero credit scoring checks or salary proof required.</p>
+                <h2 class="feature-title">Assured Collateral Backing</h2>
+                <p class="feature-desc">Fulfill standard bank FD criteria for near-certain card issuance without traditional salary slips or high CIBIL score prerequisites.</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon">
@@ -287,7 +287,7 @@
 <section class="cta-banner">
     <div class="container">
         <h2>Start Building Your CIBIL Score Today</h2>
-        <p>Apply for top FD-backed secured credit cards online with guaranteed instant approvals.</p>
+        <p>Apply for top FD-backed secured credit cards online with simplified processing and instant collateral setup.</p>
         <button class="btn btn-primary open-apply-modal" style="background: var(--white); color: var(--primary-color);">Apply Now</button>
     </div>
 </section>

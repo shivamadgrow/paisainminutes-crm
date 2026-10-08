@@ -32,6 +32,7 @@ function getSeoMeta(slug) {
     // High intent pillar / primary hub pages
     const highPillars = [
         'personal-loan',
+        'instant-cash-loan',
         'business-loan',
         'home-loan',
         'credit-card',

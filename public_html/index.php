@@ -1,4 +1,41 @@
-<?php include 'includes/header.php'; ?>
+<?php
+/**
+ * Paisa in Minutes - Official Homepage
+ * Brand Entity & Digital Lending Service Provider (LSP) Marketplace
+ */
+$page_title = "Paisa in Minutes – Instant Personal Loans Online";
+$page_description = "Apply for instant personal loans up to ₹50 Lakh online with Paisa in Minutes @10.49% p.a. 100% digital paperless approval & 2-hour bank disbursal from RBI-registered NBFCs.";
+$page_keywords = "paisa in minutes, paisa in minutes loan, instant personal loan online, personal loan online, digital loan marketplace india, quick cash loan";
+
+$page_faqs = [
+    [
+        'question' => 'What is Paisa in Minutes and how does it work?',
+        'answer' => 'Paisa in Minutes (paisainminutes.com) is an authorized digital loan facilitation marketplace operated by AdGrow Media Services. We connect borrowers with RBI-registered NBFCs and banks for instant personal loans up to ₹50 Lakh with 100% paperless digital verification and 2-hour bank disbursal.'
+    ],
+    [
+        'question' => 'What documents do I need to apply for a loan?',
+        'answer' => 'Since we operate a 100% paperless digital system, you only need: 1. PAN Card, 2. Aadhaar Card (linked to your mobile number for e-signing), and 3. Latest 3 months\' Bank Statements via secure net banking login or PDF upload.'
+    ],
+    [
+        'question' => 'How much time does it take for loan disbursal?',
+        'answer' => 'Our automated engine evaluates your application in under 5 minutes. Once you review, accept your offer, and complete digital KYC, funds are transferred directly into your bank account within 2 hours.'
+    ],
+    [
+        'question' => 'What are the interest rates, tenure, and fees?',
+        'answer' => 'Interest rates start from 10.49% per annum with flexible repayment tenures from 3 to 60 months. Processing fees range from 1% to 3% (+ applicable GST). All charges are disclosed upfront before loan agreement execution, with zero advance fees.'
+    ],
+    [
+        'question' => 'Is my personal and financial data secure?',
+        'answer' => 'Yes, absolutely. All customer information is protected with bank-grade 256-bit SSL encryption. We comply with RBI Digital Lending Guidelines and never sell or share user data with unauthorized third parties.'
+    ],
+    [
+        'question' => 'What happens if I miss my monthly repayment schedule?',
+        'answer' => 'We encourage timely repayments to maintain a healthy CIBIL score. If an EMI is missed, standard late-payment fees and penal interest may apply as detailed in your loan agreement with the lending partner.'
+    ]
+];
+
+include 'includes/header.php'; 
+?>
 
     <!-- HERO SECTION -->
     <section class="hero" id="hero">
@@ -13,7 +50,7 @@
                         <span class="pulse-dot"></span>
                         <span class="badge-text">Paisa Milega, Minutes Mein</span>
                     </div>
-                    <h1 class="hero-title">Instant Personal Loan Online — <span class="gradient-text">Paisa Milega, Minutes Mein</span></h1>
+                    <h1 class="hero-title">Paisa in Minutes — <span class="gradient-text">Instant Personal Loans Online</span></h1>
                     <p class="hero-desc">Need immediate funds? Get personal loans up to ₹50 Lakh online starting @10.49% p.a. with our 100% digital, paperless, and secure process.</p>
                     <div class="hero-actions">
                         <button type="button" class="btn btn-primary open-apply-modal" aria-label="Apply Now for Instant Personal Loan">Apply Now</button>
@@ -398,6 +435,90 @@
         </div>
     </section>
 
+    <!-- ABOUT PAISA IN MINUTES & REGULATORY LENDING DISCLOSURE -->
+    <section class="section about-brand-section" id="about-brand" style="background: #FFFFFF; padding: 4.5rem 0; border-top: 1px solid #E2E8F0; border-bottom: 1px solid #E2E8F0;">
+        <div class="container">
+            <div class="section-title-wrapper text-center reveal">
+                <span class="section-tag">About Our Platform</span>
+                <h2 class="section-title">What is Paisa in Minutes? Instant Digital Loan Facilitation</h2>
+                <p class="section-subtitle">A transparent, customer-first fintech marketplace operated by AdGrow Media Services in compliance with RBI Digital Lending Guidelines.</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 2rem; margin-top: 2.5rem;">
+                <!-- Column 1: Platform Overview -->
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 18px; padding: 2rem;">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: #EFF6FF; color: #2563EB; margin-bottom: 1.25rem;">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                    </div>
+                    <h3 style="font-size: 1.3rem; font-weight: 700; color: #0F172A; margin-bottom: 0.75rem;">Digital Lending Service Provider (LSP)</h3>
+                    <p style="color: #475569; font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem;">
+                        <strong>Paisa in Minutes</strong> (paisainminutes.com) is an authorized digital loan facilitation platform and Lending Service Provider (LSP) operated by <strong>AdGrow Media Services</strong>, based in Delhi, India. We connect salaried individuals, self-employed professionals, and small business owners directly with RBI-registered Non-Banking Financial Companies (NBFCs) and commercial banks.
+                    </p>
+                    <p style="color: #475569; font-size: 0.95rem; line-height: 1.7;">
+                        We are not a direct lender; instead, our algorithmic match engine evaluates customer eligibility criteria and pairs borrowers with the most suitable, transparent lending partner in minutes.
+                    </p>
+                </div>
+
+                <!-- Column 2: Who is it for & Products -->
+                <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 18px; padding: 2rem;">
+                    <div style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; background: #ECFDF5; color: #10B981; margin-bottom: 1.25rem;">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                    </div>
+                    <h3 style="font-size: 1.3rem; font-weight: 700; color: #0F172A; margin-bottom: 0.75rem;">Who is Paisa in Minutes For?</h3>
+                    <p style="color: #475569; font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem;">
+                        Whether you need immediate cash for medical emergencies, home repairs, wedding expenses, education fees, or working capital for your business, Paisa in Minutes provides seamless access:
+                    </p>
+                    <ul style="color: #475569; font-size: 0.93rem; line-height: 1.8; padding-left: 1.25rem; margin-bottom: 0;">
+                        <li><strong>Personal Loans:</strong> ₹10,000 to ₹50 Lakh with 3 to 60-month tenures.</li>
+                        <li><strong>Salaried Employees:</strong> Monthly income ₹20,000+ (metro) or ₹15,000+ (non-metro).</li>
+                        <li><strong>Self-Employed:</strong> Small business owners and freelancers with digital bank records.</li>
+                        <li><strong>100% Digital KYC:</strong> Paperless PAN &amp; Aadhaar verification with 2-hour bank disbursal.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Representative APR Worked Example (Google Financial Services Policy Compliant) -->
+            <div style="margin-top: 2rem; background: #EFF6FF; border: 1.5px solid #BFDBFE; border-radius: 18px; padding: 2rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                    <span style="display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #2563EB; color: #fff; font-weight: 800; font-size: 0.85rem;">ℹ</span>
+                    <h3 style="font-size: 1.2rem; font-weight: 800; color: #1E3A8A; margin: 0;">Representative APR Example &amp; Transparent Terms</h3>
+                </div>
+                <p style="color: #1E40AF; font-size: 0.93rem; line-height: 1.7; margin-bottom: 1.25rem;">
+                    In compliance with the Reserve Bank of India (RBI) Fair Practices Code and Google Financial Services Lending Policies, here are our standard loan parameters and a representative cost breakdown:
+                </p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+                    <div style="background: #ffffff; border: 1px solid #DBEAFE; border-radius: 12px; padding: 1rem;">
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Repayment Tenure</div>
+                        <div style="font-size: 1.1rem; font-weight: 800; color: #0F172A; margin-top: 0.25rem;">3 to 60 Months</div>
+                    </div>
+                    <div style="background: #ffffff; border: 1px solid #DBEAFE; border-radius: 12px; padding: 1rem;">
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Annual Percentage Rate (APR)</div>
+                        <div style="font-size: 1.1rem; font-weight: 800; color: #0F172A; margin-top: 0.25rem;">10.49% to 24% p.a.</div>
+                    </div>
+                    <div style="background: #ffffff; border: 1px solid #DBEAFE; border-radius: 12px; padding: 1rem;">
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Processing Fee</div>
+                        <div style="font-size: 1.1rem; font-weight: 800; color: #0F172A; margin-top: 0.25rem;">1% to 3% (+ GST)</div>
+                    </div>
+                    <div style="background: #ffffff; border: 1px solid #DBEAFE; border-radius: 12px; padding: 1rem;">
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Upfront Fee Policy</div>
+                        <div style="font-size: 1.1rem; font-weight: 800; color: #16A34A; margin-top: 0.25rem;">₹0 (Zero Advance Fees)</div>
+                    </div>
+                </div>
+                <div style="background: #ffffff; border: 1px solid #DBEAFE; border-radius: 12px; padding: 1.25rem; font-size: 0.9rem; color: #334155; line-height: 1.7;">
+                    <strong>Representative Calculation:</strong> For a personal loan of <strong>₹1,00,000</strong> borrowed at <strong>10.49% p.a.</strong> for a tenure of <strong>12 months</strong>, with a processing fee of 2.0% (₹2,000 + ₹360 GST = ₹2,360 deducted upfront), the net disbursed amount is <strong>₹97,640</strong>. The monthly EMI is <strong>₹8,815</strong>, total interest payable is <strong>₹5,780</strong>, and the total repayable amount over 12 months is <strong>₹1,05,780</strong>.
+                </div>
+                <div style="margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; font-size: 0.88rem; color: #475569;">
+                    <span>Regulated Partners:</span>
+                    <a href="/our-partners" style="color: #2563EB; font-weight: 700; text-decoration: underline;">View RBI-Registered Partners</a>
+                    <span>•</span>
+                    <a href="/partner-terms" style="color: #2563EB; font-weight: 700; text-decoration: underline;">Partner Terms &amp; Conditions</a>
+                    <span>•</span>
+                    <a href="/about-us" style="color: #2563EB; font-weight: 700; text-decoration: underline;">About AdGrow Media Services</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- ELIGIBILITY CALCULATOR -->
     <section class="section section-bg" id="calculator">
         <div class="container">
@@ -660,88 +781,29 @@
         <div class="container">
             <div class="section-title-wrapper text-center reveal">
                 <span class="section-tag">Common Inquiries</span>
-                <h2 class="section-title"><?php echo htmlspecialchars($human_name); ?> FAQs</h2>
+                <h2 class="section-title">Paisa in Minutes — Frequently Asked Questions</h2>
                 <p class="section-subtitle">Find immediate answers to questions concerning loan rates, terms, parameters, and digital safety.</p>
             </div>
 
             <div class="faq-container reveal">
-                <!-- FAQ Item 1 -->
-                <div class="faq-item">
-                    <div class="faq-header" role="button" tabindex="0" aria-expanded="false">
-                        <h3 class="faq-question">What documents do I need to apply for a loan?</h3>
-                        <div class="faq-icon-wrapper">
-                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                <?php foreach ($page_faqs as $idx => $faq): ?>
+                    <div class="faq-item">
+                        <div class="faq-header" role="button" tabindex="0" aria-expanded="false">
+                            <h3 class="faq-question"><?php echo htmlspecialchars($faq['question']); ?></h3>
+                            <div class="faq-icon-wrapper">
+                                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+                            </div>
+                        </div>
+                        <div class="faq-body">
+                            <div class="faq-content">
+                                <?php echo nl2br(htmlspecialchars($faq['answer'])); ?>
+                            </div>
                         </div>
                     </div>
-                    <div class="faq-body">
-                        <div class="faq-content">
-                            Since we operate a 100% paperless digital system, we only require:
-                            <br>1. PAN Card.
-                            <br>2. Aadhaar Card (linked to your mobile number for e-signing).
-                            <br>3. Latest 3 months' Bank Statements (via secure net banking login or PDF upload).
-                        </div>
-                    </div>
-                </div>
-
-                <!-- FAQ Item 2 -->
-                <div class="faq-item">
-                    <div class="faq-header" role="button" tabindex="0" aria-expanded="false">
-                        <h3 class="faq-question">How much time does it take for the loan disbursal?</h3>
-                        <div class="faq-icon-wrapper">
-                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </div>
-                    </div>
-                    <div class="faq-body">
-                        <div class="faq-content">
-                            Our instant algorithms evaluate applications and provide credit decisions in under 5 minutes. Once you review, approve, and e-sign the loan contract, the money is disbursed directly into your bank account within 2 hours.
-                        </div>
-                    </div>
-                </div>
-
-                <!-- FAQ Item 3 -->
-                <div class="faq-item">
-                    <div class="faq-header" role="button" tabindex="0" aria-expanded="false">
-                        <h3 class="faq-question">Is my personal and financial data secure?</h3>
-                        <div class="faq-icon-wrapper">
-                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </div>
-                    </div>
-                    <div class="faq-body">
-                        <div class="faq-content">
-                            Yes, absolutely. We prioritize your privacy. All user information submitted on our portal is transmitted through bank-grade 256-bit SSL encrypted channels. We do not sell or share customer data with unauthorized third parties.
-                        </div>
-                    </div>
-                </div>
-
-                <!-- FAQ Item 4 -->
-                <div class="faq-item">
-                    <div class="faq-header" role="button" tabindex="0" aria-expanded="false">
-                        <h3 class="faq-question">What are the interest rates and extra charges?</h3>
-                        <div class="faq-icon-wrapper">
-                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </div>
-                    </div>
-                    <div class="faq-body">
-                        <div class="faq-content">
-                            Our interest rates start from 10.99% per annum depending on your overall credit profile, income eligibility, and historical repayment records. Any applicable processing charges are disclosed upfront before final contract signature.
-                        </div>
-                    </div>
-                </div>
-
-                <!-- FAQ Item 5 -->
-                <div class="faq-item">
-                    <div class="faq-header" role="button" tabindex="0" aria-expanded="false">
-                        <h3 class="faq-question">What happens if I miss my monthly repayment schedule?</h3>
-                        <div class="faq-icon-wrapper">
-                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                        </div>
-                    </div>
-                    <div class="faq-body">
-                        <div class="faq-content">
-                            We encourage regular, on-time repayments to avoid negative impacts on your CIBIL score. If you miss an EMI payment, standard late-payment penalties apply as detailed in your loan agreement.
-                        </div>
-                    </div>
-                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
             </div>
         </div>
     </section>

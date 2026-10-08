@@ -18,7 +18,7 @@ $onboardedPartners = [
         'logo' => '/assets/jhatpatloans.png',
         'badge' => 'Instant Fast Approval',
         'max_amount' => '₹1,00,000',
-        'interest_rate' => 'upto 1.0% / day',
+        'interest_rate' => 'Ranges from upto 0.8% per day',
         'tenure' => '30 - 45 Days',
         'disbursal' => 'Direct Bank Credit',
         'rating' => '4.9',
@@ -410,6 +410,10 @@ $onboardedPartners = [
     gap: 0.85rem;
 }
 
+.partner-metrics-box > div {
+    min-width: 0;
+}
+
 .metric-item-label {
     font-size: 0.75rem;
     color: #64748B;
@@ -424,6 +428,9 @@ $onboardedPartners = [
     font-weight: 800;
     color: #0F172A;
     font-family: var(--font-heading);
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: normal;
 }
 
 .metric-item-rate {

@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 
 function checkForms(p) {
   if (!fs.existsSync(p)) return;
@@ -12,4 +13,5 @@ function checkForms(p) {
   console.log(p + ' inputs:\n', Array.from(new Set(inputs)));
 }
 
-['public_html/index.html', 'public_html/apply-now.html', 'public_html/personal-loan.html'].forEach(checkForms);
+const publicDir = path.resolve(__dirname, '..');
+['index.html', 'apply-now.html', 'personal-loan.html'].map(f => path.join(publicDir, f)).forEach(checkForms);

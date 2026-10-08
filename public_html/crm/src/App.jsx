@@ -30,6 +30,7 @@ import NotificationsView from './components/NotificationsView';
 import GeneralSettingsView from './components/GeneralSettingsView';
 import ReportsView from './components/ReportsView';
 
+import { ShieldAlert } from 'lucide-react';
 import { sanitizeLead } from './utils/amountHelpers';
 import { getLeadsFromBackend, normalizeStatus, isMobileOnlyLead } from './utils/apiConfig';
 import { SESSION_EVENT, SESSION_EXPIRED_EVENT } from './utils/apiClient';
@@ -40,7 +41,7 @@ import {
   logoutStaff
 } from './utils/authService';
 import { getFinanceCounts } from './utils/crmApi';
-import { canViewTab, hasPermission } from './utils/permissions';
+import { canViewTab, hasPermission, isSuperAdmin } from './utils/permissions';
 import { AFFILIATE_PARTNERS } from './data/affiliatePartners';
 
 // Leads refresh interval (the old 3 second polling hammered the server). Paused while the tab is hidden.
@@ -51,6 +52,11 @@ export default function App() {
     const user = getCurrentUser();
     if (user && user.role === 'Partner') return 'partner-leads';
     try {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        const tabParam = params.get('tab') || (window.location.hash ? window.location.hash.replace(/^#/, '') : null);
+        if (tabParam) return tabParam;
+      }
       const saved = localStorage.getItem('paisa_crm_active_tab');
       if (saved) return saved;
     } catch (e) {
@@ -63,6 +69,11 @@ export default function App() {
     setActiveTabState(tab);
     try {
       localStorage.setItem('paisa_crm_active_tab', tab);
+      if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', tab);
+        window.history.replaceState({}, '', url.toString());
+      }
     } catch (e) {
       // UI preference only
     }
@@ -442,6 +453,26 @@ export default function App() {
         );
 
       case 'invoices-raised':
+      case 'invoices':
+        if (!isSuperAdmin(currentUser)) {
+          return (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center animate-fade-in bg-white rounded-2xl border border-slate-200/80 shadow-2xs my-6">
+              <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-4 shadow-xs">
+                <ShieldAlert className="w-8 h-8" />
+              </div>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">403 — Access Denied</h1>
+              <p className="text-sm text-slate-600 mt-2 max-w-md">
+                Invoice management is strictly restricted to Super Admin only. Your account does not have permission to view, generate, or manage invoices.
+              </p>
+              <button
+                onClick={() => setActiveTab('executive')}
+                className="mt-6 px-5 py-2.5 bg-[#0A3977] hover:bg-[#072956] text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+              >
+                Back to Dashboard
+              </button>
+            </div>
+          );
+        }
         return (
           <InvoicesRaisedView onChanged={refreshCommissionCounts} />
         );

@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 
 function extractInputs(filePath) {
   if (!fs.existsSync(filePath)) return;
@@ -12,5 +13,6 @@ function extractInputs(filePath) {
   console.log(filePath + ' fields:\n', Array.from(found));
 }
 
-extractInputs('public_html/apply-now.php');
-extractInputs('public_html/check-eligibility.php');
+const publicDir = path.resolve(__dirname, '..');
+extractInputs(path.join(publicDir, 'apply-now.php'));
+extractInputs(path.join(publicDir, 'check-eligibility.php'));

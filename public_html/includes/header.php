@@ -85,7 +85,7 @@ if (!empty($page_slug)) {
 
 if (!isset($page_title) || empty($page_title)) {
     if (empty($page_slug)) {
-        $page_title = "Instant Personal Loan Online | Paisa in Minutes";
+        $page_title = "Paisa in Minutes – Instant Personal Loans Online";
     } else {
         $page_title = $human_name . " | Paisa in Minutes";
         if (mb_strlen($human_name) <= 22) {
@@ -96,7 +96,7 @@ if (!isset($page_title) || empty($page_title)) {
 
 if (!isset($page_description) || empty($page_description)) {
     if (empty($page_slug)) {
-        $page_description = "Get instant personal loans up to ₹50 Lakh online with Paisa in Minutes @10.49% p.a. 100% digital paperless approval & 2-hour disbursal from RBI-registered NBFCs.";
+        $page_description = "Apply for instant personal loans up to ₹50 Lakh online with Paisa in Minutes @10.49% p.a. 100% digital paperless approval & 2-hour bank disbursal from RBI-registered NBFCs.";
     } else {
         $clean_name = strtolower($human_name);
         $page_description = "Apply for " . $clean_name . " online starting @10.49% p.a. 100% digital approval, 2-hour disbursal & minimal paperwork. Trusted by 25,000+ happy borrowers.";
@@ -107,7 +107,11 @@ if (!isset($page_description) || empty($page_description)) {
 }
 
 if (!isset($page_keywords) || empty($page_keywords)) {
-    $page_keywords = strtolower($human_name) . ", instant loan, personal loan online, paisa in minutes, low interest loan, quick disbursal";
+    if (empty($page_slug)) {
+        $page_keywords = "paisa in minutes, paisa in minutes loan, instant personal loan online, personal loan online, digital loan marketplace india, quick cash loan";
+    } else {
+        $page_keywords = strtolower($human_name) . ", instant loan, personal loan online, paisa in minutes, low interest loan, quick disbursal";
+    }
 }
 
 if (!isset($page_og_image) || empty($page_og_image)) {
@@ -277,16 +281,26 @@ if (!isset($page_og_image) || empty($page_og_image)) {
           "@id": "https://paisainminutes.com/#website",
           "url": "https://paisainminutes.com/",
           "name": "Paisa in Minutes",
-          "description": "Instant Personal Loans & Cash Loan Approval Online in India",
+          "alternateName": "PaisaInMinutes",
+          "description": "Instant Personal Loans & Digital Loan Facilitation Online in India",
           "publisher": {
             "@id": "https://paisainminutes.com/#organization"
           },
-          "inLanguage": "en-IN",
-          "potentialAction": {
-            "@type": "SearchAction",
-            "target": "https://paisainminutes.com/check-eligibility?q={search_term_string}",
-            "query-input": "required name=search_term_string"
-          }
+          "inLanguage": "en-IN"
+        },
+        {
+          "@type": "WebPage",
+          "@id": "<?php echo $canonical_url; ?>#webpage",
+          "url": "<?php echo $canonical_url; ?>",
+          "name": <?php echo json_encode($page_title); ?>,
+          "description": <?php echo json_encode($page_description); ?>,
+          "isPartOf": {
+            "@id": "https://paisainminutes.com/#website"
+          },
+          "about": {
+            "@id": "https://paisainminutes.com/#organization"
+          },
+          "inLanguage": "en-IN"
         },
         {
           "@type": "LoanOrCredit",

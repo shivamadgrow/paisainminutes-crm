@@ -182,8 +182,18 @@
                     </div>
                 </div>
                 <div class="footer-compliance-body">
-                    <p>
-                        <strong>Disclaimer &amp; NBFC Compliance Information:</strong> PaisaInMinutes is a loan marketplace and does not directly lend money. Interest rates, processing fees, terms, and eligibility criteria vary by lender and are subject to change. All loan offers are indicative and subject to lender approval. PaisaInMinutes may receive commissions from partner lenders. RBI-registered NBFCs and banks only.
+                    <p style="margin-bottom: 0.75rem;">
+                        <strong>Regulatory &amp; Lending Disclosure:</strong> Paisa in Minutes is a digital loan facilitation platform (Lending Service Provider - LSP) operated by AdGrow Media Services. We do not directly lend money or act as an NBFC/Bank. We connect prospective borrowers with RBI-regulated Non-Banking Financial Companies (NBFCs) and Scheduled Commercial Banks. All loan terms, approvals, credit sanction limits, and disbursals are strictly governed by our RBI-registered lending partners at their sole discretion.
+                    </p>
+                    <p style="margin-bottom: 0.75rem;">
+                        <strong>Loan Terms &amp; Google Financial Services Policy Compliance:</strong>
+                        <br>&bull; <strong>Repayment Tenure:</strong> Minimum tenure is 3 months (90 days) and maximum tenure is up to 60 months (5 years). We do not offer or promote short-term payday loans with repayment periods under 60 days.
+                        <br>&bull; <strong>Annual Percentage Rate (APR):</strong> Minimum APR starts at 10.49% p.a., with a maximum APR capped at 24% p.a., depending on borrower creditworthiness and partner risk profiling.
+                        <br>&bull; <strong>Processing Fees:</strong> 1% to 3% of the sanctioned loan amount (+ applicable 18% GST). No upfront or advance security deposit is collected before disbursal.
+                    </p>
+                    <p style="margin-bottom: 0;">
+                        <strong>Representative APR Worked Example:</strong> For a personal loan of ₹1,00,000 disbursed over a 12-month tenure at an interest rate of 10.49% p.a.:
+                        Monthly EMI = ₹8,815 | Processing Fee (2%) = ₹2,000 | GST on Processing Fee (18%) = ₹360 | Net Amount Disbursed = ₹97,640 | Total Interest Payable = ₹5,780 | Total Amount Repayable = ₹1,05,780 | Representative Maximum APR = 14.8% p.a.
                     </p>
                 </div>
             </div>

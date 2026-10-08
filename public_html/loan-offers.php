@@ -82,7 +82,22 @@ if ($accessCookie === '') {
         if (!empty($nodeLead['salary'])) {
             $userSalaryStr = (string) $nodeLead['salary'];
         }
-        if (!empty($nodeLead['cibil'])) {
+
+        // Bureau / CIBIL score from Node lead
+        $nodeBureauScore = null;
+        foreach (['bureau_score', 'bureauScore', 'cibilScore', 'cibil_score', 'cibil', 'score'] as $ckey) {
+            if (isset($nodeLead[$ckey]) && $nodeLead[$ckey] !== '' && $nodeLead[$ckey] !== null) {
+                if (is_numeric($nodeLead[$ckey]) && (int)$nodeLead[$ckey] >= 300 && (int)$nodeLead[$ckey] <= 900) {
+                    $nodeBureauScore = (int)$nodeLead[$ckey];
+                    break;
+                }
+            }
+        }
+        if ($nodeBureauScore) {
+            $userCibilStr = (string)$nodeBureauScore;
+            $_SESSION['pim_cibil'] = $nodeBureauScore;
+            $_SESSION['pim_lead_cibil'] = (string)$nodeBureauScore;
+        } elseif (!empty($nodeLead['cibil'])) {
             $userCibilStr = (string) $nodeLead['cibil'];
         }
         if (empty($_GET['loan_amount']) && !empty($nodeLead['amount'])) {
@@ -111,6 +126,10 @@ if (!function_exists('parseSalaryVal')) {
 if (!function_exists('parseCibilVal')) {
     function parseCibilVal($cibilStr) {
         if (empty($cibilStr)) return 750;
+        // Prioritize exact 3-digit numeric score from CIBIL API (e.g. 724):
+        if (preg_match('/\b([3-8]\d{2}|900)\b/', (string)$cibilStr, $m)) {
+            return (int)$m[1];
+        }
         if (preg_match('/850/i', $cibilStr)) return 850;
         if (preg_match('/800/i', $cibilStr)) return 800;
         if (preg_match('/750/i', $cibilStr)) return 750;
@@ -120,14 +139,72 @@ if (!function_exists('parseCibilVal')) {
         if (preg_match('/550/i', $cibilStr)) return 550;
         if (preg_match('/500/i', $cibilStr)) return 500;
         if (preg_match('/below|no\s*credit/i', $cibilStr)) return 450;
-        preg_match('/\d{3}/', $cibilStr, $m);
-        if (!empty($m[0])) return (int)$m[0];
         return 700;
     }
 }
 
 $userSalVal = parseSalaryVal($userSalaryStr);
 $userCibilVal = parseCibilVal($userCibilStr);
+
+// Resolve actual CIBIL score for display in the applicant information bar
+$actualCibilScore = null;
+$cibilState = 'fetching'; // default state while resolving
+
+// 1. Direct numeric check from $userCibilStr
+if (!empty($userCibilStr) && is_numeric($userCibilStr)) {
+    $cVal = (int)$userCibilStr;
+    if ($cVal >= 300 && $cVal <= 900) {
+        $actualCibilScore = $cVal;
+    }
+}
+
+// 2. Direct numeric check from $_SESSION
+if (!$actualCibilScore) {
+    $sessVal = $_SESSION['pim_cibil'] ?? $_SESSION['pim_lead_cibil'] ?? null;
+    if (!empty($sessVal) && is_numeric($sessVal)) {
+        $sVal = (int)$sessVal;
+        if ($sVal >= 300 && $sVal <= 900) {
+            $actualCibilScore = $sVal;
+        }
+    }
+}
+
+// 3. Direct numeric check from $_GET
+if (!$actualCibilScore && !empty($_GET['cibil']) && is_numeric($_GET['cibil'])) {
+    $gVal = (int)$_GET['cibil'];
+    if ($gVal >= 300 && $gVal <= 900) {
+        $actualCibilScore = $gVal;
+    }
+}
+if (!$actualCibilScore && !empty($_GET['cibil_score']) && is_numeric($_GET['cibil_score'])) {
+    $gVal = (int)$_GET['cibil_score'];
+    if ($gVal >= 300 && $gVal <= 900) {
+        $actualCibilScore = $gVal;
+    }
+}
+
+// 4. Status check from $nodeLead
+if (!empty($nodeLead) && !$actualCibilScore) {
+    $nodeCibilStatus = strtolower(trim((string)($nodeLead['cibilStatus'] ?? $nodeLead['cibil_status'] ?? '')));
+    if (preg_match('/timed\s*out|no\s*credit|no\s*record|failed|not\s*found|none/i', $nodeCibilStatus)) {
+        $cibilState = 'not_available';
+    } elseif (preg_match('/in\s*progress|fetching|pending/i', $nodeCibilStatus)) {
+        $cibilState = 'fetching';
+    }
+}
+
+// 5. Final state & display strings
+if ($actualCibilScore) {
+    $cibilState = 'available';
+    $cibilDisplayText = (string)$actualCibilScore;
+    $cibilValClass = 'cibil-score-val';
+} elseif ($cibilState === 'not_available') {
+    $cibilDisplayText = 'Not Available';
+    $cibilValClass = 'cibil-unavailable';
+} else {
+    $cibilDisplayText = 'Fetching...';
+    $cibilValClass = 'cibil-fetching';
+}
 
 // (The page used to create/update the lead in data/leads.json here. Lead creation now happens only through
 // the Node intake route POST /api/public/leads, called by apply-now / check-eligibility.)
@@ -379,6 +456,34 @@ include 'includes/header.php';
     font-weight: 700;
 }
 
+.user-badge-bar .cibil-badge-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.22rem;
+}
+
+.user-badge-bar .cibil-label {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+}
+
+.user-badge-bar .cibil-val {
+    font-weight: 700;
+    color: #34d399; /* clean vibrant emerald */
+    letter-spacing: 0.01em;
+    transition: all 0.2s ease;
+}
+
+.user-badge-bar .cibil-val.cibil-fetching {
+    color: #38bdf8; /* sky blue while fetching */
+    font-weight: 500;
+}
+
+.user-badge-bar .cibil-val.cibil-unavailable {
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 500;
+}
+
 /* Hero Main Title */
 .hero-title {
     font-size: clamp(1.2rem, 3.2vw, 1.75rem) !important;
@@ -483,6 +588,98 @@ include 'includes/header.php';
     .partner-card {
         padding: 1.15rem 1rem !important;
         border-radius: 16px !important;
+    }
+    .partner-metrics,
+    .loan-details {
+        padding: 0.75rem 0.8rem !important;
+        gap: 0.5rem !important;
+        margin-bottom: 1.1rem !important;
+    }
+    .metric-item .metric-label {
+        font-size: 0.64rem !important;
+        letter-spacing: 0.4px !important;
+    }
+    .metric-item-amount .metric-val {
+        font-size: 1.05rem !important;
+    }
+    .metric-item-rate .rate-prefix {
+        font-size: 0.74rem !important;
+    }
+    .metric-item-rate .rate-combo .val-main,
+    .metric-item-rate .val-main {
+        font-size: 0.96rem !important;
+    }
+    .metric-item-rate .rate-combo .val-unit,
+    .metric-item-rate .val-unit {
+        font-size: 0.74rem !important;
+    }
+    .metric-item-tenure .metric-val .val-main {
+        font-size: 0.92rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .partner-card {
+        padding: 1.1rem 0.85rem !important;
+    }
+    .partner-metrics,
+    .loan-details {
+        padding: 0.65rem 0.6rem !important;
+        gap: 0.4rem !important;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.38fr) minmax(0, 1fr) !important;
+    }
+    .metric-item .metric-label {
+        font-size: 0.6rem !important;
+        letter-spacing: 0.25px !important;
+        margin-bottom: 0.2rem !important;
+    }
+    .metric-item-amount .metric-val {
+        font-size: 0.98rem !important;
+    }
+    .metric-item-rate .rate-prefix {
+        font-size: 0.7rem !important;
+    }
+    .metric-item-rate .rate-combo .val-main,
+    .metric-item-rate .val-main {
+        font-size: 0.9rem !important;
+    }
+    .metric-item-rate .rate-combo .val-unit,
+    .metric-item-rate .val-unit {
+        font-size: 0.7rem !important;
+    }
+    .metric-item-tenure .metric-val .val-main {
+        font-size: 0.85rem !important;
+    }
+}
+
+@media (max-width: 360px) {
+    .partner-card {
+        padding: 0.95rem 0.65rem !important;
+    }
+    .partner-metrics,
+    .loan-details {
+        padding: 0.55rem 0.45rem !important;
+        gap: 0.3rem !important;
+    }
+    .metric-item .metric-label {
+        font-size: 0.56rem !important;
+    }
+    .metric-item-amount .metric-val {
+        font-size: 0.88rem !important;
+    }
+    .metric-item-rate .rate-prefix {
+        font-size: 0.66rem !important;
+    }
+    .metric-item-rate .rate-combo .val-main,
+    .metric-item-rate .val-main {
+        font-size: 0.84rem !important;
+    }
+    .metric-item-rate .rate-combo .val-unit,
+    .metric-item-rate .val-unit {
+        font-size: 0.66rem !important;
+    }
+    .metric-item-tenure .metric-val .val-main {
+        font-size: 0.78rem !important;
     }
 }
 
@@ -666,58 +863,120 @@ include 'includes/header.php';
     color: #475569;
 }
 
-/* Perfect Align Metrics Box */
-.partner-metrics {
+/* Perfect Align Metrics Box - Robust 3-Column Proportional Grid */
+.partner-metrics,
+.loan-details {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: 0.65rem;
     background: #f8fafc;
     padding: 0.85rem 0.95rem;
     border-radius: 14px;
     margin-bottom: 1.25rem;
     border: 1px solid #e2e8f0;
+    align-items: start;
+    box-sizing: border-box;
+    width: 100%;
 }
 
-.metric-item {
+.metric-item,
+.loan-detail {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    box-sizing: border-box;
 }
 
 .metric-item .metric-label {
     font-size: 0.68rem;
     color: #64748b;
     text-transform: uppercase;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.5px;
     font-weight: 700;
     margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.metric-item .metric-val {
-    font-size: 1.15rem;
+.metric-item .metric-val,
+.loan-detail .interest-value {
+    font-size: 1.08rem;
     font-weight: 800;
     color: #0f172a;
-    line-height: 1.2;
-    display: flex;
-    align-items: baseline;
-    gap: 0.25rem;
+    line-height: 1.25;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: normal;
 }
 
 .metric-item .metric-val.highlight {
     color: #2563eb;
 }
 
-.metric-item .metric-val .val-main {
-    font-size: 1.05rem;
+.metric-item-amount .metric-val {
+    font-size: 1.12rem;
+    white-space: nowrap;
+}
+
+.metric-item-tenure .metric-val .val-main {
+    font-size: 0.98rem;
     font-weight: 800;
     color: #0f172a;
     white-space: nowrap;
 }
 
-.metric-item .metric-val .val-unit {
-    font-size: 0.8rem;
+/* Dedicated styling for Interest Rate Column & Natural Wrapping */
+.metric-item-rate {
+    min-width: 0;
+}
+
+.metric-item-rate .metric-val,
+.metric-item-rate .interest-value {
+    display: block;
+    min-width: 0;
+    line-height: 1.25;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+.metric-item-rate .rate-prefix {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #475569;
+    letter-spacing: -0.01em;
+    display: inline;
+    margin-right: 0.25rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+.metric-item-rate .rate-combo {
+    display: inline-block;
+    white-space: nowrap; /* Ensures '0.8% / day' never breaks 'day' apart */
+}
+
+.metric-item-rate .rate-combo .val-main,
+.metric-item-rate .val-main {
+    font-size: 1.02rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+}
+
+.metric-item-rate .rate-combo .val-unit,
+.metric-item-rate .val-unit {
+    font-size: 0.78rem;
     font-weight: 700;
     color: #2563eb;
+    margin-left: 0.15rem;
+    white-space: nowrap;
 }
 
 .feature-list {
@@ -792,13 +1051,16 @@ include 'includes/header.php';
     
     <div class="container hero-container">
         <!-- User Badge Bar -->
-        <div class="user-badge-bar">
+        <div class="user-badge-bar" id="applicantInfoBar">
             <span class="pulse-dot"></span>
-            <span style="font-weight: 700; color: #fff;"><?php echo !empty($userName) && $userName !== 'Applicant' ? htmlspecialchars($userName) : 'Applicant Profile'; ?></span>
-            <?php if (!empty($phoneLast4)): ?>
-                <span class="ref-divider">|</span>
-                <span>+91 ******<?php echo htmlspecialchars($phoneLast4); ?></span>
-            <?php endif; ?>
+            <span class="applicant-name" style="font-weight: 700; color: #fff;"><?php echo !empty($userName) && $userName !== 'Applicant' ? htmlspecialchars($userName) : 'Applicant Profile'; ?></span>
+            <span class="ref-divider phone-divider"<?php echo empty($phoneLast4) ? ' style="display:none;"' : ''; ?>>|</span>
+            <span class="applicant-phone-wrap" id="applicantPhoneWrap"<?php echo empty($phoneLast4) ? ' style="display:none;"' : ''; ?>>+91 ******<span id="applicantPhoneLast4"><?php echo htmlspecialchars($phoneLast4); ?></span></span>
+            <span class="ref-divider">|</span>
+            <span class="cibil-badge-wrap" id="applicantCibilWrap">
+                <span class="cibil-label">CIBIL:</span>
+                <span class="cibil-val <?php echo $cibilValClass; ?>" id="applicantCibilVal" data-score="<?php echo $actualCibilScore ? htmlspecialchars((string)$actualCibilScore) : ''; ?>" data-state="<?php echo htmlspecialchars($cibilState); ?>"><?php echo htmlspecialchars($cibilDisplayText); ?></span>
+            </span>
             <span class="ref-divider">|</span>
             <span class="badge-icon-wrap"><?php echo getSvgIcon('shield-check', '', 13, 13); ?></span>
             <span class="ref-code"><?php echo htmlspecialchars($leadId); ?></span>
@@ -821,16 +1083,13 @@ include 'includes/header.php';
 <section class="offers-container">
     <div class="container">
         
-        <!-- Category Filter Bar (All partners available for all CIBIL ranges) -->
-        <div class="filter-tab-bar" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; margin-bottom: 1.25rem;">
-            <button class="filter-tab active" onclick="filterOffers('all', this)" style="padding: 0.45rem 1.1rem; border-radius: 50px; border: 1.5px solid #2563EB; background: #2563EB; color: #fff; font-weight: 700; font-size: 0.84rem; cursor: pointer; transition: all 0.2s;">
+        <!-- Category Filter Bar -->
+        <div class="filter-tab-bar" style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.65rem; margin-bottom: 1.25rem;">
+            <button class="filter-tab active" onclick="filterOffers('all', this)" style="padding: 0.45rem 1.15rem; border-radius: 50px; border: 1.5px solid #2563EB; background: #2563EB; color: #fff; font-weight: 700; font-size: 0.84rem; cursor: pointer; transition: all 0.2s;">
                 All Available Lenders
             </button>
-            <button class="filter-tab" onclick="filterOffers('instant', this)" style="padding: 0.45rem 1.1rem; border-radius: 50px; border: 1.5px solid #CBD5E1; background: #fff; color: #334155; font-weight: 600; font-size: 0.84rem; cursor: pointer; transition: all 0.2s;">
+            <button class="filter-tab" onclick="filterOffers('instant', this)" style="padding: 0.45rem 1.15rem; border-radius: 50px; border: 1.5px solid #CBD5E1; background: #fff; color: #334155; font-weight: 600; font-size: 0.84rem; cursor: pointer; transition: all 0.2s;">
                 ⚡ Fast Approval Lenders
-            </button>
-            <button class="filter-tab" onclick="filterOffers('low_cibil', this)" style="padding: 0.45rem 1.1rem; border-radius: 50px; border: 1.5px solid #CBD5E1; background: #fff; color: #334155; font-weight: 600; font-size: 0.84rem; cursor: pointer; transition: all 0.2s;">
-                🛡️ Low CIBIL Specialists
             </button>
         </div>
 
@@ -896,15 +1155,23 @@ include 'includes/header.php';
                     $localLogo = '/' . ltrim($rawLogo, '/');
                 }
 
-                $interestRaw = $partner['interest_rate'];
+                $interestRaw = (string)($partner['interest_rate'] ?? 'Up to 1.0% / day');
                 $prefix = '';
                 $rateVal = $interestRaw;
                 $rateUnit = '';
 
-                if (preg_match('/^(Up\s*to\s*)?(.*?)\s*\/\s*(.*)$/i', $interestRaw, $m)) {
+                if (preg_match('/^(?:(Ranges\s+from\s+up\s*to|Ranges\s+from\s+upto|Ranges\s+from|Up\s*to|upto)\s*)?(.*?)\s*(?:\/|\bper\b)\s*(.*)$/i', $interestRaw, $m)) {
                     $prefix = trim($m[1] ?? '');
                     $rateVal = trim($m[2] ?? '');
                     $rateUnit = '/ ' . trim($m[3] ?? '');
+                } elseif (preg_match('/^(?:(Ranges\s+from\s+up\s*to|Ranges\s+from\s+upto|Ranges\s+from|Up\s*to|upto)\s*)(.*)$/i', $interestRaw, $m)) {
+                    $prefix = trim($m[1] ?? '');
+                    $rateVal = trim($m[2] ?? '');
+                    $rateUnit = '';
+                } else {
+                    $prefix = '';
+                    $rateVal = $interestRaw;
+                    $rateUnit = '';
                 }
             ?>
                 <div class="partner-card partner-offer-card" 
@@ -940,21 +1207,26 @@ include 'includes/header.php';
                         </div>
 
                         <!-- Key Metrics Box -->
-                        <div class="partner-metrics">
-                            <div class="metric-item">
+                        <div class="partner-metrics loan-details">
+                            <div class="metric-item loan-detail metric-item-amount">
                                 <div class="metric-label">MAX LOAN</div>
                                 <div class="metric-val highlight"><?php echo htmlspecialchars($partner['max_amount']); ?></div>
                             </div>
-                            <div class="metric-item">
+                            <div class="metric-item loan-detail metric-item-rate">
                                 <div class="metric-label">INTEREST RATE</div>
-                                <div class="metric-val">
-                                    <span class="val-main">upto <?php echo htmlspecialchars($rateVal); ?></span>
-                                    <?php if (!empty($rateUnit)): ?>
-                                        <span class="val-unit"><?php echo htmlspecialchars($rateUnit); ?></span>
+                                <div class="metric-val interest-value">
+                                    <?php if (!empty($prefix)): ?>
+                                        <span class="rate-prefix"><?php echo htmlspecialchars($prefix); ?></span>
                                     <?php endif; ?>
+                                    <span class="rate-combo">
+                                        <span class="val-main"><?php echo htmlspecialchars($rateVal); ?></span>
+                                        <?php if (!empty($rateUnit)): ?>
+                                            <span class="val-unit"><?php echo htmlspecialchars($rateUnit); ?></span>
+                                        <?php endif; ?>
+                                    </span>
                                 </div>
                             </div>
-                            <div class="metric-item">
+                            <div class="metric-item loan-detail metric-item-tenure">
                                 <div class="metric-label">TENURE</div>
                                 <div class="metric-val">
                                     <span class="val-main"><?php echo htmlspecialchars($partner['tenure'] ?? '30 - 45 Days'); ?></span>
@@ -1014,12 +1286,22 @@ include 'includes/header.php';
                             $localLogo = '/' . ltrim($rawLogo, '/');
                         }
 
-                        $interestRaw = $partner['interest_rate'];
+                        $interestRaw = (string)($partner['interest_rate'] ?? 'Up to 1.0% / day');
+                        $prefix = '';
                         $rateVal = $interestRaw;
                         $rateUnit = '';
-                        if (preg_match('/^(Up\s*to\s*)?(.*?)\s*\/\s*(.*)$/i', $interestRaw, $m)) {
+                        if (preg_match('/^(?:(Ranges\s+from\s+up\s*to|Ranges\s+from\s+upto|Ranges\s+from|Up\s*to|upto)\s*)?(.*?)\s*(?:\/|\bper\b)\s*(.*)$/i', $interestRaw, $m)) {
+                            $prefix = trim($m[1] ?? '');
                             $rateVal = trim($m[2] ?? '');
                             $rateUnit = '/ ' . trim($m[3] ?? '');
+                        } elseif (preg_match('/^(?:(Ranges\s+from\s+up\s*to|Ranges\s+from\s+upto|Ranges\s+from|Up\s*to|upto)\s*)(.*)$/i', $interestRaw, $m)) {
+                            $prefix = trim($m[1] ?? '');
+                            $rateVal = trim($m[2] ?? '');
+                            $rateUnit = '';
+                        } else {
+                            $prefix = '';
+                            $rateVal = $interestRaw;
+                            $rateUnit = '';
                         }
                     ?>
                         <div class="partner-card partner-offer-card partner-card-locked" 
@@ -1051,21 +1333,26 @@ include 'includes/header.php';
                                 </div>
 
                                 <!-- Key Metrics Box -->
-                                <div class="partner-metrics" style="background: #ffffff; border-color: #E2E8F0;">
-                                    <div class="metric-item">
+                                <div class="partner-metrics loan-details" style="background: #ffffff; border-color: #E2E8F0;">
+                                    <div class="metric-item loan-detail metric-item-amount">
                                         <div class="metric-label" style="color: #DC2626; font-weight: 700;">REQ. SALARY</div>
                                         <div class="metric-val" style="color: #DC2626; font-size: 0.95rem;">₹<?php echo number_format($minSalVal); ?>+</div>
                                     </div>
-                                    <div class="metric-item">
+                                    <div class="metric-item loan-detail metric-item-rate">
                                         <div class="metric-label">INTEREST RATE</div>
-                                        <div class="metric-val">
-                                            <span class="val-main">upto <?php echo htmlspecialchars($rateVal); ?></span>
-                                            <?php if (!empty($rateUnit)): ?>
-                                                <span class="val-unit"><?php echo htmlspecialchars($rateUnit); ?></span>
+                                        <div class="metric-val interest-value">
+                                            <?php if (!empty($prefix)): ?>
+                                                <span class="rate-prefix"><?php echo htmlspecialchars($prefix); ?></span>
                                             <?php endif; ?>
+                                            <span class="rate-combo">
+                                                <span class="val-main"><?php echo htmlspecialchars($rateVal); ?></span>
+                                                <?php if (!empty($rateUnit)): ?>
+                                                    <span class="val-unit"><?php echo htmlspecialchars($rateUnit); ?></span>
+                                                <?php endif; ?>
+                                            </span>
                                         </div>
                                     </div>
-                                    <div class="metric-item">
+                                    <div class="metric-item loan-detail metric-item-tenure">
                                         <div class="metric-label">TENURE</div>
                                         <div class="metric-val">
                                             <span class="val-main"><?php echo htmlspecialchars($partner['tenure'] ?? '30 - 45 Days'); ?></span>
@@ -1125,8 +1412,6 @@ function filterOffers(filterType, btnEl) {
 
         if (filterType === 'instant') {
             show = ['rupay91', 'jhatpatloans', 'borrowera', 'instarupees', 'shubhcash', 'ticket2loan'].includes(slug);
-        } else if (filterType === 'low_cibil') {
-            show = ['udhaarnow', 'easyfincare', 'loanwithin', 'instarupees', 'shubhcash', 'jhatpatloans', 'borrowera', 'ticket2loan'].includes(slug);
         }
 
         card.style.display = show ? 'flex' : 'none';
@@ -1149,6 +1434,113 @@ function recordOfferClick(slug, leadId) {
         }).catch(() => {});
     } catch(e) {}
 }
+</script>
+
+<!-- APPLICANT CIBIL SCORE SYNC SCRIPT -->
+<script>
+(function() {
+    const cibilValEl = document.getElementById('applicantCibilVal');
+    if (!cibilValEl) return;
+
+    function applyScore(score) {
+        if (!score) return false;
+        const num = Number(String(score).replace(/[^\d]/g, ''));
+        if (Number.isInteger(num) && num >= 300 && num <= 900) {
+            cibilValEl.textContent = String(num);
+            cibilValEl.className = 'cibil-val cibil-score-val';
+            cibilValEl.setAttribute('data-score', String(num));
+            cibilValEl.setAttribute('data-state', 'available');
+            try { sessionStorage.setItem('pim_cibil', String(num)); } catch(e){}
+            return true;
+        }
+        return false;
+    }
+
+    function applyUnavailable() {
+        cibilValEl.textContent = 'Not Available';
+        cibilValEl.className = 'cibil-val cibil-unavailable';
+        cibilValEl.setAttribute('data-state', 'not_available');
+    }
+
+    // 1. If server already resolved valid score (e.g. 724), preserve and cache it
+    const initialScore = cibilValEl.getAttribute('data-score');
+    if (initialScore && applyScore(initialScore)) {
+        return;
+    }
+
+    // 2. Check client session storage from current application flow
+    let sessScore = null;
+    let sessPhone = null;
+    try {
+        sessScore = sessionStorage.getItem('pim_cibil');
+        sessPhone = sessionStorage.getItem('pim_cibil_phone') || sessionStorage.getItem('pim_phone');
+    } catch(e) {}
+
+    const phoneLast4El = document.getElementById('applicantPhoneLast4');
+    const curLast4 = phoneLast4El ? phoneLast4El.textContent.trim() : '';
+
+    // Verify score is linked to the current applicant
+    let isLinked = true;
+    if (curLast4 && sessPhone) {
+        const p4 = sessPhone.replace(/\D/g, '').slice(-4);
+        if (p4 && p4 !== curLast4) {
+            isLinked = false;
+        }
+    }
+
+    if (isLinked && sessScore && applyScore(sessScore)) {
+        return;
+    }
+
+    // If phone number was missing in server response, populate from verified session
+    if (!curLast4 && sessPhone) {
+        const p4 = sessPhone.replace(/\D/g, '').slice(-4);
+        if (p4 && phoneLast4El) {
+            phoneLast4El.textContent = p4;
+            const pWrap = document.getElementById('applicantPhoneWrap');
+            const pDiv = document.querySelector('.phone-divider');
+            if (pWrap) pWrap.style.display = 'inline';
+            if (pDiv) pDiv.style.display = 'inline';
+        }
+    }
+
+    // 3. If in fetching state, check Node backend lookup
+    const currentState = cibilValEl.getAttribute('data-state');
+    if (currentState === 'fetching') {
+        const leadCode = '<?php echo htmlspecialchars($leadId); ?>';
+        const pimNodeApi = '<?php echo htmlspecialchars($pimNodeApi); ?>';
+
+        async function fetchScoreOnce() {
+            try {
+                let token = '';
+                if (window.PIMAuth && typeof window.PIMAuth.accessToken === 'function') {
+                    token = await window.PIMAuth.accessToken().catch(() => '');
+                }
+                const headers = { 'Accept': 'application/json' };
+                if (token) headers['Authorization'] = 'Bearer ' + token;
+
+                const url = pimNodeApi + '/api/public/leads/lookup' + (leadCode && leadCode.indexOf('PIM-') === 0 ? '?leadCode=' + encodeURIComponent(leadCode) : '');
+                const res = await fetch(url, { headers });
+                if (res.ok) {
+                    const data = await res.json();
+                    const lead = data && data.data ? data.data : null;
+                    if (lead) {
+                        const score = lead.bureau_score || lead.bureauScore || lead.cibilScore || lead.cibil_score || lead.cibil || lead.score;
+                        if (applyScore(score)) return true;
+                    }
+                }
+            } catch(e) {}
+            return false;
+        }
+
+        setTimeout(async () => {
+            const ok = await fetchScoreOnce();
+            if (!ok && cibilValEl.getAttribute('data-state') === 'fetching') {
+                applyUnavailable();
+            }
+        }, 1500);
+    }
+})();
 </script>
 
 <!-- JSON-LD ItemList Schema for Google Rich Results Test -->

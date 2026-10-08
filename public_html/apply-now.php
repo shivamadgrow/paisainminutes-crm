@@ -1223,7 +1223,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         cibilBadge.style.border = '1px solid #A7F3D0';
                         cibilBadge.innerHTML = '<span>✓</span> <strong>Verified CIBIL Score: ' + res.score + ' (' + (res.band || 'Good') + ')</strong>';
                     }
-                    try { sessionStorage.setItem('pim_cibil', res.score); } catch(e){}
+                    try { 
+                        sessionStorage.setItem('pim_cibil', res.score); 
+                        sessionStorage.setItem('pim_cibil_phone', phoneNum);
+                    } catch(e){}
                 } else {
                     if (cibilBadge) cibilBadge.style.display = 'none';
                 }
@@ -1400,6 +1403,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             try { sessionStorage.setItem('pim_phone', phoneVal); } catch(e){}
+            try { sessionStorage.setItem('pim_cibil_phone', phoneVal); } catch(e){}
             try { localStorage.setItem('pim_phone', phoneVal); } catch(e){}
             try { sessionStorage.setItem('pim_name', nameVal); } catch(e){}
             try { sessionStorage.setItem('pim_salary', salaryVal); } catch(e){}

@@ -162,7 +162,7 @@ export const AFFILIATE_PARTNERS = [
     minCibil: 500,
     minSalary: 30000,
     maxLoan: 100000,
-    interestRate: 'Up to 1.0% / day',
+    interestRate: 'Ranges from upto 0.8% per day',
     tenure: '30 - 45 Days',
     description: 'Flexible personal loans for applicants with salary >= ₹30,000.',
     website: 'https://jhatpatloans.com',

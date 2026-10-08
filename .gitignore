@@ -32,6 +32,7 @@ Thumbs.db
 *.sln
 *.sw?
 *.zip
+*.pdf
 
 # --- Data, logs and secrets must never be committed (fix F-4) ---
 public_html/data/

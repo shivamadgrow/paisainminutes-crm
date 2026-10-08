@@ -12,27 +12,36 @@ import {
   Building2,
   Calendar,
   X,
-  Eye
+  Eye,
+  Trash2
 } from 'lucide-react';
 import { AFFILIATE_PARTNERS } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
-import { fetchAllPages, apiPost } from '../utils/crmApi';
+import { fetchAllPages, apiPost, deleteInvoiceApi, getDeletedInvoiceNos } from '../utils/crmApi';
 import { invoiceFromServer, toPaise, serverPartnerId } from '../utils/financeMappers';
 import { getCurrentUser } from '../utils/authService';
-import { isSuperAdmin } from '../utils/permissions';
+import { isSuperAdmin, canDeleteInvoice } from '../utils/permissions';
+import { generateInvoicePdf } from '../utils/invoicePdf';
 
 export default function InvoicesRaisedView({ onChanged }) {
   const currentUser = getCurrentUser();
-  const canExportData = isSuperAdmin(currentUser);
+  const isSuper = isSuperAdmin(currentUser);
+  const canExportData = isSuper;
+  const canDelete = isSuper;
   const [invoices, setInvoices] = useState([]);
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const [pdfError, setPdfError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [previewInvoice, setPreviewInvoice] = useState(null);
+  const [invoiceToDelete, setInvoiceToDelete] = useState(null);
 
   const [newInv, setNewInv] = useState({
     partnerId: (AFFILIATE_PARTNERS[0] && AFFILIATE_PARTNERS[0].id) || '',
@@ -43,10 +52,18 @@ export default function InvoicesRaisedView({ onChanged }) {
 
   // Invoices live on the server; GST and totals are calculated there
   const loadInvoices = async () => {
+    if (!isSuper) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     const res = await fetchAllPages('/api/crm/invoices', 'invoices');
     if (res.success) {
-      setInvoices(res.items.map(invoiceFromServer));
+      const deletedSet = new Set(getDeletedInvoiceNos());
+      const activeInvoices = res.items
+        .map(invoiceFromServer)
+        .filter(inv => !deletedSet.has(inv.invoiceNo) && !deletedSet.has(inv.serverId));
+      setInvoices(activeInvoices);
       setLoadError('');
     } else {
       setLoadError(res.error || 'Could not load invoices.');
@@ -55,8 +72,12 @@ export default function InvoicesRaisedView({ onChanged }) {
   };
 
   useEffect(() => {
-    loadInvoices();
-  }, []);
+    if (isSuper) {
+      loadInvoices();
+    } else {
+      setIsLoading(false);
+    }
+  }, [isSuper]);
 
   const filtered = invoices.filter(inv => {
     if (searchQuery) {
@@ -72,6 +93,10 @@ export default function InvoicesRaisedView({ onChanged }) {
   const handleGenerateInvoice = async (e) => {
     e.preventDefault();
     setActionError('');
+    if (!isSuper) {
+      setActionError('403 Forbidden: Invoice generation is strictly restricted to Super Admin.');
+      return;
+    }
     const partnerServerId = serverPartnerId(newInv.partnerId);
     if (!partnerServerId) {
       setActionError('This partner is not registered on the server yet.');
@@ -95,8 +120,71 @@ export default function InvoicesRaisedView({ onChanged }) {
     }
   };
 
+  const handleInitiateDelete = (inv) => {
+    setActionError('');
+    if (!isSuper) {
+      setActionError('403 Forbidden: Invoice deletion is strictly restricted to Super Admin.');
+      return;
+    }
+    setInvoiceToDelete(inv);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!invoiceToDelete) return;
+    if (!isSuper) {
+      setActionError('403 Forbidden: Invoice deletion is strictly restricted to Super Admin.');
+      setInvoiceToDelete(null);
+      return;
+    }
+    setIsDeleting(true);
+    setActionError('');
+
+    const res = await deleteInvoiceApi(invoiceToDelete.invoiceNo, invoiceToDelete.serverId);
+    setIsDeleting(false);
+
+    if (res.success) {
+      const deletedNo = invoiceToDelete.invoiceNo;
+      const deletedId = invoiceToDelete.serverId;
+
+      // Remove from list
+      setInvoices(prev => prev.filter(i => i.invoiceNo !== deletedNo && i.serverId !== deletedId));
+
+      // Close open preview modal if viewing this invoice
+      if (previewInvoice && (previewInvoice.invoiceNo === deletedNo || previewInvoice.serverId === deletedId)) {
+        setPreviewInvoice(null);
+      }
+
+      // Close confirm dialog
+      setInvoiceToDelete(null);
+
+      // Show success message
+      setSuccessMessage(`Invoice ${deletedNo} deleted successfully.`);
+      setTimeout(() => setSuccessMessage(''), 5000);
+
+      // Update parent summary
+      if (onChanged) onChanged();
+    } else {
+      setActionError(res.error || `Could not delete invoice ${invoiceToDelete.invoiceNo}.`);
+      setInvoiceToDelete(null);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!isSuper || !previewInvoice) return;
+    setIsDownloadingPdf(true);
+    setPdfError('');
+    try {
+      await generateInvoicePdf(previewInvoice);
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      setPdfError(err?.message || 'Failed to generate invoice PDF. Please try again.');
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   const handleExportCsv = () => {
-    if (!canExportData) {
+    if (!isSuper) {
       alert('403 Forbidden: Data export is strictly restricted to Super Admin only.');
       return;
     }
@@ -142,8 +230,44 @@ export default function InvoicesRaisedView({ onChanged }) {
     }
   };
 
+  // If user is not Super Admin, show 403 Access Denied screen
+  if (!isSuper) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-8 text-center animate-fade-in bg-white rounded-2xl border border-slate-200/80 shadow-2xs my-6">
+        <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-4 shadow-xs">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h1 className="text-2xl font-black text-slate-900 tracking-tight">403 — Access Denied</h1>
+        <p className="text-sm text-slate-600 mt-2 max-w-md">
+          Invoice management is strictly restricted to Super Admin only. Your account does not have permission to view, generate, or manage invoices.
+        </p>
+        <button
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              const url = new URL(window.location.href);
+              url.searchParams.set('tab', 'executive');
+              window.location.href = url.toString();
+            }
+          }}
+          className="mt-6 px-5 py-2.5 bg-[#0A3977] hover:bg-[#072956] text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in pb-12">
+      {successMessage && (
+        <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center justify-between gap-3 animate-fade-in shadow-2xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{successMessage}</span>
+          </div>
+          <button onClick={() => setSuccessMessage('')} className="text-emerald-700 hover:text-emerald-900 cursor-pointer font-bold px-1.5 py-0.5 rounded hover:bg-emerald-100/50">✕</button>
+        </div>
+      )}
       {(loadError || actionError) && (
         <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-between gap-3">
           <span>{loadError || actionError}</span>
@@ -151,6 +275,7 @@ export default function InvoicesRaisedView({ onChanged }) {
         </div>
       )}
       {isLoading && <div className="text-xs text-slate-500">Loading invoices from the server…</div>}
+
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -298,12 +423,23 @@ export default function InvoicesRaisedView({ onChanged }) {
                     <td className="py-3.5 px-4 text-right">
                       <div className="inline-flex items-center gap-1.5">
                         <button
-                          onClick={() => setPreviewInvoice(inv)}
+                          onClick={() => {
+                            setPdfError('');
+                            setPreviewInvoice(inv);
+                          }}
                           className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-md font-semibold text-[11px] flex items-center gap-1 transition cursor-pointer"
                           title="Preview Invoice"
                         >
                           <Eye className="w-3 h-3" />
                           <span>View</span>
+                        </button>
+                        <button
+                          onClick={() => handleInitiateDelete(inv)}
+                          className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-md font-semibold text-[11px] flex items-center gap-1 transition cursor-pointer"
+                          title="Delete Invoice"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Delete</span>
                         </button>
                       </div>
                     </td>
@@ -452,6 +588,12 @@ export default function InvoicesRaisedView({ onChanged }) {
                 </div>
               </div>
 
+              {pdfError && (
+                <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
+                  {pdfError}
+                </div>
+              )}
+
               <div className="text-[11px] text-slate-500 font-mono">
                 Payment Status: <span className="font-bold text-slate-800">{previewInvoice.status}</span>
               </div>
@@ -460,20 +602,59 @@ export default function InvoicesRaisedView({ onChanged }) {
             <div className="mt-6 pt-4 border-t border-slate-100 flex justify-end gap-2">
               <button
                 onClick={() => window.print()}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>Print</span>
               </button>
               <button
-                onClick={() => {
-                  alert(`Downloading PDF for invoice ${previewInvoice.invoiceNo}`);
-                  setPreviewInvoice(null);
-                }}
-                className="px-4 py-1.5 bg-[#0A3977] text-white font-bold text-xs rounded-lg shadow-xs hover:bg-[#072956] transition flex items-center gap-1.5"
+                onClick={handleDownloadPdf}
+                disabled={isDownloadingPdf}
+                className="px-4 py-1.5 bg-[#0A3977] text-white font-bold text-xs rounded-lg shadow-xs hover:bg-[#072956] transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Download PDF</span>
+                <span>{isDownloadingPdf ? 'Generating PDF...' : 'Download PDF'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Invoice Confirmation Modal */}
+      {invoiceToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-200 p-6 animate-fade-in">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Delete Invoice?</h3>
+                <p className="text-xs text-rose-600 font-semibold">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 mb-6 leading-relaxed">
+              Are you sure you want to delete invoice <span className="font-bold text-slate-900">{invoiceToDelete.invoiceNo}</span>?
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setInvoiceToDelete(null)}
+                disabled={isDeleting}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeleting ? 'Deleting...' : 'Delete Invoice'}</span>
               </button>
             </div>
           </div>
