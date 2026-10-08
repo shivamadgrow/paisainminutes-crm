@@ -85,7 +85,7 @@ if (!empty($page_slug)) {
 
 if (!isset($page_title) || empty($page_title)) {
     if (empty($page_slug)) {
-        $page_title = "Paisa in Minutes – Instant Personal Loans Online";
+        $page_title = "Paisa in Minutes | Instant Personal Loans Online";
     } else {
         $page_title = $human_name . " | Paisa in Minutes";
         if (mb_strlen($human_name) <= 22) {
@@ -96,7 +96,7 @@ if (!isset($page_title) || empty($page_title)) {
 
 if (!isset($page_description) || empty($page_description)) {
     if (empty($page_slug)) {
-        $page_description = "Apply for instant personal loans up to ₹50 Lakh online with Paisa in Minutes @10.49% p.a. 100% digital paperless approval & 2-hour bank disbursal from RBI-registered NBFCs.";
+        $page_description = "Paisa in Minutes helps you explore personal loan offers online from RBI-regulated lending partners. Check eligibility and compare available loan options digitally.";
     } else {
         $clean_name = strtolower($human_name);
         $page_description = "Apply for " . $clean_name . " online starting @10.49% p.a. 100% digital approval, 2-hour disbursal & minimal paperwork. Trusted by 25,000+ happy borrowers.";
@@ -108,7 +108,7 @@ if (!isset($page_description) || empty($page_description)) {
 
 if (!isset($page_keywords) || empty($page_keywords)) {
     if (empty($page_slug)) {
-        $page_keywords = "paisa in minutes, paisa in minutes loan, instant personal loan online, personal loan online, digital loan marketplace india, quick cash loan";
+        $page_keywords = "Paisa in Minutes, paisa in minutes loan, instant personal loan online, personal loan online, digital loan marketplace india, quick cash loan";
     } else {
         $page_keywords = strtolower($human_name) . ", instant loan, personal loan online, paisa in minutes, low interest loan, quick disbursal";
     }
@@ -236,15 +236,16 @@ if (!isset($page_og_image) || empty($page_og_image)) {
       "@context": "https://schema.org",
       "@graph": [
         {
-          "@type": "FinancialService",
+          "@type": "Organization",
+          "additionalType": "https://schema.org/FinancialService",
           "@id": "https://paisainminutes.com/#organization",
           "name": "Paisa in Minutes",
-          "alternateName": "PaisaInMinutes",
+          "alternateName": ["PaisaInMinutes", "paisainminutes.com", "Paisa In Minutes"],
           "legalName": "AdGrow Media Services",
           "url": "https://paisainminutes.com/",
           "logo": "https://paisainminutes.com/assets/logo.png",
           "image": "https://paisainminutes.com/assets/og-image.png",
-          "description": "Paisa in Minutes is an authorized digital loan facilitation platform connecting borrowers with RBI-registered NBFCs and banks for personal loans and home loans up to ₹50 Lakh online.",
+          "description": "Paisa in Minutes is an authorized digital loan facilitation platform connecting borrowers with RBI-registered NBFCs and banks for personal loans and loan offers online.",
           "telephone": "+91-9990666578",
           "email": "info@paisainminutes.com",
           "priceRange": "₹",
@@ -259,6 +260,16 @@ if (!isset($page_og_image) || empty($page_og_image)) {
             "@type": "Country",
             "name": "India"
           },
+          "contactPoint": [
+            {
+              "@type": "ContactPoint",
+              "telephone": "+91-9990666578",
+              "contactType": "customer support",
+              "email": "info@paisainminutes.com",
+              "areaServed": "IN",
+              "availableLanguage": ["English", "Hindi"]
+            }
+          ],
           "sameAs": [
             "https://adgrowmedia.in/",
             "https://www.facebook.com/profile.php?id=61594139144227",
@@ -281,8 +292,8 @@ if (!isset($page_og_image) || empty($page_og_image)) {
           "@id": "https://paisainminutes.com/#website",
           "url": "https://paisainminutes.com/",
           "name": "Paisa in Minutes",
-          "alternateName": "PaisaInMinutes",
-          "description": "Instant Personal Loans & Digital Loan Facilitation Online in India",
+          "alternateName": ["PaisaInMinutes", "paisainminutes.com"],
+          "description": "Paisa in Minutes helps you explore personal loan offers online from RBI-regulated lending partners.",
           "publisher": {
             "@id": "https://paisainminutes.com/#organization"
           },
@@ -459,7 +470,7 @@ if (!isset($page_og_image) || empty($page_og_image)) {
         <div class="header-main">
             <div class="container">
                 <a href="/" class="logo" aria-label="Paisa in Minutes Home">
-                    <img src="/assets/logo_transparent.webp" alt="Paisa in Minutes Logo" width="110" height="110" fetchpriority="high" decoding="async">
+                    <img src="/assets/logo_transparent.webp" alt="Paisa in Minutes" width="110" height="110" fetchpriority="high" decoding="async">
                 </a>
 
                 <!-- Desktop Menu -->

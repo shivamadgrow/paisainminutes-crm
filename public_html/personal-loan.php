@@ -5,9 +5,9 @@
  */
 
 $canonical_url = "https://paisainminutes.com/personal-loan";
-$page_title = "Instant Personal Loan Online @10.49% | Paisa in Minutes";
-$page_description = "Apply for instant personal loan up to ₹50 Lakh starting @10.49% p.a. 100% digital KYC, 2-hour disbursal, zero collateral & flexible tenures up to 5 years.";
-$page_keywords = "personal loan online, instant personal loan, instant cash loan, apply personal loan, personal loan interest rates, quick personal loan 2 hour disbursal";
+$page_title = "Personal Loan Online | Paisa in Minutes";
+$page_description = "Apply for personal loan online up to ₹50 Lakh starting @10.49% p.a. via Paisa in Minutes. Compare offers from RBI-regulated partners with 100% digital KYC and flexible tenures.";
+$page_keywords = "personal loan online, instant personal loan, apply personal loan, personal loan interest rates, paisa in minutes";
 
 // Page Specific FAQs - Synchronized with FAQPage JSON-LD Schema
 $page_faqs = [

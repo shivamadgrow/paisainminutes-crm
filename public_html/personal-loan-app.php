@@ -1,7 +1,7 @@
 <?php 
-$page_title = "Best Instant Personal Loan App | Paisa in Minutes";
-$page_description = "Download the best instant personal loan app for fast digital approval and quick bank disbursal with low interest rates.";
-$page_keywords = "personal loan app, instant loan app, online loan app";
+$page_title = "Personal Loan App | Online Loan Offers | Paisa in Minutes";
+$page_description = "Explore personal loan offers online with Paisa in Minutes digital application platform. 100% paperless verification and partner matching.";
+$page_keywords = "personal loan app, instant loan app, online loan offers, paisa in minutes";
 include 'includes/header.php'; 
 ?>
 

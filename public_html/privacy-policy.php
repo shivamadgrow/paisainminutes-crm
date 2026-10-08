@@ -1,6 +1,6 @@
 <?php
 $page_title = "Privacy Policy | Paisa in Minutes";
-$page_description = "Read Paisa in Minutes' Privacy Policy regarding data privacy, RBI digital lending guidelines, credit bureau consent, and bank-grade security standards.";
+$page_description = "Review the Paisa in Minutes Privacy Policy covering customer data protection, DPDP Act 2023 compliance, credit bureau consent, and security standards.";
 $page_keywords = "privacy policy, data security, paisa in minutes privacy, credit bureau consent";
 include 'includes/header.php';
 ?>

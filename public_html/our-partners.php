@@ -4,8 +4,8 @@
  * Regulatory compliance, Onboarded Partners showcase & LSP disclosure under RBI Digital Lending Framework
  */
 
-$page_title = "Our Lending Partners & LSP Disclosure | Paisa in Minutes";
-$page_description = "Explore our onboarded RBI-compliant lending partners, digital loan facilitation model, and regulatory disclosures at Paisa in Minutes.";
+$page_title = "Lending Partners | Paisa in Minutes";
+$page_description = "Explore RBI-regulated lending partners connected with Paisa in Minutes. Learn about our Lending Service Provider (LSP) model and regulatory disclosures.";
 $page_keywords = "lending partners, nbfc partners, loan facilitation lsp, rbi digital lending guidelines, paisa in minutes partners, jhatpat loans, borrowera, insta rupees, shubh cash, ticket 2 loan, easy fincare, loan within, rupay91, udhaar now";
 
 include 'includes/header.php';
@@ -59,7 +59,7 @@ $onboardedPartners = [
         'terms_url' => 'https://www.instarupees.com/terms-and-conditions',
         'features' => [
             'Paperless Instant Sanction',
-            'High Approval Guarantee',
+            'High Eligibility Match Rate',
             'Zero Preclosure Hidden Fees'
         ]
     ],
@@ -549,7 +549,7 @@ $onboardedPartners = [
             Lending Service Provider (LSP) Disclosure
         </div>
         <h1>Our Lending Partners &amp; Compliance</h1>
-        <p>In accordance with the Reserve Bank of India’s Digital Lending Guidelines, Paisa in Minutes operates strictly as an authorized digital technology facilitator connecting prospective borrowers with regulated financial partners.</p>
+        <p>In accordance with the Reserve Bank of India’s Digital Lending Guidelines, <a href="/" style="color: #93C5FD; text-decoration: underline;">Paisa in Minutes</a> operates strictly as an authorized digital technology facilitator connecting prospective borrowers with regulated financial partners.</p>
     </div>
 </section>
 

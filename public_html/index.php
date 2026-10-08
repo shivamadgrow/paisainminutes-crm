@@ -3,14 +3,14 @@
  * Paisa in Minutes - Official Homepage
  * Brand Entity & Digital Lending Service Provider (LSP) Marketplace
  */
-$page_title = "Paisa in Minutes – Instant Personal Loans Online";
-$page_description = "Apply for instant personal loans up to ₹50 Lakh online with Paisa in Minutes @10.49% p.a. 100% digital paperless approval & 2-hour bank disbursal from RBI-registered NBFCs.";
-$page_keywords = "paisa in minutes, paisa in minutes loan, instant personal loan online, personal loan online, digital loan marketplace india, quick cash loan";
+$page_title = "Paisa in Minutes | Instant Personal Loans Online";
+$page_description = "Paisa in Minutes helps you explore personal loan offers online from RBI-regulated lending partners. Check eligibility and compare available loan options digitally.";
+$page_keywords = "Paisa in Minutes, paisa in minutes loan, personal loans, instant personal loan online, loan offers online, digital loan marketplace";
 
 $page_faqs = [
     [
         'question' => 'What is Paisa in Minutes and how does it work?',
-        'answer' => 'Paisa in Minutes (paisainminutes.com) is an authorized digital loan facilitation marketplace operated by AdGrow Media Services. We connect borrowers with RBI-registered NBFCs and banks for instant personal loans up to ₹50 Lakh with 100% paperless digital verification and 2-hour bank disbursal.'
+        'answer' => 'Paisa in Minutes (paisainminutes.com) is an authorized digital loan facilitation marketplace operated by AdGrow Media Services. We connect borrowers with RBI-registered NBFCs and banks for instant personal loans up to ₹50 Lakh with 100% paperless digital verification and quick bank disbursal upon lender approval.'
     ],
     [
         'question' => 'What documents do I need to apply for a loan?',
@@ -18,7 +18,7 @@ $page_faqs = [
     ],
     [
         'question' => 'How much time does it take for loan disbursal?',
-        'answer' => 'Our automated engine evaluates your application in under 5 minutes. Once you review, accept your offer, and complete digital KYC, funds are transferred directly into your bank account within 2 hours.'
+        'answer' => 'Our automated engine evaluates your application in minutes. Once you review, accept your offer, and complete digital KYC, funds are transferred directly into your bank account by the respective lending partner upon sanction.'
     ],
     [
         'question' => 'What are the interest rates, tenure, and fees?',
@@ -50,8 +50,8 @@ include 'includes/header.php';
                         <span class="pulse-dot"></span>
                         <span class="badge-text">Paisa Milega, Minutes Mein</span>
                     </div>
-                    <h1 class="hero-title">Paisa in Minutes — <span class="gradient-text">Instant Personal Loans Online</span></h1>
-                    <p class="hero-desc">Need immediate funds? Get personal loans up to ₹50 Lakh online starting @10.49% p.a. with our 100% digital, paperless, and secure process.</p>
+                    <h1 class="hero-title">Paisa in Minutes – <span class="gradient-text">Instant Personal Loans Online</span></h1>
+                    <p class="hero-desc">Paisa in Minutes is a digital loan facilitation platform that helps eligible borrowers discover personal loan options online from RBI-regulated lending partners. Compare available loan options and check eligibility digitally through a 100% paperless, secure application.</p>
                     <div class="hero-actions">
                         <button type="button" class="btn btn-primary open-apply-modal" aria-label="Apply Now for Instant Personal Loan">Apply Now</button>
                         <a href="#calculator" class="hero-sec-link" aria-label="Check Loan Eligibility and Calculate EMI">
@@ -440,7 +440,7 @@ include 'includes/header.php';
         <div class="container">
             <div class="section-title-wrapper text-center reveal">
                 <span class="section-tag">About Our Platform</span>
-                <h2 class="section-title">What is Paisa in Minutes? Instant Digital Loan Facilitation</h2>
+                <h2 class="section-title">What is Paisa in Minutes?</h2>
                 <p class="section-subtitle">A transparent, customer-first fintech marketplace operated by AdGrow Media Services in compliance with RBI Digital Lending Guidelines.</p>
             </div>
 
@@ -454,8 +454,13 @@ include 'includes/header.php';
                     <p style="color: #475569; font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem;">
                         <strong>Paisa in Minutes</strong> (paisainminutes.com) is an authorized digital loan facilitation platform and Lending Service Provider (LSP) operated by <strong>AdGrow Media Services</strong>, based in Delhi, India. We connect salaried individuals, self-employed professionals, and small business owners directly with RBI-registered Non-Banking Financial Companies (NBFCs) and commercial banks.
                     </p>
-                    <p style="color: #475569; font-size: 0.95rem; line-height: 1.7;">
+                    <p style="color: #475569; font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem;">
                         We are not a direct lender; instead, our algorithmic match engine evaluates customer eligibility criteria and pairs borrowers with the most suitable, transparent lending partner in minutes.
+                    </p>
+                    <p style="margin-top: 1rem; margin-bottom: 0;">
+                        <a href="/about-us" style="color: #2563EB; font-weight: 700; text-decoration: underline; display: inline-flex; align-items: center; gap: 0.35rem;">
+                            Learn more about Paisa in Minutes <span aria-hidden="true">&rarr;</span>
+                        </a>
                     </p>
                 </div>
 
@@ -472,7 +477,7 @@ include 'includes/header.php';
                         <li><strong>Personal Loans:</strong> ₹10,000 to ₹50 Lakh with 3 to 60-month tenures.</li>
                         <li><strong>Salaried Employees:</strong> Monthly income ₹20,000+ (metro) or ₹15,000+ (non-metro).</li>
                         <li><strong>Self-Employed:</strong> Small business owners and freelancers with digital bank records.</li>
-                        <li><strong>100% Digital KYC:</strong> Paperless PAN &amp; Aadhaar verification with 2-hour bank disbursal.</li>
+                        <li><strong>100% Digital KYC:</strong> Paperless PAN &amp; Aadhaar verification with fast bank disbursal upon approval.</li>
                     </ul>
                 </div>
             </div>

@@ -1,7 +1,7 @@
 <?php
-$page_title = "Contact Us | Paisa in Minutes";
-$page_description = "Get in touch with Paisa in Minutes. Have questions about loans, eligibility, or application status? Send us a message or reach our support team.";
-$page_keywords = "contact us, paisa in minutes contact, customer support, loan enquiry, contact form";
+$page_title = "Contact Paisa in Minutes | Customer Support & Helpline";
+$page_description = "Contact Paisa in Minutes. Reach our customer support at +91 9990 666578, email info@paisainminutes.com, or visit our office in Delhi, India for loan queries.";
+$page_keywords = "contact paisa in minutes, customer support, loan enquiry, paisainminutes helpline, contact form";
 include 'includes/header.php';
 ?>
 
@@ -13,10 +13,10 @@ include 'includes/header.php';
             We're Here To Help
         </span>
         <h1 style="color: #ffffff !important; font-size: 3.1rem; font-weight: 800; margin-bottom: 1rem; letter-spacing: -0.02em;">
-            Contact <span style="color: #4A8DFF;">Us</span>
+            Contact <span style="color: #4A8DFF;">Paisa in Minutes</span>
         </h1>
         <p style="color: #94A3B8 !important; font-size: 1.15rem; max-width: 650px; margin: 0 auto; line-height: 1.65;">
-            Have questions about instant personal loans, credit scores, or application status? Get in touch with our expert team today.
+            Have questions about personal loan offers, loan eligibility, or application status? Reach the official team at <a href="/" style="color: #93C5FD; text-decoration: underline;">Paisa in Minutes</a> today.
         </p>
     </div>
 </section>

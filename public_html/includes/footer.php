@@ -6,7 +6,7 @@
                 <!-- Col 1 -->
                 <div class="footer-brand">
                     <a href="/" class="logo" style="margin-bottom: 1rem; display: flex; align-items: center; height: 100px;" aria-label="Paisa in Minutes Home">
-                        <img src="/assets/logo.webp" alt="Paisa in Minutes Logo" style="height: 100px; width: auto; display: block;" loading="lazy" decoding="async" width="100" height="100">
+                        <img src="/assets/logo.webp" alt="Paisa in Minutes" style="height: 100px; width: auto; display: block;" loading="lazy" decoding="async" width="100" height="100">
                     </a>
                     <p class="footer-tagline">Making personal finance transparent, reliable, and accessible for everyday Indians.</p>
                     <div class="social-links">
@@ -229,7 +229,7 @@
             
             <!-- Modal Logo Container -->
             <div class="modal-logo-container" style="text-align: center; margin-bottom: 1.25rem;">
-                <img src="/assets/logo.webp" alt="Paisa in Minutes Logo" style="height: 48px; width: auto; margin: 0 auto; display: block;" loading="lazy" decoding="async" width="48" height="48">
+                <img src="/assets/logo.webp" alt="Paisa in Minutes" style="height: 48px; width: auto; margin: 0 auto; display: block;" loading="lazy" decoding="async" width="48" height="48">
             </div>
 
             <!-- Modal Tabs Headers (Hidden since Sign In / Tracking removed) -->

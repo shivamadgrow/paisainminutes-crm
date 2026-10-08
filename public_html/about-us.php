@@ -4,9 +4,9 @@
  * E-E-A-T compliant corporate background, operational entity details, and regulatory disclosures
  */
 
-$page_title = "About Us | Paisa in Minutes - AdGrow Media Services";
-$page_description = "Learn about Paisa in Minutes, operated by AdGrow Media Services. Transparent loan facilitation, digital marketplace model, and RBI Fair Practices compliance.";
-$page_keywords = "about paisa in minutes, adgrow media services, loan marketplace india, digital lending facilitator, fintech delhi";
+$page_title = "About Paisa in Minutes | Digital Loan Facilitation Platform";
+$page_description = "Learn about Paisa in Minutes, operated by AdGrow Media Services in Delhi, India. Explore our digital loan facilitation marketplace, LSP model, and RBI-regulated lending partners.";
+$page_keywords = "about paisa in minutes, adgrow media services, digital loan facilitation, lsp platform india, personal loans delhi";
 
 include 'includes/header.php';
 ?>
@@ -228,9 +228,9 @@ include 'includes/header.php';
         <div class="about-grid-2">
             <div class="about-text-block">
                 <h2>Our Mission & Purpose</h2>
-                <p><strong>Paisa in Minutes</strong> is a digital loan facilitation platform owned and operated by <strong>AdGrow Media Services</strong>. Our mission is to eliminate bureaucratic hurdles, opaque terms, and predatory charges in retail borrowing by providing a 100% paperless, transparent financial discovery experience.</p>
+                <p><strong><a href="/" title="Paisa in Minutes">Paisa in Minutes</a></strong> is an official digital loan facilitation platform owned and operated by <strong>AdGrow Media Services</strong>, based in Delhi, India. Our mission is to eliminate bureaucratic hurdles, opaque terms, and predatory charges in retail borrowing by providing a 100% paperless, transparent financial discovery experience.</p>
                 <p>Acting as an authorized Lending Service Provider (LSP) and digital facilitator, we bridge the gap between borrowers requiring quick financial support and regulated Non-Banking Financial Companies (NBFCs) and commercial banks licensed by the Reserve Bank of India.</p>
-                <p>Whether you need a quick personal loan for medical needs, working capital for small businesses, or a long-term home loan, our proprietary match engine evaluates your profile against multiple partner criteria to present competitive loan offers within minutes.</p>
+                <p>Whether you need a personal loan for medical needs, working capital for small businesses, or a long-term home loan, our proprietary match engine evaluates your profile against multiple partner criteria to present competitive loan offers within minutes.</p>
             </div>
 
             <div class="entity-card">

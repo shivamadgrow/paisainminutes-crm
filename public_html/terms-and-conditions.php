@@ -1,6 +1,6 @@
 <?php
 $page_title = "Terms & Conditions | Paisa in Minutes";
-$page_description = "Read Paisa in Minutes' Terms & Conditions governing digital loan lead facilitation, user eligibility, credit bureau authorization, and platform usage.";
+$page_description = "Read the Paisa in Minutes Terms and Conditions governing digital loan lead facilitation, user eligibility, credit bureau authorization, and platform usage.";
 $page_keywords = "terms and conditions, paisa in minutes terms, loan eligibility terms, user agreement";
 include 'includes/header.php';
 ?>
