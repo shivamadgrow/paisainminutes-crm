@@ -55,7 +55,13 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
     <meta name="twitter:description" content="<?php echo htmlspecialchars($pageDescription); ?>">
     <meta name="twitter:image" content="<?php echo $siteUrl; ?>/assets/og-image.png">
     
-    <link rel="icon" href="/assets/favicon.ico" type="image/x-icon">
+    <!-- Favicon & Brand Icons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v=5">
+    <link rel="icon" type="image/x-icon" href="/assets/favicon.ico?v=5">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png?v=5">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png?v=5">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png?v=5">
+    <link rel="shortcut icon" type="image/png" href="/assets/favicon-32x32.png?v=5">
     <meta name="theme-color" content="#1B2A6B">
     <meta name="color-scheme" content="light">
 
@@ -225,7 +231,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         .cro-header {
             background: #FFFFFF;
             border-bottom: 1px solid var(--pim-border);
-            padding: 0.75rem 0;
+            padding: 0.85rem 0;
             position: sticky;
             top: 0;
             z-index: 100;
@@ -238,7 +244,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 1rem;
+            gap: 1.25rem;
         }
 
         .cro-logo-link {
@@ -249,9 +255,9 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         }
 
         .cro-logo-img {
-            height: 48px;
+            height: 56px;
             width: auto;
-            max-width: 180px;
+            max-width: 220px;
             object-fit: contain;
             display: block;
             transition: transform 0.2s ease;
@@ -302,7 +308,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
 
         @media (max-width: 991px) {
             .cro-logo-img {
-                height: 42px;
+                height: 50px;
             }
             .cro-header-apply-btn {
                 min-height: 40px;
@@ -313,29 +319,30 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
 
         @media (max-width: 576px) {
             .cro-header {
-                padding: 0.6rem 0;
+                padding: 0.65rem 0;
             }
             .cro-logo-img {
-                height: 38px;
+                height: 44px;
             }
             .cro-header-apply-btn {
                 min-height: 38px;
-                padding: 0.45rem 1.1rem;
-                font-size: 0.85rem;
+                padding: 0.45rem 1.15rem;
+                font-size: 0.86rem;
                 border-radius: 6px;
             }
         }
 
         @media (max-width: 360px) {
             .cro-logo-img {
-                height: 34px;
+                height: 38px;
             }
             .cro-header-apply-btn {
                 min-height: 36px;
-                padding: 0.4rem 0.9rem;
+                padding: 0.4rem 0.95rem;
                 font-size: 0.82rem;
             }
         }
+
 
         /* --- HERO SECTION --- */
         .cro-hero {
@@ -1721,7 +1728,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
     <header class="cro-header">
         <div class="cro-container cro-header-inner">
             <a href="/" class="cro-logo-link" aria-label="Paisa in Minutes Homepage">
-                <img src="/assets/logo.webp" alt="Paisa in Minutes" class="cro-logo-img" width="160" height="48" fetchpriority="high">
+                <img src="/assets/logo.webp?v=5" alt="Paisa in Minutes" class="cro-logo-img" width="180" height="56" fetchpriority="high">
             </a>
             <a href="#formCardInitial" class="cro-header-apply-btn" id="headerApplyBtn" onclick="croSmoothScrollToForm(event)" aria-label="Apply Now for Instant Cash Loan">
                 Apply Now
