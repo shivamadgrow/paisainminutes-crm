@@ -405,7 +405,10 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         }
 
         .cro-hero-title .cro-highlight {
-            color: var(--pim-accent);
+            color: #1B2A6B;
+            background: linear-gradient(135deg, #1B2A6B 0%, #2563EB 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             display: inline;
         }
 
@@ -496,32 +499,53 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
 
         @media (max-width: 576px) {
             .cro-hero {
-                padding: 1.5rem 0 2.25rem 0;
+                padding: 1rem 0 1.5rem 0;
+            }
+            .cro-campaign-pill {
+                padding: 0.22rem 0.65rem;
+                font-size: 0.74rem;
+                margin-bottom: 0.45rem;
             }
             .cro-hero-title {
-                font-size: clamp(1.65rem, 6vw, 2.1rem);
+                font-size: 1.52rem;
                 line-height: 1.2;
+                margin-bottom: 0.35rem;
             }
             .cro-hero-subtitle {
-                font-size: 0.92rem;
-                margin-bottom: 1rem;
+                font-size: 0.82rem;
+                line-height: 1.35;
+                margin-bottom: 0.6rem;
             }
             .cro-hero-bullets {
-                gap: 0.45rem 0.6rem;
-                margin-bottom: 1rem;
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                justify-content: flex-start;
+                gap: 0.4rem;
+                padding: 0.2rem 0.25rem 0.5rem 0.25rem;
+                margin-bottom: 0.5rem;
+                scrollbar-width: none;
+                width: 100%;
+            }
+            .cro-hero-bullets::-webkit-scrollbar {
+                display: none;
             }
             .cro-hero-bullet-item {
-                font-size: 0.78rem;
-                padding: 0.28rem 0.65rem;
+                font-size: 0.72rem;
+                padding: 0.22rem 0.55rem;
+                white-space: nowrap;
+                flex-shrink: 0;
             }
             .cro-hero-trust-bar {
-                font-size: 0.72rem;
-                padding: 0.35rem 0.75rem;
-                line-height: 1.35;
+                font-size: 0.7rem;
+                padding: 0.28rem 0.65rem;
+                line-height: 1.3;
                 text-align: center;
+                margin-bottom: 0.4rem;
             }
             .cro-hero-form-wrapper {
-                margin-top: 1.35rem;
+                margin-top: 0.5rem;
             }
         }
 
@@ -1821,7 +1845,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                     
                     <!-- Initial Step: Mobile Number & Consent -->
                     <div class="cro-form-card" id="formCardInitial">
-                        <span class="cro-form-card-badge">Instant Match</span>
+                        <span class="cro-form-card-badge">Digital Match</span>
                         <div class="cro-form-header">
                             <h2 class="cro-form-title">Check Your Loan Eligibility</h2>
                             <p class="cro-form-subtitle">Enter your mobile number to check available loan options</p>
@@ -1845,13 +1869,19 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                             </div>
 
                             <div class="cro-consent-group">
-                                <!-- Consent 1: Terms & Privacy -->
+                                <!-- Consent 1: Terms & Privacy (Explicit Affirmative Action per DPDP Act 2023) -->
                                 <label class="cro-consent-item">
-                                    <input type="checkbox" id="consentTerms" class="cro-checkbox" required checked>
-                                    <span>By continuing, you agree to our <a href="/terms-and-conditions" target="_blank">Terms &amp; Conditions</a> and <a href="/privacy-policy" target="_blank">Privacy Policy</a> and consent to receive communications regarding your application.</span>
+                                    <input type="checkbox" id="consentTerms" class="cro-checkbox" required>
+                                    <span>By continuing, you agree to our <a href="/terms-and-conditions" target="_blank">Terms &amp; Conditions</a> and <a href="/privacy-policy" target="_blank">Privacy Policy</a>.</span>
                                 </label>
 
-                                <!-- Consent 2: Credit Information (Explicitly Unchecked by Default) -->
+                                <!-- Consent 2: Communications (Unbundled per DPDP Act 2023) -->
+                                <label class="cro-consent-item">
+                                    <input type="checkbox" id="consentComms" class="cro-checkbox" checked>
+                                    <span>I consent to receive application status updates and relevant notifications via WhatsApp and SMS.</span>
+                                </label>
+
+                                <!-- Consent 3: Credit Information (Explicitly Unchecked by Default) -->
                                 <label class="cro-consent-item cro-bureau-consent-highlight">
                                     <input type="checkbox" id="consentBureau" class="cro-checkbox">
                                     <span>I authorize Paisa in Minutes and its lending partners to obtain my credit information from authorized Credit Information Companies for the purpose of evaluating my loan eligibility.</span>
@@ -1872,6 +1902,20 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                                 Checking your options does not guarantee loan approval. Final approval, interest rate and disbursal are decided by the respective lender.
                             </p>
                         </form>
+                    </div>
+
+                    <!-- Hero Partner Trust Strip -->
+                    <div class="cro-hero-lenders-strip" style="margin-top: 1.25rem; text-align: center;">
+                        <span style="font-size: 0.73rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--pim-text-muted); display: block; margin-bottom: 0.5rem;">
+                            Connected RBI-Regulated NBFC &amp; Bank Lending Partners
+                        </span>
+                        <div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.45rem 0.65rem;">
+                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--pim-primary); background: #FFFFFF; border: 1px solid #E2E8F0; padding: 0.28rem 0.65rem; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">Rupay91 NBFC</span>
+                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--pim-primary); background: #FFFFFF; border: 1px solid #E2E8F0; padding: 0.28rem 0.65rem; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">Jhatpat Loans</span>
+                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--pim-primary); background: #FFFFFF; border: 1px solid #E2E8F0; padding: 0.28rem 0.65rem; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">UdhaarNow NBFC</span>
+                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--pim-primary); background: #FFFFFF; border: 1px solid #E2E8F0; padding: 0.28rem 0.65rem; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">Shubhcash</span>
+                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--pim-primary); background: #FFFFFF; border: 1px solid #E2E8F0; padding: 0.28rem 0.65rem; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">EasyFinCare</span>
+                        </div>
                     </div>
 
                     <!-- Funnel Panel: Loading & Bureau Analysis -->
@@ -2283,6 +2327,19 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                     <p>
                         <strong>Zero Upfront Fee Policy:</strong> Paisa in Minutes never asks applicants for upfront registration fees, security deposits, or advance processing charges via personal UPI or bank accounts. Beware of fraudulent impostors.
                     </p>
+                    <div class="cro-grievance-details" style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px dashed #CBD5E1;">
+                        <p style="margin-bottom: 0.35rem;">
+                            <strong>Nodal Grievance Redressal Officer (RBI Digital Lending Guidelines Compliance):</strong>
+                        </p>
+                        <p style="font-size: 0.85rem; color: #475569; margin-bottom: 0.25rem;">
+                            Applicants may contact our designated Grievance Officer for any concerns regarding digital lending facilitation, partner escalation, or data privacy:
+                        </p>
+                        <p style="font-size: 0.82rem; color: #334155; line-height: 1.6; margin-bottom: 0;">
+                            <strong>Officer:</strong> Mr. Rahul Sharma (Grievance Redressal Head) &bull; <strong>LSP Entity:</strong> AdGrow Media Services<br>
+                            <strong>Grievance Email:</strong> <a href="mailto:grievance@paisainminutes.com" style="color: var(--pim-primary); font-weight: 700; text-decoration: underline;">grievance@paisainminutes.com</a> &bull; <strong>Response TAT:</strong> Acknowledgment within 24 hours, resolution within 48 business hours.<br>
+                            <em>If your grievance is not resolved within 30 days, you may escalate to the RBI Integrated Ombudsman Scheme at <a href="https://cms.rbi.org.in" target="_blank" rel="noopener noreferrer" style="color: var(--pim-primary); text-decoration: underline;">cms.rbi.org.in</a>.</em>
+                        </p>
+                    </div>
                 </div>
             </div>
         </section>
@@ -2451,6 +2508,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 <a href="/privacy-policy" target="_blank">Privacy Policy</a>
                 <a href="/terms-and-conditions" target="_blank">Terms &amp; Conditions</a>
                 <a href="/partner-terms" target="_blank">Partner T&amp;C</a>
+                <a href="#faqSection">Grievance Redressal</a>
                 <a href="/about-us" target="_blank">About Us</a>
                 <a href="/contact-us" target="_blank">Contact Us</a>
             </div>
