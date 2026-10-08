@@ -263,9 +263,9 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         }
 
         .cro-logo-img {
-            height: 84px !important;
+            height: 60px !important;
             width: auto !important;
-            max-width: 280px !important;
+            max-width: 220px !important;
             object-fit: contain !important;
             display: block !important;
             transition: transform 0.2s ease;
@@ -319,8 +319,8 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 padding: 0.55rem 0;
             }
             .cro-logo-img {
-                height: 68px !important;
-                max-width: 220px !important;
+                height: 50px !important;
+                max-width: 180px !important;
             }
             .cro-header-apply-btn {
                 min-height: 40px;
@@ -334,8 +334,8 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 padding: 0.45rem 0;
             }
             .cro-logo-img {
-                height: 52px !important;
-                max-width: 170px !important;
+                height: 42px !important;
+                max-width: 150px !important;
             }
             .cro-header-apply-btn {
                 min-height: 38px;
@@ -347,12 +347,12 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
 
         @media (max-width: 360px) {
             .cro-logo-img {
-                height: 44px !important;
-                max-width: 140px !important;
+                height: 36px !important;
+                max-width: 130px !important;
             }
             .cro-header-apply-btn {
-                min-height: 36px;
-                padding: 0.4rem 0.95rem;
+                min-height: 34px;
+                padding: 0.35rem 0.85rem;
                 font-size: 0.82rem;
             }
         }
@@ -1840,7 +1840,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
     <header class="cro-header">
         <div class="cro-container cro-header-inner">
             <a href="/" class="cro-logo-link" aria-label="Paisa in Minutes Homepage">
-                <img src="/assets/paisa-logo.png?v=<?php echo @filemtime(__DIR__ . '/assets/paisa-logo.png') ?: 2026100804; ?>" alt="Paisa in Minutes" class="cro-logo-img" width="220" height="84" style="height: 84px; width: auto; max-width: 280px; object-fit: contain; display: block;" fetchpriority="high" data-fallback="/assets/logo.webp">
+                <img src="/assets/paisa-logo.png?v=<?php echo @filemtime(__DIR__ . '/assets/paisa-logo.png') ?: 2026100805; ?>" alt="Paisa in Minutes" class="cro-logo-img" width="132" height="60" style="height: 60px; width: auto; max-width: 220px; object-fit: contain; display: block;" fetchpriority="high" data-fallback="/assets/logo.webp">
             </a>
             <a href="#formCardInitial" class="cro-header-apply-btn" id="headerApplyBtn" onclick="croSmoothScrollToForm(event)" aria-label="Apply Now for Instant Cash Loan">
                 Apply Now
