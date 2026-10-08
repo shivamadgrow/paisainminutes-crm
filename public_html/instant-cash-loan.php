@@ -10,6 +10,14 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+// Ensure CDN & browsers do not cache dynamic campaign landing page
+if (!headers_sent()) {
+    header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+    header("Cache-Control: post-check=0, pre-check=0", false);
+    header("Pragma: no-cache");
+    header("Expires: 0");
+}
+
 require_once __DIR__ . '/includes/affiliate_tracker.php';
 require_once __DIR__ . '/config/env.php';
 $partners = require __DIR__ . '/config/partners.php';
@@ -255,11 +263,11 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         }
 
         .cro-logo-img {
-            height: 72px;
-            width: auto;
-            max-width: 260px;
-            object-fit: contain;
-            display: block;
+            height: 84px !important;
+            width: auto !important;
+            max-width: 280px !important;
+            object-fit: contain !important;
+            display: block !important;
             transition: transform 0.2s ease;
         }
 
@@ -308,10 +316,11 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
 
         @media (max-width: 991px) {
             .cro-header {
-                padding: 0.6rem 0;
+                padding: 0.55rem 0;
             }
             .cro-logo-img {
-                height: 58px;
+                height: 68px !important;
+                max-width: 220px !important;
             }
             .cro-header-apply-btn {
                 min-height: 40px;
@@ -322,10 +331,11 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
 
         @media (max-width: 576px) {
             .cro-header {
-                padding: 0.5rem 0;
+                padding: 0.45rem 0;
             }
             .cro-logo-img {
-                height: 48px;
+                height: 52px !important;
+                max-width: 170px !important;
             }
             .cro-header-apply-btn {
                 min-height: 38px;
@@ -337,7 +347,8 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
 
         @media (max-width: 360px) {
             .cro-logo-img {
-                height: 42px;
+                height: 44px !important;
+                max-width: 140px !important;
             }
             .cro-header-apply-btn {
                 min-height: 36px;
@@ -1731,7 +1742,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
     <header class="cro-header">
         <div class="cro-container cro-header-inner">
             <a href="/" class="cro-logo-link" aria-label="Paisa in Minutes Homepage">
-                <img src="/assets/paisa-logo.png?v=9" alt="Paisa in Minutes" class="cro-logo-img" width="200" height="72" fetchpriority="high" data-fallback="/assets/logo.webp">
+                <img src="/assets/paisa-logo.png?v=<?php echo @filemtime(__DIR__ . '/assets/paisa-logo.png') ?: 2026100804; ?>" alt="Paisa in Minutes" class="cro-logo-img" width="220" height="84" style="height: 84px; width: auto; max-width: 280px; object-fit: contain; display: block;" fetchpriority="high" data-fallback="/assets/logo.webp">
             </a>
             <a href="#formCardInitial" class="cro-header-apply-btn" id="headerApplyBtn" onclick="croSmoothScrollToForm(event)" aria-label="Apply Now for Instant Cash Loan">
                 Apply Now
