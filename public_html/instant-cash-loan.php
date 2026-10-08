@@ -358,49 +358,59 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         }
 
 
-        /* --- HERO SECTION --- */
+        /* --- HERO SECTION (MODERN 2-COLUMN FINTECH LAYOUT) --- */
         .cro-hero {
             background: linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%);
-            padding: 2.75rem 0 3.75rem 0;
+            padding: 3.25rem 0 3.75rem 0;
             position: relative;
             overflow: hidden;
             border-bottom: 1px solid var(--pim-border-light);
         }
 
-        .cro-hero-content {
-            max-width: 900px;
+        .cro-hero-container {
+            max-width: 1200px;
             margin: 0 auto;
-            text-align: center;
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(420px, 0.9fr);
+            gap: 56px;
+            align-items: center;
+        }
+
+        /* --- HERO LEFT COLUMN --- */
+        .cro-hero-left {
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-items: flex-start;
+            text-align: left;
+            width: 100%;
         }
 
         .cro-campaign-pill {
             display: inline-flex;
             align-items: center;
             gap: 0.45rem;
-            background: var(--pim-accent-light);
+            background: #EFF6FF;
             color: var(--pim-primary);
             border: 1px solid #BFDBFE;
-            padding: 0.35rem 0.95rem;
+            padding: 0.38rem 1rem;
             border-radius: var(--pim-radius-pill);
-            font-size: 0.82rem;
+            font-size: 0.84rem;
             font-weight: 700;
             letter-spacing: 0.01em;
-            margin-bottom: 0.85rem;
+            margin-bottom: 1rem;
+            align-self: flex-start;
         }
 
         .cro-hero-title {
             font-family: var(--pim-font-heading);
-            font-size: clamp(2rem, 4.5vw, 3.1rem);
+            font-size: clamp(2.3rem, 3.7vw, 3.25rem);
             font-weight: 800;
             color: var(--pim-primary);
-            line-height: 1.15;
+            line-height: 1.12;
             letter-spacing: -0.025em;
-            text-align: center;
-            margin: 0 auto 0.75rem auto;
-            max-width: 860px;
+            text-align: left;
+            margin: 0 0 1rem 0;
+            max-width: 650px;
             width: 100%;
         }
 
@@ -413,23 +423,23 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         }
 
         .cro-hero-subtitle {
-            font-size: clamp(0.95rem, 2vw, 1.12rem);
+            font-size: clamp(1rem, 1.4vw, 1.12rem);
             color: var(--pim-text-body);
             line-height: 1.55;
-            text-align: center;
-            max-width: 680px;
-            margin: 0 auto 1.25rem auto;
+            text-align: left;
+            max-width: 580px;
+            margin: 0 0 1.35rem 0;
         }
 
         .cro-hero-bullets {
             list-style: none;
             display: flex;
             flex-wrap: wrap;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
-            gap: 0.6rem 1.1rem;
-            margin: 0 auto 1.25rem auto;
-            max-width: 860px;
+            gap: 0.55rem 0.75rem;
+            margin: 0 0 1.35rem 0;
+            max-width: 640px;
             padding: 0;
         }
 
@@ -437,14 +447,20 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             display: inline-flex;
             align-items: center;
             gap: 0.45rem;
-            font-size: 0.85rem;
+            font-size: 0.86rem;
             font-weight: 600;
             color: var(--pim-text-main);
             background: #FFFFFF;
             border: 1px solid var(--pim-border);
-            padding: 0.35rem 0.85rem;
+            padding: 0.38rem 0.85rem;
             border-radius: var(--pim-radius-pill);
             box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+            transition: transform 0.15s ease, border-color 0.15s ease;
+        }
+
+        .cro-hero-bullet-item:hover {
+            border-color: #CBD5E1;
+            transform: translateY(-1px);
         }
 
         .cro-hero-bullet-icon {
@@ -462,109 +478,167 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         .cro-hero-trust-bar {
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            gap: 0.45rem;
+            justify-content: flex-start;
+            gap: 0.5rem;
             background: var(--pim-success-light);
             border: 1px solid #A7F3D0;
             color: #065F46;
-            font-size: 0.8rem;
+            font-size: 0.82rem;
             font-weight: 700;
             padding: 0.45rem 1.1rem;
             border-radius: var(--pim-radius-pill);
-            margin: 0 auto;
-            max-width: 100%;
+            margin: 0 0 1.25rem 0;
+            align-self: flex-start;
         }
 
         .cro-hero-trust-bar svg {
             flex-shrink: 0;
         }
 
+        .cro-hero-lenders-strip {
+            margin-top: 0.25rem;
+            text-align: left;
+            width: 100%;
+        }
+
+        .cro-hero-lenders-title {
+            font-size: 0.73rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--pim-text-muted);
+            display: block;
+            margin-bottom: 0.45rem;
+        }
+
+        .cro-hero-lenders-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem 0.65rem;
+            align-items: center;
+        }
+
+        .cro-hero-chip {
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: var(--pim-primary);
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            padding: 0.28rem 0.65rem;
+            border-radius: 6px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+        }
+
+        /* --- HERO RIGHT COLUMN (FORM WRAPPER & CARD) --- */
+        .cro-hero-right {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+
         .cro-hero-form-wrapper {
             width: 100%;
-            max-width: 520px;
-            margin: 2rem auto 0 auto;
+            max-width: 480px;
+            margin: 0;
         }
 
-        @media (max-width: 991px) {
-            .cro-hero {
-                padding: 2rem 0 3rem 0;
-            }
-            .cro-hero-title {
-                font-size: clamp(1.85rem, 4vw, 2.4rem);
-            }
-            .cro-hero-form-wrapper {
-                margin-top: 1.75rem;
-            }
-        }
-
-        @media (max-width: 576px) {
-            .cro-hero {
-                padding: 1rem 0 1.5rem 0;
-            }
-            .cro-campaign-pill {
-                padding: 0.22rem 0.65rem;
-                font-size: 0.74rem;
-                margin-bottom: 0.45rem;
-            }
-            .cro-hero-title {
-                font-size: 1.52rem;
-                line-height: 1.2;
-                margin-bottom: 0.35rem;
-            }
-            .cro-hero-subtitle {
-                font-size: 0.82rem;
-                line-height: 1.35;
-                margin-bottom: 0.6rem;
-            }
-            .cro-hero-bullets {
-                display: flex;
-                flex-wrap: nowrap;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                justify-content: flex-start;
-                gap: 0.4rem;
-                padding: 0.2rem 0.25rem 0.5rem 0.25rem;
-                margin-bottom: 0.5rem;
-                scrollbar-width: none;
-                width: 100%;
-            }
-            .cro-hero-bullets::-webkit-scrollbar {
-                display: none;
-            }
-            .cro-hero-bullet-item {
-                font-size: 0.72rem;
-                padding: 0.22rem 0.55rem;
-                white-space: nowrap;
-                flex-shrink: 0;
-            }
-            .cro-hero-trust-bar {
-                font-size: 0.7rem;
-                padding: 0.28rem 0.65rem;
-                line-height: 1.3;
-                text-align: center;
-                margin-bottom: 0.4rem;
-            }
-            .cro-hero-form-wrapper {
-                margin-top: 0.5rem;
-            }
-        }
-
-
-        /* --- APPLICATION FORM CARD --- */
         .cro-form-card {
             background: #FFFFFF;
             border: 1px solid #D8E2EC;
-            border-radius: var(--pim-radius-lg);
+            border-radius: 18px;
             padding: 2rem 1.85rem;
-            box-shadow: var(--pim-shadow-card);
+            box-shadow: 0 12px 36px rgba(15, 23, 42, 0.09), 0 2px 6px rgba(15, 23, 42, 0.04);
             position: relative;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
+        @media (max-width: 991px) {
+            .cro-hero {
+                padding: 2.25rem 0 3rem 0;
+            }
+            .cro-hero-container {
+                grid-template-columns: 1fr;
+                gap: 2.25rem;
+            }
+            .cro-hero-left, .cro-hero-content {
+                max-width: 900px;
+                margin: 0 auto;
+                align-items: center;
+                text-align: center;
+            }
+            .cro-campaign-pill {
+                align-self: center;
+            }
+            .cro-hero-title {
+                text-align: center;
+                font-size: clamp(2rem, 5vw, 2.6rem);
+                margin: 0 auto 0.75rem auto;
+            }
+            .cro-hero-subtitle {
+                text-align: center;
+                margin: 0 auto 1.25rem auto;
+            }
+            .cro-hero-bullets {
+                justify-content: center;
+                margin: 0 auto 1.25rem auto;
+            }
+            .cro-hero-trust-bar {
+                align-self: center;
+            }
+            .cro-hero-lenders-strip {
+                text-align: center;
+            }
+            .cro-hero-lenders-chips {
+                justify-content: center;
+            }
+            .cro-hero-form-wrapper {
+                margin: 0 auto;
+            }
+        }
+
         @media (max-width: 576px) {
+            .cro-hero {
+                padding: 1.25rem 0 1.75rem 0;
+            }
+            .cro-hero-container {
+                gap: 1.25rem;
+            }
+            .cro-campaign-pill {
+                padding: 0.25rem 0.7rem;
+                font-size: 0.75rem;
+                margin-bottom: 0.5rem;
+            }
+            .cro-hero-title {
+                font-size: 1.7rem;
+                line-height: 1.18;
+                margin-bottom: 0.45rem;
+            }
+            .cro-hero-subtitle {
+                font-size: 0.86rem;
+                line-height: 1.4;
+                margin-bottom: 0.75rem;
+            }
+            .cro-hero-bullets {
+                gap: 0.38rem 0.5rem;
+                margin-bottom: 0.75rem;
+            }
+            .cro-hero-bullet-item {
+                font-size: 0.74rem;
+                padding: 0.26rem 0.6rem;
+            }
+            .cro-hero-trust-bar {
+                font-size: 0.72rem;
+                padding: 0.35rem 0.8rem;
+                line-height: 1.3;
+                margin-bottom: 0.55rem;
+            }
             .cro-form-card {
-                padding: 1.5rem 1.25rem;
-                border-radius: var(--pim-radius-md);
+                padding: 1.35rem 1.15rem;
+                border-radius: 16px;
+            }
+            .cro-phone-wrap {
+                min-height: 48px;
             }
         }
 
@@ -1776,13 +1850,13 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
 
     <main>
         <!-- ==========================================
-             HERO SECTION + ABOVE-THE-FOLD FORM
+             HERO SECTION – 2 COLUMN MODERN FINTECH LAYOUT
              ========================================== -->
         <section class="cro-hero" id="applySection">
-            <div class="cro-container">
+            <div class="cro-container cro-hero-container">
                 
-                <!-- Centered Campaign Headline & Trust Hierarchy -->
-                <div class="cro-hero-content">
+                <!-- LEFT COLUMN: All Campaign Text, Badges, Trust Content -->
+                <div class="cro-hero-left cro-hero-content">
                     <div class="cro-campaign-pill">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
@@ -1838,93 +1912,95 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                         </svg>
                         <span>Connected with RBI-regulated lending partners</span>
                     </div>
-                </div>
 
-                <!-- Centered Application Form Card -->
-                <div class="cro-hero-form-wrapper">
-                    
-                    <!-- Initial Step: Mobile Number & Consent -->
-                    <div class="cro-form-card" id="formCardInitial">
-                        <span class="cro-form-card-badge">Digital Match</span>
-                        <div class="cro-form-header">
-                            <h2 class="cro-form-title">Check Your Loan Eligibility</h2>
-                            <p class="cro-form-subtitle">Enter your mobile number to check available loan options</p>
-                        </div>
-
-                        <form id="croApplicationForm" novalidate>
-                            <div class="cro-input-group">
-                                <label for="croMobileInput" class="cro-input-label">Mobile Number</label>
-                                <div class="cro-phone-wrap">
-                                    <span class="cro-phone-prefix">+91</span>
-                                    <input type="tel" 
-                                           id="croMobileInput" 
-                                           name="phone" 
-                                           class="cro-phone-input" 
-                                           placeholder="Enter 10-digit mobile number" 
-                                           maxlength="10" 
-                                           inputmode="numeric" 
-                                           autocomplete="tel" 
-                                           required>
-                                </div>
-                            </div>
-
-                            <div class="cro-consent-group">
-                                <!-- Consent 1: Terms & Privacy (Explicit Affirmative Action per DPDP Act 2023) -->
-                                <label class="cro-consent-item">
-                                    <input type="checkbox" id="consentTerms" class="cro-checkbox" required>
-                                    <span>By continuing, you agree to our <a href="/terms-and-conditions" target="_blank">Terms &amp; Conditions</a> and <a href="/privacy-policy" target="_blank">Privacy Policy</a>.</span>
-                                </label>
-
-                                <!-- Consent 2: Communications (Unbundled per DPDP Act 2023) -->
-                                <label class="cro-consent-item">
-                                    <input type="checkbox" id="consentComms" class="cro-checkbox" checked>
-                                    <span>I consent to receive application status updates and relevant notifications via WhatsApp and SMS.</span>
-                                </label>
-
-                                <!-- Consent 3: Credit Information (Explicitly Unchecked by Default) -->
-                                <label class="cro-consent-item cro-bureau-consent-highlight">
-                                    <input type="checkbox" id="consentBureau" class="cro-checkbox">
-                                    <span>I authorize Paisa in Minutes and its lending partners to obtain my credit information from authorized Credit Information Companies for the purpose of evaluating my loan eligibility.</span>
-                                </label>
-                            </div>
-
-                            <button type="submit" class="cro-btn-primary" id="croSubmitBtn">
-                                <span>Check My Loan Offers</span>
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    <polyline points="12 5 19 12 12 19"></polyline>
-                                </svg>
-                            </button>
-
-                            <div class="cro-form-status" id="croFormStatus" aria-live="polite"></div>
-
-                            <p class="cro-form-microcopy">
-                                Checking your options does not guarantee loan approval. Final approval, interest rate and disbursal are decided by the respective lender.
-                            </p>
-                        </form>
-                    </div>
-
-                    <!-- Hero Partner Trust Strip -->
-                    <div class="cro-hero-lenders-strip" style="margin-top: 1.25rem; text-align: center;">
-                        <span style="font-size: 0.73rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--pim-text-muted); display: block; margin-bottom: 0.5rem;">
+                    <!-- Connected Partners Chips in Left Column -->
+                    <div class="cro-hero-lenders-strip">
+                        <span class="cro-hero-lenders-title">
                             Connected RBI-Regulated NBFC &amp; Bank Lending Partners
                         </span>
-                        <div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.45rem 0.65rem;">
-                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--pim-primary); background: #FFFFFF; border: 1px solid #E2E8F0; padding: 0.28rem 0.65rem; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">Rupay91 NBFC</span>
-                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--pim-primary); background: #FFFFFF; border: 1px solid #E2E8F0; padding: 0.28rem 0.65rem; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">Jhatpat Loans</span>
-                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--pim-primary); background: #FFFFFF; border: 1px solid #E2E8F0; padding: 0.28rem 0.65rem; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">UdhaarNow NBFC</span>
-                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--pim-primary); background: #FFFFFF; border: 1px solid #E2E8F0; padding: 0.28rem 0.65rem; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">Shubhcash</span>
-                            <span style="font-size: 0.76rem; font-weight: 700; color: var(--pim-primary); background: #FFFFFF; border: 1px solid #E2E8F0; padding: 0.28rem 0.65rem; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">EasyFinCare</span>
+                        <div class="cro-hero-lenders-chips">
+                            <span class="cro-hero-chip">Rupay91 NBFC</span>
+                            <span class="cro-hero-chip">Jhatpat Loans</span>
+                            <span class="cro-hero-chip">UdhaarNow NBFC</span>
+                            <span class="cro-hero-chip">Shubhcash</span>
+                            <span class="cro-hero-chip">EasyFinCare</span>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Funnel Panel: Loading & Bureau Analysis -->
-                    <div class="cro-funnel-panel" id="panelLoading">
-                        <div class="cro-spinner"></div>
-                        <h3 style="font-family: var(--pim-font-heading); color: var(--pim-primary); font-size: 1.3rem; margin-bottom: 0.5rem;" id="loadingStatusHeading">Checking your eligibility...</h3>
-                        <p style="color: var(--pim-text-muted); font-size: 0.9rem;" id="loadingStatusText">Securely querying authorized credit bureaus and matching active lending partners.</p>
+                <!-- RIGHT COLUMN: Existing Loan Eligibility Form -->
+                <div class="cro-hero-right">
+                    <div class="cro-hero-form-wrapper">
+                        
+                        <!-- Initial Step: Mobile Number & Consent -->
+                        <div class="cro-form-card" id="formCardInitial">
+                            <span class="cro-form-card-badge">Digital Match</span>
+                            <div class="cro-form-header">
+                                <h2 class="cro-form-title">Check Your Loan Eligibility</h2>
+                                <p class="cro-form-subtitle">Enter your mobile number to check available loan options</p>
+                            </div>
+
+                            <form id="croApplicationForm" novalidate>
+                                <div class="cro-input-group">
+                                    <label for="croMobileInput" class="cro-input-label">Mobile Number</label>
+                                    <div class="cro-phone-wrap">
+                                        <span class="cro-phone-prefix">+91</span>
+                                        <input type="tel" 
+                                               id="croMobileInput" 
+                                               name="phone" 
+                                               class="cro-phone-input" 
+                                               placeholder="Enter 10-digit mobile number" 
+                                               maxlength="10" 
+                                               inputmode="numeric" 
+                                               autocomplete="tel" 
+                                               required>
+                                    </div>
+                                </div>
+
+                                <div class="cro-consent-group">
+                                    <!-- Consent 1: Terms & Privacy (Explicit Affirmative Action per DPDP Act 2023) -->
+                                    <label class="cro-consent-item">
+                                        <input type="checkbox" id="consentTerms" class="cro-checkbox" required>
+                                        <span>By continuing, you agree to our <a href="/terms-and-conditions" target="_blank">Terms &amp; Conditions</a> and <a href="/privacy-policy" target="_blank">Privacy Policy</a>.</span>
+                                    </label>
+
+                                    <!-- Consent 2: Communications (Unbundled per DPDP Act 2023) -->
+                                    <label class="cro-consent-item">
+                                        <input type="checkbox" id="consentComms" class="cro-checkbox" checked>
+                                        <span>I consent to receive application status updates and relevant notifications via WhatsApp and SMS.</span>
+                                    </label>
+
+                                    <!-- Consent 3: Credit Information (Explicitly Unchecked by Default) -->
+                                    <label class="cro-consent-item cro-bureau-consent-highlight">
+                                        <input type="checkbox" id="consentBureau" class="cro-checkbox">
+                                        <span>I authorize Paisa in Minutes and its lending partners to obtain my credit information from authorized Credit Information Companies for the purpose of evaluating my loan eligibility.</span>
+                                    </label>
+                                </div>
+
+                                <button type="submit" class="cro-btn-primary" id="croSubmitBtn">
+                                    <span>Check My Loan Offers</span>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        <polyline points="12 5 19 12 12 19"></polyline>
+                                    </svg>
+                                </button>
+
+                                <div class="cro-form-status" id="croFormStatus" aria-live="polite"></div>
+
+                                <p class="cro-form-microcopy">
+                                    Checking your options does not guarantee loan approval. Final approval, interest rate and disbursal are decided by the respective lender.
+                                </p>
+                            </form>
+                        </div>
+
+                        <!-- Funnel Panel: Loading & Bureau Analysis -->
+                        <div class="cro-funnel-panel" id="panelLoading">
+                            <div class="cro-spinner"></div>
+                            <h3 style="font-family: var(--pim-font-heading); color: var(--pim-primary); font-size: 1.3rem; margin-bottom: 0.5rem;" id="loadingStatusHeading">Checking your eligibility...</h3>
+                            <p style="color: var(--pim-text-muted); font-size: 0.9rem;" id="loadingStatusText">Securely querying authorized credit bureaus and matching active lending partners.</p>
+                        </div>
+
                     </div>
-
                 </div>
 
             </div>
