@@ -225,94 +225,137 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         .cro-header {
             background: #FFFFFF;
             border-bottom: 1px solid var(--pim-border);
-            padding: 0.85rem 0;
+            padding: 0.75rem 0;
             position: sticky;
             top: 0;
             z-index: 100;
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 1px 4px rgba(15, 23, 42, 0.04);
         }
 
         .cro-header-inner {
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 1rem;
         }
 
         .cro-logo-link {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             text-decoration: none;
+            line-height: 1;
         }
 
         .cro-logo-img {
-            height: 44px;
+            height: 48px;
             width: auto;
+            max-width: 180px;
+            object-fit: contain;
             display: block;
+            transition: transform 0.2s ease;
         }
 
-        .cro-trust-badge {
+        .cro-logo-link:hover .cro-logo-img {
+            transform: scale(1.02);
+        }
+
+        .cro-header-apply-btn {
             display: inline-flex;
             align-items: center;
-            gap: 0.45rem;
-            background: var(--pim-success-light);
-            border: 1px solid #A7F3D0;
-            color: #065F46;
-            font-size: 0.78rem;
+            justify-content: center;
+            white-space: nowrap;
+            min-height: 44px;
+            padding: 0.6rem 1.45rem;
+            border-radius: var(--pim-radius-sm);
+            font-family: var(--pim-font-body);
+            font-size: 0.95rem;
             font-weight: 700;
-            padding: 0.4rem 0.85rem;
-            border-radius: var(--pim-radius-pill);
+            letter-spacing: 0.01em;
+            text-decoration: none;
+            background: var(--pim-primary);
+            color: #FFFFFF;
+            box-shadow: 0 4px 12px rgba(27, 42, 107, 0.18);
+            border: 1px solid transparent;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
         }
 
-        .cro-trust-badge svg {
-            flex-shrink: 0;
+        .cro-header-apply-btn:hover {
+            background: var(--pim-primary-light);
+            color: #FFFFFF;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(27, 42, 107, 0.26);
+        }
+
+        .cro-header-apply-btn:active {
+            background: var(--pim-primary-dark);
+            transform: translateY(0);
+            box-shadow: 0 2px 6px rgba(27, 42, 107, 0.2);
+        }
+
+        .cro-header-apply-btn:focus-visible {
+            outline: 2px solid var(--pim-accent);
+            outline-offset: 2px;
+        }
+
+        @media (max-width: 991px) {
+            .cro-logo-img {
+                height: 42px;
+            }
+            .cro-header-apply-btn {
+                min-height: 40px;
+                padding: 0.5rem 1.25rem;
+                font-size: 0.9rem;
+            }
         }
 
         @media (max-width: 576px) {
-            .cro-logo-img { height: 38px; }
-            .cro-trust-badge { font-size: 0.72rem; padding: 0.3rem 0.65rem; }
-            .cro-trust-badge-text-full { display: none; }
-            .cro-trust-badge-text-short { display: inline; }
+            .cro-header {
+                padding: 0.6rem 0;
+            }
+            .cro-logo-img {
+                height: 38px;
+            }
+            .cro-header-apply-btn {
+                min-height: 38px;
+                padding: 0.45rem 1.1rem;
+                font-size: 0.85rem;
+                border-radius: 6px;
+            }
         }
-        @media (min-width: 577px) {
-            .cro-trust-badge-text-short { display: none; }
-            .cro-trust-badge-text-full { display: inline; }
+
+        @media (max-width: 360px) {
+            .cro-logo-img {
+                height: 34px;
+            }
+            .cro-header-apply-btn {
+                min-height: 36px;
+                padding: 0.4rem 0.9rem;
+                font-size: 0.82rem;
+            }
         }
 
         /* --- HERO SECTION --- */
         .cro-hero {
             background: linear-gradient(180deg, #F8FAFC 0%, #FFFFFF 100%);
-            padding: 2.25rem 0 3.5rem 0;
+            padding: 2.75rem 0 3.75rem 0;
             position: relative;
             overflow: hidden;
             border-bottom: 1px solid var(--pim-border-light);
         }
 
-        .cro-hero-grid {
-            display: grid;
-            grid-template-columns: 1.15fr 1fr;
-            gap: 2.5rem;
+        .cro-hero-content {
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
             align-items: center;
         }
 
-        @media (max-width: 991px) {
-            .cro-hero {
-                padding: 1.5rem 0 2.5rem 0;
-            }
-            .cro-hero-grid {
-                grid-template-columns: 1fr;
-                gap: 1.75rem;
-            }
-        }
-
-        .cro-hero-content {
-            display: flex;
-            flex-direction: column;
-            gap: 1.15rem;
-        }
-
         .cro-campaign-pill {
-            align-self: flex-start;
             display: inline-flex;
             align-items: center;
             gap: 0.45rem;
@@ -321,18 +364,23 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             border: 1px solid #BFDBFE;
             padding: 0.35rem 0.95rem;
             border-radius: var(--pim-radius-pill);
-            font-size: 0.8rem;
+            font-size: 0.82rem;
             font-weight: 700;
             letter-spacing: 0.01em;
+            margin-bottom: 0.85rem;
         }
 
         .cro-hero-title {
             font-family: var(--pim-font-heading);
-            font-size: clamp(1.85rem, 4vw, 2.75rem);
+            font-size: clamp(2rem, 4.5vw, 3.1rem);
             font-weight: 800;
             color: var(--pim-primary);
-            line-height: 1.18;
-            letter-spacing: -0.02em;
+            line-height: 1.15;
+            letter-spacing: -0.025em;
+            text-align: center;
+            margin: 0 auto 0.75rem auto;
+            max-width: 860px;
+            width: 100%;
         }
 
         .cro-hero-title .cro-highlight {
@@ -343,44 +391,119 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         .cro-hero-subtitle {
             font-size: clamp(0.95rem, 2vw, 1.12rem);
             color: var(--pim-text-body);
-            line-height: 1.6;
+            line-height: 1.55;
+            text-align: center;
+            max-width: 680px;
+            margin: 0 auto 1.25rem auto;
         }
 
         .cro-hero-bullets {
             list-style: none;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.75rem 1rem;
-            margin-top: 0.25rem;
-        }
-
-        @media (max-width: 480px) {
-            .cro-hero-bullets {
-                grid-template-columns: 1fr;
-                gap: 0.55rem;
-            }
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 0.6rem 1.1rem;
+            margin: 0 auto 1.25rem auto;
+            max-width: 860px;
+            padding: 0;
         }
 
         .cro-hero-bullet-item {
-            display: flex;
+            display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            font-size: 0.88rem;
+            gap: 0.45rem;
+            font-size: 0.85rem;
             font-weight: 600;
             color: var(--pim-text-main);
+            background: #FFFFFF;
+            border: 1px solid var(--pim-border);
+            padding: 0.35rem 0.85rem;
+            border-radius: var(--pim-radius-pill);
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
         }
 
         .cro-hero-bullet-icon {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 22px;
-            height: 22px;
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
             background: var(--pim-success-light);
             color: var(--pim-success-dark);
             flex-shrink: 0;
         }
+
+        .cro-hero-trust-bar {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            background: var(--pim-success-light);
+            border: 1px solid #A7F3D0;
+            color: #065F46;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 0.45rem 1.1rem;
+            border-radius: var(--pim-radius-pill);
+            margin: 0 auto;
+            max-width: 100%;
+        }
+
+        .cro-hero-trust-bar svg {
+            flex-shrink: 0;
+        }
+
+        .cro-hero-form-wrapper {
+            width: 100%;
+            max-width: 520px;
+            margin: 2rem auto 0 auto;
+        }
+
+        @media (max-width: 991px) {
+            .cro-hero {
+                padding: 2rem 0 3rem 0;
+            }
+            .cro-hero-title {
+                font-size: clamp(1.85rem, 4vw, 2.4rem);
+            }
+            .cro-hero-form-wrapper {
+                margin-top: 1.75rem;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .cro-hero {
+                padding: 1.5rem 0 2.25rem 0;
+            }
+            .cro-hero-title {
+                font-size: clamp(1.65rem, 6vw, 2.1rem);
+                line-height: 1.2;
+            }
+            .cro-hero-subtitle {
+                font-size: 0.92rem;
+                margin-bottom: 1rem;
+            }
+            .cro-hero-bullets {
+                gap: 0.45rem 0.6rem;
+                margin-bottom: 1rem;
+            }
+            .cro-hero-bullet-item {
+                font-size: 0.78rem;
+                padding: 0.28rem 0.65rem;
+            }
+            .cro-hero-trust-bar {
+                font-size: 0.72rem;
+                padding: 0.35rem 0.75rem;
+                line-height: 1.35;
+                text-align: center;
+            }
+            .cro-hero-form-wrapper {
+                margin-top: 1.35rem;
+            }
+        }
+
 
         /* --- APPLICATION FORM CARD --- */
         .cro-form-card {
@@ -1593,21 +1716,16 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
 <body>
 
     <!-- ==========================================
-         CRO HEADER (Focused Logo + Trust Badge)
+         CRO HEADER (Enlarged Logo + Apply Now CTA)
          ========================================== -->
     <header class="cro-header">
         <div class="cro-container cro-header-inner">
             <a href="/" class="cro-logo-link" aria-label="Paisa in Minutes Homepage">
-                <img src="/assets/logo.webp" alt="Paisa in Minutes" class="cro-logo-img" width="160" height="44">
+                <img src="/assets/logo.webp" alt="Paisa in Minutes" class="cro-logo-img" width="160" height="48" fetchpriority="high">
             </a>
-            <div class="cro-trust-badge">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
-                <span class="cro-trust-badge-text-full">256-Bit SSL Secured • Connected with RBI-regulated lending partners</span>
-                <span class="cro-trust-badge-text-short">SSL Secured</span>
-            </div>
+            <a href="#formCardInitial" class="cro-header-apply-btn" id="headerApplyBtn" onclick="croSmoothScrollToForm(event)" aria-label="Apply Now for Instant Cash Loan">
+                Apply Now
+            </a>
         </div>
     </header>
 
@@ -1617,127 +1735,133 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
              ========================================== -->
         <section class="cro-hero" id="applySection">
             <div class="cro-container">
-                <div class="cro-hero-grid">
-                    
-                    <!-- Left: Campaign Headline & Trust Points -->
-                    <div class="cro-hero-content">
-                        <div class="cro-campaign-pill">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-                            </svg>
-                            <span>Need Cash for an Urgent Expense?</span>
-                        </div>
-
-                        <h1 class="cro-hero-title">
-                            Check Loan Offers <span class="cro-highlight">Up to ₹1 Lakh</span>
-                        </h1>
-
-                        <p class="cro-hero-subtitle">
-                            Compare available loan options from our lending partners through a quick digital application.
-                        </p>
-
-                        <ul class="cro-hero-bullets">
-                            <li class="cro-hero-bullet-item">
-                                <span class="cro-hero-bullet-icon">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                </span>
-                                <span>Digital Application</span>
-                            </li>
-                            <li class="cro-hero-bullet-item">
-                                <span class="cro-hero-bullet-icon">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                </span>
-                                <span>Multiple Lending Partners</span>
-                            </li>
-                            <li class="cro-hero-bullet-item">
-                                <span class="cro-hero-bullet-icon">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                </span>
-                                <span>Secure Application</span>
-                            </li>
-                            <li class="cro-hero-bullet-item">
-                                <span class="cro-hero-bullet-icon">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                </span>
-                                <span>Transparent Loan Terms</span>
-                            </li>
-                            <li class="cro-hero-bullet-item">
-                                <span class="cro-hero-bullet-icon">
-                                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                </span>
-                                <span>Online Process</span>
-                            </li>
-                        </ul>
+                
+                <!-- Centered Campaign Headline & Trust Hierarchy -->
+                <div class="cro-hero-content">
+                    <div class="cro-campaign-pill">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                        <span>Need Cash for an Urgent Expense?</span>
                     </div>
 
-                    <!-- Right / Mobile Above-The-Fold Form Card -->
-                    <div class="cro-hero-form-wrapper">
-                        
-                        <!-- Initial Step: Mobile Number & Consent -->
-                        <div class="cro-form-card" id="formCardInitial">
-                            <span class="cro-form-card-badge">Instant Match</span>
-                            <div class="cro-form-header">
-                                <h2 class="cro-form-title">Check Your Loan Eligibility</h2>
-                                <p class="cro-form-subtitle">Enter your mobile number to check available loan options</p>
+                    <h1 class="cro-hero-title">
+                        Check Loan Offers <span class="cro-highlight">Up to ₹1 Lakh</span>
+                    </h1>
+
+                    <p class="cro-hero-subtitle">
+                        Compare available loan options from our lending partners through a quick digital application.
+                    </p>
+
+                    <ul class="cro-hero-bullets">
+                        <li class="cro-hero-bullet-item">
+                            <span class="cro-hero-bullet-icon">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
+                            <span>Digital Application</span>
+                        </li>
+                        <li class="cro-hero-bullet-item">
+                            <span class="cro-hero-bullet-icon">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
+                            <span>Multiple Lending Partners</span>
+                        </li>
+                        <li class="cro-hero-bullet-item">
+                            <span class="cro-hero-bullet-icon">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
+                            <span>Secure Application</span>
+                        </li>
+                        <li class="cro-hero-bullet-item">
+                            <span class="cro-hero-bullet-icon">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
+                            <span>Transparent Loan Terms</span>
+                        </li>
+                        <li class="cro-hero-bullet-item">
+                            <span class="cro-hero-bullet-icon">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            </span>
+                            <span>Online Process</span>
+                        </li>
+                    </ul>
+
+                    <div class="cro-hero-trust-bar">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <span>Connected with RBI-regulated lending partners</span>
+                    </div>
+                </div>
+
+                <!-- Centered Application Form Card -->
+                <div class="cro-hero-form-wrapper">
+                    
+                    <!-- Initial Step: Mobile Number & Consent -->
+                    <div class="cro-form-card" id="formCardInitial">
+                        <span class="cro-form-card-badge">Instant Match</span>
+                        <div class="cro-form-header">
+                            <h2 class="cro-form-title">Check Your Loan Eligibility</h2>
+                            <p class="cro-form-subtitle">Enter your mobile number to check available loan options</p>
+                        </div>
+
+                        <form id="croApplicationForm" novalidate>
+                            <div class="cro-input-group">
+                                <label for="croMobileInput" class="cro-input-label">Mobile Number</label>
+                                <div class="cro-phone-wrap">
+                                    <span class="cro-phone-prefix">+91</span>
+                                    <input type="tel" 
+                                           id="croMobileInput" 
+                                           name="phone" 
+                                           class="cro-phone-input" 
+                                           placeholder="Enter 10-digit mobile number" 
+                                           maxlength="10" 
+                                           inputmode="numeric" 
+                                           autocomplete="tel" 
+                                           required>
+                                </div>
                             </div>
 
-                            <form id="croApplicationForm" novalidate>
-                                <div class="cro-input-group">
-                                    <label for="croMobileInput" class="cro-input-label">Mobile Number</label>
-                                    <div class="cro-phone-wrap">
-                                        <span class="cro-phone-prefix">+91</span>
-                                        <input type="tel" 
-                                               id="croMobileInput" 
-                                               name="phone" 
-                                               class="cro-phone-input" 
-                                               placeholder="Enter 10-digit mobile number" 
-                                               maxlength="10" 
-                                               inputmode="numeric" 
-                                               autocomplete="tel" 
-                                               required>
-                                    </div>
-                                </div>
+                            <div class="cro-consent-group">
+                                <!-- Consent 1: Terms & Privacy -->
+                                <label class="cro-consent-item">
+                                    <input type="checkbox" id="consentTerms" class="cro-checkbox" required checked>
+                                    <span>By continuing, you agree to our <a href="/terms-and-conditions" target="_blank">Terms &amp; Conditions</a> and <a href="/privacy-policy" target="_blank">Privacy Policy</a> and consent to receive communications regarding your application.</span>
+                                </label>
 
-                                <div class="cro-consent-group">
-                                    <!-- Consent 1: Terms & Privacy -->
-                                    <label class="cro-consent-item">
-                                        <input type="checkbox" id="consentTerms" class="cro-checkbox" required checked>
-                                        <span>By continuing, you agree to our <a href="/terms-and-conditions" target="_blank">Terms &amp; Conditions</a> and <a href="/privacy-policy" target="_blank">Privacy Policy</a> and consent to receive communications regarding your application.</span>
-                                    </label>
+                                <!-- Consent 2: Credit Information (Explicitly Unchecked by Default) -->
+                                <label class="cro-consent-item cro-bureau-consent-highlight">
+                                    <input type="checkbox" id="consentBureau" class="cro-checkbox">
+                                    <span>I authorize Paisa in Minutes and its lending partners to obtain my credit information from authorized Credit Information Companies for the purpose of evaluating my loan eligibility.</span>
+                                </label>
+                            </div>
 
-                                    <!-- Consent 2: Credit Information (Explicitly Unchecked by Default) -->
-                                    <label class="cro-consent-item cro-bureau-consent-highlight">
-                                        <input type="checkbox" id="consentBureau" class="cro-checkbox">
-                                        <span>I authorize Paisa in Minutes and its lending partners to obtain my credit information from authorized Credit Information Companies for the purpose of evaluating my loan eligibility.</span>
-                                    </label>
-                                </div>
+                            <button type="submit" class="cro-btn-primary" id="croSubmitBtn">
+                                <span>Check My Loan Offers</span>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    <polyline points="12 5 19 12 12 19"></polyline>
+                                </svg>
+                            </button>
 
-                                <button type="submit" class="cro-btn-primary" id="croSubmitBtn">
-                                    <span>Check My Loan Offers</span>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                                        <polyline points="12 5 19 12 12 19"></polyline>
-                                    </svg>
-                                </button>
+                            <div class="cro-form-status" id="croFormStatus" aria-live="polite"></div>
 
-                                <div class="cro-form-status" id="croFormStatus" aria-live="polite"></div>
+                            <p class="cro-form-microcopy">
+                                Checking your options does not guarantee loan approval. Final approval, interest rate and disbursal are decided by the respective lender.
+                            </p>
+                        </form>
+                    </div>
 
-                                <p class="cro-form-microcopy">
-                                    Checking your options does not guarantee loan approval. Final approval, interest rate and disbursal are decided by the respective lender.
-                                </p>
-                            </form>
-                        </div>
-
-                        <!-- Funnel Panel: Loading & Bureau Analysis -->
-                        <div class="cro-funnel-panel" id="panelLoading">
-                            <div class="cro-spinner"></div>
-                            <h3 style="font-family: var(--pim-font-heading); color: var(--pim-primary); font-size: 1.3rem; margin-bottom: 0.5rem;" id="loadingStatusHeading">Checking your eligibility...</h3>
-                            <p style="color: var(--pim-text-muted); font-size: 0.9rem;" id="loadingStatusText">Securely querying authorized credit bureaus and matching active lending partners.</p>
-                        </div>
-
+                    <!-- Funnel Panel: Loading & Bureau Analysis -->
+                    <div class="cro-funnel-panel" id="panelLoading">
+                        <div class="cro-spinner"></div>
+                        <h3 style="font-family: var(--pim-font-heading); color: var(--pim-primary); font-size: 1.3rem; margin-bottom: 0.5rem;" id="loadingStatusHeading">Checking your eligibility...</h3>
+                        <p style="color: var(--pim-text-muted); font-size: 0.9rem;" id="loadingStatusText">Securely querying authorized credit bureaus and matching active lending partners.</p>
                     </div>
 
                 </div>
+
             </div>
         </section>
 

@@ -50,16 +50,27 @@ for (const phrase of bannedPhrases) {
 assert('Primary CTA is "Check My Loan Offers"', landingContent.includes('Check My Loan Offers'));
 assert('Mobile Sticky CTA is "Check Loan Offers →"', landingContent.includes('Check Loan Offers →'));
 
-// C. Hero Copy and Badges
-assert('Header trust badge contains "Connected with RBI-regulated lending partners"', landingContent.includes('Connected with RBI-regulated lending partners'));
+// Header UX Improvements
+const headerMatch = landingContent.match(/<header[^>]*>([\s\S]*?)<\/header>/i);
+assert('Header exists', !!headerMatch);
+const headerHtml = headerMatch ? headerMatch[1] : '';
+assert('Header security badge text removed from header', !headerHtml.includes('256-Bit SSL Secured') && !headerHtml.includes('Connected with RBI-regulated'));
+assert('Header contains "Apply Now" button', headerHtml.includes('Apply Now') && headerHtml.includes('headerApplyBtn'));
+assert('Apply Now smooth scroll handler attached', headerHtml.includes('croSmoothScrollToForm'));
+assert('Logo has class cro-logo-img with responsive sizing', headerHtml.includes('cro-logo-img') && landingContent.includes('.cro-logo-img {'));
+
+// C. Hero Copy, Centered Layout and Badges
+assert('Trust badge contains "Connected with RBI-regulated lending partners"', landingContent.includes('Connected with RBI-regulated lending partners'));
 assert('Hero concept pill "Need Cash for an Urgent Expense?"', landingContent.includes('Need Cash for an Urgent Expense?'));
 assert('Hero H1 "Check Loan Offers Up to ₹1 Lakh"', landingContent.includes('Check Loan Offers <span class="cro-highlight">Up to ₹1 Lakh</span>'));
+assert('Hero content is centered with max-width container', landingContent.includes('max-width: 900px;') && landingContent.includes('text-align: center;'));
 assert('Hero supporting copy matches audited string', landingContent.includes('Compare available loan options from our lending partners through a quick digital application.'));
 assert('Hero bullets contain Digital Application', landingContent.includes('<span>Digital Application</span>'));
 assert('Hero bullets contain Multiple Lending Partners', landingContent.includes('<span>Multiple Lending Partners</span>'));
 assert('Hero bullets contain Secure Application', landingContent.includes('<span>Secure Application</span>'));
 assert('Hero bullets contain Transparent Loan Terms', landingContent.includes('<span>Transparent Loan Terms</span>'));
 assert('Hero bullets contain Online Process', landingContent.includes('<span>Online Process</span>'));
+
 
 // D. Bureau / CIBIL Card & Structure
 assert('CIBIL Score Card container #cibilCardContainer is present', landingContent.includes('id="cibilCardContainer"'));
