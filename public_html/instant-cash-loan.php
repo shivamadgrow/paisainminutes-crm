@@ -367,21 +367,25 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             border-bottom: 1px solid var(--pim-border-light);
         }
 
-        .cro-hero-container {
+        .cro-hero-container,
+        .hero-content {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 0 1.5rem;
             display: grid;
-            grid-template-columns: minmax(0, 1.1fr) minmax(420px, 0.9fr);
-            gap: 56px;
+            grid-template-columns: minmax(0, 1.1fr) minmax(380px, 0.9fr);
+            gap: 48px;
             align-items: center;
         }
 
         /* --- HERO LEFT COLUMN --- */
-        .cro-hero-left {
+        .cro-hero-left,
+        .hero-left {
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             text-align: left;
+            min-width: 0;
             width: 100%;
         }
 
@@ -529,11 +533,13 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
         }
 
-        /* --- HERO RIGHT COLUMN (FORM WRAPPER & CARD) --- */
-        .cro-hero-right {
+        /* --- HERO RIGHT COLUMN (FORM WRAPPER & STATUS CARD) --- */
+        .cro-hero-right,
+        .hero-right {
             display: flex;
             justify-content: center;
             align-items: center;
+            min-width: 0;
             width: 100%;
         }
 
@@ -541,6 +547,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             width: 100%;
             max-width: 480px;
             margin: 0;
+            position: relative;
         }
 
         .cro-form-card {
@@ -557,11 +564,12 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             .cro-hero {
                 padding: 2.25rem 0 3rem 0;
             }
-            .cro-hero-container {
+            .cro-hero-container,
+            .hero-content {
                 grid-template-columns: 1fr;
                 gap: 2.25rem;
             }
-            .cro-hero-left, .cro-hero-content {
+            .cro-hero-left, .cro-hero-content, .hero-left {
                 max-width: 900px;
                 margin: 0 auto;
                 align-items: center;
@@ -909,31 +917,55 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             gap: 0.35rem;
         }
 
-        /* --- DEDICATED CIBIL SCORE CARD (Placed Immediately Before Offers) --- */
+        /* --- DEDICATED CIBIL SCORE CARD (Hero Right Column Status Card) --- */
         .cro-cibil-card-container {
             width: 100%;
-            max-width: 540px;
-            margin: 0 auto 2rem auto;
-            padding: 0 0.5rem;
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 0;
+            position: relative;
+        }
+
+        .cro-cibil-card-container.cro-revealed {
+            display: block !important;
+            animation: croFadeInCard 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes croFadeInCard {
+            from {
+                opacity: 0;
+                transform: translateY(12px) scale(0.985);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .cro-cibil-card-container.cro-revealed {
+                animation: none;
+            }
         }
 
         .cro-cibil-card {
             background: #FFFFFF;
             border: 2px solid #E2E8F0;
-            border-radius: var(--pim-radius-lg);
-            box-shadow: 0 10px 25px -5px rgba(27, 42, 107, 0.1), 0 8px 10px -6px rgba(27, 42, 107, 0.04);
+            border-radius: 18px;
+            box-shadow: 0 12px 36px rgba(15, 23, 42, 0.09), 0 2px 6px rgba(15, 23, 42, 0.04);
             overflow: hidden;
             transition: all 0.25s ease;
+            width: 100%;
         }
 
         .cro-cibil-card-top {
             background: linear-gradient(135deg, #1B2A6B 0%, #111A44 100%);
             color: #FFFFFF;
-            padding: 0.75rem 1.25rem;
+            padding: 0.85rem 1.35rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size: 0.82rem;
+            font-size: 0.84rem;
             font-weight: 600;
             flex-wrap: wrap;
             gap: 0.5rem;
@@ -943,19 +975,21 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             display: flex;
             align-items: center;
             gap: 0.45rem;
+            white-space: nowrap;
         }
 
         .cro-cibil-card-top .cro-cibil-appid {
             background: rgba(255, 255, 255, 0.15);
-            padding: 0.2rem 0.65rem;
+            padding: 0.22rem 0.75rem;
             border-radius: var(--pim-radius-pill);
             font-size: 0.76rem;
             font-weight: 700;
             letter-spacing: 0.02em;
+            white-space: nowrap;
         }
 
         .cro-cibil-card-body {
-            padding: 1.75rem 1.5rem;
+            padding: 1.85rem 1.5rem;
             text-align: center;
             display: flex;
             flex-direction: column;
@@ -1061,16 +1095,52 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             font-weight: 700;
         }
 
+        .cro-cibil-offers-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            margin-top: 0.4rem;
+            background: linear-gradient(135deg, #1B2A6B 0%, #2563EB 100%);
+            color: #FFFFFF;
+            font-weight: 700;
+            font-size: 0.88rem;
+            border-radius: 10px;
+            text-decoration: none;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .cro-cibil-offers-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+            color: #FFFFFF;
+        }
+
         @media (max-width: 576px) {
             .cro-cibil-card-container {
                 max-width: 100%;
                 padding: 0;
             }
             .cro-cibil-card {
-                border-radius: var(--pim-radius-md);
+                border-radius: 14px;
+            }
+            .cro-cibil-card-top {
+                padding: 0.75rem 1rem;
+                font-size: 0.8rem;
             }
             .cro-cibil-card-body {
-                padding: 1.4rem 1.15rem;
+                padding: 1.35rem 1.15rem;
+                gap: 0.55rem;
+            }
+            .cro-cibil-score-val {
+                font-size: 2.6rem;
+            }
+            .cro-cibil-offers-btn {
+                padding: 0.7rem 0.9rem;
+                font-size: 0.84rem;
             }
         }
 
@@ -1853,10 +1923,10 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
              HERO SECTION – 2 COLUMN MODERN FINTECH LAYOUT
              ========================================== -->
         <section class="cro-hero" id="applySection">
-            <div class="cro-container cro-hero-container">
+            <div class="cro-container cro-hero-container hero-content">
                 
                 <!-- LEFT COLUMN: All Campaign Text, Badges, Trust Content -->
-                <div class="cro-hero-left cro-hero-content">
+                <div class="cro-hero-left cro-hero-content hero-left">
                     <div class="cro-campaign-pill">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
@@ -1919,17 +1989,17 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                             Connected RBI-Regulated NBFC &amp; Bank Lending Partners
                         </span>
                         <div class="cro-hero-lenders-chips">
-                            <span class="cro-hero-chip">Rupay91 NBFC</span>
+                            <span class="cro-hero-chip">Rupay91</span>
                             <span class="cro-hero-chip">Jhatpat Loans</span>
-                            <span class="cro-hero-chip">UdhaarNow NBFC</span>
+                            <span class="cro-hero-chip">UdhaarNow</span>
                             <span class="cro-hero-chip">Shubhcash</span>
                             <span class="cro-hero-chip">EasyFinCare</span>
                         </div>
                     </div>
                 </div>
 
-                <!-- RIGHT COLUMN: Existing Loan Eligibility Form -->
-                <div class="cro-hero-right">
+                <!-- RIGHT COLUMN: Application Form / Loading State / CIBIL Status Card -->
+                <div class="cro-hero-right hero-right">
                     <div class="cro-hero-form-wrapper">
                         
                         <!-- Initial Step: Mobile Number & Consent -->
@@ -2000,6 +2070,35 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                             <p style="color: var(--pim-text-muted); font-size: 0.9rem;" id="loadingStatusText">Securely querying authorized credit bureaus and matching active lending partners.</p>
                         </div>
 
+                        <!-- Post-Submission Step: CIBIL Score & Application Status Card (Dynamically displayed in hero right column) -->
+                        <div class="cro-cibil-card-container" id="cibilCardContainer" style="display: none;">
+                            <div class="cro-cibil-card">
+                                <div class="cro-cibil-card-top">
+                                    <div class="cro-cibil-applicant">
+                                        <span style="color: #10B981; font-size: 1rem;">●</span>
+                                        <span id="cibilCardPhone">+91 ******••••</span>
+                                    </div>
+                                    <span class="cro-cibil-appid" id="cibilCardAppId">Application ID: PIM-••••••</span>
+                                </div>
+                                <div class="cro-cibil-card-body">
+                                    <div class="cro-cibil-badge-title">YOUR CIBIL SCORE</div>
+                                    <div class="cro-cibil-score-val" id="cibilScoreNumber">—</div>
+                                    <div class="cro-cibil-status-tag" id="cibilStatusTag">
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                                        <span id="cibilStatusText">Credit Score Checked ✓</span>
+                                    </div>
+                                    <div class="cro-cibil-bureau-note">
+                                        <span class="cro-cibil-bureau-label">Bureau Status:</span>
+                                        <span class="cro-cibil-bureau-val" id="cibilBureauStatus">Eligible for Income-Based Disbursal</span>
+                                    </div>
+                                    <a href="#offersSection" class="cro-cibil-offers-btn" onclick="croScrollToOffers(event)">
+                                        <span>View Matched Loan Offers</span>
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -2013,31 +2112,6 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         <section class="cro-offers-section" id="offersSection">
             <div class="cro-container">
                 
-                <!-- CIBIL SCORE CARD (Placed Immediately Before Loan Offers) -->
-                <div class="cro-cibil-card-container" id="cibilCardContainer">
-                    <div class="cro-cibil-card">
-                        <div class="cro-cibil-card-top">
-                            <div class="cro-cibil-applicant">
-                                <span style="color: #10B981; font-size: 1rem;">●</span>
-                                <span id="cibilCardPhone">+91 ******••••</span>
-                            </div>
-                            <span class="cro-cibil-appid" id="cibilCardAppId">Application ID: PIM-••••••</span>
-                        </div>
-                        <div class="cro-cibil-card-body">
-                            <div class="cro-cibil-badge-title">YOUR CIBIL SCORE</div>
-                            <div class="cro-cibil-score-val" id="cibilScoreNumber">—</div>
-                            <div class="cro-cibil-status-tag" id="cibilStatusTag">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                <span id="cibilStatusText">Credit Score Checked ✓</span>
-                            </div>
-                            <div class="cro-cibil-bureau-note">
-                                <span class="cro-cibil-bureau-label">Bureau Status:</span>
-                                <span class="cro-cibil-bureau-val" id="cibilBureauStatus">Eligible for Income-Based Disbursal</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <div class="cro-offers-header">
                     <span class="cro-section-tag">Matched Lending Partners</span>
                     <h2>Loan Offers Matched for You</h2>
@@ -2058,7 +2132,13 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                         $badgeText = htmlspecialchars($p['badge_text'] ?? $p['badge'] ?? 'Direct Application');
                         $rating = htmlspecialchars($p['rating'] ?? '4.8');
                         $maxAmount = htmlspecialchars($p['max_amount'] ?? '₹1,00,000');
-                        $interestRate = htmlspecialchars($p['interest_rate'] ?? 'From 0.8% / day');
+                        $isJhatpat = ($slug === 'jhatpatloans' || stripos($partnerName, 'jhatpat') !== false);
+                        $defaultRate = $isJhatpat ? 'Up to 0.8% per day' : 'Up to 1% per day';
+                        $rateString = trim((string)($p['interest_rate'] ?? $defaultRate));
+                        if (!$isJhatpat && strpos($rateString, '0.8%') !== false) {
+                            $rateString = 'Up to 1% per day';
+                        }
+                        $interestRate = htmlspecialchars($rateString);
                         $tenure = htmlspecialchars($p['tenure'] ?? '30 - 90 Days');
                         $apr = htmlspecialchars($p['apr'] ?? '14% – 24% p.a.');
                         $processingFee = htmlspecialchars($p['processing_fee'] ?? '1% – 3% of loan amount');
@@ -2403,19 +2483,6 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                     <p>
                         <strong>Zero Upfront Fee Policy:</strong> Paisa in Minutes never asks applicants for upfront registration fees, security deposits, or advance processing charges via personal UPI or bank accounts. Beware of fraudulent impostors.
                     </p>
-                    <div class="cro-grievance-details" style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px dashed #CBD5E1;">
-                        <p style="margin-bottom: 0.35rem;">
-                            <strong>Nodal Grievance Redressal Officer (RBI Digital Lending Guidelines Compliance):</strong>
-                        </p>
-                        <p style="font-size: 0.85rem; color: #475569; margin-bottom: 0.25rem;">
-                            Applicants may contact our designated Grievance Officer for any concerns regarding digital lending facilitation, partner escalation, or data privacy:
-                        </p>
-                        <p style="font-size: 0.82rem; color: #334155; line-height: 1.6; margin-bottom: 0;">
-                            <strong>Officer:</strong> Mr. Rahul Sharma (Grievance Redressal Head) &bull; <strong>LSP Entity:</strong> AdGrow Media Services<br>
-                            <strong>Grievance Email:</strong> <a href="mailto:grievance@paisainminutes.com" style="color: var(--pim-primary); font-weight: 700; text-decoration: underline;">grievance@paisainminutes.com</a> &bull; <strong>Response TAT:</strong> Acknowledgment within 24 hours, resolution within 48 business hours.<br>
-                            <em>If your grievance is not resolved within 30 days, you may escalate to the RBI Integrated Ombudsman Scheme at <a href="https://cms.rbi.org.in" target="_blank" rel="noopener noreferrer" style="color: var(--pim-primary); text-decoration: underline;">cms.rbi.org.in</a>.</em>
-                        </p>
-                    </div>
                 </div>
             </div>
         </section>
@@ -2610,6 +2677,11 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
     <?php include_once __DIR__ . '/includes/otp-modal.php'; ?>
 
     <!-- ==========================================
+         CUSTOMER DETAILS MODAL COMPONENT
+         ========================================== -->
+    <?php include_once __DIR__ . '/includes/customer-details-modal.php'; ?>
+
+    <!-- ==========================================
          INTERACTIVE CRO CLIENT ENGINE & TRACKING
          ========================================== -->
     <script>
@@ -2674,6 +2746,141 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             });
         }
 
+        // --- Landing Page Marketing Attribution Engine ---
+        function getLandingPageAttribution() {
+            let attr = {
+                source: 'landingpage',
+                lead_source: 'landingpage',
+                leadSource: 'landingpage',
+                utm_source: 'landingpage',
+                utmSource: 'landingpage',
+                utm_medium: 'website',
+                utmMedium: 'website',
+                utm_campaign: 'instant_cash_loan',
+                utmCampaign: 'instant_cash_loan',
+                landing_page: '/instant-cash-loan',
+                landingPage: '/instant-cash-loan'
+            };
+
+            // 1. Read from window.PIMAttribution if available
+            try {
+                if (window.PIMAttribution && typeof window.PIMAttribution.payload === 'function') {
+                    const pimPayload = window.PIMAttribution.payload();
+                    if (pimPayload && (pimPayload.utm_source || pimPayload.source)) {
+                        if (pimPayload.utm_source) {
+                            attr.utm_source = pimPayload.utm_source;
+                            attr.utmSource = pimPayload.utm_source;
+                        }
+                        if (pimPayload.utm_medium) {
+                            attr.utm_medium = pimPayload.utm_medium;
+                            attr.utmMedium = pimPayload.utm_medium;
+                        }
+                        if (pimPayload.utm_campaign) {
+                            attr.utm_campaign = pimPayload.utm_campaign;
+                            attr.utmCampaign = pimPayload.utm_campaign;
+                        }
+                        if (pimPayload.landing_page) {
+                            attr.landing_page = pimPayload.landing_page;
+                            attr.landingPage = pimPayload.landing_page;
+                        }
+                        attr.source = pimPayload.source || pimPayload.utm_source || 'landingpage';
+                        attr.lead_source = attr.source;
+                        attr.leadSource = attr.source;
+                    }
+                }
+            } catch (e) {}
+
+            // 2. Read URL search params
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const uSrc = urlParams.get('utm_source');
+                if (uSrc) {
+                    attr.utm_source = uSrc.trim();
+                    attr.utmSource = uSrc.trim();
+                    attr.source = uSrc.trim();
+                    attr.lead_source = uSrc.trim();
+                    attr.leadSource = uSrc.trim();
+                }
+                const uMed = urlParams.get('utm_medium');
+                if (uMed) {
+                    attr.utm_medium = uMed.trim();
+                    attr.utmMedium = uMed.trim();
+                }
+                const uCamp = urlParams.get('utm_campaign');
+                if (uCamp) {
+                    attr.utm_campaign = uCamp.trim();
+                    attr.utmCampaign = uCamp.trim();
+                }
+            } catch (e) {}
+
+            // 3. Read localStorage pim_attr_v2
+            try {
+                const rawAttr = localStorage.getItem('pim_attr_v2');
+                if (rawAttr) {
+                    const parsed = JSON.parse(rawAttr);
+                    const last = parsed && parsed.last;
+                    if (last && last.utm_source && (!attr.utm_source || attr.utm_source === 'landingpage')) {
+                        // Stale WhatsApp referer values must NEVER overwrite the landing page
+                        if (!last.utm_source.toLowerCase().includes('whatsapp')) {
+                            attr.utm_source = last.utm_source;
+                            attr.utmSource = last.utm_source;
+                            attr.utm_medium = last.utm_medium || attr.utm_medium;
+                            attr.utmMedium = last.utm_medium || attr.utm_medium;
+                            attr.utm_campaign = last.utm_campaign || attr.utm_campaign;
+                            attr.utmCampaign = last.utm_campaign || attr.utm_campaign;
+                            attr.landing_page = last.landing_page || attr.landing_page;
+                            attr.landingPage = attr.landing_page;
+                            attr.source = last.source || last.utm_source || 'landingpage';
+                            attr.lead_source = attr.source;
+                            attr.leadSource = attr.source;
+                        }
+                    }
+                }
+            } catch (e) {}
+
+            // Attribution Rules:
+            // Case A: ?utm_source=landingpage&utm_medium=website&utm_campaign=instant_cash_loan -> source = landingpage
+            // Case B: Direct visit to /instant-cash-loan without UTM -> source = landingpage
+            // Case C: Tracked marketing campaign (e.g. ?utm_source=google) -> preserve that campaign
+            const urlParams = new URLSearchParams(window.location.search);
+            const explicitUtm = (urlParams.get('utm_source') || '').trim().toLowerCase();
+            const hasExternalPaidCampaign = Boolean(
+                explicitUtm &&
+                explicitUtm !== 'landingpage' &&
+                explicitUtm !== 'website' &&
+                explicitUtm !== 'direct' &&
+                !explicitUtm.includes('whatsapp')
+            );
+
+            if (!hasExternalPaidCampaign) {
+                attr.source = 'landingpage';
+                attr.lead_source = 'landingpage';
+                attr.leadSource = 'landingpage';
+                attr.utm_source = 'landingpage';
+                attr.utmSource = 'landingpage';
+                attr.utm_medium = 'website';
+                attr.utmMedium = 'website';
+                attr.utm_campaign = 'instant_cash_loan';
+                attr.utmCampaign = 'instant_cash_loan';
+                attr.landing_page = '/instant-cash-loan';
+                attr.landingPage = '/instant-cash-loan';
+                attr.entry_point = 'instant-cash-loan';
+                attr.entryPoint = 'instant-cash-loan';
+            }
+
+            // Sync with sessionStorage for persistence across refresh or step transitions
+            try {
+                sessionStorage.setItem('pim_lead_source', attr.source);
+                sessionStorage.setItem('pim_utm_source', attr.utm_source);
+                sessionStorage.setItem('pim_utm_medium', attr.utm_medium);
+                sessionStorage.setItem('pim_utm_campaign', attr.utm_campaign);
+                sessionStorage.setItem('pim_landing_page', attr.landing_page);
+                sessionStorage.setItem('pim_entry_point', 'instant-cash-loan');
+            } catch (e) {}
+
+            return attr;
+        }
+
         // Form Submit Handler
         if (form) {
             form.addEventListener('submit', function(e) {
@@ -2702,6 +2909,35 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 }
 
                 verifiedPhone = rawPhone;
+                const attr = getLandingPageAttribution();
+                try {
+                    sessionStorage.setItem('pim_phone', verifiedPhone);
+                } catch(e) {}
+
+                // Early lead intake call: ensures lead is captured at beginning of flow with landingpage source
+                fetch((window.backend_server_url || '') + '/api/public/leads', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({
+                        phone: verifiedPhone,
+                        mobile: verifiedPhone,
+                        source: attr.source,
+                        lead_source: attr.lead_source,
+                        leadSource: attr.leadSource,
+                        utm_source: attr.utm_source,
+                        utmSource: attr.utmSource,
+                        utm_medium: attr.utm_medium,
+                        utmMedium: attr.utmMedium,
+                        utm_campaign: attr.utm_campaign,
+                        utmCampaign: attr.utmCampaign,
+                        landing_page: attr.landing_page,
+                        landingPage: attr.landingPage,
+                        entry_point: 'instant-cash-loan',
+                        entryPoint: 'instant-cash-loan',
+                        status: 'Fresh'
+                    }),
+                    keepalive: true
+                }).catch(() => {});
 
                 // Fire non-sensitive Meta Lead & OTPStarted events
                 trackMetaEvent('Lead', {
@@ -2801,17 +3037,9 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             return null;
         }
 
-        // --- Handle Successful OTP Verification & Backend Bureau Flow ---
+        // --- Handle Successful OTP Verification -> Open Customer Details Modal (Step 3 & 4) ---
         async function handleOtpSuccess(authResult) {
             trackMetaEvent('OTPVerified');
-            trackMetaEvent('CreditCheckStarted');
-
-            // Switch UI to Loading panel
-            if (panelInitial) panelInitial.style.display = 'none';
-            if (panelLoading) panelLoading.style.display = 'block';
-
-            if (loadingHeading) loadingHeading.textContent = 'Verifying Bureau Records...';
-            if (loadingText) loadingText.textContent = 'Querying authorized credit bureaus for +91 ' + verifiedPhone + '...';
 
             // Extract Auth Token from OTP response or device login (awaiting if Promise)
             let authToken = '';
@@ -2821,6 +3049,44 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 try {
                     authToken = (await window.PIMAuth.accessToken()) || '';
                 } catch(e) {}
+            }
+
+            // Step 4: Open the new "Complete Your Details" modal
+            if (window.PimCustomerDetailsModal && typeof window.PimCustomerDetailsModal.open === 'function') {
+                window.PimCustomerDetailsModal.open({
+                    phone: verifiedPhone,
+                    authToken: authToken,
+                    activeLeadId: activeLeadId,
+                    onSuccess: function(detailsResult) {
+                        proceedWithVerifiedDetails(detailsResult);
+                    }
+                });
+            } else {
+                // Fallback direct progress if modal component is unavailable
+                proceedWithVerifiedDetails({
+                    phone: verifiedPhone,
+                    authToken: authToken,
+                    activeLeadId: activeLeadId,
+                    name: "Valued Customer",
+                    salary: 35000
+                });
+            }
+        }
+
+        // --- Step 8 & 9: Proceed to Authorized Credit Check & Offers Workflow ---
+        async function proceedWithVerifiedDetails(detailsResult) {
+            trackMetaEvent('CreditCheckStarted');
+
+            // Switch UI to Loading panel
+            if (panelInitial) panelInitial.style.display = 'none';
+            if (panelLoading) panelLoading.style.display = 'block';
+
+            if (loadingHeading) loadingHeading.textContent = 'Verifying Bureau Records...';
+            if (loadingText) loadingText.textContent = 'Querying authorized credit bureaus for +91 ' + verifiedPhone + '...';
+
+            const authToken = detailsResult?.authToken || '';
+            if (detailsResult?.activeLeadId) {
+                activeLeadId = detailsResult.activeLeadId;
             }
 
             // Check if device already holds a verified bureau score in session for this phone (Requirement 10 & 21)
@@ -2838,6 +3104,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             } catch(e) {}
 
             // Gather Marketing Attribution data
+            const lpAttr = getLandingPageAttribution();
             let attrData = {};
             try {
                 const rawAttr = localStorage.getItem('pim_attr_v2');
@@ -2845,21 +3112,76 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             } catch(e) {}
             const lastTouch = attrData.last || {};
 
+            const customerName = detailsResult?.name || detailsResult?.fullName || "Valued Customer";
+            const customerSalary = Number(detailsResult?.salary || detailsResult?.monthlySalary || 35000);
+            const customerPan = detailsResult?.pan || detailsResult?.panNumber || null;
+            const customerEmail = detailsResult?.email || detailsResult?.emailAddress || "";
+            const customerAddressType = detailsResult?.addressType || "Current Residential Address";
+            const customerAddressLine1 = detailsResult?.addressLine1 || "";
+            const customerAddressLine2 = detailsResult?.addressLine2 || "";
+            const customerPincode = detailsResult?.pincode || "";
+            const customerCity = detailsResult?.city || "";
+            const customerState = detailsResult?.state || "";
+            const customerEmploymentType = detailsResult?.employmentType || "Salaried";
+            const customerEmployerName = detailsResult?.employerName || detailsResult?.companyName || "";
+            let rawLoanAmt = detailsResult?.loanAmount || detailsResult?.amount;
+            if (typeof rawLoanAmt === 'string') rawLoanAmt = rawLoanAmt.replace(/[^\d]/g, '');
+            let customerLoanAmount = Number(rawLoanAmt);
+            if (isNaN(customerLoanAmount) || customerLoanAmount < 5000) customerLoanAmount = 50000;
+            if (customerLoanAmount > 100000) customerLoanAmount = 100000;
+            const customerLoanPurpose = detailsResult?.loanPurpose || detailsResult?.purpose || "Medical Emergency";
+            const customerPreferredLocation = detailsResult?.preferredLocation || "";
+            const consentTimestamp = detailsResult?.consentTimestamp || new Date().toISOString();
+            const noticeVersion = detailsResult?.noticeVersion || "v2.2";
+
             const leadPayload = {
+                lead_id: activeLeadId,
+                leadCode: activeLeadId,
                 phone: verifiedPhone,
                 mobile: verifiedPhone,
-                loanAmount: 100000,
-                amount: 100000,
-                salary: 35000,
-                monthlySalary: 35000,
-                name: "Valued Customer",
-                source: "Meta Ads (Instant Cash Loan)",
-                lead_source: "Campaign",
-                utm_source: lastTouch.utm_source || "Meta Ads",
-                utm_medium: lastTouch.utm_medium || "cpc",
-                utm_campaign: lastTouch.utm_campaign || "instant-cash-1lakh",
+                loanAmount: customerLoanAmount,
+                amount: customerLoanAmount,
+                salary: customerSalary,
+                monthlySalary: customerSalary,
+                monthlyIncome: customerSalary,
+                name: customerName,
+                fullName: customerName,
+                applicantName: customerName,
+                pan: customerPan,
+                panNumber: customerPan,
+                email: customerEmail,
+                emailAddress: customerEmail,
+                addressType: customerAddressType,
+                address_type: customerAddressType,
+                addressLine1: customerAddressLine1,
+                address_line1: customerAddressLine1,
+                addressLine2: customerAddressLine2,
+                address_line2: customerAddressLine2,
+                pincode: customerPincode,
+                city: customerCity,
+                state: customerState,
+                employmentType: customerEmploymentType,
+                companyName: customerEmployerName,
+                employerName: customerEmployerName,
+                purpose: customerLoanPurpose,
+                preferredLocation: customerPreferredLocation,
+                source: lpAttr.source,
+                lead_source: lpAttr.lead_source,
+                leadSource: lpAttr.leadSource,
+                utm_source: lpAttr.utm_source,
+                utmSource: lpAttr.utmSource,
+                utm_medium: lpAttr.utm_medium,
+                utmMedium: lpAttr.utmMedium,
+                utm_campaign: lpAttr.utm_campaign,
+                utmCampaign: lpAttr.utmCampaign,
+                landing_page: lpAttr.landing_page,
+                landingPage: lpAttr.landingPage,
                 fbclid: lastTouch.fbclid || null,
                 consent: true,
+                bureauConsent: detailsResult?.bureauConsent !== false,
+                marketingConsent: !!detailsResult?.marketingConsent,
+                consentTimestamp: consentTimestamp,
+                noticeVersion: noticeVersion,
                 status: "Fresh"
             };
 
@@ -2894,7 +3216,11 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                     await fetch(window.backend_server_url + '/api/credit-score/consent', {
                         method: 'POST',
                         headers: apiHeaders,
-                        body: JSON.stringify({})
+                        body: JSON.stringify({
+                            consent: true,
+                            consentTimestamp: consentTimestamp,
+                            noticeVersion: noticeVersion
+                        })
                     }).catch(() => {});
                 } catch(e) {}
             }
@@ -2903,7 +3229,8 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             const bureauPayload = {
                 phone: verifiedPhone,
                 mobile: verifiedPhone,
-                name: "Valued Customer",
+                name: customerName,
+                pan: customerPan,
                 consent: true
             };
 
@@ -3036,9 +3363,17 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             }, 600);
         }
 
-        // --- Reveal Matched Offers UI & CIBIL Card ---
+        // --- Reveal Matched Offers UI & CIBIL Card in Hero ---
         function revealOffers(state) {
             if (panelLoading) panelLoading.style.display = 'none';
+            if (panelInitial) panelInitial.style.display = 'none';
+
+            const cibilContainer = document.getElementById('cibilCardContainer');
+            if (cibilContainer) {
+                cibilContainer.style.display = 'block';
+                cibilContainer.classList.add('cro-revealed');
+            }
+
             if (offersSection) {
                 offersSection.style.display = 'block';
                 offersRevealed = true;
@@ -3046,17 +3381,23 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 // Hide mobile sticky CTA so it never obstructs lender offers
                 if (stickyBar) stickyBar.style.display = 'none';
 
-                // Precision smooth scroll to bring CIBIL card and matched offers into view
+                // On mobile devices, smoothly scroll to the CIBIL card in the hero
                 setTimeout(() => {
-                    const cibilContainer = document.getElementById('cibilCardContainer');
-                    if (cibilContainer) {
+                    if (window.innerWidth <= 768 && cibilContainer) {
                         const targetY = cibilContainer.getBoundingClientRect().top + window.pageYOffset - 16;
                         window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
-                    } else {
-                        offersSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
-                }, 60);
+                }, 80);
             }
+
+            // Global scroll helper from CIBIL card to matched offers
+            window.croScrollToOffers = function(e) {
+                if (e && e.preventDefault) e.preventDefault();
+                const offers = document.getElementById('offersSection');
+                if (offers) {
+                    offers.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            };
 
             // Populate CIBIL Score Card
             const cardPhone = document.getElementById('cibilCardPhone');

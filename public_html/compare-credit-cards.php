@@ -1,327 +1,38 @@
-<?php include 'includes/header.php'; ?>
-
-<!-- Custom Styles for Page -->
-<style>
-.sec-hero {
-    background: var(--gradient-primary);
-    padding: 7.5rem 0 5.5rem 0;
-    position: relative;
-    overflow: hidden;
-    color: var(--white);
-    text-align: center;
-}
-.sec-hero::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(74, 141, 255, 0.15) 0%, rgba(27, 42, 107, 0) 70%);
-    border-radius: 50%;
-    pointer-events: none;
-}
-.sec-hero-content {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 0 1rem;
-}
-.sec-hero-title {
-    font-size: 3rem;
-    color: var(--white);
-    margin: 1.5rem 0;
-    font-family: var(--font-heading);
-    font-weight: 800;
-}
-.sec-hero-desc {
-    font-size: 1.15rem;
-    color: rgba(255, 255, 255, 0.85);
-    margin-bottom: 2rem;
-    line-height: 1.7;
-}
-
-.feature-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 2rem;
-    margin-top: -3rem;
-    position: relative;
-    z-index: 10;
-}
-.feature-card {
-    background: var(--white);
-    border-radius: var(--border-radius-lg);
-    padding: 2.5rem 2rem;
-    box-shadow: var(--shadow-lg);
-    text-align: center;
-    border: 1px solid var(--border-color);
-    transition: var(--transition-smooth);
-}
-.feature-card:hover {
-    transform: translateY(-5px);
-    box-shadow: var(--shadow-hover);
-}
-.feature-icon {
-    width: 60px;
-    height: 60px;
-    background: var(--accent-light);
-    color: var(--accent-color);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1.5rem auto;
-}
-.feature-icon svg {
-    width: 28px;
-    height: 28px;
-}
-.feature-title {
-    font-size: 1.25rem;
-    margin-bottom: 0.75rem;
-}
-.feature-desc {
-    color: var(--text-muted);
-    font-size: 0.95rem;
-}
-
-.info-section {
-    padding: 6rem 0;
-}
-.info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 4rem;
-    align-items: center;
-}
-@media (max-width: 768px) {
-    .info-grid {
-        grid-template-columns: 1fr;
-        gap: 2rem;
-    }
-    .sec-hero-title {
-        font-size: 2.25rem;
-    }
-}
-.info-img-wrapper {
-    position: relative;
-}
-.info-img-card {
-    background: var(--gradient-accent);
-    color: var(--white);
-    border-radius: var(--border-radius-lg);
-    padding: 3rem;
-    box-shadow: var(--shadow-lg);
-    position: relative;
-    overflow: hidden;
-}
-.info-img-card::after {
-    content: '';
-    position: absolute;
-    bottom: -20%;
-    left: -10%;
-    width: 300px;
-    height: 300px;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 70%);
-    border-radius: 50%;
-}
-.score-badge {
-    display: inline-block;
-    padding: 0.5rem 1.5rem;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: var(--border-radius-pill);
-    font-weight: 700;
-    font-size: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.table-wrapper {
-    margin-top: 2rem;
-    overflow-x: auto;
-}
-.score-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 1rem;
-}
-.score-table th, .score-table td {
-    padding: 0.85rem 1rem;
-    text-align: left;
-    border-bottom: 1px solid var(--border-color);
-}
-.score-table th {
-    background-color: var(--light-gray);
-    color: var(--primary-color);
-    font-weight: 700;
-}
-.score-badge-status {
-    padding: 0.25rem 0.75rem;
-    border-radius: var(--border-radius-pill);
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-.status-excellent { background: #DCFCE7; color: #15803D; }
-.status-good { background: #FEF9C3; color: #854D0E; }
-.status-fair { background: #FFEDD5; color: #C2410C; }
-.status-poor { background: #FEE2E2; color: #B91C1C; }
-
-.cta-banner {
-    background: var(--gradient-accent);
-    color: var(--white);
-    padding: 5rem 0;
-    text-align: center;
-    position: relative;
-    overflow: hidden;
-}
-.cta-banner h2 {
-    color: var(--white);
-    font-size: 2.25rem;
-    margin-bottom: 1rem;
-}
-.cta-banner p {
-    color: rgba(255, 255, 255, 0.9);
-    max-width: 600px;
-    margin: 0 auto 2rem auto;
-    font-size: 1.1rem;
-}
-</style>
-
-<!-- HERO SECTION -->
-<section class="sec-hero">
-    <div class="container">
-        <div class="sec-hero-content">
-            <span class="section-tag">Comparison Engine</span>
-            <h1 class="sec-hero-title">Compare Credit Cards</h1>
-            <p class="sec-hero-desc">Compare the features, joining fees, renewal parameters, and rewards systems of different credit cards side-by-side to choose the perfect card for your wallet.</p>
-            <button class="btn btn-primary open-apply-modal" style="background: var(--white); color: var(--primary-color);">Compare Cards Now</button>
+<?php
+// HTTP 410 Gone: Credit card products have been permanently retired from Paisa in Minutes
+http_response_code(410);
+header('HTTP/1.1 410 Gone');
+header('Status: 410 Gone');
+header('X-Robots-Tag: noindex, nofollow, noarchive', true);
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>410 Gone - Page Permanently Retired | Paisa in Minutes</title>
+    <meta name="robots" content="noindex, nofollow">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f8fafc; color: #1e293b; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .card { max-width: 520px; width: 100%; background: #ffffff; padding: 40px 32px; border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); text-align: center; }
+        .badge { display: inline-block; padding: 4px 12px; background: #fee2e2; color: #b91c1c; font-weight: 700; font-size: 0.85rem; border-radius: 9999px; margin-bottom: 16px; letter-spacing: 0.05em; }
+        h1 { font-size: 1.75rem; font-weight: 800; margin: 0 0 12px; color: #0f172a; }
+        p { font-size: 0.975rem; color: #64748b; line-height: 1.6; margin: 0 0 24px; }
+        .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .btn { display: inline-block; padding: 10px 22px; border-radius: 8px; font-weight: 600; font-size: 0.95rem; text-decoration: none; transition: all 0.2s; }
+        .btn-primary { background: #00D09C; color: #064e3b; }
+        .btn-secondary { background: #1B2A6B; color: #ffffff; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <span class="badge">HTTP 410 GONE</span>
+        <h1>Content Permanently Retired</h1>
+        <p>Credit card services and comparisons are no longer offered on Paisa in Minutes. We specialize in digital personal loans up to ₹1,00,000 and credit score evaluation.</p>
+        <div class="actions">
+            <a href="/" class="btn btn-primary">Go to Homepage</a>
+            <a href="/personal-loan" class="btn btn-secondary">Explore Personal Loans</a>
         </div>
     </div>
-</section>
-
-<!-- FEATURE CARDS -->
-<section style="padding-bottom: 4rem;">
-    <div class="container">
-        <div class="feature-grid">
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
-                </div>
-                <h3 class="feature-title">Fee Comparison</h3>
-                <p class="feature-desc">Easily check joining fees, annual renewal charges, and milestone targets to waive off recurring card fees.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                </div>
-                <h3 class="feature-title">Reward Values</h3>
-                <p class="feature-desc">Review which cards offer the best value return on online shopping, travel bookings, and dining transactions.</p>
-            </div>
-            <div class="feature-card">
-                <div class="feature-icon">
-                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                </div>
-                <h3 class="feature-title">Extra Perks</h3>
-                <p class="feature-desc">Compare extra features like domestic and international airport lounge entry limits or fuel surcharge waivers.</p>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- MAIN INFO SECTION -->
-<section class="info-section section-bg">
-    <div class="container">
-        <div class="info-grid">
-            <div class="info-img-wrapper">
-                <div class="info-img-card" style="background: linear-gradient(135deg, #1B2A6B 0%, #111942 100%);">
-                    <div class="score-badge">Cashback vs Rewards</div>
-                    <h3>Choosing the Right Card Type</h3>
-                    <p style="margin-top: 1rem; opacity: 0.9; font-size: 0.95rem; line-height: 1.6;">If you spend mostly on Amazon, Flipkart, or online utilities, cashback cards are ideal. If you travel frequently, co-branded airline or lounge access cards offer far higher savings through points conversion.</p>
-                    <ul style="margin-top: 1.5rem; list-style-type: none; font-size: 0.9rem;">
-                        <li style="margin-bottom: 0.5rem;">✔ Cashback: Simple, direct statement credit</li>
-                        <li style="margin-bottom: 0.5rem;">✔ Rewards: Perfect for travel miles & vouchers</li>
-                        <li>✔ Lifetime Free: Safe starter options</li>
-                    </ul>
-                </div>
-            </div>
-            <div>
-                <span class="section-tag" style="margin-bottom: 1rem;">Card Comparison</span>
-                <h2 class="section-title" style="font-size: 2rem; margin-bottom: 1.5rem;">Parameters to Compare</h2>
-                <p class="section-subtitle" style="margin-bottom: 1.5rem;">Before submitting a credit card application, weigh these essential aspects to select the most profitable option:</p>
-                
-                <ul style="padding-left: 1.25rem; color: var(--text-dark); line-height: 1.8;">
-                    <li style="margin-bottom: 1rem;"><strong>Joining & Annual Fees:</strong> Check if a card is lifetime-free, or if it carries fees that can be waived by crossing milestone spends (e.g. ₹1 Lakh a year).</li>
-                    <li style="margin-bottom: 1rem;"><strong>Cashback & Reward Rates:</strong> Check the baseline savings rate (usually 1-2%) vs. accelerated partner spend rates (usually 5-10%).</li>
-                    <li style="margin-bottom: 1rem;"><strong>Complimentary Lounge Access:</strong> If you travel, verify if the card offers domestic or international lounge entries per calendar quarter.</li>
-                    <li style="margin-bottom: 1rem;"><strong>Partner Benefits:</strong> Co-branded cards (e.g. Amazon Pay, Flipkart, Swiggy, IRCTC) offer accelerated perks when spending on those platforms.</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- FAQ SECTION -->
-<section class="section" id="faqs">
-    <div class="container">
-        <div class="section-title-wrapper text-center">
-            <span class="section-tag">FAQs</span>
-            <h2 class="section-title"><?php echo htmlspecialchars($human_name); ?> FAQs</h2>
-            <p class="section-subtitle">Find immediate answers regarding credit card comparison parameters.</p>
-        </div>
-
-        <div class="faq-container" style="max-width: 800px; margin: 0 auto;">
-            <div class="faq-item">
-                <div class="faq-header">
-                    <h3 class="faq-question">Should I apply for a Cashback card or a Reward Points card?</h3>
-                    <div class="faq-icon-wrapper">
-                        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                    </div>
-                </div>
-                <div class="faq-body">
-                    <div class="faq-content">
-                        If you want straight, uncomplicated savings that reduce your monthly statement directly, a **cashback card** is best. If you travel frequently and want to redeem accumulated points for flights, hotel stays, or premium catalog gifts, a **reward points card** can offer much higher redemption values.
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-header">
-                    <h3 class="faq-question">How does annual fee waiver work?</h3>
-                    <div class="faq-icon-wrapper">
-                        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                    </div>
-                </div>
-                <div class="faq-body">
-                    <div class="faq-content">
-                        Many credit cards carry a renewal fee (e.g. ₹500 or ₹1,000 p.a.) that is waived off if you spend a certain minimum amount (e.g. ₹1 Lakh or ₹2 Lakhs) during the preceding card membership year.
-                    </div>
-                </div>
-            </div>
-
-            <div class="faq-item">
-                <div class="faq-header">
-                    <h3 class="faq-question">Is it bad to hold more than 3 credit cards?</h3>
-                    <div class="faq-icon-wrapper">
-                        <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-                    </div>
-                </div>
-                <div class="faq-body">
-                    <div class="faq-content">
-                        Not necessarily. Holding multiple cards is a common practice known as reward-optimizing. However, it requires strong financial discipline. You must monitor statement due dates carefully, pay bills in full, and keep your total Credit Utilization Ratio (across all cards combined) under 30% to avoid hurting your CIBIL score.
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- CTA SECTION -->
-<section class="cta-banner">
-    <div class="container">
-        <h2>Compare and Find Your Perfect Credit Card</h2>
-        <p>Get pre-approved card eligibility online with quick digital processing.</p>
-        <button class="btn btn-primary open-apply-modal" style="background: var(--white); color: var(--primary-color);">Check Offers Now</button>
-    </div>
-</section>
-
-<?php include 'includes/footer.php'; ?>
-
+</body>
+</html>

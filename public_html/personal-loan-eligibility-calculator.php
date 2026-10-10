@@ -127,7 +127,7 @@ include 'includes/header.php';
 <section class="cta-banner">
     <div class="container">
         <h2>Apply for Your Personal Loan Today</h2>
-        <p>Get pre-approved personal loans up to ₹25 Lakhs with instant digital verification in minutes.</p>
+        <p>Get pre-approved personal loans up to ₹1,00,000 with instant digital verification in minutes.</p>
         <button class="btn btn-primary open-apply-modal" style="background: var(--white); color: var(--primary-color);">Apply Online</button>
     </div>
 </section>

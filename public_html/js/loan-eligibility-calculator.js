@@ -239,7 +239,8 @@
             const tenureYears = parseFloat(e.tenureSlider.value) || 0;
 
             const disposableEMI = calculateDisposableEMILimit(salary, existingEMI, this.options.foirTiers);
-            const maxLoan = calculateMaxLoanEligible(disposableEMI, annualRate, tenureYears);
+            const rawMaxLoan = calculateMaxLoanEligible(disposableEMI, annualRate, tenureYears);
+            const maxLoan = Math.min(100000, rawMaxLoan);
 
             // Update DOM displays
             e.resSalary.textContent = formatIndianCurrency(salary);

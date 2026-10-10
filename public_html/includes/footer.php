@@ -41,10 +41,11 @@
                     <h4>Personal Loan Hub</h4>
                     <ul class="footer-links">
                         <li><a href="/personal-loan">Instant Personal Loan</a></li>
-                        <li><a href="/5-lakh-personal-loan">₹5 Lakh Personal Loan</a></li>
-                        <li><a href="/10-lakh-personal-loan">₹10 Lakh Personal Loan</a></li>
-                        <li><a href="/20-lakh-personal-loan">₹20 Lakh Personal Loan</a></li>
-                        <li><a href="/50-lakh-personal-loan">₹50 Lakh Personal Loan</a></li>
+                        <li><a href="/10-thousand-personal-loan">₹10,000 Personal Loan</a></li>
+                        <li><a href="/25-thousand-personal-loan">₹25,000 Personal Loan</a></li>
+                        <li><a href="/50-thousand-personal-loan">₹50,000 Personal Loan</a></li>
+                        <li><a href="/75-thousand-personal-loan">₹75,000 Personal Loan</a></li>
+                        <li><a href="/1-lakh-personal-loan">₹1 Lakh Personal Loan</a></li>
                         <li><a href="/personal-loan-low-cibil-score">Low CIBIL Personal Loan</a></li>
                         <li><a href="/personal-loan-emi-calculator">Personal Loan EMI Calculator</a></li>
                     </ul>
@@ -91,29 +92,25 @@
                             <span>Loan Amounts</span>
                         </div>
                         <div class="footer-quick-chips">
-                            <a href="/5-lakh-personal-loan" class="footer-chip">
+                            <a href="/10-thousand-personal-loan" class="footer-chip">
                                 <span class="footer-chip-symbol">₹</span>
-                                <span class="footer-chip-text">₹5 Lakh Personal Loan</span>
+                                <span class="footer-chip-text">₹10,000 Personal Loan</span>
                             </a>
-                            <a href="/10-lakh-personal-loan" class="footer-chip">
+                            <a href="/25-thousand-personal-loan" class="footer-chip">
                                 <span class="footer-chip-symbol">₹</span>
-                                <span class="footer-chip-text">₹10 Lakh Personal Loan</span>
+                                <span class="footer-chip-text">₹25,000 Personal Loan</span>
                             </a>
-                            <a href="/20-lakh-personal-loan" class="footer-chip">
+                            <a href="/50-thousand-personal-loan" class="footer-chip">
                                 <span class="footer-chip-symbol">₹</span>
-                                <span class="footer-chip-text">₹20 Lakh Personal Loan</span>
+                                <span class="footer-chip-text">₹50,000 Personal Loan</span>
                             </a>
-                            <a href="/30-lakh-personal-loan" class="footer-chip">
+                            <a href="/75-thousand-personal-loan" class="footer-chip">
                                 <span class="footer-chip-symbol">₹</span>
-                                <span class="footer-chip-text">₹30 Lakh Personal Loan</span>
+                                <span class="footer-chip-text">₹75,000 Personal Loan</span>
                             </a>
-                            <a href="/40-lakh-personal-loan" class="footer-chip">
+                            <a href="/1-lakh-personal-loan" class="footer-chip">
                                 <span class="footer-chip-symbol">₹</span>
-                                <span class="footer-chip-text">₹40 Lakh Personal Loan</span>
-                            </a>
-                            <a href="/50-lakh-personal-loan" class="footer-chip">
-                                <span class="footer-chip-symbol">₹</span>
-                                <span class="footer-chip-text">₹50 Lakh Personal Loan</span>
+                                <span class="footer-chip-text">₹1 Lakh Personal Loan</span>
                             </a>
                         </div>
                     </div>

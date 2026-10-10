@@ -9,8 +9,8 @@ if (!defined('PIM_FINANCIALS_LOADED')) {
 
     define('FINANCIAL_MIN_INTEREST_RATE', '10.49% p.a.');
     define('FINANCIAL_MIN_INTEREST_RATE_NUM', 10.49);
-    define('FINANCIAL_MAX_LOAN_AMOUNT', '₹50 Lakh');
-    define('FINANCIAL_MAX_LOAN_AMOUNT_NUM', '50,00,000');
+    define('FINANCIAL_MAX_LOAN_AMOUNT', '₹1 Lakh');
+    define('FINANCIAL_MAX_LOAN_AMOUNT_NUM', '1,00,000');
     define('FINANCIAL_MIN_LOAN_AMOUNT', '₹10,000');
     define('FINANCIAL_MIN_LOAN_AMOUNT_NUM', 10000);
     define('FINANCIAL_AGE_ELIGIBILITY', '21 to 60 years');

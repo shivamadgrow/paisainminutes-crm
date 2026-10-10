@@ -488,19 +488,65 @@ export default function CompanyLeadsView({
 
                       {/* Source */}
                       <td className="p-3.5">
-                        {((item.source && item.source.toLowerCase().includes('whatsapp')) ||
-                          (item.utm_source && item.utm_source.toLowerCase().includes('whatsapp')) ||
-                          (item.lead_source && item.lead_source.toLowerCase().includes('whatsapp'))) ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-                            {item.source || item.utm_source || 'WhatsApp'}
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-lg bg-blue-50 text-blue-800 border border-blue-200/60">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
-                            {item.source || 'Website Application'}
-                          </span>
-                        )}
+                        {(() => {
+                          const src = String(item.source || '').toLowerCase();
+                          const lSrc = String(item.lead_source || item.leadSource || '').toLowerCase();
+                          const uSrc = String(item.utm_source || item.utmSource || '').toLowerCase();
+                          const ch = String(item.channel || '').toLowerCase();
+                          const page = String(item.landing_page || item.landingPage || '').toLowerCase();
+                          const ep = String(item.entry_point || item.entryPoint || '').toLowerCase();
+                          const camp = String(item.utm_campaign || item.utmCampaign || '').toLowerCase();
+                          const med = String(item.utm_medium || item.utmMedium || '').toLowerCase();
+
+                          const isLP =
+                            src === 'landingpage' ||
+                            lSrc === 'landingpage' ||
+                            uSrc === 'landingpage' ||
+                            ch === 'landingpage' ||
+                            page.includes('instant-cash-loan') ||
+                            ep.includes('instant-cash-loan') ||
+                            camp === 'instant_cash_loan' ||
+                            camp === 'instant-cash-loan' ||
+                            (med === 'website' && (camp.includes('instant') || page.includes('instant') || ep.includes('instant')));
+
+                          if (isLP) {
+                            return (
+                              <div className="flex flex-col items-start gap-1">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-lg bg-teal-50 text-teal-800 border border-teal-300">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500 shrink-0"></span>
+                                  landingpage
+                                </span>
+                                {(item.whatsappOptIn || item.whatsapp_opt_in || item.marketingConsent) && (
+                                  <span className="inline-flex items-center gap-1 px-1.5 py-0.2 text-[9px] font-semibold rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    WhatsApp Opt-in
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          const isWA =
+                            src.includes('whatsapp') ||
+                            uSrc.includes('whatsapp') ||
+                            lSrc.includes('whatsapp') ||
+                            ch.includes('whatsapp');
+
+                          if (isWA) {
+                            return (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-300">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+                                {item.source || item.utm_source || 'WhatsApp'}
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-lg bg-blue-50 text-blue-800 border border-blue-200/60">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></span>
+                              {item.source || 'Website Application'}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Assigned Partner (with Quick Reassign) */}

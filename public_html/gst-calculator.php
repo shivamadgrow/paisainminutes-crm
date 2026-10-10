@@ -315,9 +315,9 @@
 <!-- CTA SECTION -->
 <section class="cta-banner">
     <div class="container">
-        <h2>Facilitate Secure Business Finance</h2>
-        <p>Get pre-approved business loans, unsecured lines of credit, and corporate cards instantly.</p>
-        <button class="btn btn-primary open-apply-modal" style="background: var(--white); color: var(--primary-color);">Apply for Loan</button>
+        <h2>Need Quick Financial Support?</h2>
+        <p>Check instant personal loan eligibility up to ₹1,00,000 from RBI-regulated lending partners.</p>
+        <button class="btn btn-primary open-apply-modal" style="background: var(--white); color: var(--primary-color);">Apply for Personal Loan</button>
     </div>
 </section>
 

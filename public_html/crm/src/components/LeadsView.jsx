@@ -94,6 +94,7 @@ const mapTabToFilterName = (tab) => {
   if (clean === 'organization' || clean === 'org') return 'Organization';
   if (clean === 'whatsapp') return 'WhatsApp';
   if (clean === 'direct website' || clean === 'direct' || clean === 'website') return 'Direct Website';
+  if (clean === 'landingpage' || clean === 'landing page') return 'landingpage';
   return tab;
 };
 
@@ -238,7 +239,7 @@ const getEligibilityInfo = (item) => {
 };
 
 // ---- Marketing channel (set by the server from UTM / click id / referrer; old leads have none) ----
-const CHANNEL_TABS = ['Google Ads', 'Meta', 'SMS', 'RCS', 'WhatsApp', 'AI', 'Email', 'Organic Search', 'Referral', 'Website', 'Manual', 'Other', 'Legacy'];
+const CHANNEL_TABS = ['Google Ads', 'Meta', 'SMS', 'RCS', 'WhatsApp', 'AI', 'Email', 'Organic Search', 'Referral', 'Website', 'Manual', 'landingpage', 'Other', 'Legacy'];
 const CHANNEL_BADGE = {
   'Google Ads': 'bg-amber-50 text-amber-800 border-amber-300',
   Meta: 'bg-indigo-50 text-indigo-800 border-indigo-300',
@@ -251,22 +252,65 @@ const CHANNEL_BADGE = {
   Referral: 'bg-orange-50 text-orange-800 border-orange-300',
   Website: 'bg-blue-50 text-blue-800 border-blue-200',
   Manual: 'bg-teal-50 text-teal-800 border-teal-300',
+  landingpage: 'bg-teal-50 text-teal-800 border-teal-300',
+  'Landing Page': 'bg-teal-50 text-teal-800 border-teal-300',
   Other: 'bg-slate-100 text-slate-700 border-slate-300',
   Legacy: 'bg-slate-50 text-slate-500 border-slate-200',
 };
-const channelOf = (lead) => (lead && lead.channel) || 'Legacy';
+export const isLandingPageLead = (lead) => {
+  if (!lead) return false;
+  const src = String(lead.source || '').toLowerCase();
+  const lSrc = String(lead.leadSource || lead.lead_source || '').toLowerCase();
+  const uSrc = String(lead.utmSource || lead.utm_source || '').toLowerCase();
+  const ch = String(lead.channel || '').toLowerCase();
+  const camp = String(lead.utmCampaign || lead.utm_campaign || '').toLowerCase();
+  const page = String(lead.landingPage || lead.landing_page || '').toLowerCase();
+  const ep = String(lead.entryPoint || lead.entry_point || '').toLowerCase();
+  const med = String(lead.utmMedium || lead.utm_medium || '').toLowerCase();
+
+  return (
+    src === 'landingpage' ||
+    lSrc === 'landingpage' ||
+    uSrc === 'landingpage' ||
+    ch === 'landingpage' ||
+    page.includes('instant-cash-loan') ||
+    ep.includes('instant-cash-loan') ||
+    camp === 'instant_cash_loan' ||
+    camp === 'instant-cash-loan' ||
+    (med === 'website' && (camp.includes('instant') || page.includes('instant') || ep.includes('instant')))
+  );
+};
+
+export const channelOf = (lead) => {
+  if (!lead) return 'Legacy';
+  if (isLandingPageLead(lead)) {
+    return 'landingpage';
+  }
+  return lead.channel || lead.source || 'Legacy';
+};
 
 function ChannelBadge({ lead, showCampaign = false }) {
   const channel = channelOf(lead);
-  const title = [channel, lead.utmMedium, lead.utmCampaign, lead.entryPoint && `via ${lead.entryPoint}`].filter(Boolean).join(' · ');
+  const isLP = channel === 'landingpage';
+  const displayChannel = isLP ? 'landingpage' : channel;
+  const title = [displayChannel, lead.utmMedium, lead.utmCampaign, lead.entryPoint && `via ${lead.entryPoint}`].filter(Boolean).join(' · ');
   return (
-    <span className="inline-flex flex-col items-start gap-0.5" title={title}>
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-xl border shadow-2xs ${CHANNEL_BADGE[channel] || CHANNEL_BADGE.Other}`}>
-        {channel === 'WhatsApp' ? <MessageCircle className="w-3.5 h-3.5 shrink-0" /> : <ExternalLink className="w-3 h-3 shrink-0" />}
-        <span className="truncate max-w-[130px]">{channel}</span>
+    <span className="inline-flex flex-col items-start gap-1" title={title}>
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-extrabold rounded-xl border shadow-2xs ${CHANNEL_BADGE[displayChannel] || CHANNEL_BADGE.Other}`}>
+        {displayChannel === 'WhatsApp' ? <MessageCircle className="w-3.5 h-3.5 shrink-0" /> : <ExternalLink className="w-3 h-3 shrink-0" />}
+        <span className="truncate max-w-[130px]">{displayChannel}</span>
       </span>
-      {showCampaign && (lead.utmCampaign || lead.utmMedium) && (
-        <span className="text-[10px] text-slate-500 font-medium truncate max-w-[150px]">{[lead.utmMedium, lead.utmCampaign].filter(Boolean).join(' / ')}</span>
+      {/* WhatsApp Opt-in / Communication Preference (Strictly separate from acquisition channel) */}
+      {lead.whatsappOptIn && (
+        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200" title="Applicant opted in for WhatsApp status updates">
+          <MessageCircle className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+          <span>WhatsApp Opt-in</span>
+        </span>
+      )}
+      {showCampaign && (lead.utmCampaign || lead.utmMedium || isLP) && (
+        <span className="text-[10px] text-slate-500 font-medium truncate max-w-[150px]">
+          {[lead.utmMedium || (isLP ? 'website' : ''), lead.utmCampaign || (isLP ? 'instant_cash_loan' : '')].filter(Boolean).join(' / ')}
+        </span>
       )}
     </span>
   );
@@ -2611,6 +2655,16 @@ export default function LeadsView({
                       <span className="font-bold text-slate-900">{activeOverviewLead.addressType || activeOverviewLead.address_type || '—'}</span>
                     </div>
 
+                    {(activeOverviewLead.addressLine1 || activeOverviewLead.address_line1 || activeOverviewLead.address) && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-medium">Street Address:</span>
+                        <span className="font-bold text-slate-900 text-right max-w-[200px] truncate" title={activeOverviewLead.addressLine1 || activeOverviewLead.address_line1 || activeOverviewLead.address}>
+                          {activeOverviewLead.addressLine1 || activeOverviewLead.address_line1 || activeOverviewLead.address}
+                          {activeOverviewLead.addressLine2 ? `, ${activeOverviewLead.addressLine2}` : ''}
+                        </span>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">City / State:</span>
                       <span className="font-bold text-slate-900">
@@ -2622,6 +2676,13 @@ export default function LeadsView({
                       <span className="text-slate-400 font-medium">Pincode:</span>
                       <span className="font-bold font-mono text-slate-900">{activeOverviewLead.pincode && activeOverviewLead.pincode !== '—' ? activeOverviewLead.pincode : '—'}</span>
                     </div>
+
+                    {(activeOverviewLead.preferredLocation || activeOverviewLead.preferred_location) && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-medium">Preferred Location:</span>
+                        <span className="font-bold text-slate-900">{activeOverviewLead.preferredLocation || activeOverviewLead.preferred_location}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -2675,9 +2736,57 @@ export default function LeadsView({
                     </div>
 
                     <div className="flex items-center justify-between">
+                      <span className="text-slate-400 font-medium">Lead Source:</span>
+                      <span className="font-bold text-slate-900 font-mono text-xs">
+                        {isLandingPageLead(activeOverviewLead) ? 'landingpage' : (activeOverviewLead.leadSource || activeOverviewLead.source || '—')}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Source / Channel:</span>
                       <ChannelBadge lead={activeOverviewLead} />
                     </div>
+
+                    {(isLandingPageLead(activeOverviewLead) || activeOverviewLead.utmSource) && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-medium">UTM Source:</span>
+                        <span className="font-semibold text-slate-800 font-mono text-xs">{isLandingPageLead(activeOverviewLead) ? 'landingpage' : (activeOverviewLead.utmSource || '—')}</span>
+                      </div>
+                    )}
+
+                    {(isLandingPageLead(activeOverviewLead) || activeOverviewLead.utmMedium) && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-medium">UTM Medium:</span>
+                        <span className="font-semibold text-slate-800 font-mono text-xs">{isLandingPageLead(activeOverviewLead) ? 'website' : (activeOverviewLead.utmMedium || '—')}</span>
+                      </div>
+                    )}
+
+                    {(isLandingPageLead(activeOverviewLead) || activeOverviewLead.utmCampaign) && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-medium">UTM Campaign:</span>
+                        <span className="font-semibold text-slate-800 font-mono text-xs">{isLandingPageLead(activeOverviewLead) ? 'instant_cash_loan' : (activeOverviewLead.utmCampaign || '—')}</span>
+                      </div>
+                    )}
+
+                    {(isLandingPageLead(activeOverviewLead) || activeOverviewLead.landingPage) && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-medium">Landing Page:</span>
+                        <span className="font-semibold text-slate-800 font-mono text-xs">{isLandingPageLead(activeOverviewLead) ? '/instant-cash-loan' : (activeOverviewLead.landingPage || '—')}</span>
+                      </div>
+                    )}
+
+                    {(activeOverviewLead.whatsappOptIn !== undefined || activeOverviewLead.marketingConsent !== undefined) && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 font-medium">WhatsApp Opt-in:</span>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${
+                          (activeOverviewLead.whatsappOptIn || activeOverviewLead.marketingConsent)
+                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'
+                        }`}>
+                          {(activeOverviewLead.whatsappOptIn || activeOverviewLead.marketingConsent) ? 'Opted In' : 'Not Opted In'}
+                        </span>
+                      </div>
+                    )}
 
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 font-medium">Eligibility:</span>
@@ -2760,7 +2869,7 @@ export default function LeadsView({
                                     </span>
                                   </div>
                                   <div className="text-[10.5px] text-slate-600 space-y-0.5 mb-2">
-                                    <div>Interest: <strong className="text-emerald-700">{p.interestRate || 'Up to 1.0% / day'}</strong></div>
+                                    <div>Interest: <strong className="text-emerald-700">{p.interestRate || 'Up to 1% per day'}</strong></div>
                                     <div>Tenure: <span className="font-medium text-slate-700">{p.tenure || '30 - 45 Days'}</span></div>
                                   </div>
                                 </div>
@@ -2822,7 +2931,7 @@ export default function LeadsView({
                                   </div>
                                   <div className="text-[10.5px] text-slate-500 space-y-0.5 mb-2">
                                     <div className="text-rose-600 font-semibold">Shortfall: -₹{shortfall.toLocaleString('en-IN')}/mo</div>
-                                    <div>Rate: {p.interestRate || 'Up to 1.0% / day'} • {p.tenure || '30 - 45 Days'}</div>
+                                    <div>Rate: {p.interestRate || 'Up to 1% per day'} • {p.tenure || '30 - 45 Days'}</div>
                                   </div>
                                 </div>
 

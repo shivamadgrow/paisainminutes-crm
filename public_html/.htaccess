@@ -64,6 +64,47 @@
     RewriteRule ^careers/?$ /about-us [R=301,L]
     RewriteRule ^blog/?$ /personal-loan [R=301,L]
 
+    # ==================================================================
+    # 301 PERMANENT REDIRECTS FOR RETIRED UNSUPPORTED LOAN PRODUCTS
+    # Only Personal Loans up to ₹1,00,000 are supported.
+    # Preserve SEO equity by redirecting retired URLs to equivalent Personal Loan hubs.
+    # ==================================================================
+
+    # 1. High-Ticket Personal Loan Amount Pages (above ₹1 Lakh limit) -> 1 Lakh Personal Loan
+    RewriteRule ^(5|10|20|30|40|50)-lakh-personal-loan(\.php)?$ /1-lakh-personal-loan [R=301,L]
+
+    # ==================================================================
+    # HTTP 410 GONE FOR PERMANENTLY RETIRED UNSUPPORTED LOAN PRODUCTS
+    # Home Loans, Gold Loans, Auto Loans, Business Loans, LAP, and related calculators
+    # are permanently retired. Do not redirect to unrelated Personal Loans (prevents Soft 404s).
+    # ==================================================================
+
+    # 1. Home Loans (All amounts, calculators, sub-types)
+    RewriteRule ^(home-loan|10-lakh-home-loan|15-lakh-home-loan|20-lakh-home-loan|30-lakh-home-loan|40-lakh-home-loan|50-lakh-home-loan|60-lakh-home-loan|home-construction-loan|home-extension-loan|home-renovation-loan|top-up-home-loan|home-loan-for-women|home-loan-for-self-employed|home-loan-interest-rates|home-loan-low-cibil-score|home-loan-balance-transfer|home-loan-eligibility-calculator|home-loan-emi-calculator|home-loan-prepayment-calculator|plot-loan)(\.php)?$ - [G,L]
+
+    # 2. Gold Loans & Calculators
+    RewriteRule ^(gold-loan|gold-loan-emi-calculator)(\.php)?$ - [G,L]
+
+    # 3. Auto / Two-Wheeler / Property / Fixed-Deposit / Agriculture / Education Loans
+    RewriteRule ^(car-loan|loan-against-car|two-wheeler-loan|tractor-loan-emi-calculator|loan-against-property|loan-against-property-emi-calculator|dairy-farming-loan|goat-farming-loan|poultry-farm-loan|education-loan|letter-of-credit|loan-against-fixed-deposit)(\.php)?$ - [G,L]
+
+    # 4. Business / Commercial / MSME Loans & Calculators
+    RewriteRule ^(business-loan|small-business-loan|startups-loan|msme-loan|mudra-loan|pmegp-loan|working-capital-loan|business-loan-emi-calculator|business-loan-interest-rates|business-loan-low-cibil-score|mudra-loan-emi-calculator|term-loan-emi-calculator)(\.php)?$ - [G,L]
+
+    # ==================================================================
+    # RETIRED CREDIT CARD & FOREX CARD PRODUCTS SEO HANDLING
+    # Credit cards are permanently discontinued from Paisa in Minutes.
+    # Relevant replacement: 301 Permanent Redirect to corresponding hub.
+    # No relevant replacement: Return HTTP 410 (Gone) to immediately drop indexation.
+    # ==================================================================
+
+    # 1. Relevant 301 Permanent Redirects
+    RewriteRule ^cibil-score-for-credit-card(\.php)?$ /cibil-score-for-personal-loan [R=301,L]
+    RewriteRule ^loan-on-credit-card(\.php)?$ /personal-loan [R=301,L]
+
+    # 2. HTTP 410 Gone for dedicated Credit Card & Forex Card product/category pages
+    RewriteRule ^(credit-card|best-credit-cards|best-forex-cards|compare-credit-cards|credit-card-eligibility|credit-card-lounge-access|rupay-credit-cards|secured-credit-cards|lifetime-free-credit-cards|rewards-credit-cards|cashback-credit-cards|virtual-credit-cards|fuel-credit-cards|travel-credit-cards|international-credit-cards|zero-forex-markup-credit-cards)(\.php)?$ - [G,L]
+
     # 4. Internally rewrite extensionless requests to the actual .php file if it exists
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME}.php -f

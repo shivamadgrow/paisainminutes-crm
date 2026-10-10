@@ -319,7 +319,7 @@ include 'includes/header.php';
 
                 <div class="form-field-group">
                     <label for="eligLoanAmount" class="form-field-label">Required Loan Amount <span class="required-star">*</span></label>
-                    <input type="number" id="eligLoanAmount" name="loan_amount" class="form-text-input" placeholder="Enter required loan amount" min="5000" max="500000" step="1000" value="<?php echo is_numeric($prefill_loan) ? $prefill_loan : ''; ?>" required>
+                    <input type="number" id="eligLoanAmount" name="loan_amount" class="form-text-input" placeholder="Enter required loan amount" min="5000" max="100000" step="1000" value="<?php echo is_numeric($prefill_loan) ? $prefill_loan : ''; ?>" required>
                 </div>
 
                 <div class="form-field-group">
@@ -775,8 +775,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (!loanAmountVal || Number(loanAmountVal) < 5000) {
-            showError('Please enter Required Loan Amount (min ₹5,000).', loanInput);
+        if (!loanAmountVal || Number(loanAmountVal) < 5000 || Number(loanAmountVal) > 100000) {
+            showError('Please enter Required Loan Amount between ₹5,000 and ₹1,00,000.', loanInput);
             return;
         }
 

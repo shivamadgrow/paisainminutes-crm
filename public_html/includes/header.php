@@ -63,14 +63,8 @@ $breadcrumb_parent = null;
 if (!empty($page_slug)) {
     if (strpos($page_slug, 'calculator') !== false && $page_slug !== 'personal-loan-emi-calculator') {
         $breadcrumb_parent = ['name' => 'Calculators', 'url' => '/personal-loan-emi-calculator'];
-    } elseif (preg_match('/-lakh-personal-loan$/', $page_slug) || (strpos($page_slug, 'personal-loan') === 0 && $page_slug !== 'personal-loan')) {
+    } elseif (preg_match('/-(thousand|lakh)-personal-loan$/', $page_slug) || (strpos($page_slug, 'personal-loan') === 0 && $page_slug !== 'personal-loan')) {
         $breadcrumb_parent = ['name' => 'Personal Loan', 'url' => '/personal-loan'];
-    } elseif (preg_match('/-lakh-home-loan$/', $page_slug) || (strpos($page_slug, 'home-loan') === 0 && $page_slug !== 'home-loan')) {
-        $breadcrumb_parent = ['name' => 'Home Loan', 'url' => '/home-loan'];
-    } elseif (strpos($page_slug, 'business-loan') === 0 && $page_slug !== 'business-loan') {
-        $breadcrumb_parent = ['name' => 'Business Loan', 'url' => '/business-loan'];
-    } elseif (strpos($page_slug, 'credit-card') !== false && $page_slug !== 'best-credit-cards') {
-        $breadcrumb_parent = ['name' => 'Credit Cards', 'url' => '/best-credit-cards'];
     } elseif ((strpos($page_slug, 'cibil') !== false || strpos($page_slug, 'score') !== false) && $page_slug !== 'credit-score-free') {
         $breadcrumb_parent = ['name' => 'Credit Score', 'url' => '/credit-score-free'];
     } elseif (strpos($page_slug, 'bond') !== false && $page_slug !== 'bonds') {
@@ -279,8 +273,6 @@ if (!isset($page_og_image) || empty($page_og_image)) {
           "knowsAbout": [
             "Personal Loans",
             "Instant Cash Loans",
-            "Home Loans",
-            "Business Loans",
             "Credit Score",
             "CIBIL Score",
             "EMI Calculators",
@@ -317,7 +309,7 @@ if (!isset($page_og_image) || empty($page_og_image)) {
           "@type": "LoanOrCredit",
           "@id": "https://paisainminutes.com/#loanProduct",
           "name": "Instant Personal Loan Online",
-          "description": "Instant digital personal loan approval up to ₹50 Lakh with minimal paperwork and 2-hour bank disbursal.",
+          "description": "Instant digital personal loan approval up to ₹1 Lakh with minimal paperwork and 2-hour bank disbursal.",
           "provider": {
             "@id": "https://paisainminutes.com/#organization"
           },
@@ -332,7 +324,7 @@ if (!isset($page_og_image) || empty($page_og_image)) {
             "@type": "MonetaryAmount",
             "currency": "INR",
             "minValue": 10000,
-            "maxValue": 5000000
+            "maxValue": 100000
           },
           "currency": "INR",
           "url": "https://paisainminutes.com/personal-loan"
@@ -403,7 +395,7 @@ if (!isset($page_og_image) || empty($page_og_image)) {
               "name": "What is Paisa in Minutes?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Paisa in Minutes is an online financial marketplace connecting eligible borrowers with RBI-registered lenders for instant personal loans up to ₹50 Lakh with 100% paperless approval."
+                "text": "Paisa in Minutes is an online financial marketplace connecting eligible borrowers with RBI-registered lenders for instant personal loans up to ₹1 Lakh with 100% paperless approval."
               }
             },
             {
@@ -496,205 +488,53 @@ if (!isset($page_og_image) || empty($page_og_image)) {
                         </div>
                     </div>
 
-                    <!-- Loans Dropdown (Mega Menu) -->
-                    <div class="nav-item dropdown mega-dropdown">
-                        <a href="javascript:void(0)" class="nav-link" role="button" aria-haspopup="true" aria-expanded="false" tabindex="0">Loans <span class="arrow-down" aria-hidden="true"></span></a>
-                        <div class="dropdown-menu mega-menu">
-                            <!-- Left Sidebar Tabs -->
-                            <div class="mega-menu-sidebar">
-                                <div class="mega-menu-tab active" data-target="panel-personal">
-                                    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-                                    Personal Loan
-                                </div>
-                                <div class="mega-menu-tab" data-target="panel-business">
-                                    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                                    Business Loan
-                                </div>
-                                <div class="mega-menu-tab" data-target="panel-home">
-                                    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                                    Home Loan
-                                </div>
-                                <div class="mega-menu-tab" data-target="panel-other">
-                                    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M12 16v1M3 12a9 9 0 1118 0 9 9 0 0118 0z"/></svg>
-                                    Other Loans
-                                </div>
-                            </div>
-
-                            <!-- Right Content Panels -->
-                            <div class="mega-menu-content">
-                                <!-- Personal Loan Panel -->
-                                <div class="mega-menu-panel active" id="panel-personal">
-                                    <div class="mega-menu-col">
-                                        <div class="mega-menu-col-title">
-                                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                            Overview
-                                        </div>
-                                        <a href="/personal-loan" class="mega-menu-link">Personal Loan</a>
-                                        <a href="/check-eligibility" class="mega-menu-link" style="color: #10B981; font-weight: 700;">Check Loan Eligibility ⚡</a>
-                                        <a href="/pre-approved-personal-loan" class="mega-menu-link">Pre Approved Personal Loan</a>
-                                        <a href="/personal-loan-interest-rates" class="mega-menu-link">Personal Loan Interest Rates</a>
-                                        <a href="/personal-loan-app" class="mega-menu-link">Personal Loan APP</a>
-                                        <a href="/personal-loan-low-cibil-score" class="mega-menu-link">Personal Loan Low CIBIL Score</a>
-                                        <a href="/personal-loan-balance-transfer" class="mega-menu-link">Personal Loan Balance Transfer</a>
-                                        <a href="/loan-on-credit-card" class="mega-menu-link">Loan on Credit Card</a>
-                                    </div>
-                                    <div class="mega-menu-col">
-                                        <div class="mega-menu-col-title">
-                                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 8h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                            By Amount
-                                        </div>
-                                        <a href="/5-lakh-personal-loan" class="mega-menu-link">5 Lakh Personal Loan</a>
-                                        <a href="/10-lakh-personal-loan" class="mega-menu-link">10 Lakh Personal Loan</a>
-                                        <a href="/20-lakh-personal-loan" class="mega-menu-link">20 Lakh Personal Loan</a>
-                                        <a href="/30-lakh-personal-loan" class="mega-menu-link">30 Lakh Personal Loan</a>
-                                        <a href="/40-lakh-personal-loan" class="mega-menu-link">40 Lakh Personal Loan</a>
-                                        <a href="/50-lakh-personal-loan" class="mega-menu-link">50 Lakh Personal Loan</a>
-                                    </div>
-                                    <div class="mega-menu-col">
-                                        <div class="mega-menu-col-title">
-                                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-                                            By Type &amp; Need
-                                        </div>
-                                        <a href="/loan-for-salaried-employees" class="mega-menu-link">Loan for Salaried Employees</a>
-                                        <a href="/loan-for-self-employed" class="mega-menu-link">Loan for Self Employed</a>
-                                        <a href="/loan-for-senior-citizens" class="mega-menu-link">Loan For Senior Citizens</a>
-                                        <a href="/loan-for-students" class="mega-menu-link">Loan for Students</a>
-                                        <a href="/medical-loan" class="mega-menu-link">Medical Loan</a>
-                                        <a href="/wedding-loan" class="mega-menu-link">Wedding Loan</a>
-                                        <a href="/travel-loan" class="mega-menu-link">Travel Loan</a>
-                                        <a href="/overdraft-loan" class="mega-menu-link">Overdraft Loan</a>
-                                    </div>
-                                </div>
-
-                                <!-- Business Loan Panel -->
-                                <div class="mega-menu-panel" id="panel-business">
-                                    <div class="mega-menu-col">
-                                        <div class="mega-menu-col-title">
-                                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                            Overview
-                                        </div>
-                                        <a href="/business-loan" class="mega-menu-link">Business Loan</a>
-                                        <a href="/business-loan-interest-rates" class="mega-menu-link">Business Loan Interest Rates</a>
-                                        <a href="/business-loan-low-cibil-score" class="mega-menu-link">Business Loan low CIBIL Score</a>
-                                        <a href="/msme-loan" class="mega-menu-link">MSME Loan</a>
-                                    </div>
-                                    <div class="mega-menu-col">
-                                        <div class="mega-menu-col-title">
-                                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.656 48.656 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3M2.25 12l3 3m-3-3l-3-3M12 3v1.5M12 18.75v1.5M4.5 12h1.5m12 0h1.5"/></svg>
-                                            By Schemes
-                                        </div>
-                                        <a href="/dairy-farming-loan" class="mega-menu-link">Dairy Farming Loan</a>
-                                        <a href="/small-business-loan" class="mega-menu-link">Small Business Loan</a>
-                                        <a href="/goat-farming-loan" class="mega-menu-link">Goat Farming Loan</a>
-                                        <a href="/startups-loan" class="mega-menu-link">Startups Loan</a>
-                                        <a href="/poultry-farm-loan" class="mega-menu-link">Poultry Farm Loan</a>
-                                        <a href="/professional-loan" class="mega-menu-link">Professional Loan</a>
-                                    </div>
-                                    <div class="mega-menu-col">
-                                        <div class="mega-menu-col-title">
-                                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-                                            By Need &amp; Profession
-                                        </div>
-                                        <a href="/mudra-loan" class="mega-menu-link">Mudra Loan</a>
-                                        <a href="/pmegp-loan" class="mega-menu-link">PMEGP Loan</a>
-                                        <a href="/letter-of-credit" class="mega-menu-link">Letter of Credit</a>
-                                        <a href="/working-capital-loan" class="mega-menu-link">Working Capital Loan</a>
-                                        <a href="/loan-for-ca" class="mega-menu-link">Loan for CA</a>
-                                        <a href="/loan-for-doctors" class="mega-menu-link">Loan for Doctors</a>
-                                    </div>
-                                </div>
-
-                                <!-- Home Loan Panel -->
-                                <div class="mega-menu-panel" id="panel-home">
-                                    <div class="mega-menu-col">
-                                        <div class="mega-menu-col-title">
-                                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                            Overview
-                                        </div>
-                                        <a href="/home-loan" class="mega-menu-link">Home Loan</a>
-                                        <a href="/home-loan-interest-rates" class="mega-menu-link">Home Loan Interest Rates</a>
-                                        <a href="/home-loan-balance-transfer" class="mega-menu-link">Home Loan Balance Transfer</a>
-                                        <a href="/home-loan-low-cibil-score" class="mega-menu-link">Home Loan Low CIBIL Score</a>
-                                    </div>
-                                    <div class="mega-menu-col">
-                                        <div class="mega-menu-col-title">
-                                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 8h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                            By Amount
-                                        </div>
-                                        <a href="/10-lakh-home-loan" class="mega-menu-link">10 Lakh Home Loan</a>
-                                        <a href="/15-lakh-home-loan" class="mega-menu-link">15 Lakh Home Loan</a>
-                                        <a href="/20-lakh-home-loan" class="mega-menu-link">20 Lakh Home Loan</a>
-                                        <a href="/30-lakh-home-loan" class="mega-menu-link">30 Lakh Home Loan</a>
-                                        <a href="/40-lakh-home-loan" class="mega-menu-link">40 Lakh Home Loan</a>
-                                        <a href="/60-lakh-home-loan" class="mega-menu-link">60 Lakh Home Loan</a>
-                                    </div>
-                                    <div class="mega-menu-col">
-                                        <div class="mega-menu-col-title">
-                                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 00-3.7-3.7 48.656 48.656 0 00-7.324 0 4.006 4.006 0 00-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3l-3-3M2.25 12l3 3m-3-3l-3-3M12 3v1.5M12 18.75v1.5M4.5 12h1.5m12 0h1.5"/></svg>
-                                            By Schemes &amp; Type
-                                        </div>
-                                        <a href="/home-renovation-loan" class="mega-menu-link">Home Renovation Loan</a>
-                                        <a href="/plot-loan" class="mega-menu-link">Plot Loan</a>
-                                        <a href="/top-up-home-loan" class="mega-menu-link">Top up Home Loan</a>
-                                        <a href="/home-construction-loan" class="mega-menu-link">Home Construction Loan</a>
-                                        <a href="/home-extension-loan" class="mega-menu-link">Home Extension Loan</a>
-                                        <a href="/home-loan-for-self-employed" class="mega-menu-link">Home Loan for Self Employed</a>
-                                        <a href="/home-loan-for-women" class="mega-menu-link">Home Loan for Women</a>
-                                    </div>
-                                </div>
-
-                                <!-- Other Loans Panel -->
-                                <div class="mega-menu-panel" id="panel-other">
-                                    <div class="mega-menu-col">
-                                        <div class="mega-menu-col-title">
-                                            <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                            Loan Types
-                                        </div>
-                                        <a href="/loan-against-property" class="mega-menu-link">Loan Against Property</a>
-                                        <a href="/loan-against-car" class="mega-menu-link">Loan Against Car</a>
-                                        <a href="/micro-loan" class="mega-menu-link">Micro Loan</a>
-                                        <a href="/two-wheeler-loan" class="mega-menu-link">Two Wheeler Loan</a>
-                                        <a href="/gold-loan" class="mega-menu-link">Gold Loan</a>
-                                        <a href="/education-loan" class="mega-menu-link">Education Loan</a>
-                                        <a href="/car-loan" class="mega-menu-link">Car Loan</a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Credit Cards Dropdown -->
+                    <!-- Loans Dropdown -->
                     <div class="nav-item dropdown">
-                        <a href="javascript:void(0)" class="nav-link" role="button" aria-haspopup="true" aria-expanded="false" tabindex="0">Credit Cards <span class="arrow-down" aria-hidden="true"></span></a>
-                        <div class="dropdown-menu dropdown-grid-2">
+                        <a href="javascript:void(0)" class="nav-link" role="button" aria-haspopup="true" aria-expanded="false" tabindex="0">Loans <span class="arrow-down" aria-hidden="true"></span></a>
+                        <div class="dropdown-menu dropdown-grid-3">
+                            <!-- Col 1: Overview -->
                             <div class="dropdown-grid-col">
                                 <div class="dropdown-grid-col-title">
                                     <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                    Overview
+                                    Personal Loan Overview
                                 </div>
-                                <a href="/credit-card" class="dropdown-grid-link">Credit Card</a>
-                                <a href="/best-credit-cards" class="dropdown-grid-link">Best Credit Cards</a>
-                                <a href="/best-forex-cards" class="dropdown-grid-link">Best Forex Cards</a>
-                                <a href="/cibil-score-for-credit-card" class="dropdown-grid-link">CIBIL Score for Credit Card</a>
-                                <a href="/credit-card-eligibility" class="dropdown-grid-link">Credit Card Eligibility</a>
-                                <a href="/compare-credit-cards" class="dropdown-grid-link">Compare Credit Cards</a>
+                                <a href="/personal-loan" class="dropdown-grid-link">Personal Loan</a>
+                                <a href="/check-eligibility" class="dropdown-grid-link" style="color: #10B981 !important; font-weight: 700;">Check Loan Eligibility ⚡</a>
+                                <a href="/pre-approved-personal-loan" class="dropdown-grid-link">Pre Approved Personal Loan</a>
+                                <a href="/personal-loan-interest-rates" class="dropdown-grid-link">Personal Loan Interest Rates</a>
+                                <a href="/personal-loan-app" class="dropdown-grid-link">Personal Loan APP</a>
+                                <a href="/personal-loan-low-cibil-score" class="dropdown-grid-link">Personal Loan Low CIBIL Score</a>
+                                <a href="/personal-loan-balance-transfer" class="dropdown-grid-link">Personal Loan Balance Transfer</a>
+                                <a href="/instant-cash-loan" class="dropdown-grid-link">Instant Cash Loan</a>
                             </div>
+
+                            <!-- Col 2: By Amount (Up to ₹1 Lakh) -->
+                            <div class="dropdown-grid-col">
+                                <div class="dropdown-grid-col-title">
+                                    <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 8h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    By Amount (Up to ₹1 Lakh)
+                                </div>
+                                <a href="/10-thousand-personal-loan" class="dropdown-grid-link">₹10,000 Personal Loan</a>
+                                <a href="/25-thousand-personal-loan" class="dropdown-grid-link">₹25,000 Personal Loan</a>
+                                <a href="/50-thousand-personal-loan" class="dropdown-grid-link">₹50,000 Personal Loan</a>
+                                <a href="/75-thousand-personal-loan" class="dropdown-grid-link">₹75,000 Personal Loan</a>
+                                <a href="/1-lakh-personal-loan" class="dropdown-grid-link">₹1,00,000 Personal Loan</a>
+                            </div>
+
+                            <!-- Col 3: By Type & Need -->
                             <div class="dropdown-grid-col">
                                 <div class="dropdown-grid-col-title">
                                     <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
-                                    By Category
+                                    By Type &amp; Need
                                 </div>
-                                <a href="/rupay-credit-cards" class="dropdown-grid-link">Rupay Credit Cards</a>
-                                <a href="/secured-credit-cards" class="dropdown-grid-link">Secured Credit Cards</a>
-                                <a href="/lifetime-free-credit-cards" class="dropdown-grid-link">Lifetime Free Credit Cards</a>
-                                <a href="/rewards-credit-cards" class="dropdown-grid-link">Rewards Credit Cards</a>
-                                <a href="/cashback-credit-cards" class="dropdown-grid-link">Cashback Credit Cards</a>
-                                <a href="/credit-card-lounge-access" class="dropdown-grid-link">Credit Card Lounge Access</a>
-                                <a href="/virtual-credit-cards" class="dropdown-grid-link">Virtual Credit Cards</a>
-                                <a href="/fuel-credit-cards" class="dropdown-grid-link">Fuel Credit Cards</a>
-                                <a href="/travel-credit-cards" class="dropdown-grid-link">Travel Credit Cards</a>
-                                <a href="/international-credit-cards" class="dropdown-grid-link">International Credit Cards</a>
-                                <a href="/zero-forex-markup-credit-cards" class="dropdown-grid-link">Zero Forex Markup Credit Cards</a>
+                                <a href="/loan-for-salaried-employees" class="dropdown-grid-link">Loan for Salaried Employees</a>
+                                <a href="/loan-for-self-employed" class="dropdown-grid-link">Loan for Self Employed</a>
+                                <a href="/loan-for-senior-citizens" class="dropdown-grid-link">Loan For Senior Citizens</a>
+                                <a href="/loan-for-students" class="dropdown-grid-link">Loan for Students</a>
+                                <a href="/medical-loan" class="dropdown-grid-link">Medical Loan</a>
+                                <a href="/wedding-loan" class="dropdown-grid-link">Wedding Loan</a>
+                                <a href="/travel-loan" class="dropdown-grid-link">Travel Loan</a>
+                                <a href="/overdraft-loan" class="dropdown-grid-link">Overdraft Loan</a>
                             </div>
                         </div>
                     </div>
@@ -706,24 +546,22 @@ if (!isset($page_og_image) || empty($page_og_image)) {
                             <div class="dropdown-grid-col">
                                 <div class="dropdown-grid-col-title">
                                     <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.375c0-.966-.784-1.75-1.75-1.75s-1.75.784-1.75 1.75.784 1.75 1.75 1.75 1.75-.784 1.75-1.75zm-12 12c0-.966-.784-1.75-1.75-1.75S1.5 22.034 1.5 23s.784 1.75 1.75 1.75 1.75-.784 1.75-1.75z"/></svg>
-                                    Loan EMI Calculators
+                                    Loan Calculators
                                 </div>
                                 <a href="/personal-loan-emi-calculator" class="dropdown-grid-link">Personal Loan EMI Calculator</a>
-                                <a href="/home-loan-emi-calculator" class="dropdown-grid-link">Home Loan EMI Calculator</a>
-                                <a href="/business-loan-emi-calculator" class="dropdown-grid-link">Business Loan EMI Calculator</a>
-                                <a href="/loan-against-property-emi-calculator" class="dropdown-grid-link">LAP EMI Calculator</a>
-                                <a href="/gold-loan-emi-calculator" class="dropdown-grid-link">Gold Loan EMI Calculator</a>
+                                <a href="/personal-loan-eligibility-calculator" class="dropdown-grid-link">Personal Loan Eligibility</a>
+                                <a href="/personal-loan-prepayment-calculator" class="dropdown-grid-link">Personal Loan Prepayment</a>
                             </div>
                             <div class="dropdown-grid-col">
                                 <div class="dropdown-grid-col-title">
                                     <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                    Eligibility &amp; Planning
+                                    Financial Planning Tools
                                 </div>
-                                <a href="/personal-loan-eligibility-calculator" class="dropdown-grid-link">Personal Loan Eligibility</a>
-                                <a href="/home-loan-eligibility-calculator" class="dropdown-grid-link">Home Loan Eligibility</a>
-                                <a href="/home-loan-prepayment-calculator" class="dropdown-grid-link">Home Loan Prepayment</a>
-                                <a href="/personal-loan-prepayment-calculator" class="dropdown-grid-link">Personal Loan Prepayment</a>
                                 <a href="/sip-calculator" class="dropdown-grid-link">SIP Calculator</a>
+                                <a href="/fixed-deposit-calculator" class="dropdown-grid-link">Fixed Deposit Calculator</a>
+                                <a href="/mutual-fund-calculator" class="dropdown-grid-link">Mutual Fund Calculator</a>
+                                <a href="/nps-calculator" class="dropdown-grid-link">NPS Calculator</a>
+                                <a href="/gst-calculator" class="dropdown-grid-link">GST Calculator</a>
                             </div>
                         </div>
                     </div>

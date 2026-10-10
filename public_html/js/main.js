@@ -164,8 +164,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const emi = (P * R * Math.pow(1 + R, N)) / (Math.pow(1 + R, N) - 1);
             if (emiResult) emiResult.textContent = formatIndianCurrency(Math.round(emi));
 
-            // Eligibility estimate logic: max loan = 15 times monthly income
-            const maxEligible = monthlyIncome * 15;
+            // Eligibility estimate logic: max loan = 15 times monthly income, capped at ₹1,00,000
+            const maxEligible = Math.min(100000, monthlyIncome * 15);
             if (eligibilityResult) eligibilityResult.textContent = formatIndianCurrency(maxEligible);
         }
 
@@ -661,15 +661,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 1. Detect UTM Source
             const urlParams = new URLSearchParams(window.location.search);
-            const activeUtm = (urlParams.get('utm_source') || 
+            const isInstantCashLoan = typeof window !== 'undefined' && window.location && window.location.pathname.indexOf('instant-cash-loan') !== -1;
+            let activeUtm = (urlParams.get('utm_source') || 
                                sessionStorage.getItem('pim_utm_source') || 
                                localStorage.getItem('pim_utm_source') || '').trim();
 
+            if (isInstantCashLoan && (!urlParams.get('utm_source') || activeUtm.toLowerCase().includes('whatsapp'))) {
+                activeUtm = 'landingpage';
+            }
+
             const hasUtm = Boolean(activeUtm && activeUtm !== '' && activeUtm !== 'undefined' && activeUtm !== 'null');
-            const finalUtmSource = hasUtm ? activeUtm : null;
-            const isWhatsApp = hasUtm && activeUtm.toLowerCase().includes('whatsapp');
-            const finalSource = hasUtm ? activeUtm : "Modal Quick Apply";
-            const finalLeadSource = hasUtm ? (isWhatsApp ? 'WhatsApp' : 'Campaign') : 'Direct Website';
+            const finalUtmSource = hasUtm ? activeUtm : (isInstantCashLoan ? 'landingpage' : null);
+            const isWhatsApp = !isInstantCashLoan && hasUtm && activeUtm.toLowerCase().includes('whatsapp');
+            const finalSource = isInstantCashLoan ? 'landingpage' : (hasUtm ? activeUtm : "Modal Quick Apply");
+            const finalLeadSource = isInstantCashLoan ? 'landingpage' : (hasUtm ? (isWhatsApp ? 'WhatsApp' : 'Campaign') : 'Direct Website');
 
             // Phone-only first step: only what the visitor actually entered (the Node intake route upserts the
             // same lead later when the full form arrives). No invented amount / salary / CIBIL / partner.
@@ -679,6 +684,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 lead_source: finalLeadSource,
                 source: finalSource
             };
+            if (isInstantCashLoan) {
+                modalPayload.utm_medium = 'website';
+                modalPayload.utm_campaign = 'instant_cash_loan';
+                modalPayload.landing_page = '/instant-cash-loan';
+                modalPayload.entry_point = 'instant-cash-loan';
+            }
 
             try { sessionStorage.setItem('pim_phone', phoneVal); } catch(err){}
 
@@ -715,10 +726,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typingEl) {
         const phrases = [
             'Personal Loan',
-            'Business Loan',
             'Instant Cash',
+            'Salaried Loan',
             'Credit Line',
-            'Home Loan',
+            'Quick Eligibility',
             'Paisa Milega,'
         ];
         let phraseIndex = 0;
@@ -803,49 +814,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (toast && toastMsg) {
         const notifications = [
-            'Rahul from Delhi just got ₹2,00,000 approved!',
-            'Harpriya from Mumbai received ₹5,00,000 in 3 minutes!',
+            'Rahul from Delhi just got ₹75,000 approved!',
+            'Harpriya from Mumbai received ₹1,00,000 in 3 minutes!',
             'Amit from Bangalore got instant cash of ₹50,000!',
-            'Sneha from Pune approved for ₹3,50,000 business loan!',
+            'Sneha from Pune approved for ₹80,000 personal loan!',
             'Vikram from Hyderabad received ₹1,00,000 in 2 mins!',
-            'Neha from Chennai got ₹4,00,000 personal loan!',
+            'Neha from Chennai got ₹60,000 personal loan!',
             'Ravi from Jaipur approved for ₹75,000 credit line!',
-            'Pooja from Lucknow received ₹2,50,000 instantly!',
-            'Abhishek from Patna approved for ₹1,50,000 personal loan!',
-            'Anjali from Indore received ₹3,00,000 home construction loan!',
-            'Manish from Ahmedabad got ₹2,20,000 car loan approved!',
-            'Kirti from Noida received ₹80,000 gold loan instantly!',
+            'Pooja from Lucknow received ₹50,000 instantly!',
+            'Abhishek from Patna approved for ₹90,000 personal loan!',
+            'Anjali from Indore received ₹45,000 instant cash!',
+            'Manish from Ahmedabad got ₹85,000 personal loan approved!',
+            'Kirti from Noida received ₹30,000 instant cash!',
             'Sanjay from Gurgaon got ₹10,000 instant cash limit!',
             'Deepak from Bhopal approved for ₹60,000 emergency cash!',
-            'Shalini from Nagpur received ₹1,20,000 student loan!',
-            'Rajesh from Chandigarh approved for ₹4,50,000 business loan!',
-            'Divya from Dehradun received ₹3,00,000 personal loan!',
-            'Karan from Ludhiana got ₹1,80,000 machinery loan approved!',
+            'Shalini from Nagpur received ₹70,000 personal loan!',
+            'Rajesh from Chandigarh approved for ₹95,000 personal loan!',
+            'Divya from Dehradun received ₹50,000 personal loan!',
+            'Karan from Ludhiana got ₹80,000 salaried personal loan!',
             'Aarti from Kanpur approved for ₹95,000 medical loan!',
-            'Sunil from Surat received ₹2,80,000 business loan instantly!',
-            'Asha from Nashik got ₹1,10,000 gold loan approved!',
-            'Arjun from Kochi received ₹3,80,000 personal loan!',
+            'Sunil from Surat received ₹65,000 personal loan instantly!',
+            'Asha from Nashik got ₹40,000 personal loan approved!',
+            'Arjun from Kochi received ₹1,00,000 personal loan!',
             'Kiran from Mysore got ₹70,000 instant credit line!',
-            'Vijay from Vadodara approved for ₹2,40,000 car loan!',
-            'Monika from Agra received ₹1,30,000 education loan!',
-            'Pranav from Visakhapatnam got ₹3,20,000 business loan!',
-            'Meera from Coimbatore approved for ₹2,00,000 personal loan!',
+            'Vijay from Vadodara approved for ₹55,000 personal loan!',
+            'Monika from Agra received ₹80,000 personal loan!',
+            'Pranav from Visakhapatnam got ₹90,000 personal loan!',
+            'Meera from Coimbatore approved for ₹1,00,000 personal loan!',
             'Rohan from Ranchi received ₹85,000 instant cash!',
-            'Jyoti from Varanasi got ₹1,50,000 marriage loan approved!',
-            'Harish from Jodhpur approved for ₹4,00,000 home loan!',
-            'Preeti from Raipur received ₹2,10,000 personal loan instantly!',
-            'Nitin from Guwahati got ₹1,70,000 business expansion loan!',
+            'Jyoti from Varanasi got ₹50,000 personal loan approved!',
+            'Harish from Jodhpur approved for ₹75,000 personal loan!',
+            'Preeti from Raipur received ₹60,000 personal loan instantly!',
+            'Nitin from Guwahati got ₹80,000 emergency cash loan!',
             'Renu from Meerut approved for ₹65,000 credit line!',
-            'Siddharth from Jammu received ₹3,50,000 car loan!',
-            'Poonam from Udaipur got ₹1,40,000 personal loan approved!',
-            'Ajay from Gwalior received ₹1,90,000 business loan!',
+            'Siddharth from Jammu received ₹90,000 personal loan!',
+            'Poonam from Udaipur got ₹40,000 personal loan approved!',
+            'Ajay from Gwalior received ₹70,000 personal loan!',
             'Rita from Trivandrum approved for ₹90,000 instant cash!',
-            'Manoj from Jalandhar got ₹2,60,000 personal loan in 5 mins!',
-            'Kavita from Shimla received ₹1,50,000 home renovation loan!',
-            'Saurabh from Bhubaneswar approved for ₹3,00,000 business loan!',
-            'Swati from Prayagraj received ₹75,000 gold loan!',
-            'Vivek from Amritsar got ₹2,30,000 personal loan approved!',
-            'Tanvi from Kolhapur received ₹1,20,000 credit line instantly!'
+            'Manoj from Jalandhar got ₹1,00,000 personal loan in 5 mins!',
+            'Kavita from Shimla received ₹50,000 instant cash loan!',
+            'Saurabh from Bhubaneswar approved for ₹85,000 personal loan!',
+            'Swati from Prayagraj received ₹75,000 personal loan!',
+            'Vivek from Amritsar got ₹95,000 personal loan approved!',
+            'Tanvi from Kolhapur received ₹50,000 credit line instantly!'
         ];
 
         let notifIndex = 0;

@@ -408,10 +408,10 @@
                             <label class="input-label" for="plAmt">Loan Amount</label>
                             <div class="input-display-box">
                                 <span class="input-prefix">₹</span>
-                                <input type="number" id="plAmtBox" class="input-display" value="200000" min="10000" max="2500000" step="5000">
+                                <input type="number" id="plAmtBox" class="input-display" value="50000" min="5000" max="100000" step="5000">
                             </div>
                         </div>
-                        <input type="range" id="plAmt" class="slider-input" min="10000" max="2500000" step="5000" value="200000">
+                        <input type="range" id="plAmt" class="slider-input" min="5000" max="100000" step="5000" value="50000">
                     </div>
 
                     <!-- Interest Rate -->
@@ -470,19 +470,19 @@
                         <h3 class="results-title">EMI Summary</h3>
                         <div class="result-item">
                             <span class="result-lbl">Principal Amount</span>
-                            <span class="result-val" id="resInvested">₹2,00,000</span>
+                            <span class="result-val" id="resInvested">₹50,000</span>
                         </div>
                         <div class="result-item">
                             <span class="result-lbl">Total Interest</span>
-                            <span class="result-val" id="resInterest">₹39,088</span>
+                            <span class="result-val" id="resInterest">₹8,932</span>
                         </div>
                         <div class="result-item">
                             <span class="result-lbl">Total Amount</span>
-                            <span class="result-val" id="resTotal">₹2,39,088</span>
+                            <span class="result-val" id="resTotal">₹58,932</span>
                         </div>
                         <div class="result-emi-box">
                             <span class="result-emi-lbl">Monthly EMI</span>
-                            <span class="result-emi-val" id="resEMI">₹6,641</span>
+                            <span class="result-emi-val" id="resEMI">₹1,637</span>
                         </div>
                     </div>
 
@@ -547,19 +547,19 @@
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; margin-top: 2rem;">
             <a href="/personal-loan" style="display: block; background: #F8FAFC; border: 1px solid #BFDBFE; border-radius: 12px; padding: 1.5rem; text-decoration: none; transition: transform 0.2s ease;">
                 <div style="font-weight: 700; color: #1E40AF; font-size: 1.1rem; margin-bottom: 0.35rem;">Personal Loan Online</div>
-                <p style="font-size: 0.88rem; color: #64748B; margin: 0; line-height: 1.5;">Complete overview of personal loans up to ₹50 Lakh @10.49% p.a.</p>
+                <p style="font-size: 0.88rem; color: #64748B; margin: 0; line-height: 1.5;">Complete overview of personal loans up to ₹1 Lakh @10.49% p.a.</p>
             </a>
-            <a href="/5-lakh-personal-loan" style="display: block; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.5rem; text-decoration: none; transition: transform 0.2s ease;">
-                <div style="font-weight: 700; color: #1B2A6B; font-size: 1.1rem; margin-bottom: 0.35rem;">₹5 Lakh Personal Loan</div>
-                <p style="font-size: 0.88rem; color: #64748B; margin: 0; line-height: 1.5;">Monthly EMI from ₹10,744/mo for 5 yrs with paperless KYC.</p>
+            <a href="/25-thousand-personal-loan" style="display: block; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.5rem; text-decoration: none; transition: transform 0.2s ease;">
+                <div style="font-weight: 700; color: #1B2A6B; font-size: 1.1rem; margin-bottom: 0.35rem;">₹25,000 Personal Loan</div>
+                <p style="font-size: 0.88rem; color: #64748B; margin: 0; line-height: 1.5;">Monthly EMI from ₹1,159/mo for 2 yrs with paperless KYC.</p>
             </a>
-            <a href="/10-lakh-personal-loan" style="display: block; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.5rem; text-decoration: none; transition: transform 0.2s ease;">
-                <div style="font-weight: 700; color: #1B2A6B; font-size: 1.1rem; margin-bottom: 0.35rem;">₹10 Lakh Personal Loan</div>
-                <p style="font-size: 0.88rem; color: #64748B; margin: 0; line-height: 1.5;">Monthly EMI from ₹21,488/mo for debt consolidation &amp; emergencies.</p>
+            <a href="/50-thousand-personal-loan" style="display: block; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.5rem; text-decoration: none; transition: transform 0.2s ease;">
+                <div style="font-weight: 700; color: #1B2A6B; font-size: 1.1rem; margin-bottom: 0.35rem;">₹50,000 Personal Loan</div>
+                <p style="font-size: 0.88rem; color: #64748B; margin: 0; line-height: 1.5;">Monthly EMI from ₹1,625/mo for 3 yrs with instant disbursal.</p>
             </a>
-            <a href="/20-lakh-personal-loan" style="display: block; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.5rem; text-decoration: none; transition: transform 0.2s ease;">
-                <div style="font-weight: 700; color: #1B2A6B; font-size: 1.1rem; margin-bottom: 0.35rem;">₹20 Lakh Personal Loan</div>
-                <p style="font-size: 0.88rem; color: #64748B; margin: 0; line-height: 1.5;">Monthly EMI from ₹42,976/mo with flexible tenure up to 60 months.</p>
+            <a href="/1-lakh-personal-loan" style="display: block; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1.5rem; text-decoration: none; transition: transform 0.2s ease;">
+                <div style="font-weight: 700; color: #1B2A6B; font-size: 1.1rem; margin-bottom: 0.35rem;">₹1 Lakh Personal Loan</div>
+                <p style="font-size: 0.88rem; color: #64748B; margin: 0; line-height: 1.5;">Monthly EMI from ₹2,560/mo with flexible tenure up to 48 months.</p>
             </a>
         </div>
     </div>
@@ -569,7 +569,7 @@
 <section class="cta-banner">
     <div class="container">
         <h2>Need an Instant Personal Loan?</h2>
-        <p>Get pre-approved loans up to ₹50 Lakhs with interest rates starting from 10.49% p.a. online in minutes.</p>
+        <p>Get pre-approved loans up to ₹1,00,000 with interest rates starting from 10.49% p.a. online in minutes.</p>
         <button class="btn btn-primary open-apply-modal" style="background: var(--white); color: var(--primary-color);">Apply Online</button>
     </div>
 </section>

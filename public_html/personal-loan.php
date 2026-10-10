@@ -6,14 +6,14 @@
 
 $canonical_url = "https://paisainminutes.com/personal-loan";
 $page_title = "Personal Loan Online | Paisa in Minutes";
-$page_description = "Apply for personal loan online up to ₹50 Lakh starting @10.49% p.a. via Paisa in Minutes. Compare offers from RBI-regulated partners with 100% digital KYC and flexible tenures.";
+$page_description = "Apply for personal loan online up to ₹1,00,000 starting @10.49% p.a. via Paisa in Minutes. Compare offers from RBI-regulated partners with 100% digital KYC and flexible tenures.";
 $page_keywords = "personal loan online, instant personal loan, apply personal loan, personal loan interest rates, paisa in minutes";
 
 // Page Specific FAQs - Synchronized with FAQPage JSON-LD Schema
 $page_faqs = [
     [
         "question" => "What is the maximum loan amount and interest rate for a personal loan?",
-        "answer" => "Through Paisa in Minutes, you can apply for instant personal loans ranging from ₹10,000 up to ₹50 Lakh. Interest rates start from 10.49% p.a. from our network of RBI-registered banks and NBFCs, depending on your credit score, monthly income, and employment stability."
+        "answer" => "Through Paisa in Minutes, you can apply for instant personal loans ranging from ₹10,000 up to ₹1,00,000. Interest rates start from 10.49% p.a. from our network of RBI-registered banks and NBFCs, depending on your credit score, monthly income, and employment stability."
     ],
     [
         "question" => "How fast will the personal loan amount be disbursed into my bank account?",
@@ -450,7 +450,7 @@ include 'includes/header.php';
                 <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
                 RBI-Registered NBFC &amp; Bank Network
             </div>
-            <h1 class="pl-hero-title">Instant Personal Loan Online <span style="background: linear-gradient(135deg, #60A5FA 0%, #93C5FD 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Up to ₹50 Lakh</span></h1>
+            <h1 class="pl-hero-title">Instant Personal Loan Online <span style="background: linear-gradient(135deg, #60A5FA 0%, #93C5FD 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Up to ₹1,00,000</span></h1>
             <p class="pl-hero-desc">Access fast, paperless unsecured personal loans starting @10.49% p.a. Compare real-time pre-approved offers with flexible tenures from 3 to 60 months and 2-hour direct bank disbursal.</p>
             
             <div class="hero-cta-group">
@@ -466,7 +466,7 @@ include 'includes/header.php';
             <!-- KEY FINANCIAL SPECS BAR (4-Column Symmetric Grid) -->
             <div class="specs-bar">
                 <div class="spec-item">
-                    <div class="spec-value">₹10K - ₹50 Lakh</div>
+                    <div class="spec-value">₹10K - ₹1 Lakh</div>
                     <div class="spec-label">Loan Amount</div>
                 </div>
                 <div class="spec-item">
@@ -508,7 +508,7 @@ include 'includes/header.php';
         <div class="sec-heading-wrapper">
             <span class="sec-tag">Digital Lending Overview</span>
             <h2 class="sec-title">What is an Instant Personal Loan?</h2>
-            <p class="sec-subtitle">An instant personal loan is an unsecured credit facility designed to meet immediate personal or business liquidity needs without pledging collateral such as gold, property, or investments.</p>
+            <p class="sec-subtitle">An instant personal loan is an unsecured credit facility designed to meet immediate personal liquidity needs without pledging collateral such as gold, property, or investments.</p>
         </div>
 
         <div class="two-col-grid">
@@ -533,7 +533,7 @@ include 'includes/header.php';
                 <div class="card-list">
                     <div class="card-list-item">
                         <span class="card-list-label">Borrowing Range</span>
-                        <span class="card-list-val">₹10,000 to ₹50,00,000</span>
+                        <span class="card-list-val">₹10,000 to ₹1,00,000</span>
                     </div>
                     <div class="card-list-item">
                         <span class="card-list-label">Interest Rates</span>
@@ -584,60 +584,44 @@ include 'includes/header.php';
                 </thead>
                 <tbody>
                     <tr>
+                        <td><strong>₹10,000</strong></td>
+                        <td>₹881 / mo</td>
+                        <td>₹464 / mo</td>
+                        <td>₹325 / mo</td>
+                        <td>₹215 / mo</td>
+                        <td><a href="/10-thousand-personal-loan" style="color: #2563EB; font-weight: 600;">₹10K Loan Guide &rarr;</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>₹25,000</strong></td>
+                        <td>₹2,204 / mo</td>
+                        <td>₹1,159 / mo</td>
+                        <td>₹812 / mo</td>
+                        <td>₹537 / mo</td>
+                        <td><a href="/25-thousand-personal-loan" style="color: #2563EB; font-weight: 600;">₹25K Loan Guide &rarr;</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>₹50,000</strong></td>
+                        <td>₹4,407 / mo</td>
+                        <td>₹2,319 / mo</td>
+                        <td>₹1,625 / mo</td>
+                        <td>₹1,074 / mo</td>
+                        <td><a href="/50-thousand-personal-loan" style="color: #2563EB; font-weight: 600;">₹50K Loan Guide &rarr;</a></td>
+                    </tr>
+                    <tr>
+                        <td><strong>₹75,000</strong></td>
+                        <td>₹6,611 / mo</td>
+                        <td>₹3,478 / mo</td>
+                        <td>₹2,437 / mo</td>
+                        <td>₹1,612 / mo</td>
+                        <td><a href="/75-thousand-personal-loan" style="color: #2563EB; font-weight: 600;">₹75K Loan Guide &rarr;</a></td>
+                    </tr>
+                    <tr>
                         <td><strong>₹1,00,000</strong></td>
                         <td>₹8,815 / mo</td>
                         <td>₹4,637 / mo</td>
                         <td>₹3,250 / mo</td>
                         <td>₹2,149 / mo</td>
-                        <td><a href="/check-eligibility" style="color: #2563EB; font-weight: 600;">Check ₹1L Eligibility</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>₹3,00,000</strong></td>
-                        <td>₹26,444 / mo</td>
-                        <td>₹13,912 / mo</td>
-                        <td>₹9,750 / mo</td>
-                        <td>₹6,447 / mo</td>
-                        <td><a href="/personal-loan-emi-calculator" style="color: #2563EB; font-weight: 600;">Calculate ₹3L EMI</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>₹5,00,000</strong></td>
-                        <td>₹44,072 / mo</td>
-                        <td>₹23,186 / mo</td>
-                        <td>₹16,249 / mo</td>
-                        <td>₹10,744 / mo</td>
-                        <td><a href="/5-lakh-personal-loan" style="color: #2563EB; font-weight: 600;">₹5 Lakh Loan Guide &rarr;</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>₹10,00,000</strong></td>
-                        <td>₹88,145 / mo</td>
-                        <td>₹46,373 / mo</td>
-                        <td>₹32,499 / mo</td>
-                        <td>₹21,488 / mo</td>
-                        <td><a href="/10-lakh-personal-loan" style="color: #2563EB; font-weight: 600;">₹10 Lakh Loan Guide &rarr;</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>₹20,00,000</strong></td>
-                        <td>₹1,76,290 / mo</td>
-                        <td>₹92,746 / mo</td>
-                        <td>₹64,997 / mo</td>
-                        <td>₹42,976 / mo</td>
-                        <td><a href="/20-lakh-personal-loan" style="color: #2563EB; font-weight: 600;">₹20 Lakh Loan Guide &rarr;</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>₹30,00,000</strong></td>
-                        <td>₹2,64,435 / mo</td>
-                        <td>₹1,39,119 / mo</td>
-                        <td>₹97,496 / mo</td>
-                        <td>₹64,464 / mo</td>
-                        <td><a href="/30-lakh-personal-loan" style="color: #2563EB; font-weight: 600;">₹30 Lakh Loan Guide &rarr;</a></td>
-                    </tr>
-                    <tr>
-                        <td><strong>₹50,00,000</strong></td>
-                        <td>₹4,40,724 / mo</td>
-                        <td>₹2,31,865 / mo</td>
-                        <td>₹1,62,493 / mo</td>
-                        <td>₹1,07,440 / mo</td>
-                        <td><a href="/50-lakh-personal-loan" style="color: #2563EB; font-weight: 600;">₹50 Lakh Loan Guide &rarr;</a></td>
+                        <td><a href="/1-lakh-personal-loan" style="color: #2563EB; font-weight: 600;">₹1 Lakh Loan Guide &rarr;</a></td>
                     </tr>
                 </tbody>
             </table>
@@ -678,49 +662,49 @@ include 'includes/header.php';
                     <tr>
                         <td><strong>HDFC Bank</strong></td>
                         <td>10.50% - 21.00%</td>
-                        <td>Up to ₹40 Lakh</td>
+                        <td>Up to ₹1,00,000</td>
                         <td>Up to 2.50%</td>
                         <td>Instant to 4 Hours</td>
                     </tr>
                     <tr>
                         <td><strong>ICICI Bank</strong></td>
                         <td>10.65% - 16.00%</td>
-                        <td>Up to ₹50 Lakh</td>
+                        <td>Up to ₹1,00,000</td>
                         <td>Up to 2.00%</td>
                         <td>Under 2 Hours</td>
                     </tr>
                     <tr>
                         <td><strong>State Bank of India (SBI)</strong></td>
                         <td>11.00% - 14.50%</td>
-                        <td>Up to ₹20 Lakh</td>
+                        <td>Up to ₹1,00,000</td>
                         <td>0.50% to 1.50%</td>
                         <td>1 to 2 Working Days</td>
                     </tr>
                     <tr>
                         <td><strong>Axis Bank</strong></td>
                         <td>10.49% - 22.00%</td>
-                        <td>Up to ₹40 Lakh</td>
+                        <td>Up to ₹1,00,000</td>
                         <td>1.00% to 2.00%</td>
                         <td>Instant Digital Approval</td>
                     </tr>
                     <tr>
                         <td><strong>Bajaj Finserv</strong></td>
                         <td>11.00% - 24.00%</td>
-                        <td>Up to ₹40 Lakh</td>
+                        <td>Up to ₹1,00,000</td>
                         <td>Up to 3.93%</td>
                         <td>Instant Disbursal</td>
                     </tr>
                     <tr>
                         <td><strong>Tata Capital</strong></td>
                         <td>10.99% - 23.00%</td>
-                        <td>Up to ₹35 Lakh</td>
+                        <td>Up to ₹1,00,000</td>
                         <td>Up to 2.75%</td>
                         <td>Digital 2 Hours</td>
                     </tr>
                     <tr>
                         <td><strong>Aditya Birla Capital</strong></td>
                         <td>10.99% - 22.00%</td>
-                        <td>Up to ₹50 Lakh</td>
+                        <td>Up to ₹1,00,000</td>
                         <td>Up to 2.50%</td>
                         <td>Paperless 2 Hours</td>
                     </tr>
@@ -867,35 +851,43 @@ include 'includes/header.php';
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem;">
             <div class="card-box">
-                <h3 style="font-size: 1.2rem; font-weight: 700; color: #1B2A6B; margin-bottom: 0.5rem;">₹5 Lakh Personal Loan</h3>
+                <h3 style="font-size: 1.2rem; font-weight: 700; color: #1B2A6B; margin-bottom: 0.5rem;">₹10,000 Personal Loan</h3>
                 <p style="font-size: 0.9rem; color: #64748B; line-height: 1.6; margin-bottom: 1rem;">
-                    EMI starting from ₹10,744/mo. Ideal for home renovation, urgent medical treatments, and wedding expenses.
+                    EMI starting from ₹881/mo. Fast emergency micro cash for utility bills, travel tickets, or sudden medical needs.
                 </p>
-                <a href="/5-lakh-personal-loan" style="color: #2563EB; font-weight: 700; text-decoration: none; font-size: 0.95rem;">View ₹5 Lakh Guide &rarr;</a>
+                <a href="/10-thousand-personal-loan" style="color: #2563EB; font-weight: 700; text-decoration: none; font-size: 0.95rem;">View ₹10,000 Guide &rarr;</a>
             </div>
 
             <div class="card-box">
-                <h3 style="font-size: 1.2rem; font-weight: 700; color: #1B2A6B; margin-bottom: 0.5rem;">₹10 Lakh Personal Loan</h3>
+                <h3 style="font-size: 1.2rem; font-weight: 700; color: #1B2A6B; margin-bottom: 0.5rem;">₹25,000 Personal Loan</h3>
                 <p style="font-size: 0.9rem; color: #64748B; line-height: 1.6; margin-bottom: 1rem;">
-                    EMI starting from ₹21,488/mo. Perfect for high-cost credit card debt consolidation and higher education funding.
+                    EMI starting from ₹1,159/mo. Ideal for electronic gadget purchase, festive expenses, or school fees.
                 </p>
-                <a href="/10-lakh-personal-loan" style="color: #2563EB; font-weight: 700; text-decoration: none; font-size: 0.95rem;">View ₹10 Lakh Guide &rarr;</a>
+                <a href="/25-thousand-personal-loan" style="color: #2563EB; font-weight: 700; text-decoration: none; font-size: 0.95rem;">View ₹25,000 Guide &rarr;</a>
             </div>
 
             <div class="card-box">
-                <h3 style="font-size: 1.2rem; font-weight: 700; color: #1B2A6B; margin-bottom: 0.5rem;">₹20 Lakh Personal Loan</h3>
+                <h3 style="font-size: 1.2rem; font-weight: 700; color: #1B2A6B; margin-bottom: 0.5rem;">₹50,000 Personal Loan</h3>
                 <p style="font-size: 0.9rem; color: #64748B; line-height: 1.6; margin-bottom: 1rem;">
-                    EMI starting from ₹42,976/mo. High-ticket liquidity with flexible 5-year repayment and zero collateral pledge.
+                    EMI starting from ₹1,625/mo. Perfect for home repairs, hospital expenses, or short debt clearance with low EMI.
                 </p>
-                <a href="/20-lakh-personal-loan" style="color: #2563EB; font-weight: 700; text-decoration: none; font-size: 0.95rem;">View ₹20 Lakh Guide &rarr;</a>
+                <a href="/50-thousand-personal-loan" style="color: #2563EB; font-weight: 700; text-decoration: none; font-size: 0.95rem;">View ₹50,000 Guide &rarr;</a>
             </div>
 
             <div class="card-box">
-                <h3 style="font-size: 1.2rem; font-weight: 700; color: #1B2A6B; margin-bottom: 0.5rem;">₹50 Lakh Personal Loan</h3>
+                <h3 style="font-size: 1.2rem; font-weight: 700; color: #1B2A6B; margin-bottom: 0.5rem;">₹75,000 Personal Loan</h3>
                 <p style="font-size: 0.9rem; color: #64748B; line-height: 1.6; margin-bottom: 1rem;">
-                    Maximum unsecured liquidity for business expansion, luxury milestone purchases, and commercial needs.
+                    EMI starting from ₹2,437/mo. Moderate liquidity for family functions, two-wheeler down-payment, or travel.
                 </p>
-                <a href="/50-lakh-personal-loan" style="color: #2563EB; font-weight: 700; text-decoration: none; font-size: 0.95rem;">View ₹50 Lakh Guide &rarr;</a>
+                <a href="/75-thousand-personal-loan" style="color: #2563EB; font-weight: 700; text-decoration: none; font-size: 0.95rem;">View ₹75,000 Guide &rarr;</a>
+            </div>
+
+            <div class="card-box">
+                <h3 style="font-size: 1.2rem; font-weight: 700; color: #1B2A6B; margin-bottom: 0.5rem;">₹1,00,000 Personal Loan</h3>
+                <p style="font-size: 0.9rem; color: #64748B; line-height: 1.6; margin-bottom: 1rem;">
+                    EMI starting from ₹2,560/mo. Maximum loan limit for comprehensive personal requirements with 100% paperless KYC.
+                </p>
+                <a href="/1-lakh-personal-loan" style="color: #2563EB; font-weight: 700; text-decoration: none; font-size: 0.95rem;">View ₹1 Lakh Guide &rarr;</a>
             </div>
 
             <div class="card-box">
@@ -963,7 +955,7 @@ include 'includes/header.php';
     <div class="container">
         <h2 style="font-size: 2.5rem; font-weight: 800; color: #FFFFFF; margin-bottom: 1rem;">Ready to Get Funded in Minutes?</h2>
         <p style="color: rgba(255,255,255,0.85); max-width: 650px; margin: 0 auto 2rem auto; font-size: 1.15rem; line-height: 1.6;">
-            Check your pre-approved personal loan offers up to ₹50 Lakh with zero paperwork and zero impact on your credit score.
+            Check your pre-approved personal loan offers up to ₹1,00,000 with zero paperwork and zero impact on your credit score.
         </p>
         <button class="btn btn-primary open-apply-modal" style="background: #FFFFFF; color: #1B2A6B; font-weight: 700; padding: 1.15rem 3.25rem; font-size: 1.15rem; border-radius: 50px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
             Check Loan Eligibility in 60 Seconds ⚡

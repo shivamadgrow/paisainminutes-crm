@@ -9,9 +9,15 @@ if (session_status() === PHP_SESSION_NONE) {
 
 // 1. Capture UTM Source from URL parameters: utm_source, source
 $utmSource = trim((string)($_GET['utm_source'] ?? $_GET['source'] ?? ''));
+$isLandingPage = stripos($_SERVER['REQUEST_URI'] ?? '', 'instant-cash-loan') !== false;
 
-// Safety fallback: Check HTTP Referer if WhatsApp link was clicked directly
-if (empty($utmSource) && !empty($_SERVER['HTTP_REFERER'])) {
+if ($isLandingPage) {
+    // Landing page leads must always be attributed to landingpage unless an explicit marketing campaign UTM is in URL
+    if (empty($utmSource) || strcasecmp($utmSource, 'whatsapp-agm') === 0 || strcasecmp($utmSource, 'whatsapp') === 0) {
+        $utmSource = 'landingpage';
+    }
+} elseif (empty($utmSource) && !empty($_SERVER['HTTP_REFERER'])) {
+    // Only attribute to WhatsApp if visitor came from WhatsApp to a non-landing page and no campaign exists
     if (stripos($_SERVER['HTTP_REFERER'], 'whatsapp') !== false) {
         $utmSource = 'Whatsapp-AGM';
     }
@@ -63,8 +69,16 @@ if (!empty($refParam)) {
  * @return string
  */
 function getPimUtmSource() {
+    $isLanding = stripos($_SERVER['REQUEST_URI'] ?? '', 'instant-cash-loan') !== false;
     if (!empty($_GET['utm_source'])) {
-        return preg_replace('/[^a-zA-Z0-9_\-\.]/', '', trim($_GET['utm_source']));
+        $u = preg_replace('/[^a-zA-Z0-9_\-\.]/', '', trim($_GET['utm_source']));
+        if ($isLanding && (strcasecmp($u, 'whatsapp-agm') === 0 || strcasecmp($u, 'whatsapp') === 0)) {
+            return 'landingpage';
+        }
+        return $u;
+    }
+    if ($isLanding) {
+        return 'landingpage';
     }
     if (!empty($_SESSION['pim_utm_source'])) {
         return $_SESSION['pim_utm_source'];

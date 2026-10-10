@@ -1155,7 +1155,7 @@ include 'includes/header.php';
                     $localLogo = '/' . ltrim($rawLogo, '/');
                 }
 
-                $interestRaw = (string)($partner['interest_rate'] ?? 'Up to 1.0% / day');
+                $interestRaw = (string)($partner['interest_rate'] ?? 'Up to 1% per day');
                 $prefix = '';
                 $rateVal = $interestRaw;
                 $rateUnit = '';
@@ -1286,7 +1286,7 @@ include 'includes/header.php';
                             $localLogo = '/' . ltrim($rawLogo, '/');
                         }
 
-                        $interestRaw = (string)($partner['interest_rate'] ?? 'Up to 1.0% / day');
+                        $interestRaw = (string)($partner['interest_rate'] ?? 'Up to 1% per day');
                         $prefix = '';
                         $rateVal = $interestRaw;
                         $rateUnit = '';

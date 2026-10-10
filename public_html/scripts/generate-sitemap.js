@@ -20,7 +20,80 @@ const excludedFiles = new Set([
     'blog.php',
     'careers.php',
     'resources.php',
-    'services.php'
+    'services.php',
+    // Retired high-ticket personal loan amount pages (capped at ₹1 Lakh)
+    '5-lakh-personal-loan.php',
+    '10-lakh-personal-loan.php',
+    '20-lakh-personal-loan.php',
+    '30-lakh-personal-loan.php',
+    '40-lakh-personal-loan.php',
+    '50-lakh-personal-loan.php',
+    // Retired unsupported loan categories and calculators
+    'business-loan.php',
+    'business-loan-emi-calculator.php',
+    'business-loan-interest-rates.php',
+    'business-loan-low-cibil-score.php',
+    'home-loan.php',
+    'home-loan-balance-transfer.php',
+    'home-loan-eligibility-calculator.php',
+    'home-loan-emi-calculator.php',
+    'home-loan-for-self-employed.php',
+    'home-loan-for-women.php',
+    'home-loan-interest-rates.php',
+    'home-loan-low-cibil-score.php',
+    'home-loan-prepayment-calculator.php',
+    'home-construction-loan.php',
+    'home-extension-loan.php',
+    'home-renovation-loan.php',
+    'top-up-home-loan.php',
+    '10-lakh-home-loan.php',
+    '15-lakh-home-loan.php',
+    '20-lakh-home-loan.php',
+    '30-lakh-home-loan.php',
+    '40-lakh-home-loan.php',
+    '60-lakh-home-loan.php',
+    'car-loan.php',
+    'loan-against-car.php',
+    'two-wheeler-loan.php',
+    'tractor-loan-emi-calculator.php',
+    'gold-loan.php',
+    'gold-loan-emi-calculator.php',
+    'loan-against-property.php',
+    'loan-against-property-emi-calculator.php',
+    'loan-against-fixed-deposit.php',
+    'plot-loan.php',
+    'small-business-loan.php',
+    'startups-loan.php',
+    'msme-loan.php',
+    'mudra-loan.php',
+    'mudra-loan-emi-calculator.php',
+    'pmegp-loan.php',
+    'working-capital-loan.php',
+    'letter-of-credit.php',
+    'dairy-farming-loan.php',
+    'goat-farming-loan.php',
+    'poultry-farm-loan.php',
+    'education-loan.php',
+    'term-loan-emi-calculator.php',
+    // Retired credit card and forex card pages
+    'credit-card.php',
+    'best-credit-cards.php',
+    'best-forex-cards.php',
+    'compare-credit-cards.php',
+    'credit-card-eligibility.php',
+    'credit-card-lounge-access.php',
+    'rupay-credit-cards.php',
+    'secured-credit-cards.php',
+    'lifetime-free-credit-cards.php',
+    'rewards-credit-cards.php',
+    'cashback-credit-cards.php',
+    'virtual-credit-cards.php',
+    'fuel-credit-cards.php',
+    'travel-credit-cards.php',
+    'international-credit-cards.php',
+    'zero-forex-markup-credit-cards.php',
+    'cibil-score-for-credit-card.php',
+    'loan-on-credit-card.php'
 ]);
 
 // Define priority and changefreq rules based on URL slug
@@ -33,15 +106,11 @@ function getSeoMeta(slug) {
     const highPillars = [
         'personal-loan',
         'instant-cash-loan',
-        'business-loan',
-        'home-loan',
-        'credit-card',
         'apply-now',
         'check-eligibility',
         'loan-offers',
         'credit-score-free',
         'free-cibil-score',
-        'best-credit-cards',
         'mutual-funds',
         'bonds'
     ];
@@ -65,16 +134,12 @@ function getSeoMeta(slug) {
 
     // High volume loan amount pages and main calculators
     if (
-        slug.includes('lakh-personal-loan') ||
-        slug.includes('lakh-home-loan') ||
+        slug.includes('thousand-personal-loan') ||
+        slug.includes('1-lakh-personal-loan') ||
         slug.endsWith('-emi-calculator') ||
         slug.includes('pre-approved') ||
         slug.includes('interest-rates') ||
         slug.includes('balance-transfer') ||
-        slug.includes('lifetime-free') ||
-        slug.includes('cashback') ||
-        slug.includes('gold-loan') ||
-        slug.includes('car-loan') ||
         slug.includes('cibil') ||
         slug.includes('experian')
     ) {

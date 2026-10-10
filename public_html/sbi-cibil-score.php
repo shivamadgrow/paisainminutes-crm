@@ -192,7 +192,7 @@
         <div class="sec-hero-content">
             <span class="section-tag">SBI Guidelines</span>
             <h1 class="sec-hero-title">SBI CIBIL Score Criteria</h1>
-            <p class="sec-hero-desc">Understand the minimum CIBIL score required for personal loans, home loans, and credit cards from the State Bank of India (SBI) to secure low interest rates.</p>
+            <p class="sec-hero-desc">Understand the minimum CIBIL score required for personal loans from the State Bank of India (SBI) to secure low interest rates.</p>
             <button class="btn btn-primary open-apply-modal" style="background: var(--white); color: var(--primary-color);">Check Eligibility Online</button>
         </div>
     </div>
@@ -247,24 +247,24 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>SBI Home Loan</td>
+                                <td>SBI Xpress Credit</td>
                                 <td>750+</td>
                                 <td>Preferred (Qualifies for lowest rates)</td>
                             </tr>
                             <tr>
-                                <td>SBI Personal Loan</td>
+                                <td>SBI Quick Personal Loan</td>
                                 <td>720+</td>
                                 <td>Highly Recommended for approvals</td>
                             </tr>
                             <tr>
-                                <td>SBI Car Loan</td>
+                                <td>SBI Pension Loan</td>
                                 <td>700+</td>
-                                <td>Good - Standard margins apply</td>
+                                <td>Standard terms apply</td>
                             </tr>
                             <tr>
-                                <td>SBI Credit Card</td>
+                                <td>SBI Pre-approved Loan</td>
                                 <td>750+</td>
-                                <td>Required for premium cards</td>
+                                <td>Instant disbursal & best terms</td>
                             </tr>
                         </tbody>
                     </table>
@@ -274,7 +274,7 @@
                 <div class="info-img-card" style="background: linear-gradient(135deg, #1B2A6B 0%, #111942 100%);">
                     <div class="score-badge">750+ CIBIL</div>
                     <h3>Concessional Interest Rates</h3>
-                    <p style="margin-top: 1rem; opacity: 0.9; font-size: 0.95rem; line-height: 1.6;">For SBI home loan borrowers, maintaining a score of 750 or above is crucial. SBI offers concession on interest rates (typically 0.10% to 0.20% lower margins) to borrowers in this tier, saving lakhs over the tenure.</p>
+                    <p style="margin-top: 1rem; opacity: 0.9; font-size: 0.95rem; line-height: 1.6;">For personal loan borrowers, maintaining a score of 750 or above is crucial. Lenders offer concessions on interest rates (typically lower margins) to borrowers in this tier, saving significant interest over the tenure.</p>
                     <ul style="margin-top: 1.5rem; list-style-type: none; font-size: 0.9rem;">
                         <li style="margin-bottom: 0.5rem;">✔ Eligible for interest rate concessions</li>
                         <li style="margin-bottom: 0.5rem;">✔ Quick collateral-free personal loans</li>
@@ -292,7 +292,7 @@
         <div class="section-title-wrapper text-center">
             <span class="section-tag">FAQs</span>
             <h2 class="section-title"><?php echo htmlspecialchars($human_name); ?> FAQs</h2>
-            <p class="section-subtitle">Check standard queries concerning SBI's credit check requirements.</p>
+            <p class="section-subtitle">Check standard queries concerning credit score requirements.</p>
         </div>
 
         <div class="faq-container" style="max-width: 800px; margin: 0 auto;">
@@ -312,14 +312,14 @@
 
             <div class="faq-item">
                 <div class="faq-header">
-                    <h3 class="faq-question">Can I get an SBI Home Loan with a 650 CIBIL score?</h3>
+                    <h3 class="faq-question">Can I get a Personal Loan with a 650 CIBIL score?</h3>
                     <div class="faq-icon-wrapper">
                         <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                     </div>
                 </div>
                 <div class="faq-body">
                     <div class="faq-content">
-                        It is difficult, but not impossible. Since home loans are secured against real estate, SBI might consider a score of 650 if your income is high and stable. However, they will charge a higher interest rate premium (risk margin) compared to borrowers with a score of 750+.
+                        While prime commercial banks prefer a CIBIL score of 720+ for personal loans, applicants with a score of 650 can explore pre-approved personal loans up to ₹1,00,000 from partner NBFCs on Paisa in Minutes based on verified monthly income stability.
                     </div>
                 </div>
             </div>

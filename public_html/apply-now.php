@@ -755,7 +755,7 @@ include 'includes/header.php';
 
                     <div class="form-field-group">
                         <label for="leadLoanAmount" class="form-field-label">Required Loan Amount <span class="required-star">*</span></label>
-                        <input type="number" id="leadLoanAmount" name="loan_amount" class="form-text-input" placeholder="Enter required loan amount" min="5000" max="500000" step="1000" value="<?php echo $prefill_loan; ?>" required>
+                        <input type="number" id="leadLoanAmount" name="loan_amount" class="form-text-input" placeholder="Enter required loan amount" min="5000" max="100000" step="1000" value="<?php echo $prefill_loan; ?>" required>
                     </div>
 
                     <div class="form-field-group">
@@ -1327,8 +1327,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            if (!loanAmtVal || Number(loanAmtVal) < 5000) {
-                showError('Please enter your required loan amount (min ₹5,000).');
+            if (!loanAmtVal || Number(loanAmtVal) < 5000 || Number(loanAmtVal) > 100000) {
+                showError('Please enter your required loan amount between ₹5,000 and ₹1,00,000.');
                 return;
             }
 

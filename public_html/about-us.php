@@ -230,7 +230,7 @@ include 'includes/header.php';
                 <h2>Our Mission & Purpose</h2>
                 <p><strong><a href="/" title="Paisa in Minutes">Paisa in Minutes</a></strong> is an official digital loan facilitation platform owned and operated by <strong>AdGrow Media Services</strong>, based in Delhi, India. Our mission is to eliminate bureaucratic hurdles, opaque terms, and predatory charges in retail borrowing by providing a 100% paperless, transparent financial discovery experience.</p>
                 <p>Acting as an authorized Lending Service Provider (LSP) and digital facilitator, we bridge the gap between borrowers requiring quick financial support and regulated Non-Banking Financial Companies (NBFCs) and commercial banks licensed by the Reserve Bank of India.</p>
-                <p>Whether you need a personal loan for medical needs, working capital for small businesses, or a long-term home loan, our proprietary match engine evaluates your profile against multiple partner criteria to present competitive loan offers within minutes.</p>
+                <p>Whether you need an instant personal loan for emergency expenses, medical needs, or travel, our proprietary match engine evaluates your profile against multiple partner criteria to present competitive personal loan offers up to ₹1,00,000 within minutes.</p>
             </div>
 
             <div class="entity-card">

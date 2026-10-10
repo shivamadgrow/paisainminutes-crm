@@ -162,10 +162,10 @@
                         <label class="input-label" for="plPreP">Outstanding Loan Principal</label>
                         <div class="input-display-box">
                             <span class="input-prefix">₹</span>
-                            <input type="number" id="plPrePBox" class="input-display" value="200000" min="10000" max="2500000" step="5000">
+                            <input type="number" id="plPrePBox" class="input-display" value="50000" min="5000" max="100000" step="5000">
                         </div>
                     </div>
-                    <input type="range" id="plPreP" class="slider-input" min="10000" max="2500000" step="5000" value="200000">
+                    <input type="range" id="plPreP" class="slider-input" min="5000" max="100000" step="5000" value="50000">
 
                     <!-- Interest Rate -->
                     <div class="input-group-header">
@@ -192,10 +192,10 @@
                         <label class="input-label" for="plPreAmt">One-time Prepayment</label>
                         <div class="input-display-box">
                             <span class="input-prefix">₹</span>
-                            <input type="number" id="plPreAmtBox" class="input-display" value="50000" min="5000" max="500000" step="5000">
+                            <input type="number" id="plPreAmtBox" class="input-display" value="20000" min="2000" max="90000" step="1000">
                         </div>
                     </div>
-                    <input type="range" id="plPreAmt" class="slider-input" min="5000" max="500000" step="5000" value="50000">
+                    <input type="range" id="plPreAmt" class="slider-input" min="2000" max="90000" step="1000" value="20000">
                 </div>
 
                 <!-- Results -->
@@ -246,7 +246,7 @@
                 </div>
                 <div class="faq-body">
                     <div class="faq-content">
-                        Unlike home loans, lenders standardly levy prepayment/foreclosure penalty charges on personal loans (typically ranging between 2% and 5% of the outstanding principal amount), especially during the first 12 months.
+                        Lenders standardly levy prepayment/foreclosure charges on personal loans (typically ranging between 1% and 3% + GST of the outstanding principal amount), especially during the initial lock-in period.
                     </div>
                 </div>
             </div>

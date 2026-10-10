@@ -262,6 +262,26 @@ export function buildLeadPayload(input = {}) {
     payload.salaryMode = modeVal.trim();
   }
 
+  const addrTypeVal = input.addressType ?? input.address_type;
+  if (addrTypeVal && typeof addrTypeVal === 'string' && addrTypeVal.trim() && addrTypeVal !== '—') {
+    payload.addressType = addrTypeVal.trim();
+  }
+
+  const addr1Val = input.addressLine1 ?? input.address_line1 ?? input.address;
+  if (addr1Val && typeof addr1Val === 'string' && addr1Val.trim() && addr1Val !== '—') {
+    payload.addressLine1 = addr1Val.trim();
+  }
+
+  const addr2Val = input.addressLine2 ?? input.address_line2;
+  if (addr2Val && typeof addr2Val === 'string' && addr2Val.trim() && addr2Val !== '—') {
+    payload.addressLine2 = addr2Val.trim();
+  }
+
+  const prefLocVal = input.preferredLocation ?? input.preferred_location;
+  if (prefLocVal && typeof prefLocVal === 'string' && prefLocVal.trim() && prefLocVal !== '—') {
+    payload.preferredLocation = prefLocVal.trim();
+  }
+
   if (input.city && typeof input.city === 'string' && input.city.trim() && input.city !== '—') {
     payload.city = input.city.trim();
   }
@@ -299,14 +319,57 @@ export function buildLeadPayload(input = {}) {
     payload.creditCardLimit = ccLimit;
   }
 
-  const rawUtm = input.utmSource ?? input.utm_source;
-  if (rawUtm && typeof rawUtm === 'string' && rawUtm.trim() && rawUtm !== 'null' && rawUtm !== 'undefined') {
-    payload.utmSource = rawUtm.trim();
+  const isLandingInput = Boolean(
+    (input.landingPage && String(input.landingPage).includes('instant-cash-loan')) ||
+    (input.landing_page && String(input.landing_page).includes('instant-cash-loan')) ||
+    (input.utmCampaign && (input.utmCampaign === 'instant_cash_loan' || input.utmCampaign === 'instant-cash-loan')) ||
+    (input.utm_campaign && (input.utm_campaign === 'instant_cash_loan' || input.utm_campaign === 'instant-cash-loan')) ||
+    (input.utmSource === 'landingpage' || input.utm_source === 'landingpage' || input.source === 'landingpage' || input.leadSource === 'landingpage')
+  );
+
+  if (isLandingInput) {
+    payload.utmSource = 'landingpage';
+    payload.source = 'landingpage';
+    payload.leadSource = 'landingpage';
+    payload.utmMedium = 'website';
+    payload.utmCampaign = 'instant_cash_loan';
+    payload.landingPage = '/instant-cash-loan';
+    payload.entryPoint = 'instant-cash-loan';
+  } else {
+    const rawUtm = input.utmSource ?? input.utm_source;
+    if (rawUtm && typeof rawUtm === 'string' && rawUtm.trim() && rawUtm !== 'null' && rawUtm !== 'undefined') {
+      payload.utmSource = rawUtm.trim();
+    }
+
+    const rawMedium = input.utmMedium ?? input.utm_medium;
+    if (rawMedium && typeof rawMedium === 'string' && rawMedium.trim() && rawMedium !== 'null' && rawMedium !== 'undefined') {
+      payload.utmMedium = rawMedium.trim();
+    }
+
+    const rawCampaign = input.utmCampaign ?? input.utm_campaign;
+    if (rawCampaign && typeof rawCampaign === 'string' && rawCampaign.trim() && rawCampaign !== 'null' && rawCampaign !== 'undefined') {
+      payload.utmCampaign = rawCampaign.trim();
+    }
+
+    const rawLanding = input.landingPage ?? input.landing_page;
+    if (rawLanding && typeof rawLanding === 'string' && rawLanding.trim() && rawLanding !== 'null' && rawLanding !== 'undefined') {
+      payload.landingPage = rawLanding.trim();
+    }
+
+    const rawLeadSource = input.leadSource ?? input.lead_source ?? input.source;
+    if (rawLeadSource && typeof rawLeadSource === 'string' && rawLeadSource.trim()) {
+      payload.leadSource = rawLeadSource.trim();
+      payload.source = rawLeadSource.trim();
+    } else if (input.source && typeof input.source === 'string' && input.source.trim()) {
+      payload.source = input.source.trim();
+      payload.leadSource = input.source.trim();
+    }
   }
 
-  const rawLeadSource = input.leadSource ?? input.lead_source ?? input.source;
-  if (rawLeadSource && typeof rawLeadSource === 'string' && rawLeadSource.trim()) {
-    payload.leadSource = rawLeadSource.trim();
+  const optIn = input.whatsappOptIn ?? input.whatsapp_opt_in ?? input.marketingConsent ?? input.consentMarketing;
+  if (optIn !== undefined) {
+    payload.marketingConsent = Boolean(optIn);
+    payload.whatsappOptIn = Boolean(optIn);
   }
 
   const validPan = sanitizePan(input.pan ?? input.panNumber ?? input.pan_card);
@@ -340,6 +403,48 @@ export function resolveAssignedCompany(item) {
     if (name) return name;
   }
   return 'Pending Selection';
+}
+
+/**
+ * Evaluates whether a lead originates from the /instant-cash-loan landing page.
+ * Returns true for all landing page submissions (including those affected by stale WhatsApp referers),
+ * but preserves external paid advertising campaigns (e.g., Facebook, Google Ads).
+ */
+export function isLandingPageOrigin(item) {
+  if (!item) return false;
+  const rawUtm = String(item.utmSource || item.utm_source || '').trim().toLowerCase();
+  const rawLeadSource = String(item.leadSource || item.lead_source || item.source || '').trim().toLowerCase();
+  const rawSource = String(item.source || '').trim().toLowerCase();
+  const rawChannel = String(item.channel || '').trim().toLowerCase();
+  const rawLandingPage = String(item.landingPage || item.landing_page || '').trim().toLowerCase();
+  const rawCampaign = String(item.utmCampaign || item.utm_campaign || '').trim().toLowerCase();
+  const rawMedium = String(item.utmMedium || item.utm_medium || '').trim().toLowerCase();
+  const rawEntryPoint = String(item.entryPoint || item.entry_point || '').trim().toLowerCase();
+
+  const isInstantCashLoanPage =
+    rawLandingPage.includes('/instant-cash-loan') ||
+    rawLandingPage.includes('instant-cash-loan') ||
+    rawEntryPoint.includes('instant-cash-loan') ||
+    rawCampaign === 'instant_cash_loan' ||
+    rawCampaign === 'instant-cash-loan' ||
+    (rawMedium === 'website' && (
+      rawCampaign.includes('instant') ||
+      rawLandingPage.includes('instant') ||
+      rawEntryPoint.includes('instant')
+    ));
+
+  const isExternalAdCampaign = Boolean(
+    rawUtm &&
+    !['landingpage', 'website', 'whatsapp', 'whatsapp-agm', 'null', 'undefined'].includes(rawUtm)
+  );
+
+  return (
+    (rawUtm === 'landingpage' ||
+     rawLeadSource === 'landingpage' ||
+     rawSource === 'landingpage' ||
+     rawChannel === 'landingpage' ||
+     isInstantCashLoanPage) && !isExternalAdCampaign
+  );
 }
 
 /**
@@ -379,11 +484,69 @@ export function mapBackendLead(item, index = 0) {
   else if (state) locationDisplay = state;
   else if (pincode) locationDisplay = `PIN: ${pincode}`;
 
-  // channel is derived on the server from the visitor's own UTM / click id / referrer; leads created before
-  // channel tracking have none and are shown as "Legacy" instead of a guessed source.
-  const channel = item.channel ? String(item.channel).trim() : null;
-  const rawSource = String(item.leadSource || item.utmSource || item.source || '').trim();
-  const source = channel || rawSource || 'Website Application';
+  const rawUtm = String(item.utmSource || item.utm_source || '').trim();
+  const rawLeadSource = String(item.leadSource || item.lead_source || item.source || '').trim();
+  const rawSource = String(item.source || '').trim();
+  const rawChannel = String(item.channel || '').trim();
+  const rawLandingPage = String(item.landingPage || item.landing_page || '').trim();
+  const rawCampaign = String(item.utmCampaign || item.utm_campaign || '').trim();
+  const rawMedium = String(item.utmMedium || item.utm_medium || '').trim();
+  const rawEntryPoint = String(item.entryPoint || item.entry_point || '').trim();
+
+  const isLandingPageOriginLead = isLandingPageOrigin(item);
+
+  // Genuine WhatsApp leads: originated through WhatsApp marketing channels and NOT landing page
+  const isGenuineWhatsApp = !isLandingPageOriginLead && (
+    rawUtm.toLowerCase() === 'whatsapp' ||
+    rawUtm.toLowerCase() === 'whatsapp-agm' ||
+    rawChannel.toLowerCase() === 'whatsapp' ||
+    rawLeadSource.toLowerCase() === 'whatsapp' ||
+    rawSource.toLowerCase() === 'whatsapp'
+  );
+
+  const channel = isLandingPageOriginLead
+    ? 'landingpage'
+    : (isGenuineWhatsApp ? 'WhatsApp' : (item.channel ? String(item.channel).trim() : null));
+
+  const source = isLandingPageOriginLead
+    ? 'landingpage'
+    : (isGenuineWhatsApp ? 'WhatsApp' : (channel || rawLeadSource || 'Website Application'));
+
+  const leadSource = isLandingPageOriginLead
+    ? 'landingpage'
+    : (item.leadSource || item.lead_source || null);
+
+  const utmSource = isLandingPageOriginLead
+    ? 'landingpage'
+    : (item.utmSource || item.utm_source || null);
+
+  const utmMedium = isLandingPageOriginLead
+    ? (rawMedium || 'website')
+    : (rawMedium || null);
+
+  const utmCampaign = isLandingPageOriginLead
+    ? (rawCampaign || 'instant_cash_loan')
+    : (rawCampaign || null);
+
+  const landingPage = isLandingPageOriginLead
+    ? (rawLandingPage || '/instant-cash-loan')
+    : (rawLandingPage || null);
+
+  const entryPoint = isLandingPageOriginLead
+    ? (rawEntryPoint || 'instant-cash-loan')
+    : (rawEntryPoint || null);
+
+  // WhatsApp communication preference / opt-in (Kept strictly separate from acquisition source)
+  const whatsappOptIn = Boolean(
+    item.whatsappOptIn === true ||
+    item.whatsapp_opt_in === true ||
+    item.whatsappConsent === true ||
+    item.whatsapp_consent === true ||
+    item.marketingConsent === true ||
+    item.consentMarketing === true
+  );
+
+  const communicationChannel = item.communicationChannel || item.communication_channel || null;
 
   const statusKey = normalizeStatus(item.status);
   const statusLabel = formatStatusLabel(item.status);
@@ -440,14 +603,14 @@ export function mapBackendLead(item, index = 0) {
     monthlySalary: cleanSalary,
     source,
     channel,
-    leadSource: item.leadSource || null,
-    utmSource: item.utmSource || null,
-    utmMedium: item.utmMedium || null,
-    utmCampaign: item.utmCampaign || null,
+    leadSource,
+    utmSource,
+    utmMedium,
+    utmCampaign,
     utmTerm: item.utmTerm || null,
     utmContent: item.utmContent || null,
     entryPoint: item.entryPoint || null,
-    landingPage: item.landingPage || null,
+    landingPage,
     firstChannel: item.firstChannel || null,
     cibilScore,
     cibilScoreUpdatedAt: item.cibilScoreUpdatedAt || null,
@@ -487,15 +650,21 @@ export function mapBackendLead(item, index = 0) {
     dob: dobFormatted,
     dateOfBirth: dobFormatted,
     gender: item.gender || null,
-    addressType: null,
+    addressType: item.addressType || item.address_type || null,
+    addressLine1: item.addressLine1 || item.address_line1 || item.address || null,
+    addressLine2: item.addressLine2 || item.address_line2 || null,
+    preferredLocation: item.preferredLocation || item.preferred_location || null,
+    employerName: item.employerName || item.employer_name || item.companyName || null,
     salaryMode: item.salaryMode || null,
     modeOfSalary: item.salaryMode || null,
     mode_of_salary: item.salaryMode || null,
-    companyName: item.companyName || null,
-    company_name: item.companyName || null,
+    companyName: item.companyName || item.employerName || item.employer_name || null,
+    company_name: item.companyName || item.employerName || item.employer_name || null,
     haveCreditCard: haveCreditCardBool ? 'Yes' : 'No',
     haveCreditCardBool,
-    creditCardLimit: ccLimit
+    creditCardLimit: ccLimit,
+    whatsappOptIn,
+    communicationChannel
   };
 }
 

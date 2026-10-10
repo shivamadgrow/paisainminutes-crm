@@ -10,7 +10,7 @@ $page_keywords = "Paisa in Minutes, paisa in minutes loan, personal loans, insta
 $page_faqs = [
     [
         'question' => 'What is Paisa in Minutes and how does it work?',
-        'answer' => 'Paisa in Minutes (paisainminutes.com) is an authorized digital loan facilitation marketplace operated by AdGrow Media Services. We connect borrowers with RBI-registered NBFCs and banks for instant personal loans up to ₹50 Lakh with 100% paperless digital verification and quick bank disbursal upon lender approval.'
+        'answer' => 'Paisa in Minutes (paisainminutes.com) is an authorized digital loan facilitation marketplace operated by AdGrow Media Services. We connect borrowers with RBI-registered NBFCs and banks for instant personal loans up to ₹1,00,000 with 100% paperless digital verification and quick bank disbursal upon lender approval.'
     ],
     [
         'question' => 'What documents do I need to apply for a loan?',
@@ -103,7 +103,7 @@ include 'includes/header.php';
 
                         <!-- Connecting Pulse Lines -->
                         <svg class="connecting-lines-svg" viewBox="0 0 500 500" fill="none" aria-hidden="true">
-                            <!-- Line to Top-Left (Home Loan) -->
+                            <!-- Line to Top-Left (Instant Cash Loan) -->
                             <path d="M250,250 L115,115" stroke="rgba(234, 179, 8, 0.15)" stroke-width="2" />
                             <path class="pulse-active active-tl" d="M250,250 L115,115" stroke="#EAB308" stroke-width="3" stroke-linecap="round" />
 
@@ -111,7 +111,7 @@ include 'includes/header.php';
                             <path d="M250,250 L385,115" stroke="rgba(34, 197, 94, 0.15)" stroke-width="2" />
                             <path class="pulse-active active-tr" d="M250,250 L385,115" stroke="#22C55E" stroke-width="3" stroke-linecap="round" />
 
-                            <!-- Line to Bottom-Left (Business Loan) -->
+                            <!-- Line to Bottom-Left (Salaried Loan) -->
                             <path d="M250,250 L115,385" stroke="rgba(37, 99, 235, 0.15)" stroke-width="2" />
                             <path class="pulse-active active-bl" d="M250,250 L115,385" stroke="#2563EB" stroke-width="3" stroke-linecap="round" />
 
@@ -138,16 +138,15 @@ include 'includes/header.php';
                             </svg>
                         </div>
 
-                        <!-- Satellite 1: Home Loan (Yellow) -->
-                        <a href="/home-loan" class="satellite-wrapper sat-wrapper-tl" aria-label="View Home Loan options">
+                        <!-- Satellite 1: Instant Cash Loan (Yellow) -->
+                        <a href="/instant-cash-loan" class="satellite-wrapper sat-wrapper-tl" aria-label="View Instant Cash Loan options">
                             <div class="satellite-circle sat-yellow">
                                 <span class="sat-dot sat-dot-yellow"></span>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 36px; height: 36px;" aria-hidden="true">
-                                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="rgba(234, 179, 8, 0.08)" />
-                                    <polyline points="9 22 9 12 15 12 15 22" />
+                                    <path d="M13 10V3L4 14h7v7l9-11h-7z" fill="rgba(234, 179, 8, 0.08)" />
                                 </svg>
                             </div>
-                            <div class="sat-label label-yellow">Home Loan</div>
+                            <div class="sat-label label-yellow">Instant Cash</div>
                         </a>
 
                         <!-- Satellite 2: Personal Loan (Green) -->
@@ -163,8 +162,8 @@ include 'includes/header.php';
                             <div class="sat-label label-green">Personal Loan</div>
                         </a>
 
-                        <!-- Satellite 3: Business Loan (Blue) -->
-                        <a href="/business-loan" class="satellite-wrapper sat-wrapper-bl" aria-label="View Business Loan options">
+                        <!-- Satellite 3: Salaried Loan (Blue) -->
+                        <a href="/loan-for-salaried-employees" class="satellite-wrapper sat-wrapper-bl" aria-label="View Salaried Personal Loan options">
                             <div class="satellite-circle sat-blue">
                                 <span class="sat-dot sat-dot-blue"></span>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="#2563EB" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 36px; height: 36px;" aria-hidden="true">
@@ -174,7 +173,7 @@ include 'includes/header.php';
                                     <path d="M12 11v4" />
                                 </svg>
                             </div>
-                            <div class="sat-label label-blue">Business Loan</div>
+                            <div class="sat-label label-blue">Salaried Loan</div>
                         </a>
 
                         <!-- Satellite 4: More Services (Purple) -->
@@ -284,13 +283,13 @@ include 'includes/header.php';
                         <!-- Briefcase Icon -->
                         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                     </div>
-                    <h3 class="product-title">Business Loan</h3>
-                    <p class="product-desc">Fulfill business working capital requirements, inventory purchase, or workspace scaling requirements.</p>
+                    <h3 class="product-title">Salaried Loan</h3>
+                    <p class="product-desc">Specialized instant personal loans for salaried private and government sector professionals.</p>
                     <div class="product-rate-wrapper">
                         <span class="product-rate-label">Interest Rate</span>
-                        <span class="product-rate-val">From 14.99% p.a.</span>
+                        <span class="product-rate-val">From 10.49% p.a.</span>
                     </div>
-                    <a href="/business-loan" class="product-link" aria-label="Apply for Business Loan">
+                    <a href="/loan-for-salaried-employees" class="product-link" aria-label="Apply for Salaried Personal Loan">
                         Apply Now
                         <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                     </a>
@@ -299,7 +298,7 @@ include 'includes/header.php';
                 <!-- Product Card 4 -->
                 <div class="product-card reveal delay-4">
                     <div class="product-icon-wrapper">
-                        <!-- Credit Card Icon -->
+                        <!-- Credit Line Icon -->
                         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                     </div>
                     <h3 class="product-title">Credit Line</h3>
@@ -471,10 +470,10 @@ include 'includes/header.php';
                     </div>
                     <h3 style="font-size: 1.3rem; font-weight: 700; color: #0F172A; margin-bottom: 0.75rem;">Who is Paisa in Minutes For?</h3>
                     <p style="color: #475569; font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem;">
-                        Whether you need immediate cash for medical emergencies, home repairs, wedding expenses, education fees, or working capital for your business, Paisa in Minutes provides seamless access:
+                        Whether you need immediate cash for medical emergencies, home repairs, wedding expenses, education fees, or urgent personal needs, Paisa in Minutes provides seamless access:
                     </p>
                     <ul style="color: #475569; font-size: 0.93rem; line-height: 1.8; padding-left: 1.25rem; margin-bottom: 0;">
-                        <li><strong>Personal Loans:</strong> ₹10,000 to ₹50 Lakh with 3 to 60-month tenures.</li>
+                        <li><strong>Personal Loans:</strong> ₹10,000 to ₹1,00,000 with 3 to 60-month tenures.</li>
                         <li><strong>Salaried Employees:</strong> Monthly income ₹20,000+ (metro) or ₹15,000+ (non-metro).</li>
                         <li><strong>Self-Employed:</strong> Small business owners and freelancers with digital bank records.</li>
                         <li><strong>100% Digital KYC:</strong> Paperless PAN &amp; Aadhaar verification with fast bank disbursal upon approval.</li>
@@ -542,10 +541,10 @@ include 'includes/header.php';
                     <div class="calc-group">
                         <div class="calc-label-wrapper">
                             <span>Required Amount</span>
-                            <span class="calc-value" id="loanAmountVal">₹1,00,000</span>
+                            <span class="calc-value" id="loanAmountVal">₹50,000</span>
                         </div>
                         <label for="loanAmount" class="sr-only">Required Loan Amount</label>
-                        <input type="range" class="calc-slider" id="loanAmount" min="10000" max="1000000" step="5000" value="100000" aria-label="Required Loan Amount" aria-valuemin="10000" aria-valuemax="1000000" aria-valuenow="100000">
+                        <input type="range" class="calc-slider" id="loanAmount" min="10000" max="100000" step="5000" value="50000" aria-label="Required Loan Amount" aria-valuemin="10000" aria-valuemax="100000" aria-valuenow="50000">
                     </div>
 
                     <!-- Tenure -->
@@ -575,12 +574,12 @@ include 'includes/header.php';
 
                     <div class="calc-result-box">
                         <div class="calc-result-label">ESTIMATED EMI / MONTH</div>
-                        <div class="calc-result-val" id="emiResult">₹8,885</div>
+                        <div class="calc-result-val" id="emiResult">₹4,408</div>
                     </div>
 
                     <div class="calc-result-box">
                         <div class="calc-result-label">MAX ELIGIBLE LOAN LIMIT</div>
-                        <div class="calc-result-val" id="eligibilityResult">₹5,25,000</div>
+                        <div class="calc-result-val" id="eligibilityResult">₹1,00,000</div>
                     </div>
 
                     <div class="calc-note">*Calculated at an estimated starting interest rate of 10.99% p.a. Actual terms differ upon final verification.</div>
@@ -651,7 +650,7 @@ include 'includes/header.php';
                     <div class="testimonial-slide">
                         <div class="testimonial-card">
                             <div class="testimonial-stars" aria-label="5 out of 5 stars">★★★★★</div>
-                            <p class="testimonial-quote">"As a freelancer, getting approved for loans is usually a nightmare due to standard bank documentation rules. But Paisa in Minutes processed my request based on digital statements and approved a ₹1.5 Lakh limit in minutes!"</p>
+                            <p class="testimonial-quote">"As a freelancer, getting approved for loans is usually a nightmare due to standard bank documentation rules. But Paisa in Minutes processed my request based on digital statements and approved an ₹80,000 limit in minutes!"</p>
                             <div class="testimonial-author-wrapper">
                                 <div class="testimonial-avatar">SP</div>
                                 <div class="testimonial-author-info">
@@ -666,12 +665,12 @@ include 'includes/header.php';
                     <div class="testimonial-slide">
                         <div class="testimonial-card">
                             <div class="testimonial-stars" aria-label="5 out of 5 stars">★★★★★</div>
-                            <p class="testimonial-quote">"I needed urgent funds to purchase inventory for my retail store before Diwali. Standard banks were taking days. The business loan option here was fast, collateral-free, and disbursed within 4 hours. Absolute lifesaver!"</p>
+                            <p class="testimonial-quote">"I needed urgent emergency cash to manage a medical contingency before my payday. The personal loan option here was fast, collateral-free, and disbursed within 2 hours. Absolute lifesaver!"</p>
                             <div class="testimonial-author-wrapper">
                                 <div class="testimonial-avatar">RP</div>
                                 <div class="testimonial-author-info">
                                     <div class="testimonial-name">Rajesh Patel</div>
-                                    <div class="testimonial-job">Kirana Store Owner, Ahmedabad</div>
+                                    <div class="testimonial-job">Store Manager, Ahmedabad</div>
                                 </div>
                             </div>
                         </div>
@@ -681,7 +680,7 @@ include 'includes/header.php';
                     <div class="testimonial-slide">
                         <div class="testimonial-card">
                             <div class="testimonial-stars" aria-label="5 out of 5 stars">★★★★★</div>
-                            <p class="testimonial-quote">"Superb interface. Very clean steps. The customer support guided me when I had a query regarding E-mandate setup. Got ₹3,00,000 disbursed directly into my salary account in 2 hours."</p>
+                            <p class="testimonial-quote">"Superb interface. Very clean steps. The customer support guided me when I had a query regarding E-mandate setup. Got ₹1,00,000 disbursed directly into my salary account in 2 hours."</p>
                             <div class="testimonial-author-wrapper">
                                 <div class="testimonial-avatar">VM</div>
                                 <div class="testimonial-author-info">
@@ -696,7 +695,7 @@ include 'includes/header.php';
                     <div class="testimonial-slide">
                         <div class="testimonial-card">
                             <div class="testimonial-stars" aria-label="5 out of 5 stars">★★★★★</div>
-                            <p class="testimonial-quote">"I checked my free CIBIL score here first and then applied for a home loan top-up. The interest rates were much lower than what local brokers quoted. Fast verification and friendly process."</p>
+                            <p class="testimonial-quote">"I checked my free CIBIL score here first and then applied for an instant personal loan. The interest rates were transparent with no hidden charges. Fast verification and friendly process."</p>
                             <div class="testimonial-author-wrapper">
                                 <div class="testimonial-avatar">DN</div>
                                 <div class="testimonial-author-info">
@@ -733,29 +732,29 @@ include 'includes/header.php';
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.5rem; margin-top: 2.5rem;">
                 <div style="border: 1px solid #E2E8F0; border-radius: 16px; padding: 1.75rem; background: #F8FAFC; transition: transform 0.2s ease, box-shadow 0.2s ease;">
-                    <div style="color: #2563EB; font-weight: 700; font-size: 1.35rem; margin-bottom: 0.35rem;">₹5 Lakh Loan</div>
-                    <div style="font-size: 0.88rem; color: #64748B; margin-bottom: 1rem;">Monthly EMI from <strong>₹10,744/mo</strong> (5 yrs @10.49%)</div>
-                    <p style="font-size: 0.92rem; color: #334155; line-height: 1.6; margin-bottom: 1.25rem;">Ideal for home renovation, family medical emergencies, and wedding budget top-ups with paperless KYC.</p>
-                    <a href="/5-lakh-personal-loan" style="display: inline-flex; align-items: center; gap: 0.4rem; color: #1B2A6B; font-weight: 700; text-decoration: none; font-size: 0.95rem;">
-                        View ₹5 Lakh Loan Details &rarr;
+                    <div style="color: #2563EB; font-weight: 700; font-size: 1.35rem; margin-bottom: 0.35rem;">₹25,000 Loan</div>
+                    <div style="font-size: 0.88rem; color: #64748B; margin-bottom: 1rem;">Monthly EMI from <strong>₹1,159/mo</strong> (24 mos @10.49%)</div>
+                    <p style="font-size: 0.92rem; color: #334155; line-height: 1.6; margin-bottom: 1.25rem;">Ideal for monthly bill payments, urgent gadgets, medical checks, or travel bookings with quick paperless approval.</p>
+                    <a href="/25-thousand-personal-loan" style="display: inline-flex; align-items: center; gap: 0.4rem; color: #1B2A6B; font-weight: 700; text-decoration: none; font-size: 0.95rem;">
+                        View ₹25,000 Loan Details &rarr;
                     </a>
                 </div>
 
                 <div style="border: 1px solid #E2E8F0; border-radius: 16px; padding: 1.75rem; background: #F8FAFC; transition: transform 0.2s ease, box-shadow 0.2s ease;">
-                    <div style="color: #2563EB; font-weight: 700; font-size: 1.35rem; margin-bottom: 0.35rem;">₹10 Lakh Loan</div>
-                    <div style="font-size: 0.88rem; color: #64748B; margin-bottom: 1rem;">Monthly EMI from <strong>₹21,488/mo</strong> (5 yrs @10.49%)</div>
-                    <p style="font-size: 0.92rem; color: #334155; line-height: 1.6; margin-bottom: 1.25rem;">Consolidate high-cost card debt or finance higher education and commercial workspace expansion.</p>
-                    <a href="/10-lakh-personal-loan" style="display: inline-flex; align-items: center; gap: 0.4rem; color: #1B2A6B; font-weight: 700; text-decoration: none; font-size: 0.95rem;">
-                        View ₹10 Lakh Loan Details &rarr;
+                    <div style="color: #2563EB; font-weight: 700; font-size: 1.35rem; margin-bottom: 0.35rem;">₹50,000 Loan</div>
+                    <div style="font-size: 0.88rem; color: #64748B; margin-bottom: 1rem;">Monthly EMI from <strong>₹1,625/mo</strong> (36 mos @10.49%)</div>
+                    <p style="font-size: 0.92rem; color: #334155; line-height: 1.6; margin-bottom: 1.25rem;">Perfect for home maintenance, medical treatments, laptop purchase, or emergency debt clearance with low EMI options.</p>
+                    <a href="/50-thousand-personal-loan" style="display: inline-flex; align-items: center; gap: 0.4rem; color: #1B2A6B; font-weight: 700; text-decoration: none; font-size: 0.95rem;">
+                        View ₹50,000 Loan Details &rarr;
                     </a>
                 </div>
 
                 <div style="border: 1px solid #E2E8F0; border-radius: 16px; padding: 1.75rem; background: #F8FAFC; transition: transform 0.2s ease, box-shadow 0.2s ease;">
-                    <div style="color: #2563EB; font-weight: 700; font-size: 1.35rem; margin-bottom: 0.35rem;">₹20 Lakh Loan</div>
-                    <div style="font-size: 0.88rem; color: #64748B; margin-bottom: 1rem;">Monthly EMI from <strong>₹42,976/mo</strong> (5 yrs @10.49%)</div>
-                    <p style="font-size: 0.92rem; color: #334155; line-height: 1.6; margin-bottom: 1.25rem;">High-ticket liquidity with flexible 12 to 60 months tenures, direct bank disbursal, and zero prepayment lock-in after 6 EMIs.</p>
-                    <a href="/20-lakh-personal-loan" style="display: inline-flex; align-items: center; gap: 0.4rem; color: #1B2A6B; font-weight: 700; text-decoration: none; font-size: 0.95rem;">
-                        View ₹20 Lakh Loan Details &rarr;
+                    <div style="color: #2563EB; font-weight: 700; font-size: 1.35rem; margin-bottom: 0.35rem;">₹1,00,000 Loan</div>
+                    <div style="font-size: 0.88rem; color: #64748B; margin-bottom: 1rem;">Monthly EMI from <strong>₹2,560/mo</strong> (48 mos @10.49%)</div>
+                    <p style="font-size: 0.92rem; color: #334155; line-height: 1.6; margin-bottom: 1.25rem;">Maximum sanctioned ticket size for personal obligations, family weddings, or relocation with fast digital disbursal.</p>
+                    <a href="/1-lakh-personal-loan" style="display: inline-flex; align-items: center; gap: 0.4rem; color: #1B2A6B; font-weight: 700; text-decoration: none; font-size: 0.95rem;">
+                        View ₹1,00,000 Loan Details &rarr;
                     </a>
                 </div>
 
@@ -831,7 +830,7 @@ include 'includes/header.php';
             <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
         </div>
         <div class="toast-content">
-            <div class="toast-message" id="toastMessage">Rahul from Delhi just got ₹2,00,000 approved!</div>
+            <div class="toast-message" id="toastMessage">Rahul from Delhi just got ₹75,000 approved!</div>
             <div class="toast-time">Just now</div>
         </div>
         <button type="button" class="toast-close" id="toastClose" aria-label="Close notification">&times;</button>
