@@ -902,6 +902,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(leadPayload),
                 keepalive: true
             }).then(r => r.json()).then(data => {
+                if (typeof window.pimTrackMeta === 'function') {
+                    window.pimTrackMeta('Lead', {
+                        content_name: 'Eligibility Check Loan Lead',
+                        content_category: 'Personal Loan',
+                        currency: 'INR'
+                    }, 'lead_elig_' + phoneVal);
+                } else if (typeof window.fbq === 'function') {
+                    window.fbq('track', 'Lead', {
+                        content_name: 'Eligibility Check Loan Lead',
+                        content_category: 'Personal Loan',
+                        currency: 'INR'
+                    });
+                }
                 if (data && (data.redirect_url || (data.data && data.data.redirect_url))) {
                     finalRedirectUrl = data.redirect_url || data.data.redirect_url;
                     if (manualLink) manualLink.href = finalRedirectUrl;

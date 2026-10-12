@@ -1663,6 +1663,20 @@ window.PimCustomerDetailsModal = (function() {
             // Show Confirmation Message
             showAlert('Your details have been submitted successfully. We are checking the available loan options.', 'success');
 
+            if (typeof window.pimTrackMeta === 'function') {
+                window.pimTrackMeta('Lead', {
+                    content_name: 'Customer Modal Loan Lead',
+                    content_category: 'Personal Loan',
+                    currency: 'INR'
+                }, 'lead_modal_' + activePhone);
+            } else if (typeof window.fbq === 'function') {
+                window.fbq('track', 'Lead', {
+                    content_name: 'Customer Modal Loan Lead',
+                    content_category: 'Personal Loan',
+                    currency: 'INR'
+                });
+            }
+
             // Dispatch custom event for tracking / listeners
             try {
                 window.dispatchEvent(new CustomEvent('pim:customerDetailsSubmitted', { detail: payloadData }));

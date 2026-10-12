@@ -628,6 +628,18 @@ window.PimOtpService = (function() {
             // This device now holds a verified login for this number, for life (js/pim-auth.js).
             if (window.PIMAuth) window.PIMAuth.store({ token: authToken, refreshToken: refreshToken, phone: activePhone });
             try { localStorage.setItem('pim_phone', activePhone); } catch(e) {}
+
+            if (typeof window.pimTrackMeta === 'function') {
+                window.pimTrackMeta('CompleteRegistration', {
+                    status: 'verified',
+                    content_name: 'OTP Verified Customer'
+                }, 'otp_verified_' + activePhone);
+            } else if (typeof window.fbq === 'function') {
+                window.fbq('track', 'CompleteRegistration', {
+                    status: 'verified',
+                    content_name: 'OTP Verified Customer'
+                });
+            }
             
             setTimeout(() => {
                 close();

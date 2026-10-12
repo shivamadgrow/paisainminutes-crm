@@ -708,6 +708,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { "Content-Type": "application/json", "Accept": "application/json" },
                 body: JSON.stringify(modalPayload),
                 keepalive: true
+            }).then(() => {
+                if (typeof window.pimTrackMeta === 'function') {
+                    window.pimTrackMeta('Lead', {
+                        content_name: 'Website Quick Lead',
+                        content_category: 'Personal Loan',
+                        currency: 'INR'
+                    }, 'quick_lead_' + phoneVal);
+                } else if (typeof window.fbq === 'function') {
+                    window.fbq('track', 'Lead', {
+                        content_name: 'Website Quick Lead',
+                        content_category: 'Personal Loan',
+                        currency: 'INR'
+                    });
+                }
             }).catch(() => {});
 
             setTimeout(() => {

@@ -212,6 +212,76 @@ if (!isset($page_og_image) || empty($page_og_image)) {
     </script>
     <!-- End Google Tag Manager -->
 
+    <!-- Meta Pixel Code -->
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '1113720467814583');
+    fbq('track', 'PageView');
+    window.__pim_pageview_tracked = window.location.pathname;
+
+    // Single-Page / Dynamic Navigation Tracker
+    (function() {
+        var lastUrl = window.location.pathname + window.location.search;
+        function trackNav() {
+            var currUrl = window.location.pathname + window.location.search;
+            if (currUrl !== lastUrl) {
+                lastUrl = currUrl;
+                if (typeof window.fbq === 'function') {
+                    window.fbq('track', 'PageView');
+                }
+            }
+        }
+        var wrap = function(method) {
+            var orig = history[method];
+            return function() {
+                var res = orig.apply(this, arguments);
+                trackNav();
+                return res;
+            };
+        };
+        if (history.pushState) history.pushState = wrap('pushState');
+        if (history.replaceState) history.replaceState = wrap('replaceState');
+        window.addEventListener('popstate', trackNav, { passive: true });
+    })();
+
+    // Privacy-Compliant Meta Event Dispatcher (Strictly prevents PII transmission)
+    window.pimTrackMeta = function(eventName, params, dedupeKey) {
+        try {
+            if (dedupeKey) {
+                window.__pim_meta_dedupe = window.__pim_meta_dedupe || {};
+                if (window.__pim_meta_dedupe[dedupeKey]) return;
+                window.__pim_meta_dedupe[dedupeKey] = true;
+            }
+            var cleanParams = {};
+            if (params && typeof params === 'object') {
+                var blocked = ['phone', 'mobile', 'pan', 'email', 'salary', 'income', 'cibil', 'bureau', 'aadhaar', 'dob'];
+                for (var key in params) {
+                    if (Object.prototype.hasOwnProperty.call(params, key)) {
+                        var lk = key.toLowerCase();
+                        if (!blocked.some(function(b) { return lk.indexOf(b) !== -1; })) {
+                            cleanParams[key] = params[key];
+                        }
+                    }
+                }
+            }
+            if (typeof window.fbq === 'function') {
+                window.fbq('track', eventName, cleanParams);
+            }
+            if (Array.isArray(window.dataLayer)) {
+                window.dataLayer.push(Object.assign({ event: 'meta_' + eventName }, cleanParams));
+            }
+        } catch(e) {}
+    };
+    </script>
+    <!-- End Meta Pixel Code -->
+
     <script>
         window.site_base_path = "/";
         window.api_base_url = "/api";
@@ -431,6 +501,12 @@ if (!isset($page_og_image) || empty($page_og_image)) {
 </head>
 
 <body>
+    <!-- Meta Pixel (noscript) -->
+    <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=1113720467814583&ev=PageView&noscript=1"
+    alt="" /></noscript>
+    <!-- End Meta Pixel (noscript) -->
+
     <!-- Accessibility Skip Link -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
 

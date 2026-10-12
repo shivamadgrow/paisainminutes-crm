@@ -1427,6 +1427,19 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(res => res.json())
             .then(data => {
+                if (typeof window.pimTrackMeta === 'function') {
+                    window.pimTrackMeta('Lead', {
+                        content_name: 'Apply Now Loan Lead',
+                        content_category: 'Personal Loan',
+                        currency: 'INR'
+                    }, 'lead_apply_' + phoneVal);
+                } else if (typeof window.fbq === 'function') {
+                    window.fbq('track', 'Lead', {
+                        content_name: 'Apply Now Loan Lead',
+                        content_category: 'Personal Loan',
+                        currency: 'INR'
+                    });
+                }
                 if (data && data.data && data.data.redirect_url) {
                     redirectUrl = data.data.redirect_url;
                 }

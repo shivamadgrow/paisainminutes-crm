@@ -94,6 +94,76 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         window.dataLayer = window.dataLayer || [];
         function gtag(){ dataLayer.push(arguments); }
     </script>
+
+    <!-- Meta Pixel Code -->
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '1113720467814583');
+    fbq('track', 'PageView');
+    window.__pim_pageview_tracked = window.location.pathname;
+
+    // Single-Page / Dynamic Navigation Tracker
+    (function() {
+        var lastUrl = window.location.pathname + window.location.search;
+        function trackNav() {
+            var currUrl = window.location.pathname + window.location.search;
+            if (currUrl !== lastUrl) {
+                lastUrl = currUrl;
+                if (typeof window.fbq === 'function') {
+                    window.fbq('track', 'PageView');
+                }
+            }
+        }
+        var wrap = function(method) {
+            var orig = history[method];
+            return function() {
+                var res = orig.apply(this, arguments);
+                trackNav();
+                return res;
+            };
+        };
+        if (history.pushState) history.pushState = wrap('pushState');
+        if (history.replaceState) history.replaceState = wrap('replaceState');
+        window.addEventListener('popstate', trackNav, { passive: true });
+    })();
+
+    // Privacy-Compliant Meta Event Dispatcher (Strictly prevents PII transmission)
+    window.pimTrackMeta = function(eventName, params, dedupeKey) {
+        try {
+            if (dedupeKey) {
+                window.__pim_meta_dedupe = window.__pim_meta_dedupe || {};
+                if (window.__pim_meta_dedupe[dedupeKey]) return;
+                window.__pim_meta_dedupe[dedupeKey] = true;
+            }
+            var cleanParams = {};
+            if (params && typeof params === 'object') {
+                var blocked = ['phone', 'mobile', 'pan', 'email', 'salary', 'income', 'cibil', 'bureau', 'aadhaar', 'dob'];
+                for (var key in params) {
+                    if (Object.prototype.hasOwnProperty.call(params, key)) {
+                        var lk = key.toLowerCase();
+                        if (!blocked.some(function(b) { return lk.indexOf(b) !== -1; })) {
+                            cleanParams[key] = params[key];
+                        }
+                    }
+                }
+            }
+            if (typeof window.fbq === 'function') {
+                window.fbq('track', eventName, cleanParams);
+            }
+            if (Array.isArray(window.dataLayer)) {
+                window.dataLayer.push(Object.assign({ event: 'meta_' + eventName }, cleanParams));
+            }
+        } catch(e) {}
+    };
+    </script>
+    <!-- End Meta Pixel Code -->
     
     <!-- Marketing Attribution & Device Auth -->
     <script src="/js/attribution.js?v=<?php echo @filemtime(__DIR__ . '/js/attribution.js') ?: 1; ?>"></script>
@@ -1906,6 +1976,11 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
     </style>
 </head>
 <body>
+    <!-- Meta Pixel (noscript) -->
+    <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=1113720467814583&ev=PageView&noscript=1"
+    alt="" /></noscript>
+    <!-- End Meta Pixel (noscript) -->
 
     <!-- ==========================================
          CRO HEADER (Enlarged Logo + Apply Now CTA)
@@ -2741,6 +2816,16 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         // Strictly compliant: Never sends CIBIL score, PAN, Aadhaar, salary, or sensitive financial data
         function trackMetaEvent(eventName, params = {}) {
             try {
+                if (eventName === 'PageView') {
+                    if (window.__pim_pageview_tracked === window.location.pathname) {
+                        return;
+                    }
+                    window.__pim_pageview_tracked = window.location.pathname;
+                }
+                if (typeof window.pimTrackMeta === 'function') {
+                    window.pimTrackMeta(eventName, params);
+                    return;
+                }
                 if (typeof window.fbq === 'function') {
                     window.fbq('track', eventName, params);
                 }
@@ -3069,6 +3154,11 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         // --- Handle Successful OTP Verification -> Open Customer Details Modal (Step 3 & 4) ---
         async function handleOtpSuccess(authResult) {
             trackMetaEvent('OTPVerified');
+            if (typeof window.pimTrackMeta === 'function') {
+                window.pimTrackMeta('CompleteRegistration', { status: 'verified', content_name: 'Instant Cash OTP Verified' }, 'otp_reg_' + (authResult && authResult.phone ? authResult.phone : verifiedPhone));
+            } else if (typeof window.fbq === 'function') {
+                window.fbq('track', 'CompleteRegistration', { status: 'verified', content_name: 'Instant Cash OTP Verified' });
+            }
 
             // Extract Auth Token from OTP response or device login (awaiting if Promise)
             let authToken = '';

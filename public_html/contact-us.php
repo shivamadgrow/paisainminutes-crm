@@ -194,6 +194,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.innerHTML = originalBtnHtml;
 
                 if (data.status === 'success') {
+                    if (typeof window.pimTrackMeta === 'function') {
+                        window.pimTrackMeta('Contact', { content_name: 'Contact Form Message' }, 'contact_submit');
+                    } else if (typeof window.fbq === 'function') {
+                        window.fbq('track', 'Contact', { content_name: 'Contact Form Message' });
+                    }
                     showStatus(data.message || 'Thank you! Your message has been sent successfully.', 'success');
                     contactForm.reset();
                 } else {
