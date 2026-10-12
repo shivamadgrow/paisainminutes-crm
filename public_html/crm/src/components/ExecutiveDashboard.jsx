@@ -114,15 +114,10 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
     interested: 'bg-cyan-500'
   }[code] || 'bg-blue-500');
 
-  // Per-partner rows: synchronized with authoritative leads and server data
+  // Per-partner rows: strictly synchronized with 6 approved partners and server data
   const partnerBreakdown = useMemo(() => {
     const rawPartners = apiData?.partners || [];
     const allPartners = [...AFFILIATE_PARTNERS];
-    rawPartners.forEach(p => {
-      if (p && p.slug && !allPartners.some(x => x.id === p.slug)) {
-        allPartners.push({ id: p.slug, name: p.name });
-      }
-    });
 
     const hasLeadRecords = Array.isArray(leads) && leads.length > 0;
 

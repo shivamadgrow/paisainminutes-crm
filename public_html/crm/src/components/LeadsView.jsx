@@ -142,16 +142,16 @@ const getCompanyBadge = (company) => {
   }
   if (clean.includes('easyfin') || clean.includes('fincare')) {
     return {
-      name: 'Easy Fincare',
-      classes: 'bg-cyan-50 text-cyan-700 border-cyan-200/80 hover:bg-cyan-100/80',
-      dot: 'bg-cyan-500'
+      name: 'Easy Fincare (Inactive)',
+      classes: 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200',
+      dot: 'bg-slate-400'
     };
   }
   if (clean.includes('loanwithin')) {
     return {
-      name: 'LoanWithin',
-      classes: 'bg-teal-50 text-teal-700 border-teal-200/80 hover:bg-teal-100/80',
-      dot: 'bg-teal-500'
+      name: 'LoanWithin (Inactive)',
+      classes: 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200',
+      dot: 'bg-slate-400'
     };
   }
   if (clean.includes('instarupees') || clean.includes('insta')) {
@@ -163,16 +163,16 @@ const getCompanyBadge = (company) => {
   }
   if (clean.includes('shubh')) {
     return {
-      name: 'ShubhCash',
-      classes: 'bg-rose-50 text-rose-700 border-rose-200/80 hover:bg-rose-100/80',
-      dot: 'bg-rose-500'
+      name: 'ShubhCash (Inactive)',
+      classes: 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200',
+      dot: 'bg-slate-400'
     };
   }
   if (clean.includes('udhaar')) {
     return {
-      name: 'UdhaarNow',
-      classes: 'bg-blue-50 text-blue-700 border-blue-200/80 hover:bg-blue-100/80',
-      dot: 'bg-blue-500'
+      name: 'UdhaarNow (Inactive)',
+      classes: 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200',
+      dot: 'bg-slate-400'
     };
   }
   if (clean.includes('ticket') || clean.includes('ticket2loan')) {
@@ -578,7 +578,7 @@ export default function LeadsView({
   const [newSalary, setNewSalary] = useState('30000');
   const [newCity, setNewCity] = useState('');
   const [newSource, setNewSource] = useState('Apply Now Website');
-  const [newCompany, setNewCompany] = useState('Rupay91');
+  const [newCompany, setNewCompany] = useState('AUTO');
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
   const [manualFeedback, setManualFeedback] = useState(null);
 
@@ -1076,11 +1076,13 @@ export default function LeadsView({
       if (result && result.success && result.lead) {
         let createdLead = result.lead;
         // Optional partner choice from the form: applied through the real assignment field
-        const chosen = AFFILIATE_PARTNERS.find(p => p.name === newCompany || p.id === newCompany);
-        const chosenServerId = chosen ? getServerPartnerId(chosen.id) : null;
-        if (chosenServerId && canEditLeads) {
-          const assignRes = await updateLoanApplication(createdLead.id, { assignedPartnerId: chosenServerId });
-          if (assignRes.success && assignRes.lead) createdLead = assignRes.lead;
+        if (newCompany && newCompany !== 'AUTO') {
+          const chosen = AFFILIATE_PARTNERS.find(p => p.name === newCompany || p.id === newCompany);
+          const chosenServerId = chosen ? getServerPartnerId(chosen.id) : null;
+          if (chosenServerId && canEditLeads) {
+            const assignRes = await updateLoanApplication(createdLead.id, { assignedPartnerId: chosenServerId });
+            if (assignRes.success && assignRes.lead) createdLead = assignRes.lead;
+          }
         }
         if (setLeads) {
           setLeads(prev => [createdLead, ...prev.filter(l => l.id !== createdLead.id)]);
@@ -1094,6 +1096,7 @@ export default function LeadsView({
           setManualFeedback(null);
           setNewMobile('');
           setNewName('');
+          setNewCompany('AUTO');
         }, 1500);
       } else {
         setManualFeedback({
@@ -2423,10 +2426,10 @@ export default function LeadsView({
                   onChange={(e) => setNewCompany(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white font-bold"
                 >
-                  <option value="AUTO">✨ Auto (750+ Rupay91, &lt;750 Jhatpat Loans)</option>
-                  <option value="Rupay91">💳 Rupay91</option>
-                  <option value="Jhatpat Loans">⚡ Jhatpat Loans</option>
-                  <option value="MoneyDot">📱 MoneyDot</option>
+                  <option value="AUTO">✨ Auto-Match by Eligibility</option>
+                  {AFFILIATE_PARTNERS.map(p => (
+                    <option key={p.id} value={p.name}>{p.name}</option>
+                  ))}
                 </select>
               </div>
 

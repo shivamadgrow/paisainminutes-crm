@@ -136,46 +136,37 @@ const DEFAULT_PARTNER_STYLES = [
   { badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200', pillClass: 'bg-amber-600 text-white', accentColor: '#D97706', accentBg: 'bg-amber-50', gradient: 'from-amber-600 to-orange-700' }
 ];
 
+export const APPROVED_PARTNER_SLUGS = [
+  'rupay91',
+  'borrowera',
+  'instarupees',
+  'jhatpatloans',
+  'ticket2loan',
+  'moneydot'
+];
+
 /**
  * Merges the partner records returned by the Node server (`GET /api/crm/partners`) into AFFILIATE_PARTNERS.
- * The list above keeps the presentation data (colours, eligibility rules); the server owns name, website,
- * status, commission rate and the partner id used in every API call (`serverId`).
- * The UI keys partners by slug (`id`), which is also what the server accepts in its partner routes.
+ * Strictly filters to the 6 approved partners to ensure old/unapproved partners are never added.
  */
 export function syncPartnersFromServer(serverPartners) {
   if (!Array.isArray(serverPartners)) return AFFILIATE_PARTNERS;
-  serverPartners.forEach((sp, index) => {
+  serverPartners.forEach((sp) => {
     const slug = String(sp.slug || '').toLowerCase();
-    if (!slug) return;
+    if (!slug || !APPROVED_PARTNER_SLUGS.includes(slug)) return;
     const rate = Number(sp.commissionRate);
     const rateFields = Number.isFinite(rate) ? { commissionRate: `${rate.toFixed(1)}%`, commissionPct: rate / 100 } : {};
     let existing = AFFILIATE_PARTNERS.find((p) => p.id === slug);
-    if (!existing) {
-      const style = DEFAULT_PARTNER_STYLES[index % DEFAULT_PARTNER_STYLES.length];
-      existing = {
-        id: slug,
-        code: slug.toUpperCase().slice(0, 12),
-        tagline: sp.name,
-        ...style,
-        minCibil: 600,
-        minSalary: 25000,
-        maxLoan: 100000,
-        interestRate: '—',
-        tenure: '—',
-        description: sp.name,
-        commissionRate: '0.0%',
-        commissionPct: 0,
-      };
-      AFFILIATE_PARTNERS.push(existing);
+    if (existing) {
+      Object.assign(existing, {
+        serverId: sp.id,
+        name: sp.name || existing.name,
+        website: sp.website || existing.website,
+        applyUrl: sp.applyUrl || existing.applyUrl,
+        status: sp.status,
+        ...rateFields
+      });
     }
-    Object.assign(existing, {
-      serverId: sp.id,
-      name: sp.name || existing.name,
-      website: sp.website || existing.website,
-      applyUrl: sp.applyUrl || existing.applyUrl,
-      status: sp.status,
-      ...rateFields
-    });
   });
   return AFFILIATE_PARTNERS;
 }
@@ -401,6 +392,16 @@ export function getSalaryMatchedOffers(salaryInput) {
 export function getPartnerTrackingUrl(partnerOrId, options = {}) {
   const meta = getPartnerMeta(partnerOrId);
   const partnerSlug = meta?.id || 'jhatpatloans';
+  if (partnerSlug === 'moneydot') {
+    const playStoreBase = 'https://play.google.com/store/apps/details?id=com.yrs.moneydot&hl=en_IN';
+    const params = new URLSearchParams({
+      utm_source: 'paisainminutes',
+      utm_medium: 'affiliate',
+      utm_campaign: options.campaign || 'paisainminutes_crm',
+      utm_term: options.term || 'moneydot_crm'
+    });
+    return `${playStoreBase}&referrer=${encodeURIComponent(params.toString())}`;
+  }
   const leadId = options.leadId || 'CRM';
   const source = options.source || 'crm';
   const campaign = options.campaign || 'paisainminutes_crm';

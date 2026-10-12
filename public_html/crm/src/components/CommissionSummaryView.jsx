@@ -59,18 +59,6 @@ export default function CommissionSummaryView({ onSelectCompany, leads = [] }) {
   const partnerData = useMemo(() => {
     const serverPartners = (kpi && Array.isArray(kpi.partners)) ? kpi.partners : [];
     const allPartners = [...AFFILIATE_PARTNERS];
-    serverPartners.forEach(sp => {
-      if (sp && sp.slug && !allPartners.some(p => p.id === sp.slug)) {
-        allPartners.push({
-          id: sp.slug,
-          name: sp.name,
-          code: String(sp.slug).toUpperCase(),
-          accentColor: '#64748B',
-          commissionRate: `${Number(sp.commissionRatePercent || 0).toFixed(1)}%`,
-          commissionPct: (Number(sp.commissionRatePercent) || 0) / 100
-        });
-      }
-    });
 
     return allPartners.map(meta => {
       const sp = serverPartners.find(p => p.slug === meta.id || p.id === meta.id);
