@@ -46,29 +46,17 @@ $jhatpatLoansLogoSrc = getPartnerLogoSrc('jhatpatloans.png', $jhatpatLoansDataUr
 $instarupeesDataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60"><rect width="240" height="60" rx="10" fill="%23ffffff"/><text x="16" y="38" font-family="sans-serif" font-weight="900" font-size="20" fill="%23000000">INSTA <tspan fill="%23DC2626">RUPEES</tspan></text></svg>';
 $instarupeesLogoSrc = getPartnerLogoSrc('instarupees.png', $instarupeesDataUri);
 
-// 4. UdhaarNow Logo
-$udhaarnowDataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60"><rect width="240" height="60" rx="10" fill="%23ffffff"/><text x="16" y="38" font-family="sans-serif" font-weight="900" font-size="21" fill="%2316A34A">Udhaar<tspan fill="%231E3A8A">Now</tspan></text></svg>';
-$udhaarnowLogoSrc = getPartnerLogoSrc('udhaarnow.png', $udhaarnowDataUri);
-
-// 5. LoanWithin Logo
-$loanwithinDataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60"><rect width="240" height="60" rx="10" fill="%23ffffff"/><text x="16" y="38" font-family="sans-serif" font-weight="900" font-size="21" fill="%2315803D">LOAN <tspan fill="%23000000">WITHIN</tspan></text></svg>';
-$loanwithinLogoSrc = getPartnerLogoSrc('loanwithin.png', $loanwithinDataUri);
-
-// 6. ShubhCash Logo
-$shubhcashDataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60"><rect width="240" height="60" rx="10" fill="%23ffffff"/><text x="16" y="38" font-family="sans-serif" font-weight="900" font-size="22" fill="%23EA580C">Shubh<tspan fill="%2315803D">cash</tspan></text></svg>';
-$shubhcashLogoSrc = getPartnerLogoSrc('shubhcash.png', $shubhcashDataUri);
-
-// 7. Borrowera Logo
+// 4. Borrowera Logo
 $borroweraDataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60"><rect width="240" height="60" rx="10" fill="%23ffffff"/><text x="16" y="38" font-family="sans-serif" font-weight="900" font-size="22" fill="%23EA580C">borrow<tspan fill="%231E3A8A">era</tspan></text></svg>';
 $borroweraLogoSrc = getPartnerLogoSrc('borrowera.png', $borroweraDataUri);
 
-// 8. Easy Fincare Logo
-$easyfincareDataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60"><rect width="240" height="60" rx="10" fill="%23ffffff"/><text x="16" y="38" font-family="sans-serif" font-weight="900" font-size="20" fill="%231E293B">EASY <tspan fill="%23DC2626">FINCARE</tspan></text></svg>';
-$easyfincareLogoSrc = getPartnerLogoSrc('easyfincare.png', $easyfincareDataUri);
-
-// 9. Ticket 2 Loan Logo
+// 5. Ticket 2 Loan Logo
 $ticket2loanDataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 60" width="260" height="60"><rect width="260" height="60" rx="10" fill="%23ffffff"/><text x="14" y="38" font-family="sans-serif" font-weight="900" font-size="21" fill="%23EA580C">Ticket<tspan fill="%23F59E0B">2Loan</tspan></text></svg>';
 $ticket2loanLogoSrc = getPartnerLogoSrc('ticket2loan.png', $ticket2loanDataUri);
+
+// 6. MoneyDot Logo
+$moneydotDataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60"><rect width="240" height="60" rx="10" fill="%23ffffff"/><circle cx="36" cy="30" r="18" fill="%232563EB"/><text x="64" y="38" font-family="sans-serif" font-weight="900" font-size="22" fill="%230F172A">Money<tspan fill="%232563EB">Dot</tspan></text></svg>';
+$moneydotLogoSrc = getPartnerLogoSrc('moneydot.png', $moneydotDataUri);
 
 return [
     'rupay91' => [
@@ -164,99 +152,6 @@ return [
         ],
         'target_url' => 'https://www.instarupees.com/apply-loan?utm_source={aff_id}&utm_medium=affiliate&utm_campaign=paisainminutes&utm_term={lead_id}&sub_id={lead_id}&ref={aff_id}&source={aff_id}'
     ],
-    'udhaarnow' => [
-        'slug' => 'udhaarnow',
-        'name' => 'UdhaarNow',
-        'logo' => $udhaarnowLogoSrc,
-        'local_logo' => $udhaarnowLogoSrc,
-        'badge' => 'Verified Partner',
-        'badge_text' => 'Direct Application',
-        'badge_icon' => 'shield-check',
-        'badge_type' => 'verified',
-        'max_amount' => '₹1,00,000',
-        'interest_rate' => 'Up to 1% per day',
-        'apr' => '14% – 24% p.a.',
-        'tenure' => '30 - 90 Days',
-        'processing_fee' => '1% – 3% of loan amount',
-        'gst' => '18% on Processing Fee',
-        'total_repayment' => 'Determined by sanctioned tenure',
-        'rating' => '4.8',
-        'min_salary' => '₹35,000',
-        'min_salary_val' => 35000,
-        'min_cibil' => '500+',
-        'min_cibil_val' => 500,
-        'min_slab' => 1,
-        'tier' => 'base',
-        'eligibility_badge' => 'Matched (Flexible Credit Line)',
-        'features' => [
-            'Digital Pre-Matched Limit',
-            'Minimal KYC Required',
-            'Fast Application Processing'
-        ],
-        'target_url' => 'https://www.udhaarnow.com/apply-loan?utm_source={aff_id}&utm_medium=affiliate&utm_campaign=paisainminutes&utm_term={lead_id}&sub_id={lead_id}&ref={aff_id}&source={aff_id}'
-    ],
-    'loanwithin' => [
-        'slug' => 'loanwithin',
-        'name' => 'LoanWithin',
-        'logo' => $loanwithinLogoSrc,
-        'local_logo' => $loanwithinLogoSrc,
-        'badge' => 'Verified Partner',
-        'badge_text' => 'Direct Application',
-        'badge_icon' => 'trophy',
-        'badge_type' => 'trusted',
-        'max_amount' => '₹1,00,000',
-        'interest_rate' => 'Up to 1% per day',
-        'apr' => '14% – 24% p.a.',
-        'tenure' => '60 - 120 Days',
-        'processing_fee' => '1% – 3% of loan amount',
-        'gst' => '18% on Processing Fee',
-        'total_repayment' => 'Determined by sanctioned tenure',
-        'rating' => '4.9',
-        'min_salary' => '₹45,000',
-        'min_salary_val' => 45000,
-        'min_cibil' => '550+',
-        'min_cibil_val' => 550,
-        'min_slab' => 2,
-        'tier' => 'mid',
-        'eligibility_badge' => 'Matched (Direct Lender Application)',
-        'features' => [
-            'Paperless Fast Track Disbursal',
-            'Zero Collateral Required',
-            '100% Data Encrypted & Safe'
-        ],
-        'target_url' => 'https://www.loanwithin.com/apply-loan?utm_source={aff_id}&utm_medium=affiliate&utm_campaign=paisainminutes&utm_term={lead_id}&sub_id={lead_id}&ref={aff_id}&source={aff_id}'
-    ],
-    'shubhcash' => [
-        'slug' => 'shubhcash',
-        'name' => 'ShubhCash',
-        'logo' => $shubhcashLogoSrc,
-        'local_logo' => $shubhcashLogoSrc,
-        'badge' => 'Direct Credit',
-        'badge_text' => 'Quick Disbursal',
-        'badge_icon' => 'flame',
-        'badge_type' => 'popular',
-        'max_amount' => '₹1,00,000',
-        'interest_rate' => 'Up to 1% per day',
-        'apr' => '14% – 24% p.a.',
-        'tenure' => '30 - 60 Days',
-        'processing_fee' => '1% – 3% of loan amount',
-        'gst' => '18% on Processing Fee',
-        'total_repayment' => 'Determined by sanctioned tenure',
-        'rating' => '4.9',
-        'min_salary' => '₹35,000',
-        'min_salary_val' => 35000,
-        'min_cibil' => '500+',
-        'min_cibil_val' => 500,
-        'min_slab' => 1,
-        'tier' => 'base',
-        'eligibility_badge' => 'Matched (Quick Disbursal Partner)',
-        'features' => [
-            '100% Online Application',
-            'Direct Bank Credit on Sanction',
-            'Zero Prepayment Penalty'
-        ],
-        'target_url' => 'https://www.shubhcash.com/apply-now?utm_source={aff_id}&utm_medium=affiliate&utm_campaign=paisainminutes&utm_term={lead_id}&sub_id={lead_id}&ref={aff_id}&source={aff_id}'
-    ],
     'borrowera' => [
         'slug' => 'borrowera',
         'name' => 'Borrowera',
@@ -288,37 +183,6 @@ return [
         ],
         'target_url' => 'https://www.borrowera.com/apply-loan?utm_source={aff_id}&utm_medium=affiliate&utm_campaign=paisainminutes&utm_term={lead_id}&sub_id={lead_id}&ref={aff_id}&source={aff_id}'
     ],
-    'easyfincare' => [
-        'slug' => 'easyfincare',
-        'name' => 'Easy Fincare',
-        'logo' => $easyfincareLogoSrc,
-        'local_logo' => $easyfincareLogoSrc,
-        'badge' => 'Simplifying Finance',
-        'badge_text' => 'Quick Disbursal',
-        'badge_icon' => 'shield-check',
-        'badge_type' => 'trusted',
-        'max_amount' => '₹1,00,000',
-        'interest_rate' => 'Up to 1% per day',
-        'apr' => '14% – 24% p.a.',
-        'tenure' => '60 - 90 Days',
-        'processing_fee' => '1% – 3% of loan amount',
-        'gst' => '18% on Processing Fee',
-        'total_repayment' => 'Determined by sanctioned tenure',
-        'rating' => '4.8',
-        'min_salary' => '₹45,000',
-        'min_salary_val' => 45000,
-        'min_cibil' => '550+',
-        'min_cibil_val' => 550,
-        'min_slab' => 2,
-        'tier' => 'mid',
-        'eligibility_badge' => 'Matched (Simplifying Finance)',
-        'features' => [
-            'Minimal Documentation Required',
-            'Fast Loan Processing',
-            'Zero Hidden Charges'
-        ],
-        'target_url' => 'https://www.easyfincare.com/apply-now?utm_source={aff_id}&utm_medium=affiliate&utm_campaign=paisainminutes&utm_term={lead_id}&sub_id={lead_id}&ref={aff_id}&source={aff_id}'
-    ],
     'ticket2loan' => [
         'slug' => 'ticket2loan',
         'name' => 'Ticket 2 Loan',
@@ -349,5 +213,39 @@ return [
             '100% Paperless with Minimal Documentation'
         ],
         'target_url' => 'https://www.ticket2loan.com/apply-loan?utm_source={aff_id}&utm_medium=affiliate&utm_campaign=paisainminutes&utm_term={lead_id}&sub_id={lead_id}&ref={aff_id}&source={aff_id}'
+    ],
+    'moneydot' => [
+        'enabled' => true,
+        'slug' => 'moneydot',
+        'name' => 'MoneyDot',
+        'logo' => $moneydotLogoSrc,
+        'local_logo' => $moneydotLogoSrc,
+        'badge' => 'Personal Loan App',
+        'badge_text' => 'Personal Loan App',
+        'badge_icon' => 'zap',
+        'badge_type' => 'featured',
+        'max_amount' => '₹1,00,000',
+        'interest_rate' => '24% – 60% per annum',
+        'apr' => '24% – 60% p.a.',
+        'tenure' => '3 - 12 Months',
+        'processing_fee' => 'Up to 5.1% of loan amount',
+        'gst' => 'Applicable GST on Processing Fee',
+        'total_repayment' => 'Determined by sanctioned tenure',
+        'rating' => '—',
+        'min_salary' => 'Partner Criteria',
+        'min_salary_val' => 15000,
+        'min_cibil' => 'Partner Criteria',
+        'min_cibil_val' => 300,
+        'min_slab' => 1,
+        'tier' => 'mid',
+        'eligibility_badge' => 'Personal Loan App (Digital Eligibility)',
+        'features' => [
+            'Digital Loan Application via MoneyDot App',
+            'Flexible Tenure from 3 to 12 Months',
+            'Processing Fee: Up to 5.1% + GST'
+        ],
+        'target_url' => 'https://play.google.com/store/apps/details?id=com.yrs.moneydot&hl=en_IN',
+        'app_package' => 'com.yrs.moneydot',
+        'is_app' => true
     ]
 ];

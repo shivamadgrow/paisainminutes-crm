@@ -1,12 +1,159 @@
     </main>
+    <style id="footer-custom-styles">
+    /* --- FOOTER LOGO & GRID REFINEMENTS --- */
+    .footer-logo-link {
+        display: inline-flex;
+        align-items: center;
+        margin: 0 0 1.25rem 0;
+        text-decoration: none;
+        line-height: 1;
+    }
+    .footer-logo-link:focus-visible {
+        outline: 2px solid var(--accent-color, #4A8DFF);
+        outline-offset: 4px;
+        border-radius: 4px;
+    }
+    .footer-logo-img {
+        width: auto;
+        height: 48px;
+        max-width: 170px;
+        object-fit: contain;
+        display: block;
+        margin: 0;
+        background: #FFFFFF;
+        border-radius: 8px;
+        padding: 4px 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        transition: opacity 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .footer-logo-link:hover .footer-logo-img {
+        opacity: 0.95;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+    }
+    .footer-grid {
+        display: grid;
+        grid-template-columns: 1.35fr 1fr 1.15fr 1.05fr;
+        gap: 2.5rem;
+        margin-bottom: 2.5rem;
+        align-items: start;
+    }
+    .footer-col h4,
+    .footer h4 {
+        margin-top: 0;
+        margin-bottom: 1.25rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--white, #FFFFFF);
+        letter-spacing: -0.01em;
+    }
+    .footer-contact-item a {
+        color: inherit;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+    .footer-contact-item a:hover {
+        color: var(--white, #FFFFFF);
+        text-decoration: underline;
+    }
+
+    /* --- BACK TO TOP BUTTON --- */
+    .back-to-top {
+        position: fixed;
+        bottom: 28px;
+        right: 28px;
+        z-index: 1050;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        font-family: var(--font-body, 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #FFFFFF;
+        background: linear-gradient(135deg, #1B2A6B 0%, #0E1638 100%);
+        border: 1px solid rgba(74, 141, 255, 0.4);
+        border-radius: 50px;
+        box-shadow: 0 4px 16px rgba(14, 22, 56, 0.35);
+        cursor: pointer;
+        text-decoration: none;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(16px);
+        transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                    visibility 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                    background-color 0.2s ease,
+                    border-color 0.2s ease,
+                    box-shadow 0.2s ease;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .back-to-top.visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
+    .back-to-top:hover {
+        background: linear-gradient(135deg, #4A8DFF 0%, #1B2A6B 100%);
+        border-color: #60A5FA;
+        color: #FFFFFF;
+        box-shadow: 0 8px 24px rgba(37, 99, 235, 0.45);
+        transform: translateY(-2px);
+    }
+    .back-to-top:active {
+        transform: translateY(0);
+    }
+    .back-to-top:focus-visible {
+        outline: 2px solid var(--accent-color, #4A8DFF);
+        outline-offset: 3px;
+        box-shadow: 0 0 0 4px rgba(74, 141, 255, 0.3);
+    }
+    .back-to-top-icon {
+        flex-shrink: 0;
+        transition: transform 0.2s ease;
+    }
+    .back-to-top:hover .back-to-top-icon {
+        transform: translateY(-2px);
+    }
+
+    @media (max-width: 1024px) {
+        .footer-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 2.25rem 2rem !important;
+        }
+        .footer-brand {
+            grid-column: span 1 !important;
+            margin-bottom: 0 !important;
+        }
+    }
+    @media (max-width: 768px) {
+        .footer-grid {
+            grid-template-columns: 1fr !important;
+            gap: 2rem !important;
+        }
+        .footer-logo-img {
+            height: 42px;
+            max-width: 150px;
+            padding: 3px 6px;
+        }
+        .back-to-top {
+            bottom: 20px;
+            right: 20px;
+            padding: 8px 14px;
+            font-size: 0.8rem;
+            gap: 6px;
+        }
+    }
+    </style>
     <!-- FOOTER -->
     <footer class="footer">
         <div class="container">
             <div class="footer-grid">
-                <!-- Col 1 -->
+                <!-- Col 1: Brand -->
                 <div class="footer-brand">
-                    <a href="/" class="logo" style="margin-bottom: 1rem; display: flex; align-items: center; height: 100px;" aria-label="Paisa in Minutes Home">
-                        <img src="/assets/logo.webp" alt="Paisa in Minutes" style="height: 100px; width: auto; display: block;" loading="lazy" decoding="async" width="100" height="100">
+                    <a href="/" class="footer-logo-link" aria-label="Paisa in Minutes Home">
+                        <img src="/assets/footer-logo.webp" alt="Paisa in Minutes" class="footer-logo-img" width="941" height="440" loading="lazy" decoding="async">
                     </a>
                     <p class="footer-tagline">Making personal finance transparent, reliable, and accessible for everyday Indians.</p>
                     <div class="social-links">
@@ -22,8 +169,8 @@
                     </div>
                 </div>
 
-                <!-- Col 2 -->
-                <div>
+                <!-- Col 2: Quick Links -->
+                <div class="footer-col">
                     <h4>Quick Links</h4>
                     <ul class="footer-links">
                         <li><a href="/about-us">About Us</a></li>
@@ -36,8 +183,8 @@
                     </ul>
                 </div>
 
-                <!-- Col 3 -->
-                <div>
+                <!-- Col 3: Personal Loan Hub -->
+                <div class="footer-col">
                     <h4>Personal Loan Hub</h4>
                     <ul class="footer-links">
                         <li><a href="/personal-loan">Instant Personal Loan</a></li>
@@ -51,8 +198,8 @@
                     </ul>
                 </div>
 
-                <!-- Col 4 -->
-                <div>
+                <!-- Col 4: Get in Touch -->
+                <div class="footer-col">
                     <h4>Get in Touch</h4>
                     <div class="footer-contact-item">
                         <!-- Location Icon -->
@@ -62,12 +209,12 @@
                     <div class="footer-contact-item">
                         <!-- Phone Icon -->
                         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                        <span>+91 9990 666578</span>
+                        <a href="tel:+919990666578">+91 9990 666578</a>
                     </div>
                     <div class="footer-contact-item">
                         <!-- Envelope Icon -->
                         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
-                        <span>info@paisainminutes.com</span>
+                        <a href="mailto:info@paisainminutes.com">info@paisainminutes.com</a>
                     </div>
                 </div>
             </div>
@@ -198,7 +345,7 @@
             <!-- Footer Bottom -->
             <div class="footer-bottom">
                 <div class="footer-copyright">
-                    &copy; <?php echo date('Y'); ?> Paisa in Minutes. All rights reserved by <a href="https://adgrowmedia.in/" target="_blank" rel="noopener noreferrer">AdGrow Media Services</a>.
+                    &copy; <?php echo date('Y'); ?> Paisa in Minutes. All rights reserved by <a href="https://adgrowmedia.in/" target="_blank" rel="noopener noreferrer">ADSGROW DIGITAL MEDIA SERVICES PRIVATE LIMITED</a>.
                 </div>
                 <div class="footer-policies">
                     <a href="/about-us">About Us</a>
@@ -215,6 +362,14 @@
 
         </div>
     </footer>
+
+    <!-- BACK TO TOP BUTTON -->
+    <button type="button" class="back-to-top" id="backToTop" aria-label="Back to Top" title="Back to Top">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="back-to-top-icon">
+            <path d="M18 15l-6-6-6 6"/>
+        </svg>
+        <span class="back-to-top-text">Back to Top</span>
+    </button>
 
     <!-- LEAD APPLICATION MODAL -->
     <div class="modal" id="applyModal" role="dialog" aria-modal="true" aria-labelledby="applyModalTitle">
@@ -287,5 +442,45 @@
     <!-- JavaScripts (Minified with fallback) -->
     <script src="/js/calc-clamp.js?v=<?php echo @filemtime(__DIR__ . '/../js/calc-clamp.js') ?: 1; ?>" defer></script>
     <script src="<?php echo file_exists(__DIR__ . '/../js/main.min.js') ? '/js/main.min.js?v=' . filemtime(__DIR__ . '/../js/main.min.js') : '/js/main.js?v=' . (file_exists(__DIR__ . '/../js/main.js') ? filemtime(__DIR__ . '/../js/main.js') : '1'); ?>" defer></script>
+
+    <!-- Back to Top Scroll Controller -->
+    <script>
+    (function() {
+        var btn = document.getElementById('backToTop');
+        if (!btn) return;
+
+        var isTicking = false;
+        function checkScroll() {
+            if (window.scrollY > 300) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
+            isTicking = false;
+        }
+
+        window.addEventListener('scroll', function() {
+            if (!isTicking) {
+                window.requestAnimationFrame(checkScroll);
+                isTicking = true;
+            }
+        }, { passive: true });
+
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            try {
+                window.scrollTo({
+                    top: 0,
+                    behavior: reduceMotion ? 'auto' : 'smooth'
+                });
+            } catch (err) {
+                window.scrollTo(0, 0);
+            }
+        });
+
+        checkScroll();
+    })();
+    </script>
 </body>
 </html>

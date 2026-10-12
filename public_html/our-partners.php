@@ -6,7 +6,7 @@
 
 $page_title = "Lending Partners | Paisa in Minutes";
 $page_description = "Explore RBI-regulated lending partners connected with Paisa in Minutes. Learn about our Lending Service Provider (LSP) model and regulatory disclosures.";
-$page_keywords = "lending partners, nbfc partners, loan facilitation lsp, rbi digital lending guidelines, paisa in minutes partners, jhatpat loans, borrowera, insta rupees, shubh cash, ticket 2 loan, easy fincare, loan within, rupay91, udhaar now";
+$page_keywords = "lending partners, nbfc partners, loan facilitation lsp, rbi digital lending guidelines, paisa in minutes partners, jhatpat loans, borrowera, insta rupees, ticket 2 loan, rupay91, moneydot";
 
 include 'includes/header.php';
 
@@ -64,23 +64,6 @@ $onboardedPartners = [
         ]
     ],
     [
-        'name' => 'Shubh Cash',
-        'slug' => 'shubhcash',
-        'logo' => '/assets/shubhcash.png',
-        'badge' => 'Quick Disbursal Partner',
-        'max_amount' => '₹1,00,000',
-        'interest_rate' => 'Up to 1% per day',
-        'tenure' => '30 - 45 Days',
-        'disbursal' => 'Direct Bank Credit',
-        'rating' => '4.9',
-        'terms_url' => 'https://www.shubhcash.com/terms-and-conditions',
-        'features' => [
-            '100% Online Application',
-            'Same Day Direct Bank Credit',
-            'Zero Prepayment Penalty'
-        ]
-    ],
-    [
         'name' => 'Ticket 2 Loan',
         'slug' => 'ticket2loan',
         'logo' => '/assets/ticket2loan.png',
@@ -95,40 +78,6 @@ $onboardedPartners = [
             'Smart, Simple & Secure Process',
             'Direct Bank Credit in Minutes',
             '100% Paperless with Minimal KYC'
-        ]
-    ],
-    [
-        'name' => 'Easy Fincare',
-        'slug' => 'easyfincare',
-        'logo' => '/assets/easyfincare.png',
-        'badge' => 'Simplifying Finance',
-        'max_amount' => '₹1,00,000',
-        'interest_rate' => 'Up to 1% per day',
-        'tenure' => '30 - 45 Days',
-        'disbursal' => 'Direct Bank Credit',
-        'rating' => '4.8',
-        'terms_url' => 'https://www.easyfincare.com/terms-and-conditions',
-        'features' => [
-            'Minimal Documentation Required',
-            'Fast Loan Approval Process',
-            'Zero Prepayment Hidden Charges'
-        ]
-    ],
-    [
-        'name' => 'Loan Within',
-        'slug' => 'loanwithin',
-        'logo' => '/assets/loanwithin.png',
-        'badge' => 'Verified Lending Partner',
-        'max_amount' => '₹1,00,000',
-        'interest_rate' => 'Up to 1% per day',
-        'tenure' => '30 - 45 Days',
-        'disbursal' => 'Direct Bank Credit',
-        'rating' => '4.9',
-        'terms_url' => 'https://www.loanwithin.com/terms-and-conditions',
-        'features' => [
-            'Paperless Fast Track Disbursal',
-            'Zero Collateral Required',
-            '100% Data Encrypted & Safe'
         ]
     ],
     [
@@ -149,20 +98,20 @@ $onboardedPartners = [
         ]
     ],
     [
-        'name' => 'Udhaar Now',
-        'slug' => 'udhaarnow',
-        'logo' => '/assets/udhaarnow.png',
-        'badge' => 'Flexible Credit Line',
+        'name' => 'MoneyDot',
+        'slug' => 'moneydot',
+        'logo' => '/assets/moneydot.png',
+        'badge' => 'Personal Loan App',
         'max_amount' => '₹1,00,000',
-        'interest_rate' => 'Up to 1% per day',
-        'tenure' => '30 - 45 Days',
+        'interest_rate' => '24% – 60% per annum',
+        'tenure' => '3 - 12 Months',
         'disbursal' => 'Direct Bank Credit',
-        'rating' => '4.8',
-        'terms_url' => 'https://www.udhaarnow.com/terms-and-conditions.aspx',
+        'rating' => '—',
+        'terms_url' => 'https://www.moneydot.in/privacy-policy.html',
         'features' => [
-            'Instant Pre-Matched Limit',
-            'Minimal KYC Verification',
-            '24/7 Digital Application Processing'
+            'Digital Loan Application via MoneyDot App',
+            'Flexible Tenure: 3 to 12 Months',
+            'Processing Fee: Up to 5.1% + GST'
         ]
     ]
 ];

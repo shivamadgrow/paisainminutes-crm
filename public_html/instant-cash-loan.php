@@ -28,9 +28,12 @@ $affId = getPimAffiliateId();
 // Pre-filter partners for Instant Cash / Short-Term loans up to ₹1,00,000
 $campaignPartners = [];
 foreach ($partners as $slug => $p) {
+    if (isset($p['enabled']) && $p['enabled'] === false) {
+        continue;
+    }
     // Only include partners offering loans up to ₹1 Lakh or short-term tenures
     $maxAmt = (int) preg_replace('/[^\d]/', '', $p['max_amount'] ?? '100000');
-    if ($maxAmt <= 100000 || in_array($slug, ['rupay91', 'jhatpatloans', 'instarupees', 'udhaarnow', 'loanwithin', 'shubhcash', 'borrowera', 'easyfincare', 'ticket2loan'])) {
+    if ($maxAmt <= 100000 || in_array($slug, ['rupay91', 'jhatpatloans', 'instarupees', 'borrowera', 'ticket2loan', 'moneydot'])) {
         $campaignPartners[$slug] = $p;
     }
 }
@@ -1991,9 +1994,10 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                         <div class="cro-hero-lenders-chips">
                             <span class="cro-hero-chip">Rupay91</span>
                             <span class="cro-hero-chip">Jhatpat Loans</span>
-                            <span class="cro-hero-chip">UdhaarNow</span>
-                            <span class="cro-hero-chip">Shubhcash</span>
-                            <span class="cro-hero-chip">EasyFinCare</span>
+                            <span class="cro-hero-chip">Insta Rupees</span>
+                            <span class="cro-hero-chip">Borrowera</span>
+                            <span class="cro-hero-chip">Ticket 2 Loan</span>
+                            <span class="cro-hero-chip">MoneyDot</span>
                         </div>
                     </div>
                 </div>
@@ -2161,7 +2165,9 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                                 </div>
                                 <div class="cro-offer-badge-wrap">
                                     <span class="cro-offer-badge"><?php echo $badgeText; ?></span>
-                                    <span class="cro-offer-rating">★ <?php echo $rating; ?></span>
+                                    <?php if (!empty($rating) && $rating !== '—'): ?>
+                                        <span class="cro-offer-rating">★ <?php echo $rating; ?></span>
+                                    <?php endif; ?>
                                 </div>
                             </div>
 
@@ -2217,13 +2223,36 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                             </ul>
                         </div>
 
+                        <?php 
+                        $isAppPartner = !empty($p['is_app']) || $slug === 'moneydot';
+                        if ($isAppPartner) {
+                            $targetUrl = $p['target_url'] ?? 'https://play.google.com/store/apps/details?id=com.yrs.moneydot&hl=en_IN';
+                            $utmParts = [];
+                            foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as $uKey) {
+                                if (!empty($_GET[$uKey])) {
+                                    $utmParts[] = $uKey . '=' . urlencode(trim($_GET[$uKey]));
+                                }
+                            }
+                            if (!empty($affId)) $utmParts[] = 'ref=' . urlencode($affId);
+                            $applyUrl = $targetUrl;
+                            if (!empty($utmParts)) {
+                                $referrerParam = implode('&', $utmParts);
+                                $applyUrl .= (strpos($targetUrl, '?') !== false ? '&' : '?') . 'referrer=' . urlencode($referrerParam);
+                            }
+                            $appPackageAttr = htmlspecialchars($p['app_package'] ?? 'com.yrs.moneydot');
+                        } else {
+                            $applyUrl = htmlspecialchars($pimNodeApi) . '/api/public/redirect/' . urlencode($slug) . '?ref=' . urlencode($affId) . '&source=instant_cash_loan';
+                            $appPackageAttr = '';
+                        }
+                        ?>
                         <!-- Apply Button via Tracked Node Redirect -->
-                        <a href="<?php echo htmlspecialchars($pimNodeApi); ?>/api/public/redirect/<?php echo urlencode($slug); ?>?ref=<?php echo urlencode($affId); ?>&source=instant_cash_loan" 
+                        <a href="<?php echo htmlspecialchars($applyUrl); ?>" 
                            target="_blank" 
                            rel="noopener" 
                            class="cro-offer-cta"
                            data-partner-slug="<?php echo htmlspecialchars($slug); ?>"
-                           onclick="croTrackOfferClick('<?php echo htmlspecialchars($slug); ?>')">
+                           data-app-package="<?php echo $appPackageAttr; ?>"
+                           onclick="handleCroPartnerClick(event, this, '<?php echo htmlspecialchars($slug, ENT_QUOTES); ?>', '<?php echo $appPackageAttr; ?>')">
                             <span>View Offer</span>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -2645,7 +2674,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
     <footer class="cro-footer">
         <div class="cro-container cro-footer-inner">
             <a href="/" aria-label="Paisa in Minutes">
-                <img src="/assets/logo.webp" alt="Paisa in Minutes" style="height: 38px; width: auto; opacity: 0.85;" loading="lazy">
+                <img src="/assets/footer-logo.webp" alt="Paisa in Minutes" style="height: 38px; width: auto; background: #FFFFFF; border-radius: 6px; padding: 3px 6px;" loading="lazy">
             </a>
             <div class="cro-footer-links">
                 <a href="/privacy-policy" target="_blank">Privacy Policy</a>
@@ -2656,7 +2685,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 <a href="/contact-us" target="_blank">Contact Us</a>
             </div>
             <p style="color: #64748B; font-size: 0.76rem; max-width: 650px; line-height: 1.5;">
-                &copy; <?php echo date('Y'); ?> Paisa in Minutes. All rights reserved by <a href="https://adgrowmedia.in/" target="_blank" rel="noopener noreferrer" style="color: #94A3B8; text-decoration: underline;">AdGrow Media Services</a>.
+                &copy; <?php echo date('Y'); ?> Paisa in Minutes. All rights reserved by <a href="https://adgrowmedia.in/" target="_blank" rel="noopener noreferrer" style="color: #94A3B8; text-decoration: underline;">ADSGROW DIGITAL MEDIA SERVICES PRIVATE LIMITED</a>.
                 <br>Lending marketplace connecting borrowers with RBI-registered lenders.
             </p>
         </div>
@@ -3503,6 +3532,17 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                     keepalive: true
                 }).catch(() => {});
             } catch(e) {}
+        };
+
+        // --- Handle Offer CTA Click with Android Intent / Fallback ---
+        window.handleCroPartnerClick = function(e, linkEl, partnerSlug, appPackage) {
+            window.croTrackOfferClick(partnerSlug);
+            if (appPackage && /Android/i.test(navigator.userAgent)) {
+                e.preventDefault();
+                var fallbackUrl = linkEl.href;
+                var intentUrl = 'intent:#Intent;package=' + encodeURIComponent(appPackage) + ';S.browser_fallback_url=' + encodeURIComponent(fallbackUrl) + ';end';
+                window.location.href = intentUrl;
+            }
         };
 
         // --- FAQ Accordion Logic ---

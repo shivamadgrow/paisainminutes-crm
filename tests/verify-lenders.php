@@ -38,13 +38,15 @@ $expectedLenders = [
     'jhatpatloans' => ['name' => 'Jhatpat Loans', 'rate' => 'Up to 0.8% per day', 'isJhatpat' => true],
     'rupay91'      => ['name' => 'Rupay 91',      'rate' => 'Up to 1% per day',   'isJhatpat' => false],
     'borrowera'    => ['name' => 'Borrowera',     'rate' => 'Up to 1% per day',   'isJhatpat' => false],
-    'easyfincare'  => ['name' => 'Easy Fincare',  'rate' => 'Up to 1% per day',   'isJhatpat' => false],
     'ticket2loan'  => ['name' => 'Ticket 2 Loan', 'rate' => 'Up to 1% per day',   'isJhatpat' => false],
-    'udhaarnow'    => ['name' => 'UdhaarNow',     'rate' => 'Up to 1% per day',   'isJhatpat' => false],
-    'loanwithin'   => ['name' => 'LoanWithin',    'rate' => 'Up to 1% per day',   'isJhatpat' => false],
-    'shubhcash'    => ['name' => 'ShubhCash',     'rate' => 'Up to 1% per day',   'isJhatpat' => false],
     'instarupees'  => ['name' => 'Insta Rupees',  'rate' => 'Up to 1% per day',   'isJhatpat' => false],
+    'moneydot'     => ['name' => 'MoneyDot',      'rate' => '24% – 60% per annum','isJhatpat' => false],
 ];
+
+$removedLenders = ['udhaarnow', 'loanwithin', 'shubhcash', 'easyfincare'];
+foreach ($removedLenders as $remSlug) {
+    check("partners.php does NOT contain inactive lender ($remSlug)", !isset($partners[$remSlug]));
+}
 
 foreach ($expectedLenders as $slug => $info) {
     check("partners.php has {$info['name']} ($slug)", isset($partners[$slug]));
@@ -70,12 +72,15 @@ echo "\n--- 2. AUDITING public_html/our-partners.php ---\n";
 $ourPartnersRaw = file_get_contents($publicHtmlDir . '/our-partners.php');
 if (preg_match('/\$onboardedPartners\s*=\s*\[(.*?)\];/s', $ourPartnersRaw, $m)) {
     eval('$onboardedPartners = [' . $m[1] . '];');
-    check("our-partners.php contains 9 onboarded partners", count($onboardedPartners) === 9);
+    check("our-partners.php contains 6 onboarded partners", count($onboardedPartners) === 6);
     foreach ($onboardedPartners as $p) {
         $slug = $p['slug'];
         $actualRate = $p['interest_rate'] ?? '';
         if ($slug === 'jhatpatloans') {
             check("our-partners.php: Jhatpat Loans displays 'Up to 0.8% per day'", $actualRate === 'Up to 0.8% per day');
+        } elseif ($slug === 'moneydot') {
+            check("our-partners.php: MoneyDot displays '24% – 60% per annum'", $actualRate === '24% – 60% per annum');
+            check("our-partners.php: Non-Jhatpat {$p['name']} does NOT display 0.8%", strpos($actualRate, '0.8%') === false);
         } else {
             check("our-partners.php: {$p['name']} displays 'Up to 1% per day'", $actualRate === 'Up to 1% per day');
             check("our-partners.php: Non-Jhatpat {$p['name']} does NOT display 0.8%", strpos($actualRate, '0.8%') === false);
@@ -126,6 +131,10 @@ foreach ($expectedLenders as $slug => $info) {
     } else {
         check("Rendered HTML: Found offer card for {$info['name']}", false);
     }
+}
+
+foreach ($removedLenders as $remSlug) {
+    check("Rendered HTML: Zero occurrences of data-partner-slug='$remSlug'", strpos($renderedHtml, 'data-partner-slug="' . $remSlug . '"') === false);
 }
 
 // Check for legacy/banned strings in rendered HTML

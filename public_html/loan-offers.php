@@ -1099,6 +1099,9 @@ include 'includes/header.php';
         $ineligiblePartners = [];
 
         foreach ($partners as $slug => $partner) {
+            if (isset($partner['enabled']) && $partner['enabled'] === false) {
+                continue;
+            }
             $minSalVal = (int)($partner['min_salary_val'] ?? 25000);
             if ($userSalVal >= $minSalVal) {
                 $eligiblePartners[$slug] = $partner;
@@ -1192,17 +1195,23 @@ include 'includes/header.php';
                                     <?php echo getSvgIcon($badgeIcon, '', 12, 12); ?>
                                     <span><?php echo htmlspecialchars($badgeText); ?></span>
                                 </div>
+                                <?php if (!empty($partner['rating']) && $partner['rating'] !== '—'): ?>
                                 <div class="partner-rating">
                                     <?php echo getSvgIcon('star', '', 12, 12); ?>
                                     <span><?php echo htmlspecialchars($ratingVal ?: $partner['rating']); ?> / 5.0</span>
                                 </div>
+                                <?php endif; ?>
                             </div>
                         </div>
 
                         <!-- CIBIL & Monthly Salary Match Pill -->
                         <div class="elig-match-pill-wrap">
                             <div class="elig-match-pill elig-pill-matched">
-                                <span>✓ Matched for Min Salary <?php echo htmlspecialchars($partner['min_salary']); ?>+ | CIBIL <?php echo htmlspecialchars($partner['min_cibil']); ?></span>
+                                <?php if (!empty($partner['eligibility_badge'])): ?>
+                                    <span>✓ <?php echo htmlspecialchars($partner['eligibility_badge']); ?></span>
+                                <?php else: ?>
+                                    <span>✓ Matched for Min Salary <?php echo htmlspecialchars($partner['min_salary']); ?>+ | CIBIL <?php echo htmlspecialchars($partner['min_cibil']); ?></span>
+                                <?php endif; ?>
                             </div>
                         </div>
 
@@ -1245,12 +1254,37 @@ include 'includes/header.php';
                         </ul>
                     </div>
 
+                    <?php 
+                    $isAppPartner = !empty($partner['is_app']) || $slug === 'moneydot';
+                    if ($isAppPartner) {
+                        $targetUrl = $partner['target_url'] ?? 'https://play.google.com/store/apps/details?id=com.yrs.moneydot&hl=en_IN';
+                        $utmParts = [];
+                        foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as $uKey) {
+                            if (!empty($_GET[$uKey])) {
+                                $utmParts[] = $uKey . '=' . urlencode(trim($_GET[$uKey]));
+                            }
+                        }
+                        if (!empty($leadId)) $utmParts[] = 'lead_id=' . urlencode($leadId);
+                        if (!empty($affId)) $utmParts[] = 'ref=' . urlencode($affId);
+                        $applyUrl = $targetUrl;
+                        if (!empty($utmParts)) {
+                            $referrerParam = implode('&', $utmParts);
+                            $applyUrl .= (strpos($targetUrl, '?') !== false ? '&' : '?') . 'referrer=' . urlencode($referrerParam);
+                        }
+                        $appPackageAttr = htmlspecialchars($partner['app_package'] ?? 'com.yrs.moneydot');
+                    } else {
+                        $applyUrl = htmlspecialchars($pimNodeApi) . '/api/public/redirect/' . urlencode($slug) . '?lead_id=' . urlencode($leadId) . '&ref=' . urlencode($affId) . '&source=loan_offers';
+                        $appPackageAttr = '';
+                    }
+                    ?>
                     <!-- Call To Action Button -->
-                    <a href="<?php echo htmlspecialchars($pimNodeApi); ?>/api/public/redirect/<?php echo urlencode($slug); ?>?lead_id=<?php echo urlencode($leadId); ?>&ref=<?php echo urlencode($affId); ?>&source=loan_offers" 
+                    <a href="<?php echo htmlspecialchars($applyUrl); ?>" 
                        target="_blank" 
                        rel="noopener"
                        class="btn-apply-partner"
-                       onclick="recordOfferClick('<?php echo htmlspecialchars($slug, ENT_QUOTES); ?>', '<?php echo htmlspecialchars($leadId, ENT_QUOTES); ?>')">
+                       data-partner-slug="<?php echo htmlspecialchars($slug); ?>"
+                       data-app-package="<?php echo $appPackageAttr; ?>"
+                       onclick="handlePartnerClick(event, this, '<?php echo htmlspecialchars($slug, ENT_QUOTES); ?>', '<?php echo htmlspecialchars($leadId, ENT_QUOTES); ?>', '<?php echo $appPackageAttr; ?>')">
                        <span>Apply Now</span>
                        <?php echo getSvgIcon('arrow-right', '', 18, 18); ?>
                     </a>
@@ -1411,11 +1445,21 @@ function filterOffers(filterType, btnEl) {
         let show = true;
 
         if (filterType === 'instant') {
-            show = ['rupay91', 'jhatpatloans', 'borrowera', 'instarupees', 'shubhcash', 'ticket2loan'].includes(slug);
+            show = ['rupay91', 'jhatpatloans', 'borrowera', 'instarupees', 'ticket2loan', 'moneydot'].includes(slug);
         }
 
         card.style.display = show ? 'flex' : 'none';
     });
+}
+
+function handlePartnerClick(e, linkEl, slug, leadId, appPackage) {
+    recordOfferClick(slug, leadId);
+    if (appPackage && /Android/i.test(navigator.userAgent)) {
+        e.preventDefault();
+        var fallbackUrl = linkEl.href;
+        var intentUrl = 'intent:#Intent;package=' + encodeURIComponent(appPackage) + ';S.browser_fallback_url=' + encodeURIComponent(fallbackUrl) + ';end';
+        window.location.href = intentUrl;
+    }
 }
 
 function recordOfferClick(slug, leadId) {
@@ -1553,8 +1597,11 @@ function recordOfferClick(slug, leadId) {
   "itemListElement": [
     <?php 
     $i = 1;
-    $totalPartners = count($partners);
-    foreach ($partners as $pKey => $pData): 
+    $activePartners = array_filter($partners, function($p) {
+        return !isset($p['enabled']) || $p['enabled'] !== false;
+    });
+    $totalPartners = count($activePartners);
+    foreach ($activePartners as $pKey => $pData): 
     ?>
     {
       "@type": "ListItem",

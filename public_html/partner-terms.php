@@ -25,34 +25,10 @@ $partnerTerms = [
         'consent' => 'By continuing, I agree to CIBIL Terms and Conditions and authorize Insta Rupees and its associated lending partners to fetch and verify my KYC documents, PAN, employment details, and credit bureau records. I agree to Insta Rupees\'s Privacy Policy and Terms & Conditions and consent to receive communications from Insta Rupees via SMS, Email, and WhatsApp.'
     ],
     [
-        'name' => 'Udhaar Now',
-        'logo' => '/assets/udhaarnow.png',
-        'url' => 'https://www.udhaarnow.com/terms-and-conditions.aspx',
-        'consent' => 'I hereby authorize UdhaarNow and its affiliated lending partners as lenders to obtain, verify, and store my credit history from RBI-authorized Credit Bureaus and validate my identity and financial credentials for sanctioning digital personal loans. I confirm having read and agreed to the Terms & Conditions and give permission for transactional and informational alerts via SMS, WhatsApp, and phone calls.'
-    ],
-    [
-        'name' => 'Loan Within',
-        'logo' => '/assets/loanwithin.png',
-        'url' => 'https://www.loanwithin.com/terms-and-conditions',
-        'consent' => 'I hereby grant consent in favor of LoanWithin and its lending partners to securely collect, verify, and process my personal data, identity documents, bank statements, and credit bureau score for digital loan evaluation and credit appraisal. I agree to be bound by the Terms and Conditions and Privacy Policy of LoanWithin and agree to receive updates and promotional notices through SMS, WhatsApp, and Phone calls.'
-    ],
-    [
-        'name' => 'Shubh Cash',
-        'logo' => '/assets/shubhcash.png',
-        'url' => 'https://www.shubhcash.com/terms-and-conditions',
-        'consent' => 'I declare that the details provided are true and correct, and I authorize ShubhCash and its partnered NBFCs to access my credit score, verify my employment and address information, and perform underwriting assessments. I hereby accept ShubhCash\'s Terms & Conditions and consent to receiving communications related to loan sanction, disbursal, and service offerings via Call, SMS, WhatsApp, and Email.'
-    ],
-    [
         'name' => 'Borrowera',
         'logo' => '/assets/borrowera.png',
         'url' => 'https://www.borrowera.com/terms-and-conditions',
         'consent' => 'I hereby give consent to Borrowera and its regulated lending partners to access my credit profile from authorized Credit Bureaus, authenticate my identity and KYC records, and share necessary information with financial partners for loan disbursal purposes. I have reviewed and accepted Borrowera\'s Terms and Conditions and agree to receive transactional and operational messages over SMS, Email, and WhatsApp.'
-    ],
-    [
-        'name' => 'Easy Fincare',
-        'logo' => '/assets/easyfincare.png',
-        'url' => 'https://www.easyfincare.com/terms-and-conditions',
-        'consent' => 'I hereby authorize Easy Fincare and its registered NBFC partners to collect, store, and process my personal data and KYC records, run credit inquiries with credit information companies, and assess my loan eligibility. I agree to adhere to the Terms & Conditions and Privacy Policy of Easy Fincare and give consent to contact me via Telephone, SMS, WhatsApp, or Electronic Mail.'
     ],
     [
         'name' => 'Ticket 2 Loan',
@@ -65,6 +41,12 @@ $partnerTerms = [
         'logo' => '/assets/rupay91.png',
         'url' => 'https://www.rupay91.com/terms-conditions.php',
         'consent' => 'I hereby give my consent to Rupay91 and its partnered NBFCs as lenders to collect, store, and verify my credit score and KYC credentials for processing and underwriting my personal loan request. I confirm having read and agreed to Rupay91\'s Terms & Conditions and Privacy Policy, and consent to receive loan updates, servicing alerts, and promotional messages through SMS, WhatsApp, and Call.'
+    ],
+    [
+        'name' => 'MoneyDot',
+        'logo' => '/assets/moneydot.png',
+        'url' => 'https://www.moneydot.in/privacy-policy.html',
+        'consent' => 'I hereby give my explicit consent to MoneyDot and its partner lending institutions to collect, verify, and assess my KYC and credit details for personal loan facilitation through the MoneyDot App. I confirm having read MoneyDot\'s Privacy Policy and agree to receive communications and updates regarding my loan application.'
     ]
 ];
 ?>

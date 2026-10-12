@@ -182,6 +182,13 @@ const getCompanyBadge = (company) => {
       dot: 'bg-violet-500'
     };
   }
+  if (clean.includes('moneydot') || clean.includes('money_dot')) {
+    return {
+      name: 'MoneyDot',
+      classes: 'bg-sky-50 text-sky-700 border-sky-200/80 hover:bg-sky-100/80',
+      dot: 'bg-sky-500'
+    };
+  }
   if (!company || clean === 'pendingselection' || clean === 'pending' || clean === 'unassigned' || clean === 'pendingdetails' || clean === 'auto' || clean === '') {
     return {
       name: clean === 'pendingdetails' ? 'Pending Details' : 'Pending Selection',
@@ -2419,6 +2426,7 @@ export default function LeadsView({
                   <option value="AUTO">✨ Auto (750+ Rupay91, &lt;750 Jhatpat Loans)</option>
                   <option value="Rupay91">💳 Rupay91</option>
                   <option value="Jhatpat Loans">⚡ Jhatpat Loans</option>
+                  <option value="MoneyDot">📱 MoneyDot</option>
                 </select>
               </div>
 
