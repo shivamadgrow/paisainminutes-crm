@@ -937,17 +937,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify(leadPayload),
                 keepalive: true
             })).then(r => r.json()).then(data => {
+                const savedLeadId = data?.lead_id || data?.data?.lead_id || ('PIM-ELIG-' + phoneVal);
                 if (typeof window.pimTrackMeta === 'function') {
                     window.pimTrackMeta('Lead', {
                         content_name: 'Eligibility Check Loan Lead',
                         content_category: 'Personal Loan',
-                        currency: 'INR'
-                    }, 'lead_elig_' + phoneVal);
+                        currency: 'INR',
+                        value: leadPayload.loanAmount || 0,
+                        lead_id: savedLeadId
+                    }, 'lead_elig_' + phoneVal, savedLeadId);
                 } else if (typeof window.fbq === 'function') {
                     window.fbq('track', 'Lead', {
                         content_name: 'Eligibility Check Loan Lead',
                         content_category: 'Personal Loan',
-                        currency: 'INR'
+                        currency: 'INR',
+                        value: leadPayload.loanAmount || 0
+                    }, { eventID: savedLeadId });
+                }
+
+                // Trigger Server-Side Meta Conversions API (CAPI) Lead Event
+                if (typeof window.pimSendLeadCapi === 'function') {
+                    window.pimSendLeadCapi({
+                        lead_id: savedLeadId,
+                        phone: phoneVal,
+                        name: nameVal,
+                        email: leadPayload.email,
+                        loan_amount: leadPayload.loanAmount
                     });
                 }
                 if (data && (data.redirect_url || (data.data && data.data.redirect_url))) {

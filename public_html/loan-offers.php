@@ -46,6 +46,7 @@ $userAmountStr = isset($_GET['loan_amount']) ? trim($_GET['loan_amount']) : ($_S
 
 // Node server (single backend). The page no longer reads or writes any lead data file.
 require_once __DIR__ . '/config/env.php';
+require_once __DIR__ . '/includes/meta_capi_service.php';
 $pimNodeApi = rtrim((string) getEnvVal('BACKEND_API_URL', 'https://api.paisainminutes.tech'), '/');
 
 /**
@@ -128,6 +129,29 @@ if ($accessCookie === '') {
         if (empty($_GET['loan_amount']) && !empty($nodeLead['amount'])) {
             $userAmountStr = (string) $nodeLead['amount'];
         }
+    }
+}
+
+// Trigger Server-Side Meta Conversions API (CAPI) for verified lead (idempotent, deduplicated)
+if (!empty($leadId) && strpos($leadId, 'PIM-') === 0) {
+    $capiDedupeKey = 'pim_capi_sent_' . md5($leadId);
+    if (empty($_SESSION[$capiDedupeKey])) {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'paisainminutes.com';
+        $fullPageUrl = $scheme . '://' . $host . ($_SERVER['REQUEST_URI'] ?? '/loan-offers.php');
+
+        $capiLeadData = [
+            'event_id' => $leadId,
+            'loan_amount' => $userAmountStr ?? null,
+            'name' => (!empty($userName) && $userName !== 'Applicant') ? $userName : null,
+            'event_source_url' => $fullPageUrl
+        ];
+        if (!empty($nodeLead['phone'])) {
+            $capiLeadData['phone'] = $nodeLead['phone'];
+        } elseif (!empty($_SESSION['pim_lead_phone'])) {
+            $capiLeadData['phone'] = $_SESSION['pim_lead_phone'];
+        }
+        MetaCapiService::sendLeadEvent($capiLeadData);
     }
 }
 

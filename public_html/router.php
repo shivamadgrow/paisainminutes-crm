@@ -21,6 +21,12 @@ if (preg_match('#^/(api/public/)?postback(/([a-zA-Z0-9_\-]+))?#i', $uri, $matche
     return;
 }
 
+// 1.2 Meta Conversions API (CAPI) Lead endpoint
+if (preg_match('#^/(api/)?meta-capi(\.php)?$#i', $uri)) {
+    require __DIR__ . '/api/meta-capi.php';
+    return;
+}
+
 // 2. High-Ticket Personal Loan Amount Pages (> ₹1 Lakh limit) -> 301 to /1-lakh-personal-loan
 if (preg_match('/^(5|10|20|30|40|50)-lakh-personal-loan$/', $clean_slug)) {
     header("Location: /1-lakh-personal-loan", true, 301);

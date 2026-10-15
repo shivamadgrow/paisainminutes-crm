@@ -55,6 +55,8 @@
     # 3.1 Partner conversion postback webhook
     RewriteRule ^postback/([a-zA-Z0-9_\-]+)/?$ /postback.php?partner=$1 [QSA,L]
     RewriteRule ^postback/?$ /postback.php [QSA,L]
+    # 3.2 Meta Conversions API (CAPI) endpoint
+    RewriteRule ^api/meta-capi/?$ /api/meta-capi.php [QSA,L]
 
     # 301 Redirects for Legacy Foreign Template URLs to protect topical authority
     RewriteRule ^about/?$ /about-us [R=301,L]

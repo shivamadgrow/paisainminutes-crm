@@ -708,18 +708,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { "Content-Type": "application/json", "Accept": "application/json" },
                 body: JSON.stringify(modalPayload),
                 keepalive: true
-            }).then(() => {
+            }).then(r => r.json()).then(data => {
+                const leadId = data?.lead_id || data?.data?.lead_id || ('PIM-MODAL-' + phoneVal);
                 if (typeof window.pimTrackMeta === 'function') {
                     window.pimTrackMeta('Lead', {
                         content_name: 'Website Quick Lead',
                         content_category: 'Personal Loan',
-                        currency: 'INR'
-                    }, 'quick_lead_' + phoneVal);
+                        currency: 'INR',
+                        lead_id: leadId
+                    }, 'quick_lead_' + phoneVal, leadId);
                 } else if (typeof window.fbq === 'function') {
                     window.fbq('track', 'Lead', {
                         content_name: 'Website Quick Lead',
                         content_category: 'Personal Loan',
                         currency: 'INR'
+                    }, { eventID: leadId });
+                }
+
+                if (typeof window.pimSendLeadCapi === 'function') {
+                    window.pimSendLeadCapi({
+                        lead_id: leadId,
+                        phone: phoneVal
                     });
                 }
             }).catch(() => {});

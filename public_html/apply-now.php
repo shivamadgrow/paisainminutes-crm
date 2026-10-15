@@ -1489,17 +1489,32 @@ document.addEventListener('DOMContentLoaded', function() {
             }))
             .then(res => res.json())
             .then(data => {
+                const savedLeadId = data?.lead_id || data?.data?.lead_id || ('PIM-APPLY-' + phoneVal);
                 if (typeof window.pimTrackMeta === 'function') {
                     window.pimTrackMeta('Lead', {
                         content_name: 'Apply Now Loan Lead',
                         content_category: 'Personal Loan',
-                        currency: 'INR'
-                    }, 'lead_apply_' + phoneVal);
+                        currency: 'INR',
+                        value: payload.loanAmount || 0,
+                        lead_id: savedLeadId
+                    }, 'lead_apply_' + phoneVal, savedLeadId);
                 } else if (typeof window.fbq === 'function') {
                     window.fbq('track', 'Lead', {
                         content_name: 'Apply Now Loan Lead',
                         content_category: 'Personal Loan',
-                        currency: 'INR'
+                        currency: 'INR',
+                        value: payload.loanAmount || 0
+                    }, { eventID: savedLeadId });
+                }
+
+                // Trigger Server-Side Meta Conversions API (CAPI) Lead Event
+                if (typeof window.pimSendLeadCapi === 'function') {
+                    window.pimSendLeadCapi({
+                        lead_id: savedLeadId,
+                        phone: phoneVal,
+                        name: payload.name || nameVal,
+                        email: payload.email,
+                        loan_amount: payload.loanAmount
                     });
                 }
                 if (data && data.data && data.data.redirect_url) {

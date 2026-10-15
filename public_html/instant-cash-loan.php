@@ -157,9 +157,10 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         window.addEventListener('popstate', trackNav, { passive: true });
     })();
 
-    // Privacy-Compliant Meta Event Dispatcher (Strictly prevents PII transmission)
-    window.pimTrackMeta = function(eventName, params, dedupeKey) {
+    // Privacy-Compliant Meta Event Dispatcher with Browser-Server Deduplication (eventID)
+    window.pimTrackMeta = function(eventName, params, dedupeKey, eventId) {
         try {
+            var resolvedEventId = eventId || (params && (params.event_id || params.eventID || params.lead_id)) || (dedupeKey && String(dedupeKey).indexOf('PIM-') === 0 ? dedupeKey : null);
             if (dedupeKey) {
                 window.__pim_meta_dedupe = window.__pim_meta_dedupe || {};
                 if (window.__pim_meta_dedupe[dedupeKey]) return;
@@ -178,11 +179,61 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 }
             }
             if (typeof window.fbq === 'function') {
-                window.fbq('track', eventName, cleanParams);
+                if (resolvedEventId) {
+                    window.fbq('track', eventName, cleanParams, { eventID: String(resolvedEventId) });
+                } else {
+                    window.fbq('track', eventName, cleanParams);
+                }
             }
             if (Array.isArray(window.dataLayer)) {
-                window.dataLayer.push(Object.assign({ event: 'meta_' + eventName }, cleanParams));
+                var dlItem = Object.assign({ event: 'meta_' + eventName }, cleanParams);
+                if (resolvedEventId) dlItem.event_id = String(resolvedEventId);
+                window.dataLayer.push(dlItem);
             }
+        } catch(e) {}
+    };
+
+    // Meta Conversions API (CAPI) Client Dispatcher (Fires server-side CAPI after lead save)
+    window.pimSendLeadCapi = function(data) {
+        try {
+            if (!data || (!data.event_id && !data.lead_id)) return;
+            var leadId = data.event_id || data.lead_id;
+            window.__pim_capi_sent = window.__pim_capi_sent || {};
+            if (window.__pim_capi_sent[leadId]) return;
+            window.__pim_capi_sent[leadId] = true;
+
+            var fbp = null, fbc = null;
+            try {
+                var mFbp = document.cookie.match(/(?:^|; )_fbp=([^;]*)/);
+                if (mFbp) fbp = decodeURIComponent(mFbp[1]);
+                var mFbc = document.cookie.match(/(?:^|; )_fbc=([^;]*)/);
+                if (mFbc) fbc = decodeURIComponent(mFbc[1]);
+            } catch(e) {}
+
+            var attr = (window.PIMAttribution && typeof window.PIMAttribution.payload === 'function') ? window.PIMAttribution.payload() : {};
+
+            var payload = {
+                event_id: leadId,
+                phone: data.phone || data.mobile,
+                name: data.name || data.fullName,
+                email: data.email,
+                loan_amount: data.loan_amount || data.amount,
+                page_url: window.location.href,
+                fbp: fbp || data.fbp,
+                fbc: fbc || data.fbc,
+                utm_source: attr.utm_source || data.utm_source,
+                utm_medium: attr.utm_medium || data.utm_medium,
+                utm_campaign: attr.utm_campaign || data.utm_campaign,
+                utm_term: attr.utm_term || data.utm_term,
+                utm_content: attr.utm_content || data.utm_content
+            };
+
+            fetch('/api/meta-capi.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify(payload),
+                keepalive: true
+            }).catch(function() {});
         } catch(e) {}
     };
     </script>
@@ -3529,6 +3580,35 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             trackMetaEvent('ApplicationCompleted', {
                 lead_id: activeLeadId
             });
+
+            // Trigger Deduplicated Meta Pixel & Server-Side Meta CAPI Lead Event
+            if (activeLeadId) {
+                if (typeof window.pimTrackMeta === 'function') {
+                    window.pimTrackMeta('Lead', {
+                        content_name: 'Instant Cash Loan Lead',
+                        content_category: 'Personal Loan',
+                        currency: 'INR',
+                        value: 50000,
+                        lead_id: activeLeadId
+                    }, 'lead_instant_' + verifiedPhone, activeLeadId);
+                } else if (typeof window.fbq === 'function') {
+                    window.fbq('track', 'Lead', {
+                        content_name: 'Instant Cash Loan Lead',
+                        content_category: 'Personal Loan',
+                        currency: 'INR',
+                        value: 50000
+                    }, { eventID: activeLeadId });
+                }
+
+                if (typeof window.pimSendLeadCapi === 'function') {
+                    window.pimSendLeadCapi({
+                        lead_id: activeLeadId,
+                        phone: verifiedPhone,
+                        name: customerName,
+                        loan_amount: 50000
+                    });
+                }
+            }
 
             // Update loading screen briefly before displaying matched offers
             if (loadingHeading) loadingHeading.textContent = 'Offers Matched Successfully!';

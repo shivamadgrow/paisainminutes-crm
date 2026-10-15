@@ -1667,13 +1667,26 @@ window.PimCustomerDetailsModal = (function() {
                 window.pimTrackMeta('Lead', {
                     content_name: 'Customer Modal Loan Lead',
                     content_category: 'Personal Loan',
-                    currency: 'INR'
-                }, 'lead_modal_' + activePhone);
+                    currency: 'INR',
+                    value: leadData.loanAmount || 0,
+                    lead_id: activeLeadId
+                }, 'lead_modal_' + activePhone, activeLeadId);
             } else if (typeof window.fbq === 'function') {
                 window.fbq('track', 'Lead', {
                     content_name: 'Customer Modal Loan Lead',
                     content_category: 'Personal Loan',
-                    currency: 'INR'
+                    currency: 'INR',
+                    value: leadData.loanAmount || 0
+                }, { eventID: activeLeadId });
+            }
+
+            if (typeof window.pimSendLeadCapi === 'function') {
+                window.pimSendLeadCapi({
+                    lead_id: activeLeadId,
+                    phone: activePhone,
+                    name: leadData.name,
+                    email: leadData.email,
+                    loan_amount: leadData.loanAmount
                 });
             }
 
