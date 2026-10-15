@@ -59,7 +59,6 @@ const excludedFiles = new Set([
     'gold-loan.php',
     'gold-loan-emi-calculator.php',
     'loan-against-property.php',
-    'loan-against-property-emi-calculator.php',
     'loan-against-fixed-deposit.php',
     'plot-loan.php',
     'small-business-loan.php',

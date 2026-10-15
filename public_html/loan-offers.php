@@ -9,7 +9,28 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/includes/affiliate_tracker.php';
 $partners = require __DIR__ . '/config/partners.php';
 
-$leadId = isset($_GET['lead_id']) ? htmlspecialchars(trim($_GET['lead_id'])) : ($_SESSION['pim_lead_id'] ?? 'PIM-' . rand(100000, 999999));
+// Lead ID: securely resolve, validate format, and persist in session and 30-day cookie
+$rawLead = trim($_GET['lead_id'] ?? '');
+$cleanLead = preg_replace('/[^A-Za-z0-9_-]/', '', $rawLead);
+if (!empty($cleanLead)) {
+    $_SESSION['pim_lead_id'] = $cleanLead;
+    if (!headers_sent()) {
+        setcookie('pim_lead_id', $cleanLead, time() + (86400 * 30), '/', '', false, true);
+    }
+    $leadId = htmlspecialchars($cleanLead);
+} elseif (!empty($_SESSION['pim_lead_id'])) {
+    $leadId = htmlspecialchars($_SESSION['pim_lead_id']);
+} elseif (!empty($_COOKIE['pim_lead_id'])) {
+    $cookieLead = preg_replace('/[^A-Za-z0-9_-]/', '', trim($_COOKIE['pim_lead_id']));
+    if (!empty($cookieLead)) {
+        $_SESSION['pim_lead_id'] = $cookieLead;
+        $leadId = htmlspecialchars($cookieLead);
+    } else {
+        $leadId = 'PIM-' . rand(100000, 999999);
+    }
+} else {
+    $leadId = 'PIM-' . rand(100000, 999999);
+}
 $affId = getPimAffiliateId();
 
 // The phone number is no longer read from (or put into) the URL (F-23). It is only known after the customer's own
@@ -72,6 +93,10 @@ if ($accessCookie === '') {
     if ($nodeLead) {
         if (!empty($nodeLead['lead_id'])) {
             $leadId = htmlspecialchars((string) $nodeLead['lead_id']);
+            $_SESSION['pim_lead_id'] = $leadId;
+            if (!headers_sent()) {
+                setcookie('pim_lead_id', $leadId, time() + (86400 * 30), '/', '', false, true);
+            }
         }
         if (!empty($nodeLead['phone_last4'])) {
             $phoneLast4 = preg_replace('/\D/', '', (string) $nodeLead['phone_last4']);
@@ -616,6 +641,16 @@ include 'includes/header.php';
     .metric-item-tenure .metric-val .val-main {
         font-size: 0.92rem !important;
     }
+    .partner-brand-header {
+        gap: 0.55rem;
+    }
+    .partner-card-name {
+        font-size: 1.15rem !important;
+    }
+    .partner-logo-box-app {
+        width: 44px !important;
+        height: 44px !important;
+    }
 }
 
 @media (max-width: 480px) {
@@ -650,6 +685,16 @@ include 'includes/header.php';
     .metric-item-tenure .metric-val .val-main {
         font-size: 0.85rem !important;
     }
+    .partner-brand-header {
+        gap: 0.45rem;
+    }
+    .partner-card-name {
+        font-size: 1.05rem !important;
+    }
+    .partner-logo-box-app {
+        width: 40px !important;
+        height: 40px !important;
+    }
 }
 
 @media (max-width: 360px) {
@@ -680,6 +725,16 @@ include 'includes/header.php';
     }
     .metric-item-tenure .metric-val .val-main {
         font-size: 0.78rem !important;
+    }
+    .partner-brand-header {
+        gap: 0.35rem;
+    }
+    .partner-card-name {
+        font-size: 0.96rem !important;
+    }
+    .partner-logo-box-app {
+        width: 36px !important;
+        height: 36px !important;
     }
 }
 
@@ -744,19 +799,36 @@ include 'includes/header.php';
     min-height: 52px;
 }
 
+.partner-brand-header {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
 .partner-logo-box {
     width: auto;
-    max-width: 150px;
+    max-width: 165px;
     height: 48px;
     background: #ffffff;
     border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 4px 10px;
+    padding: 4px 8px;
     border: 1px solid #f1f5f9;
     box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
     flex-shrink: 0;
+}
+
+.partner-logo-box-app {
+    width: 48px !important;
+    height: 48px !important;
+    padding: 3px !important;
+    border-radius: 12px !important;
+    background: #ffffff !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06) !important;
 }
 
 .partner-logo-box img {
@@ -765,6 +837,31 @@ include 'includes/header.php';
     width: auto;
     height: auto;
     object-fit: contain;
+}
+
+.partner-logo-box-app img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
+    border-radius: 9px !important;
+}
+
+.partner-brand-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+}
+
+.partner-card-name {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.2;
+    margin: 0;
+    letter-spacing: -0.015em;
+    white-space: nowrap;
 }
 
 .card-header-badges {
@@ -1152,11 +1249,18 @@ include 'includes/header.php';
                 $badgeText = trim($badgeText);
                 $ratingVal = preg_replace('/[^0-9.]/', '', $partner['rating'] ?? '4.9');
                 $rawLogo = $partner['local_logo'] ?? ($partner['logo'] ?? '/assets/images/partners/rupay91.png');
-                if (strpos($rawLogo, 'http') === 0 || strpos($rawLogo, 'data:') === 0) {
+                $staticAsset = '/assets/' . $slug . '.png';
+                if ($slug === 'moneydot') {
+                    $localLogo = file_exists(__DIR__ . '/assets/images/moneydot.png') ? '/assets/images/moneydot.png?v=4k' : '/assets/moneydot.png?v=4k';
+                } elseif (file_exists(__DIR__ . $staticAsset)) {
+                    $localLogo = $staticAsset . '?v=4k';
+                } elseif (strpos($rawLogo, 'http') === 0 || strpos($rawLogo, 'data:') === 0) {
                     $localLogo = $rawLogo;
                 } else {
                     $localLogo = '/' . ltrim($rawLogo, '/');
                 }
+                $partnerDisplayName = $partner['displayName'] ?? $partner['partnerName'] ?? $partner['name'] ?? 'MoneyDot';
+                $isAppPartner = !empty($partner['is_app']) || $slug === 'moneydot';
 
                 $interestRaw = (string)($partner['interest_rate'] ?? 'Up to 1% per day');
                 $prefix = '';
@@ -1185,10 +1289,17 @@ include 'includes/header.php';
                     <div>
                         <!-- Top Header Row: Brand Logo & Verified Badges -->
                         <div class="card-header-row">
-                            <div class="partner-logo-box">
-                                <img src="<?php echo htmlspecialchars($localLogo); ?>" 
-                                     alt="<?php echo htmlspecialchars($partner['name']); ?>" 
-                                     loading="lazy">
+                            <div class="partner-brand-header">
+                                <div class="partner-logo-box<?php echo $isAppPartner ? ' partner-logo-box-app' : ''; ?>">
+                                    <img src="<?php echo htmlspecialchars($localLogo); ?>" 
+                                         alt="<?php echo htmlspecialchars($partnerDisplayName); ?>" 
+                                         loading="lazy">
+                                </div>
+                                <?php if ($isAppPartner): ?>
+                                    <div class="partner-brand-info">
+                                        <h3 class="partner-card-name"><?php echo htmlspecialchars($partnerDisplayName); ?></h3>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                             <div class="card-header-badges">
                                 <div class="card-badge badge-<?php echo htmlspecialchars($badgeType); ?>">
@@ -1256,7 +1367,41 @@ include 'includes/header.php';
 
                     <?php 
                     $isAppPartner = !empty($partner['is_app']) || $slug === 'moneydot';
-                    if ($isAppPartner) {
+                    if ($slug === 'rupay91') {
+                        $targetUrl = $partner['target_url'] ?? 'https://loans.rupay91.com/login';
+                        $utmParts = [];
+                        foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as $uKey) {
+                            if (!empty($_GET[$uKey])) {
+                                $utmParts[] = $uKey . '=' . urlencode(trim($_GET[$uKey]));
+                            }
+                        }
+                        if (!empty($leadId)) {
+                            $utmParts[] = 'lead_id=' . urlencode($leadId);
+                            $utmParts[] = 'sub_id=' . urlencode($leadId);
+                        }
+                        if (!empty($affId)) $utmParts[] = 'ref=' . urlencode($affId);
+
+                        // Build inner next parameter for Rupay91 post-OTP redirection to /new
+                        $nextQuery = [];
+                        if (!empty($leadId)) {
+                            $nextQuery[] = 'lead_id=' . urlencode($leadId);
+                            $nextQuery[] = 'sub_id=' . urlencode($leadId);
+                        }
+                        if (!empty($affId)) $nextQuery[] = 'ref=' . urlencode($affId);
+                        foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as $uKey) {
+                            if (!empty($_GET[$uKey])) {
+                                $nextQuery[] = $uKey . '=' . urlencode(trim($_GET[$uKey]));
+                            }
+                        }
+                        $nextPath = '/new' . (!empty($nextQuery) ? '?' . implode('&', $nextQuery) : '');
+                        $utmParts[] = 'next=' . urlencode($nextPath);
+
+                        $applyUrl = $targetUrl;
+                        if (!empty($utmParts)) {
+                            $applyUrl .= (strpos($targetUrl, '?') !== false ? '&' : '?') . implode('&', $utmParts);
+                        }
+                        $appPackageAttr = '';
+                    } elseif ($isAppPartner) {
                         $targetUrl = $partner['target_url'] ?? 'https://play.google.com/store/apps/details?id=com.yrs.moneydot&hl=en_IN';
                         $utmParts = [];
                         foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as $uKey) {
@@ -1314,11 +1459,18 @@ include 'includes/header.php';
                         $shortfall = max(0, $minSalVal - $userSalVal);
                         $ratingVal = preg_replace('/[^0-9.]/', '', $partner['rating'] ?? '4.8');
                         $rawLogo = $partner['local_logo'] ?? ($partner['logo'] ?? '/assets/images/partners/rupay91.png');
-                        if (strpos($rawLogo, 'http') === 0 || strpos($rawLogo, 'data:') === 0) {
+                        $staticAsset = '/assets/' . $slug . '.png';
+                        if ($slug === 'moneydot') {
+                            $localLogo = file_exists(__DIR__ . '/assets/images/moneydot.png') ? '/assets/images/moneydot.png?v=4k' : '/assets/moneydot.png?v=4k';
+                        } elseif (file_exists(__DIR__ . $staticAsset)) {
+                            $localLogo = $staticAsset . '?v=4k';
+                        } elseif (strpos($rawLogo, 'http') === 0 || strpos($rawLogo, 'data:') === 0) {
                             $localLogo = $rawLogo;
                         } else {
                             $localLogo = '/' . ltrim($rawLogo, '/');
                         }
+                        $partnerDisplayName = $partner['displayName'] ?? $partner['partnerName'] ?? $partner['name'] ?? 'MoneyDot';
+                        $isAppPartner = !empty($partner['is_app']) || $slug === 'moneydot';
 
                         $interestRaw = (string)($partner['interest_rate'] ?? 'Up to 1% per day');
                         $prefix = '';
@@ -1346,10 +1498,17 @@ include 'includes/header.php';
                             <div>
                                 <!-- Header Row with Logo and Not Eligible Badge -->
                                 <div class="card-header-row">
-                                    <div class="partner-logo-box" style="background: #ffffff; border-color: #E2E8F0;">
-                                        <img src="<?php echo htmlspecialchars($localLogo); ?>" 
-                                             alt="<?php echo htmlspecialchars($partner['name']); ?>" 
-                                             loading="lazy">
+                                    <div class="partner-brand-header">
+                                        <div class="partner-logo-box<?php echo $isAppPartner ? ' partner-logo-box-app' : ''; ?>" style="background: #ffffff; border-color: #E2E8F0;">
+                                            <img src="<?php echo htmlspecialchars($localLogo); ?>" 
+                                                 alt="<?php echo htmlspecialchars($partnerDisplayName); ?>" 
+                                                 loading="lazy">
+                                        </div>
+                                        <?php if ($isAppPartner): ?>
+                                            <div class="partner-brand-info">
+                                                <h3 class="partner-card-name"><?php echo htmlspecialchars($partnerDisplayName); ?></h3>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
                                     <div class="card-header-badges">
                                         <div class="card-badge" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA;">
@@ -1445,7 +1604,7 @@ function filterOffers(filterType, btnEl) {
         let show = true;
 
         if (filterType === 'instant') {
-            show = ['rupay91', 'jhatpatloans', 'borrowera', 'instarupees', 'ticket2loan', 'moneydot'].includes(slug);
+            show = ['rupay91', 'jhatpatloans', 'borrowera', 'instarupees', 'easyfincare', 'moneydot'].includes(slug);
         }
 
         card.style.display = show ? 'flex' : 'none';
@@ -1472,12 +1631,21 @@ function recordOfferClick(slug, leadId) {
             body: JSON.stringify({
                 partner: slug,
                 leadId: leadId || '',
-                source: 'loan_offers'
+                source: 'loan_offers',
+                ref: 'paisainminutes'
             }),
             keepalive: true
         }).catch(() => {});
     } catch(e) {}
 }
+
+// Synchronize verified lead ID to device sessionStorage to guarantee continuity
+try {
+    const verifiedLeadId = <?php echo json_encode($leadId); ?>;
+    if (verifiedLeadId) {
+        sessionStorage.setItem('pim_lead_id', verifiedLeadId);
+    }
+} catch(e) {}
 </script>
 
 <!-- APPLICANT CIBIL SCORE SYNC SCRIPT -->

@@ -6,7 +6,7 @@
 
 $page_title = "Lending Partners | Paisa in Minutes";
 $page_description = "Explore RBI-regulated lending partners connected with Paisa in Minutes. Learn about our Lending Service Provider (LSP) model and regulatory disclosures.";
-$page_keywords = "lending partners, nbfc partners, loan facilitation lsp, rbi digital lending guidelines, paisa in minutes partners, jhatpat loans, borrowera, insta rupees, ticket 2 loan, rupay91, moneydot";
+$page_keywords = "lending partners, nbfc partners, loan facilitation lsp, rbi digital lending guidelines, paisa in minutes partners, jhatpat loans, borrowera, insta rupees, easy fincare, easyfincare, rupay91, moneydot";
 
 include 'includes/header.php';
 
@@ -64,20 +64,22 @@ $onboardedPartners = [
         ]
     ],
     [
-        'name' => 'Ticket 2 Loan',
-        'slug' => 'ticket2loan',
-        'logo' => '/assets/ticket2loan.png',
-        'badge' => 'Smart & Simple',
+        'name' => 'Easy Finca₹e',
+        'partnerName' => 'Easy Finca₹e',
+        'displayName' => 'Easy Finca₹e',
+        'slug' => 'easyfincare',
+        'logo' => '/assets/easyfincare.png',
+        'badge' => 'Simplifying Finance',
         'max_amount' => '₹1,00,000',
         'interest_rate' => 'Up to 1% per day',
         'tenure' => '30 - 45 Days',
         'disbursal' => 'Direct Bank Credit',
-        'rating' => '4.9',
-        'terms_url' => 'https://www.ticket2loan.com/terms-and-conditions.aspx',
+        'rating' => '4.8',
+        'terms_url' => 'https://www.easyfincare.com/terms-and-conditions',
         'features' => [
-            'Smart, Simple & Secure Process',
-            'Direct Bank Credit in Minutes',
-            '100% Paperless with Minimal KYC'
+            'Minimal Documentation Required',
+            'Fast Loan Processing',
+            'Zero Hidden Charges'
         ]
     ],
     [
@@ -99,8 +101,10 @@ $onboardedPartners = [
     ],
     [
         'name' => 'MoneyDot',
+        'partnerName' => 'MoneyDot',
+        'displayName' => 'MoneyDot',
         'slug' => 'moneydot',
-        'logo' => '/assets/moneydot.png',
+        'logo' => '/assets/moneydot.png?v=4k',
         'badge' => 'Personal Loan App',
         'max_amount' => '₹1,00,000',
         'interest_rate' => '24% – 60% per annum',

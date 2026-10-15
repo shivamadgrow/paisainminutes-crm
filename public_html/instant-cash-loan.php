@@ -25,6 +25,29 @@ $partners = require __DIR__ . '/config/partners.php';
 $pimNodeApi = rtrim((string) getEnvVal('BACKEND_API_URL', 'https://api.paisainminutes.tech'), '/');
 $affId = getPimAffiliateId();
 
+// Lead ID: securely resolve, validate format, and persist in session and 30-day cookie
+$rawLead = trim($_GET['lead_id'] ?? '');
+$cleanLead = preg_replace('/[^A-Za-z0-9_-]/', '', $rawLead);
+if (!empty($cleanLead)) {
+    $_SESSION['pim_lead_id'] = $cleanLead;
+    if (!headers_sent()) {
+        setcookie('pim_lead_id', $cleanLead, time() + (86400 * 30), '/', '', false, true);
+    }
+    $leadId = htmlspecialchars($cleanLead);
+} elseif (!empty($_SESSION['pim_lead_id'])) {
+    $leadId = htmlspecialchars($_SESSION['pim_lead_id']);
+} elseif (!empty($_COOKIE['pim_lead_id'])) {
+    $cookieLead = preg_replace('/[^A-Za-z0-9_-]/', '', trim($_COOKIE['pim_lead_id']));
+    if (!empty($cookieLead)) {
+        $_SESSION['pim_lead_id'] = $cookieLead;
+        $leadId = htmlspecialchars($cookieLead);
+    } else {
+        $leadId = '';
+    }
+} else {
+    $leadId = '';
+}
+
 // Pre-filter partners for Instant Cash / Short-Term loans up to ₹1,00,000
 $campaignPartners = [];
 foreach ($partners as $slug => $p) {
@@ -33,7 +56,7 @@ foreach ($partners as $slug => $p) {
     }
     // Only include partners offering loans up to ₹1 Lakh or short-term tenures
     $maxAmt = (int) preg_replace('/[^\d]/', '', $p['max_amount'] ?? '100000');
-    if ($maxAmt <= 100000 || in_array($slug, ['rupay91', 'jhatpatloans', 'instarupees', 'borrowera', 'ticket2loan', 'moneydot'])) {
+    if ($maxAmt <= 100000 || in_array($slug, ['rupay91', 'jhatpatloans', 'instarupees', 'borrowera', 'easyfincare', 'moneydot'])) {
         $campaignPartners[$slug] = $p;
     }
 }
@@ -2071,7 +2094,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                             <span class="cro-hero-chip">Jhatpat Loans</span>
                             <span class="cro-hero-chip">Insta Rupees</span>
                             <span class="cro-hero-chip">Borrowera</span>
-                            <span class="cro-hero-chip">Ticket 2 Loan</span>
+                            <span class="cro-hero-chip">Easy Finca₹e</span>
                             <span class="cro-hero-chip">MoneyDot</span>
                         </div>
                     </div>
@@ -2226,7 +2249,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                         
                         // Clean static asset image path (avoids megabytes of Base64 HTML overhead)
                         $staticLogo = '/assets/' . $slug . '.png';
-                        $logo = file_exists(__DIR__ . $staticLogo) ? $staticLogo : (!empty($p['logo']) && strpos($p['logo'], 'data:') === false ? $p['logo'] : $staticLogo);
+                        $logo = file_exists(__DIR__ . $staticLogo) ? $staticLogo . '?v=4k' : (!empty($p['logo']) && strpos($p['logo'], 'data:') === false ? $p['logo'] : $staticLogo);
                         $partnerType = ($p['badge_type'] === 'instant' || $p['badge_icon'] === 'zap') ? 'instant' : 'regular';
                     ?>
                     <div class="cro-offer-card" data-partner-type="<?php echo $partnerType; ?>">
@@ -2300,7 +2323,41 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
 
                         <?php 
                         $isAppPartner = !empty($p['is_app']) || $slug === 'moneydot';
-                        if ($isAppPartner) {
+                        if ($slug === 'rupay91') {
+                            $targetUrl = $p['target_url'] ?? 'https://loans.rupay91.com/login';
+                            $utmParts = [];
+                            foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as $uKey) {
+                                if (!empty($_GET[$uKey])) {
+                                    $utmParts[] = $uKey . '=' . urlencode(trim($_GET[$uKey]));
+                                }
+                            }
+                            if (!empty($leadId)) {
+                                $utmParts[] = 'lead_id=' . urlencode($leadId);
+                                $utmParts[] = 'sub_id=' . urlencode($leadId);
+                            }
+                            if (!empty($affId)) $utmParts[] = 'ref=' . urlencode($affId);
+
+                            // Build inner next parameter for Rupay91 post-OTP redirection to /new
+                            $nextQuery = [];
+                            if (!empty($leadId)) {
+                                $nextQuery[] = 'lead_id=' . urlencode($leadId);
+                                $nextQuery[] = 'sub_id=' . urlencode($leadId);
+                            }
+                            if (!empty($affId)) $nextQuery[] = 'ref=' . urlencode($affId);
+                            foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as $uKey) {
+                                if (!empty($_GET[$uKey])) {
+                                    $nextQuery[] = $uKey . '=' . urlencode(trim($_GET[$uKey]));
+                                }
+                            }
+                            $nextPath = '/new' . (!empty($nextQuery) ? '?' . implode('&', $nextQuery) : '');
+                            $utmParts[] = 'next=' . urlencode($nextPath);
+
+                            $applyUrl = $targetUrl;
+                            if (!empty($utmParts)) {
+                                $applyUrl .= (strpos($targetUrl, '?') !== false ? '&' : '?') . implode('&', $utmParts);
+                            }
+                            $appPackageAttr = '';
+                        } elseif ($isAppPartner) {
                             $targetUrl = $p['target_url'] ?? 'https://play.google.com/store/apps/details?id=com.yrs.moneydot&hl=en_IN';
                             $utmParts = [];
                             foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as $uKey) {
@@ -3571,14 +3628,29 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 if (bureauStatusEl) bureauStatusEl.textContent = 'Eligible for Income-Based Disbursal';
             }
 
-            // Update CTA Links with live Lead ID
+            // Update CTA Links with live Lead ID and ensure Rupay91 has sub_id and next parameters
             const ctaLinks = document.querySelectorAll('.cro-offer-cta');
             ctaLinks.forEach(link => {
-                const currentHref = link.getAttribute('href');
-                if (currentHref && !currentHref.includes('lead_id=')) {
-                    link.setAttribute('href', currentHref + '&lead_id=' + encodeURIComponent(activeLeadId));
+                let currentHref = link.getAttribute('href');
+                if (currentHref && activeLeadId) {
+                    if (!currentHref.includes('lead_id=')) {
+                        const delim = currentHref.includes('?') ? '&' : '?';
+                        currentHref = currentHref + delim + 'lead_id=' + encodeURIComponent(activeLeadId) + '&sub_id=' + encodeURIComponent(activeLeadId);
+                    }
+                    if (currentHref.includes('loans.rupay91.com') && !currentHref.includes('next=')) {
+                        const nextTarget = '/new?lead_id=' + encodeURIComponent(activeLeadId) + '&ref=paisainminutes&sub_id=' + encodeURIComponent(activeLeadId);
+                        currentHref = currentHref + '&next=' + encodeURIComponent(nextTarget);
+                    }
+                    link.setAttribute('href', currentHref);
                 }
             });
+
+            // Synchronize verified lead ID to device sessionStorage to guarantee continuity
+            try {
+                if (activeLeadId) {
+                    sessionStorage.setItem('pim_lead_id', activeLeadId);
+                }
+            } catch(e) {}
 
             trackMetaEvent('LoanOffersViewed', {
                 lead_id: activeLeadId,
@@ -3617,7 +3689,8 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                     body: JSON.stringify({
                         partner: partnerSlug,
                         leadId: activeLeadId,
-                        source: 'instant_cash_loan'
+                        source: 'instant_cash_loan',
+                        ref: 'paisainminutes'
                     }),
                     keepalive: true
                 }).catch(() => {});

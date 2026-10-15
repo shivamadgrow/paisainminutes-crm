@@ -5,6 +5,8 @@ export const AFFILIATE_PARTNERS = [
   {
     id: 'rupay91',
     name: 'Rupay91',
+    partnerName: 'Rupay 91',
+    displayName: 'Rupay 91',
     code: 'RUPAY91',
     tagline: 'Instant Digital Credit (CIBIL 750+)',
     badgeClass: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
@@ -26,6 +28,8 @@ export const AFFILIATE_PARTNERS = [
   {
     id: 'borrowera',
     name: 'Borrowera',
+    partnerName: 'Borrowera',
+    displayName: 'Borrowera',
     code: 'BORROWERA',
     tagline: 'Speedy Digital Lending',
     badgeClass: 'bg-purple-50 text-purple-700 border border-purple-200',
@@ -47,6 +51,8 @@ export const AFFILIATE_PARTNERS = [
   {
     id: 'instarupees',
     name: 'Insta Rupees',
+    partnerName: 'Insta Rupees',
+    displayName: 'Insta Rupees',
     code: 'INSTARUPEES',
     tagline: 'Fast Cash Loans',
     badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
@@ -68,6 +74,8 @@ export const AFFILIATE_PARTNERS = [
   {
     id: 'jhatpatloans',
     name: 'Jhatpat Loans',
+    partnerName: 'Jhatpat Loans',
+    displayName: 'Jhatpat Loans',
     code: 'JHATPAT',
     tagline: 'Quick Personal Loans',
     badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
@@ -87,29 +95,33 @@ export const AFFILIATE_PARTNERS = [
     commissionPct: 0.06,
   },
   {
-    id: 'ticket2loan',
-    name: 'Ticket 2 Loan',
-    code: 'TICKET2LOAN',
-    tagline: 'Smart • Simple • Secure',
-    badgeClass: 'bg-amber-50 text-amber-700 border border-amber-200',
-    pillClass: 'bg-amber-600 text-white',
-    accentColor: '#F59E0B',
-    accentBg: 'bg-amber-50',
-    gradient: 'from-amber-500 to-orange-600',
-    minCibil: 500,
-    minSalary: 25000,
+    id: 'easyfincare',
+    name: 'Easy Finca₹e',
+    partnerName: 'Easy Finca₹e',
+    displayName: 'Easy Finca₹e',
+    code: 'EASYFINCARE',
+    tagline: 'Simplifying Finance',
+    badgeClass: 'bg-cyan-50 text-cyan-700 border border-cyan-200',
+    pillClass: 'bg-cyan-600 text-white',
+    accentColor: '#0891B2',
+    accentBg: 'bg-cyan-50',
+    gradient: 'from-cyan-600 to-blue-700',
+    minCibil: 550,
+    minSalary: 45000,
     maxLoan: 100000,
     interestRate: 'Up to 1% per day',
     tenure: '30 - 45 Days',
-    description: 'Smart, simple and secure personal loans with salary >= ₹25,000.',
-    website: 'https://ticket2loan.com',
-    applyUrl: 'https://www.ticket2loan.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=ticket2loan_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
+    description: 'Fast personal loan process with minimal documentation.',
+    website: 'https://easyfincare.com',
+    applyUrl: 'https://www.easyfincare.com/apply-now?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=easyfincare_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
     commissionRate: '6.0%',
     commissionPct: 0.06,
   },
   {
     id: 'moneydot',
     name: 'MoneyDot',
+    partnerName: 'MoneyDot',
+    displayName: 'MoneyDot',
     code: 'MONEYDOT',
     tagline: 'Personal Loan App',
     badgeClass: 'bg-sky-50 text-sky-700 border border-sky-200',
@@ -130,6 +142,36 @@ export const AFFILIATE_PARTNERS = [
   }
 ];
 
+export const INACTIVE_PARTNERS = [
+  {
+    id: 'ticket2loan',
+    name: 'Ticket 2 Loan',
+    partnerName: 'Ticket 2 Loan',
+    displayName: 'Ticket 2 Loan',
+    code: 'TICKET2LOAN',
+    status: 'INACTIVE',
+    disabled: true,
+    tagline: 'Inactive Partner',
+    badgeClass: 'bg-slate-100 text-slate-500 border border-slate-200',
+    pillClass: 'bg-slate-500 text-white',
+    accentColor: '#64748B',
+    accentBg: 'bg-slate-50',
+    gradient: 'from-slate-500 to-slate-600',
+    minCibil: 500,
+    minSalary: 25000,
+    maxLoan: 100000,
+    interestRate: 'Up to 1% per day',
+    tenure: '30 - 45 Days',
+    description: 'Deactivated lending partner. Historical records preserved.',
+    website: 'https://ticket2loan.com',
+    applyUrl: 'https://www.ticket2loan.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=ticket2loan_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
+    commissionRate: '6.0%',
+    commissionPct: 0.06,
+  }
+];
+
+export const ALL_PARTNERS = [...AFFILIATE_PARTNERS, ...INACTIVE_PARTNERS];
+
 const DEFAULT_PARTNER_STYLES = [
   { badgeClass: 'bg-purple-50 text-purple-700 border border-purple-200', pillClass: 'bg-purple-600 text-white', accentColor: '#7C3AED', accentBg: 'bg-purple-50', gradient: 'from-purple-600 to-indigo-700' },
   { badgeClass: 'bg-emerald-50 text-emerald-700 border border-emerald-200', pillClass: 'bg-emerald-600 text-white', accentColor: '#059669', accentBg: 'bg-emerald-50', gradient: 'from-emerald-600 to-teal-700' },
@@ -141,7 +183,7 @@ export const APPROVED_PARTNER_SLUGS = [
   'borrowera',
   'instarupees',
   'jhatpatloans',
-  'ticket2loan',
+  'easyfincare',
   'moneydot'
 ];
 
@@ -158,11 +200,14 @@ export function syncPartnersFromServer(serverPartners) {
     const rateFields = Number.isFinite(rate) ? { commissionRate: `${rate.toFixed(1)}%`, commissionPct: rate / 100 } : {};
     let existing = AFFILIATE_PARTNERS.find((p) => p.id === slug);
     if (existing) {
+      const serverApplyUrl = (slug === 'rupay91' && sp.applyUrl && sp.applyUrl.includes('applynow.php'))
+        ? 'https://loans.rupay91.com/login'
+        : (sp.applyUrl || existing.applyUrl);
       Object.assign(existing, {
         serverId: sp.id,
         name: sp.name || existing.name,
         website: sp.website || existing.website,
-        applyUrl: sp.applyUrl || existing.applyUrl,
+        applyUrl: slug === 'rupay91' ? 'https://loans.rupay91.com/login' : serverApplyUrl,
         status: sp.status,
         ...rateFields
       });
@@ -206,13 +251,13 @@ export function getPartnerMeta(partnerNameOrId) {
     };
   }
 
-  const clean = partnerNameOrId.toString().toLowerCase().replace(/[\s\-_]/g, '');
-  const found = AFFILIATE_PARTNERS.find(p => 
+  const clean = partnerNameOrId.toString().toLowerCase().replace(/[\s\-_₹]/g, '');
+  const found = ALL_PARTNERS.find(p => 
     p.id.toLowerCase() === clean || 
-    p.name.toLowerCase().replace(/[\s\-_]/g, '') === clean ||
-    p.code.toLowerCase() === clean ||
+    p.name.toLowerCase().replace(/[\s\-_₹]/g, '') === clean ||
+    (p.code && p.code.toLowerCase() === clean) ||
     clean.includes(p.id) ||
-    clean.includes(p.name.toLowerCase().replace(/[\s\-_]/g, ''))
+    clean.includes(p.name.toLowerCase().replace(/[\s\-_₹]/g, ''))
   );
 
   if (found) return found;
@@ -392,6 +437,10 @@ export function getSalaryMatchedOffers(salaryInput) {
 export function getPartnerTrackingUrl(partnerOrId, options = {}) {
   const meta = getPartnerMeta(partnerOrId);
   const partnerSlug = meta?.id || 'jhatpatloans';
+  if (meta?.disabled || meta?.status === 'INACTIVE' || partnerSlug === 'ticket2loan') {
+    console.warn(`[routing] partner ${partnerSlug} is inactive; outbound routing blocked.`);
+    return '#';
+  }
   if (partnerSlug === 'moneydot') {
     const playStoreBase = 'https://play.google.com/store/apps/details?id=com.yrs.moneydot&hl=en_IN';
     const params = new URLSearchParams({
@@ -401,6 +450,43 @@ export function getPartnerTrackingUrl(partnerOrId, options = {}) {
       utm_term: options.term || 'moneydot_crm'
     });
     return `${playStoreBase}&referrer=${encodeURIComponent(params.toString())}`;
+  }
+  if (partnerSlug === 'rupay91') {
+    const rupayBase = (meta?.applyUrl && !meta.applyUrl.includes('applynow.php')) ? meta.applyUrl : 'https://loans.rupay91.com/login';
+    const leadCode = String(options.leadId || 'CRM');
+    const affRef = 'paisainminutes';
+    const source = options.source || 'crm';
+    const campaign = options.campaign || 'paisainminutes_crm';
+    const term = options.term || 'rupay91_crm';
+
+    // Construct next target URL for Rupay91's Angular router after OTP verification
+    const nextParams = new URLSearchParams({
+      lead_id: leadCode,
+      ref: affRef,
+      sub_id: leadCode,
+      source: source,
+      utm_source: 'paisainminutes',
+      utm_medium: 'affiliate',
+      utm_campaign: campaign,
+      utm_term: term
+    });
+    const nextPathAndQuery = `/new?${nextParams.toString()}`;
+
+    const params = new URLSearchParams({
+      ref: affRef,
+      source: source,
+      lead_id: leadCode,
+      sub_id: leadCode,
+      utm_source: 'paisainminutes',
+      utm_medium: 'affiliate',
+      utm_campaign: campaign,
+      utm_term: term,
+      next: nextPathAndQuery
+    });
+    if (options.phone) {
+      params.set('phone', String(options.phone).replace(/\D/g, '').slice(-10));
+    }
+    return `${rupayBase}?${params.toString()}`;
   }
   const leadId = options.leadId || 'CRM';
   const source = options.source || 'crm';
@@ -432,6 +518,10 @@ export function getPartnerTrackingUrl(partnerOrId, options = {}) {
 export async function trackPartnerClick(partnerOrId, options = {}) {
   const meta = getPartnerMeta(partnerOrId);
   const partnerSlug = meta?.id || 'jhatpatloans';
+  if (meta?.disabled || meta?.status === 'INACTIVE' || partnerSlug === 'ticket2loan') {
+    console.warn(`[partner click] blocked: partner ${partnerSlug} is inactive.`);
+    return { ok: false, error: 'Partner inactive' };
+  }
   const payload = {
     partner: partnerSlug,
     ref: 'paisainminutes',
@@ -460,6 +550,36 @@ export function getPartnerDirectUtmUrl(partnerOrId, options = {}) {
     return meta?.website || 'https://paisainminutes.com';
   }
   let url = meta.applyUrl;
+  if (meta.id === 'rupay91') {
+    const rupayBase = (!url || url.includes('applynow.php')) ? 'https://loans.rupay91.com/login' : url;
+    const leadCode = String(options.leadId || 'CRM');
+    const affRef = 'paisainminutes';
+    const campaign = options.campaign || 'paisainminutes_crm';
+    const term = options.term || options.leadId || 'rupay91_crm';
+
+    const nextParams = new URLSearchParams({
+      lead_id: leadCode,
+      ref: affRef,
+      sub_id: leadCode,
+      utm_source: 'paisainminutes',
+      utm_medium: 'affiliate',
+      utm_campaign: campaign,
+      utm_term: term
+    });
+    const nextPathAndQuery = `/new?${nextParams.toString()}`;
+
+    const params = new URLSearchParams({
+      utm_source: 'paisainminutes',
+      utm_medium: 'affiliate',
+      utm_campaign: campaign,
+      utm_term: term,
+      sub_id: leadCode,
+      lead_id: leadCode,
+      ref: affRef,
+      next: nextPathAndQuery
+    });
+    return `${rupayBase}?${params.toString()}`;
+  }
   if (options.leadId) {
     url = url.replace(/sub_id=CRM/g, `sub_id=${encodeURIComponent(options.leadId)}`);
     url = url.replace(/utm_term=[^&]*/g, `utm_term=${encodeURIComponent(options.leadId)}`);

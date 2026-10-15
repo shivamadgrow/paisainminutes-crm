@@ -142,9 +142,9 @@ const getCompanyBadge = (company) => {
   }
   if (clean.includes('easyfin') || clean.includes('fincare')) {
     return {
-      name: 'Easy Fincare (Inactive)',
-      classes: 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200',
-      dot: 'bg-slate-400'
+      name: 'Easy Finca₹e',
+      classes: 'bg-cyan-50 text-cyan-700 border-cyan-200/80 hover:bg-cyan-100/80',
+      dot: 'bg-cyan-500'
     };
   }
   if (clean.includes('loanwithin')) {
@@ -177,9 +177,9 @@ const getCompanyBadge = (company) => {
   }
   if (clean.includes('ticket') || clean.includes('ticket2loan')) {
     return {
-      name: 'Ticket 2 Loan',
-      classes: 'bg-violet-50 text-violet-700 border-violet-200/80 hover:bg-violet-100/80',
-      dot: 'bg-violet-500'
+      name: 'Ticket 2 Loan (Inactive)',
+      classes: 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200',
+      dot: 'bg-slate-400'
     };
   }
   if (clean.includes('moneydot') || clean.includes('money_dot')) {

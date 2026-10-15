@@ -50,18 +50,20 @@ $instarupeesLogoSrc = getPartnerLogoSrc('instarupees.png', $instarupeesDataUri);
 $borroweraDataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60"><rect width="240" height="60" rx="10" fill="%23ffffff"/><text x="16" y="38" font-family="sans-serif" font-weight="900" font-size="22" fill="%23EA580C">borrow<tspan fill="%231E3A8A">era</tspan></text></svg>';
 $borroweraLogoSrc = getPartnerLogoSrc('borrowera.png', $borroweraDataUri);
 
-// 5. Ticket 2 Loan Logo
-$ticket2loanDataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 60" width="260" height="60"><rect width="260" height="60" rx="10" fill="%23ffffff"/><text x="14" y="38" font-family="sans-serif" font-weight="900" font-size="21" fill="%23EA580C">Ticket<tspan fill="%23F59E0B">2Loan</tspan></text></svg>';
-$ticket2loanLogoSrc = getPartnerLogoSrc('ticket2loan.png', $ticket2loanDataUri);
+// 5. Easy Finca₹e Logo
+$easyfincareDataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60"><rect width="240" height="60" rx="10" fill="%23ffffff"/><text x="16" y="38" font-family="sans-serif" font-weight="900" font-size="20" fill="%231E293B">EASY <tspan fill="%23DC2626">FINCA₹E</tspan></text></svg>';
+$easyfincareLogoSrc = getPartnerLogoSrc('easyfincare.png', $easyfincareDataUri);
 
 // 6. MoneyDot Logo
-$moneydotDataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60"><rect width="240" height="60" rx="10" fill="%23ffffff"/><circle cx="36" cy="30" r="18" fill="%232563EB"/><text x="64" y="38" font-family="sans-serif" font-weight="900" font-size="22" fill="%230F172A">Money<tspan fill="%232563EB">Dot</tspan></text></svg>';
+$moneydotDataUri = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 60" width="240" height="60"><rect width="240" height="60" fill="%23ffffff"/><defs><linearGradient id="mdGrad" x1="0%25" y1="0%25" x2="100%25" y2="100%25"><stop offset="0%25" stop-color="%230284C7"/><stop offset="100%25" stop-color="%23059669"/></linearGradient></defs><rect x="6" y="6" width="48" height="48" rx="12" fill="url(%23mdGrad)"/><circle cx="30" cy="30" r="14" fill="%230284C7"/><text x="30" y="36" font-family="sans-serif" font-weight="bold" font-size="16" fill="%23ffffff" text-anchor="middle">₹</text><text x="64" y="39" font-family="sans-serif" font-weight="900" font-size="24" fill="%23059669">Money<tspan fill="%230052CC">dot</tspan></text></svg>';
 $moneydotLogoSrc = getPartnerLogoSrc('moneydot.png', $moneydotDataUri);
 
 return [
     'rupay91' => [
         'slug' => 'rupay91',
         'name' => 'Rupay 91',
+        'partnerName' => 'Rupay 91',
+        'displayName' => 'Rupay 91',
         'logo' => $rupayLogoSrc,
         'local_logo' => $rupayLogoSrc,
         'badge' => 'Verified Partner',
@@ -93,6 +95,8 @@ return [
     'jhatpatloans' => [
         'slug' => 'jhatpatloans',
         'name' => 'Jhatpat Loans',
+        'partnerName' => 'Jhatpat Loans',
+        'displayName' => 'Jhatpat Loans',
         'logo' => $jhatpatLoansLogoSrc,
         'local_logo' => $jhatpatLoansLogoSrc,
         'badge' => 'Fast Verification',
@@ -124,6 +128,8 @@ return [
     'instarupees' => [
         'slug' => 'instarupees',
         'name' => 'Insta Rupees',
+        'partnerName' => 'Insta Rupees',
+        'displayName' => 'Insta Rupees',
         'logo' => $instarupeesLogoSrc,
         'local_logo' => $instarupeesLogoSrc,
         'badge' => 'Direct Credit',
@@ -155,6 +161,8 @@ return [
     'borrowera' => [
         'slug' => 'borrowera',
         'name' => 'Borrowera',
+        'partnerName' => 'Borrowera',
+        'displayName' => 'Borrowera',
         'logo' => $borroweraLogoSrc,
         'local_logo' => $borroweraLogoSrc,
         'badge' => 'Fast Track',
@@ -183,41 +191,45 @@ return [
         ],
         'target_url' => 'https://www.borrowera.com/apply-loan?utm_source={aff_id}&utm_medium=affiliate&utm_campaign=paisainminutes&utm_term={lead_id}&sub_id={lead_id}&ref={aff_id}&source={aff_id}'
     ],
-    'ticket2loan' => [
-        'slug' => 'ticket2loan',
-        'name' => 'Ticket 2 Loan',
-        'logo' => $ticket2loanLogoSrc,
-        'local_logo' => $ticket2loanLogoSrc,
-        'badge' => 'Smart • Simple',
+    'easyfincare' => [
+        'slug' => 'easyfincare',
+        'name' => 'Easy Finca₹e',
+        'partnerName' => 'Easy Finca₹e',
+        'displayName' => 'Easy Finca₹e',
+        'logo' => $easyfincareLogoSrc,
+        'local_logo' => $easyfincareLogoSrc,
+        'badge' => 'Simplifying Finance',
         'badge_text' => 'Quick Disbursal',
         'badge_icon' => 'zap',
         'badge_type' => 'instant',
         'max_amount' => '₹1,00,000',
         'interest_rate' => 'Up to 1% per day',
         'apr' => '14% – 24% p.a.',
-        'tenure' => '30 - 90 Days',
+        'tenure' => '60 - 90 Days',
         'processing_fee' => '1% – 3% of loan amount',
         'gst' => '18% on Processing Fee',
         'total_repayment' => 'Determined by sanctioned tenure',
-        'rating' => '4.9',
-        'min_salary' => '₹25,000',
-        'min_salary_val' => 25000,
-        'min_cibil' => '500+',
-        'min_cibil_val' => 500,
-        'min_slab' => 1,
+        'rating' => '4.8',
+        'min_salary' => '₹45,000',
+        'min_salary_val' => 45000,
+        'min_cibil' => '550+',
+        'min_cibil_val' => 550,
+        'min_slab' => 2,
         'tier' => 'mid',
-        'eligibility_badge' => 'Matched (Smart • Simple • Secure)',
+        'eligibility_badge' => 'Matched (Simplifying Finance)',
         'features' => [
-            'Smart, Simple & Secure Digital Process',
-            'Direct Bank Credit on Sanction',
-            '100% Paperless with Minimal Documentation'
+            'Minimal Documentation Required',
+            'Fast Loan Processing',
+            'Zero Hidden Charges'
         ],
-        'target_url' => 'https://www.ticket2loan.com/apply-loan?utm_source={aff_id}&utm_medium=affiliate&utm_campaign=paisainminutes&utm_term={lead_id}&sub_id={lead_id}&ref={aff_id}&source={aff_id}'
+        'target_url' => 'https://www.easyfincare.com/apply-now?utm_source={aff_id}&utm_medium=affiliate&utm_campaign=paisainminutes&utm_term={lead_id}&sub_id={lead_id}&ref={aff_id}&source={aff_id}'
     ],
     'moneydot' => [
         'enabled' => true,
         'slug' => 'moneydot',
         'name' => 'MoneyDot',
+        'partnerName' => 'MoneyDot',
+        'displayName' => 'MoneyDot',
         'logo' => $moneydotLogoSrc,
         'local_logo' => $moneydotLogoSrc,
         'badge' => 'Personal Loan App',

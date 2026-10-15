@@ -59,20 +59,22 @@ foreach ($acronyms as $pattern => $replacement) {
 }
 
 // Determine Breadcrumb Category Hierarchy
-$breadcrumb_parent = null;
-if (!empty($page_slug)) {
-    if (strpos($page_slug, 'calculator') !== false && $page_slug !== 'personal-loan-emi-calculator') {
-        $breadcrumb_parent = ['name' => 'Calculators', 'url' => '/personal-loan-emi-calculator'];
-    } elseif (preg_match('/-(thousand|lakh)-personal-loan$/', $page_slug) || (strpos($page_slug, 'personal-loan') === 0 && $page_slug !== 'personal-loan')) {
-        $breadcrumb_parent = ['name' => 'Personal Loan', 'url' => '/personal-loan'];
-    } elseif ((strpos($page_slug, 'cibil') !== false || strpos($page_slug, 'score') !== false) && $page_slug !== 'credit-score-free') {
-        $breadcrumb_parent = ['name' => 'Credit Score', 'url' => '/credit-score-free'];
-    } elseif (strpos($page_slug, 'bond') !== false && $page_slug !== 'bonds') {
-        $breadcrumb_parent = ['name' => 'Bonds', 'url' => '/bonds'];
-    } elseif (strpos($page_slug, 'mutual-fund') !== false && $page_slug !== 'mutual-funds') {
-        $breadcrumb_parent = ['name' => 'Mutual Funds', 'url' => '/mutual-funds'];
-    } elseif ((strpos($page_slug, 'fixed-deposit') !== false || strpos($page_slug, '-fd-') !== false) && $page_slug !== 'fixed-deposit-interest-rates') {
-        $breadcrumb_parent = ['name' => 'Fixed Deposit', 'url' => '/fixed-deposit-interest-rates'];
+if (!isset($breadcrumb_parent)) {
+    $breadcrumb_parent = null;
+    if (!empty($page_slug)) {
+        if (strpos($page_slug, 'calculator') !== false && $page_slug !== 'personal-loan-emi-calculator') {
+            $breadcrumb_parent = ['name' => 'Calculators', 'url' => '/personal-loan-emi-calculator'];
+        } elseif (preg_match('/-(thousand|lakh)-personal-loan$/', $page_slug) || (strpos($page_slug, 'personal-loan') === 0 && $page_slug !== 'personal-loan')) {
+            $breadcrumb_parent = ['name' => 'Personal Loan', 'url' => '/personal-loan'];
+        } elseif ((strpos($page_slug, 'cibil') !== false || strpos($page_slug, 'score') !== false) && $page_slug !== 'credit-score-free') {
+            $breadcrumb_parent = ['name' => 'Credit Score', 'url' => '/credit-score-free'];
+        } elseif (strpos($page_slug, 'bond') !== false && $page_slug !== 'bonds') {
+            $breadcrumb_parent = ['name' => 'Bonds', 'url' => '/bonds'];
+        } elseif (strpos($page_slug, 'mutual-fund') !== false && $page_slug !== 'mutual-funds') {
+            $breadcrumb_parent = ['name' => 'Mutual Funds', 'url' => '/mutual-funds'];
+        } elseif ((strpos($page_slug, 'fixed-deposit') !== false || strpos($page_slug, '-fd-') !== false) && $page_slug !== 'fixed-deposit-interest-rates') {
+            $breadcrumb_parent = ['name' => 'Fixed Deposit', 'url' => '/fixed-deposit-interest-rates'];
+        }
     }
 }
 
@@ -625,6 +627,7 @@ if (!isset($page_og_image) || empty($page_og_image)) {
                                     Loan Calculators
                                 </div>
                                 <a href="/personal-loan-emi-calculator" class="dropdown-grid-link">Personal Loan EMI Calculator</a>
+                                <a href="/loan-against-property-emi-calculator" class="dropdown-grid-link">Loan Against Property EMI</a>
                                 <a href="/personal-loan-eligibility-calculator" class="dropdown-grid-link">Personal Loan Eligibility</a>
                                 <a href="/personal-loan-prepayment-calculator" class="dropdown-grid-link">Personal Loan Prepayment</a>
                             </div>

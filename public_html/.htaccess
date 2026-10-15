@@ -52,9 +52,9 @@
     # 3. Redirect trailing slashes externally (SEO friendly)
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_URI} ^/(.+)/$
-    RewriteRule ^(.*)/$ /%1 [R=301,L,NE]
-
-
+    # 3.1 Partner conversion postback webhook
+    RewriteRule ^postback/([a-zA-Z0-9_\-]+)/?$ /postback.php?partner=$1 [QSA,L]
+    RewriteRule ^postback/?$ /postback.php [QSA,L]
 
     # 301 Redirects for Legacy Foreign Template URLs to protect topical authority
     RewriteRule ^about/?$ /about-us [R=301,L]
@@ -86,7 +86,7 @@
     RewriteRule ^(gold-loan|gold-loan-emi-calculator)(\.php)?$ - [G,L]
 
     # 3. Auto / Two-Wheeler / Property / Fixed-Deposit / Agriculture / Education Loans
-    RewriteRule ^(car-loan|loan-against-car|two-wheeler-loan|tractor-loan-emi-calculator|loan-against-property|loan-against-property-emi-calculator|dairy-farming-loan|goat-farming-loan|poultry-farm-loan|education-loan|letter-of-credit|loan-against-fixed-deposit)(\.php)?$ - [G,L]
+    RewriteRule ^(car-loan|loan-against-car|two-wheeler-loan|tractor-loan-emi-calculator|loan-against-property|dairy-farming-loan|goat-farming-loan|poultry-farm-loan|education-loan|letter-of-credit|loan-against-fixed-deposit)(\.php)?$ - [G,L]
 
     # 4. Business / Commercial / MSME Loans & Calculators
     RewriteRule ^(business-loan|small-business-loan|startups-loan|msme-loan|mudra-loan|pmegp-loan|working-capital-loan|business-loan-emi-calculator|business-loan-interest-rates|business-loan-low-cibil-score|mudra-loan-emi-calculator|term-loan-emi-calculator)(\.php)?$ - [G,L]

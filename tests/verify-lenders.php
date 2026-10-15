@@ -38,12 +38,12 @@ $expectedLenders = [
     'jhatpatloans' => ['name' => 'Jhatpat Loans', 'rate' => 'Up to 0.8% per day', 'isJhatpat' => true],
     'rupay91'      => ['name' => 'Rupay 91',      'rate' => 'Up to 1% per day',   'isJhatpat' => false],
     'borrowera'    => ['name' => 'Borrowera',     'rate' => 'Up to 1% per day',   'isJhatpat' => false],
-    'ticket2loan'  => ['name' => 'Ticket 2 Loan', 'rate' => 'Up to 1% per day',   'isJhatpat' => false],
+    'easyfincare'  => ['name' => 'Easy Finca₹e',  'rate' => 'Up to 1% per day',   'isJhatpat' => false],
     'instarupees'  => ['name' => 'Insta Rupees',  'rate' => 'Up to 1% per day',   'isJhatpat' => false],
     'moneydot'     => ['name' => 'MoneyDot',      'rate' => '24% – 60% per annum','isJhatpat' => false],
 ];
 
-$removedLenders = ['udhaarnow', 'loanwithin', 'shubhcash', 'easyfincare'];
+$removedLenders = ['udhaarnow', 'loanwithin', 'shubhcash', 'ticket2loan'];
 foreach ($removedLenders as $remSlug) {
     check("partners.php does NOT contain inactive lender ($remSlug)", !isset($partners[$remSlug]));
 }

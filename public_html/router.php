@@ -12,6 +12,15 @@ if ($uri === '/' || $uri === '') {
     return;
 }
 
+// 1.1 Partner postback conversion webhook
+if (preg_match('#^/(api/public/)?postback(/([a-zA-Z0-9_\-]+))?#i', $uri, $matches)) {
+    if (!empty($matches[3])) {
+        $_GET['partner'] = $matches[3];
+    }
+    require __DIR__ . '/postback.php';
+    return;
+}
+
 // 2. High-Ticket Personal Loan Amount Pages (> ₹1 Lakh limit) -> 301 to /1-lakh-personal-loan
 if (preg_match('/^(5|10|20|30|40|50)-lakh-personal-loan$/', $clean_slug)) {
     header("Location: /1-lakh-personal-loan", true, 301);
@@ -48,7 +57,7 @@ $retired_410_patterns = [
     // Agriculture & Allied
     '/^(dairy-farming-loan|goat-farming-loan|poultry-farm-loan)$/',
     // Other Non-Personal Loans
-    '/^(education-loan|letter-of-credit|loan-against-fixed-deposit|loan-against-property|loan-against-property-emi-calculator)$/',
+    '/^(education-loan|letter-of-credit|loan-against-fixed-deposit|loan-against-property)$/',
     // Credit Cards & Forex Cards
     '/^(credit-card|best-credit-cards|best-forex-cards|compare-credit-cards|credit-card-eligibility|credit-card-lounge-access|rupay-credit-cards|secured-credit-cards|lifetime-free-credit-cards|rewards-credit-cards|cashback-credit-cards|virtual-credit-cards|fuel-credit-cards|travel-credit-cards|international-credit-cards|zero-forex-markup-credit-cards)$/'
 ];

@@ -917,8 +917,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (data && (data.redirect_url || (data.data && data.data.redirect_url))) {
                     finalRedirectUrl = data.redirect_url || data.data.redirect_url;
-                    if (manualLink) manualLink.href = finalRedirectUrl;
                 }
+                // Extract cached/verified bureau score from lead intake response
+                const returnedScore = data?.bureau_score || data?.cibil_score || data?.cibil || data?.data?.bureau_score || data?.data?.bureauScore || data?.data?.cibil || data?.data?.cibilScore || data?.lead?.bureau_score || data?.lead?.bureauScore || data?.lead?.cibilScore || data?.lead?.cibil;
+                if (returnedScore) {
+                    const numScore = parseInt(String(returnedScore).replace(/\D/g, ''), 10);
+                    if (numScore >= 300 && numScore <= 900) {
+                        try {
+                            sessionStorage.setItem('pim_cibil', String(numScore));
+                            sessionStorage.setItem('pim_cibil_phone', phoneVal);
+                        } catch(e) {}
+                        if (finalRedirectUrl && !/[?&]cibil=/.test(finalRedirectUrl)) {
+                            finalRedirectUrl += (finalRedirectUrl.indexOf('?') !== -1 ? '&' : '?') + 'cibil=' + encodeURIComponent(numScore);
+                        }
+                    }
+                }
+                if (manualLink) manualLink.href = finalRedirectUrl;
             }).catch(() => {});
         };
 
