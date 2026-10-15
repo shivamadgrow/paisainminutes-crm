@@ -634,6 +634,13 @@ include 'includes/header.php';
                 <p style="font-size:0.82rem;color:#64748B;margin:0;">We'll send an OTP to verify your number</p>
             </div>
 
+            <div style="margin-bottom:1rem;">
+                <label for="applyNameInput" style="display:block;font-size:0.88rem;font-weight:600;color:#374151;margin-bottom:0.5rem;">Full Name <span style="color:#EF4444;">*</span></label>
+                <input type="text" id="applyNameInput" placeholder="Enter your full name (as on PAN)" maxlength="100" autocomplete="name"
+                    style="width:100%;box-sizing:border-box;border:2px solid #E2E8F0;border-radius:14px;background:#F8FAFC;outline:none;padding:0.85rem 1rem;font-size:1rem;font-weight:600;color:#0F172A;">
+                <div id="applyNameError" style="display:none;color:#DC2626;font-size:0.82rem;font-weight:600;margin-top:0.4rem;"></div>
+            </div>
+
             <div style="margin-bottom:1.25rem;">
                 <label for="applyPhoneInput" style="display:block;font-size:0.88rem;font-weight:600;color:#374151;margin-bottom:0.5rem;">Mobile Number <span style="color:#EF4444;">*</span></label>
                 <div style="display:flex;align-items:center;border:2px solid #E2E8F0;border-radius:14px;overflow:hidden;background:#F8FAFC;transition:border-color 0.2s;" id="applyPhoneInputWrap">
@@ -1024,6 +1031,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Populate verified phone into form (readonly)
         var leadPhoneInput = document.getElementById('leadPhone');
         if (leadPhoneInput) leadPhoneInput.value = verifiedPhone;
+        var stepName = (document.getElementById('applyNameInput') || {}).value;
+        var leadNameInput = document.getElementById('leadName');
+        if (leadNameInput && stepName && !leadNameInput.value) leadNameInput.value = stepName.trim();
 
         // Update verified banner
         var banner = document.getElementById('applyVerifiedBanner');
@@ -1050,6 +1060,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }, 300);
         }
         activateStep(3);
+        // The device is verified now, so the credit check is allowed: show the score on the form.
+        autoCheckCibil(verifiedPhone);
     }
 
     // Input sanitizer
@@ -1085,6 +1097,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             if (applyPhoneError) applyPhoneError.style.display = 'none';
+
+            // The credit bureau finds a person by name as well as phone, so the name is asked up front.
+            var applyNameInput = document.getElementById('applyNameInput');
+            var applyNameError = document.getElementById('applyNameError');
+            var enteredName = (applyNameInput ? applyNameInput.value : '').trim();
+            if (enteredName.length < 3 || /^(applicant|valued customer)$/i.test(enteredName)) {
+                if (applyNameError) {
+                    applyNameError.textContent = 'Please enter your full name.';
+                    applyNameError.style.display = 'block';
+                }
+                if (applyNameInput) applyNameInput.focus();
+                return;
+            }
+            if (applyNameError) applyNameError.style.display = 'none';
 
             // Validate consent checkboxes
             var c1 = document.getElementById('step1Consent1');
@@ -1192,10 +1218,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // Node server base URL (credit check + lead intake)
     const NODE_API = <?php echo json_encode($pim_node_api_url); ?>;
 
+    // Sends this device's OTP login with the request (F-29): without it the server treats the caller as unverified,
+    // refuses the credit check and never calls the bureau for the lead.
+    function pimJsonHeaders() {
+        const base = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+        if (!(window.PIMAuth && typeof window.PIMAuth.accessToken === 'function')) return Promise.resolve(base);
+        return Promise.resolve(window.PIMAuth.accessToken()).catch(function() { return ''; }).then(function(token) {
+            if (token) base['Authorization'] = 'Bearer ' + token;
+            return base;
+        });
+    }
+
     function autoCheckCibil(phoneNum) {
         // The bureau is queried only after the applicant ticked the credit-bureau consent in step 1
         const bureauConsent = document.getElementById('step1Consent1');
-        if (!phoneNum || phoneNum.length !== 10 || !/^[6-9]/.test(phoneNum) || !(bureauConsent && bureauConsent.checked)) {
+        const leadNameVal = ((document.getElementById('leadName') || {}).value || '').trim();
+        const phoneVerified = !!(window.PIMAuth && window.PIMAuth.isVerifiedFor(phoneNum)) && leadNameVal.length >= 3;
+        if (!phoneNum || phoneNum.length !== 10 || !/^[6-9]/.test(phoneNum) || !(bureauConsent && bureauConsent.checked) || !phoneVerified) {
             if (cibilBadge) cibilBadge.style.display = 'none';
             return;
         }
@@ -1208,11 +1247,11 @@ document.addEventListener('DOMContentLoaded', function() {
             cibilBadge.style.border = '1px solid #BFDBFE';
             cibilBadge.innerHTML = '<span>⚡</span> <span>Checking bureau credit score...</span>';
         }
-        fetch(NODE_API + '/api/public/credit-check', {
+        pimJsonHeaders().then(headers => fetch(NODE_API + '/api/public/credit-check', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ phone: phoneNum, consent: true })
-        })
+            headers: headers,
+            body: JSON.stringify({ phone: phoneNum, name: leadNameVal, consent: true })
+        }))
             .then(r => r.json())
             .then(res => {
                 if (res && res.success && res.score) {
@@ -1227,6 +1266,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         sessionStorage.setItem('pim_cibil', res.score); 
                         sessionStorage.setItem('pim_cibil_phone', phoneNum);
                     } catch(e){}
+                } else if (res && (res.status === 'no_record' || res.status === 'name_mismatch') && cibilBadge) {
+                    // The bureau finds a person by phone AND name: say what to do instead of hiding the badge.
+                    cibilBadge.style.display = 'inline-flex';
+                    cibilBadge.style.background = '#FFFBEB';
+                    cibilBadge.style.color = '#92400E';
+                    cibilBadge.style.border = '1px solid #FDE68A';
+                    cibilBadge.innerHTML = res.status === 'name_mismatch'
+                        ? '<span>!</span> <span>This name does not match our record for this number. Please enter your name exactly as on your PAN card.</span>'
+                        : '<span>!</span> <span>No credit history found. You may be new to credit. If you have loans or cards, enter your name exactly as on your PAN card.</span>';
                 } else {
                     if (cibilBadge) cibilBadge.style.display = 'none';
                 }
@@ -1235,6 +1283,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (cibilBadge) cibilBadge.style.display = 'none';
             });
     }
+
+    // Name corrected after a "no record" / "name does not match": check again with the new name.
+    (function () {
+        const nameField = document.getElementById('leadName');
+        if (!nameField) return;
+        let lastCheckedName = nameField.value.trim();
+        nameField.addEventListener('change', function () {
+            const now = nameField.value.trim();
+            if (now === lastCheckedName || now.length < 3) return;
+            lastCheckedName = now;
+            const ph = phoneInput ? phoneInput.value.replace(/\D/g, '') : '';
+            if (ph.length === 10) autoCheckCibil(ph);
+        });
+    })();
 
     if (phoneInput) {
         phoneInput.addEventListener('input', function() {
@@ -1419,12 +1481,12 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             // One submission to the Node server (it replaces the four separate posts the page used to make)
-            fetch(NODE_API + '/api/public/leads', {
+            pimJsonHeaders().then(headers => fetch(NODE_API + '/api/public/leads', {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "Accept": "application/json" },
+                headers: headers,
                 body: JSON.stringify(payload),
                 keepalive: true
-            })
+            }))
             .then(res => res.json())
             .then(data => {
                 if (typeof window.pimTrackMeta === 'function') {

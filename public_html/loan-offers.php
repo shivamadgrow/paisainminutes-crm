@@ -224,7 +224,7 @@ if ($actualCibilScore) {
     $cibilDisplayText = (string)$actualCibilScore;
     $cibilValClass = 'cibil-score-val';
 } elseif ($cibilState === 'not_available') {
-    $cibilDisplayText = 'Not Available';
+    $cibilDisplayText = 'New to credit / No record';
     $cibilValClass = 'cibil-unavailable';
 } else {
     $cibilDisplayText = 'Fetching...';
@@ -1669,7 +1669,7 @@ try {
     }
 
     function applyUnavailable() {
-        cibilValEl.textContent = 'Not Available';
+        cibilValEl.textContent = 'New to credit / No record';
         cibilValEl.className = 'cibil-val cibil-unavailable';
         cibilValEl.setAttribute('data-state', 'not_available');
     }
