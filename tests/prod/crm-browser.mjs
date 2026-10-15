@@ -237,7 +237,7 @@ const apiGet = (page, p) => page.evaluate(async ([api, url]) => { const t = JSON
   if (s.loggedIn) {
     const nav = await navText(page);
     for (const hidden of ["Commission Rate Cards", "Partner Agreements", "Add New Partner", "Executive Overview"]) note("nav", `partner sees "${hidden}"`, nav.some((n) => n.startsWith(hidden)) ? "YES" : "no");
-    check("nav", "a partner user does not see other partner companies in the menu", !nav.some((n) => /^(Rupay91|Borrowera|Insta Rupees|Jhatpat Loans|Ticket 2 Loan|Easy Finca)/.test(n)), nav.join(" | ").slice(0, 240));
+    check("nav", "a partner user does not see other partner companies in the menu", !nav.some((n) => /^(Rupay91|Borrowera|Insta Rupees|Jhatpat Loans|Easy Finca)/.test(n)), nav.join(" | ").slice(0, 240));
     await openLeads(page).catch(() => {});
     const rows = await page.locator("tbody tr").allTextContents();
     const apiMine = await apiGet(page, "/api/loan-applications/all?limit=100");

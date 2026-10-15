@@ -57,6 +57,9 @@ export default function IntegrationSettingsView() {
   }, []);
 
   const filtered = integrations.filter(item => {
+    if (item.partnerId === 'ticket2loan' || item.partnerSlug === 'ticket2loan' || (item.partnerName && item.partnerName.toLowerCase().includes('ticket'))) {
+      return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       return item.partnerName.toLowerCase().includes(q) || item.apiEndpoint.toLowerCase().includes(q);

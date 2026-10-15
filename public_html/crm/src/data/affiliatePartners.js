@@ -142,33 +142,7 @@ export const AFFILIATE_PARTNERS = [
   }
 ];
 
-export const INACTIVE_PARTNERS = [
-  {
-    id: 'ticket2loan',
-    name: 'Ticket 2 Loan',
-    partnerName: 'Ticket 2 Loan',
-    displayName: 'Ticket 2 Loan',
-    code: 'TICKET2LOAN',
-    status: 'INACTIVE',
-    disabled: true,
-    tagline: 'Inactive Partner',
-    badgeClass: 'bg-slate-100 text-slate-500 border border-slate-200',
-    pillClass: 'bg-slate-500 text-white',
-    accentColor: '#64748B',
-    accentBg: 'bg-slate-50',
-    gradient: 'from-slate-500 to-slate-600',
-    minCibil: 500,
-    minSalary: 25000,
-    maxLoan: 100000,
-    interestRate: 'Up to 1% per day',
-    tenure: '30 - 45 Days',
-    description: 'Deactivated lending partner. Historical records preserved.',
-    website: 'https://ticket2loan.com',
-    applyUrl: 'https://www.ticket2loan.com/apply-loan?utm_source=paisainminutes&utm_medium=affiliate&utm_campaign=paisainminutes_crm&utm_term=ticket2loan_crm&sub_id=CRM&ref=paisainminutes&source=paisainminutes',
-    commissionRate: '6.0%',
-    commissionPct: 0.06,
-  }
-];
+export const INACTIVE_PARTNERS = [];
 
 export const ALL_PARTNERS = [...AFFILIATE_PARTNERS, ...INACTIVE_PARTNERS];
 
@@ -252,6 +226,29 @@ export function getPartnerMeta(partnerNameOrId) {
   }
 
   const clean = partnerNameOrId.toString().toLowerCase().replace(/[\s\-_₹]/g, '');
+
+  // Guard for permanently discontinued partner Ticket 2 Loan (preserves historical label without active URLs)
+  if (clean.includes('ticket2loan') || clean.includes('ticket')) {
+    return {
+      id: 'ticket2loan',
+      name: 'Ticket 2 Loan (Archived)',
+      code: 'TICKET2LOAN',
+      status: 'INACTIVE',
+      disabled: true,
+      tagline: 'Deactivated Partner',
+      badgeClass: 'bg-slate-100 text-slate-500 border border-slate-200',
+      pillClass: 'bg-slate-500 text-white',
+      accentColor: '#64748B',
+      accentBg: 'bg-slate-50',
+      gradient: 'from-slate-500 to-slate-600',
+      description: 'Permanently discontinued partner. Preserved for historical audit recordkeeping.',
+      website: '',
+      applyUrl: '#',
+      commissionRate: '0.0%',
+      commissionPct: 0
+    };
+  }
+
   const found = ALL_PARTNERS.find(p => 
     p.id.toLowerCase() === clean || 
     p.name.toLowerCase().replace(/[\s\-_₹]/g, '') === clean ||
@@ -437,7 +434,7 @@ export function getSalaryMatchedOffers(salaryInput) {
 export function getPartnerTrackingUrl(partnerOrId, options = {}) {
   const meta = getPartnerMeta(partnerOrId);
   const partnerSlug = meta?.id || 'jhatpatloans';
-  if (meta?.disabled || meta?.status === 'INACTIVE' || partnerSlug === 'ticket2loan') {
+  if (meta?.disabled || meta?.status === 'INACTIVE' || partnerSlug === 'ticket2loan' || partnerSlug.includes('ticket')) {
     console.warn(`[routing] partner ${partnerSlug} is inactive; outbound routing blocked.`);
     return '#';
   }
@@ -518,7 +515,7 @@ export function getPartnerTrackingUrl(partnerOrId, options = {}) {
 export async function trackPartnerClick(partnerOrId, options = {}) {
   const meta = getPartnerMeta(partnerOrId);
   const partnerSlug = meta?.id || 'jhatpatloans';
-  if (meta?.disabled || meta?.status === 'INACTIVE' || partnerSlug === 'ticket2loan') {
+  if (meta?.disabled || meta?.status === 'INACTIVE' || partnerSlug === 'ticket2loan' || partnerSlug.includes('ticket')) {
     console.warn(`[partner click] blocked: partner ${partnerSlug} is inactive.`);
     return { ok: false, error: 'Partner inactive' };
   }
@@ -546,8 +543,8 @@ export async function trackPartnerClick(partnerOrId, options = {}) {
  */
 export function getPartnerDirectUtmUrl(partnerOrId, options = {}) {
   const meta = getPartnerMeta(partnerOrId);
-  if (!meta || !meta.applyUrl) {
-    return meta?.website || 'https://paisainminutes.com';
+  if (!meta || !meta.applyUrl || meta.disabled || meta.status === 'INACTIVE' || meta.id === 'ticket2loan' || (meta.id && meta.id.includes('ticket'))) {
+    return 'https://paisainminutes.com/loan-offers';
   }
   let url = meta.applyUrl;
   if (meta.id === 'rupay91') {

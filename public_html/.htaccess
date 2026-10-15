@@ -55,8 +55,6 @@
     # 3.1 Partner conversion postback webhook
     RewriteRule ^postback/([a-zA-Z0-9_\-]+)/?$ /postback.php?partner=$1 [QSA,L]
     RewriteRule ^postback/?$ /postback.php [QSA,L]
-    # 3.2 Meta Conversions API (CAPI) endpoint
-    RewriteRule ^api/meta-capi/?$ /api/meta-capi.php [QSA,L]
 
     # 301 Redirects for Legacy Foreign Template URLs to protect topical authority
     RewriteRule ^about/?$ /about-us [R=301,L]
@@ -106,6 +104,9 @@
 
     # 2. HTTP 410 Gone for dedicated Credit Card & Forex Card product/category pages
     RewriteRule ^(credit-card|best-credit-cards|best-forex-cards|compare-credit-cards|credit-card-eligibility|credit-card-lounge-access|rupay-credit-cards|secured-credit-cards|lifetime-free-credit-cards|rewards-credit-cards|cashback-credit-cards|virtual-credit-cards|fuel-credit-cards|travel-credit-cards|international-credit-cards|zero-forex-markup-credit-cards)(\.php)?$ - [G,L]
+
+    # Discontinued Lending Partner Ticket 2 Loan: 301 Permanent Redirect to /loan-offers
+    RewriteRule ^.*(ticket2loan|ticket-2-loan).*$ /loan-offers [R=301,L,NC]
 
     # 4. Internally rewrite extensionless requests to the actual .php file if it exists
     RewriteCond %{REQUEST_FILENAME} !-d

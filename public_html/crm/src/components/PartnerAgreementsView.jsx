@@ -53,6 +53,9 @@ export default function PartnerAgreementsView({ onOpenOnboarding }) {
   }, []);
 
   const filtered = agreements.filter(item => {
+    if (item.partnerId === 'ticket2loan' || (item.partnerName && item.partnerName.toLowerCase().includes('ticket'))) {
+      return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       const matchName = item.partnerName.toLowerCase().includes(q);

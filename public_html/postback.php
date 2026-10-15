@@ -46,6 +46,16 @@ if (empty($partnerSlug)) {
     exit;
 }
 
+if ($partnerSlug === 'ticket2loan' || strpos($partnerSlug, 'ticket') !== false) {
+    http_response_code(410);
+    echo json_encode([
+        'status' => 'error',
+        'success' => false,
+        'message' => 'Partner Ticket 2 Loan has been permanently deactivated and discontinued.'
+    ]);
+    exit;
+}
+
 // 2. Parse incoming payload (supports JSON body, form data, and query parameters)
 $inputJson = [];
 $rawInput = file_get_contents('php://input');

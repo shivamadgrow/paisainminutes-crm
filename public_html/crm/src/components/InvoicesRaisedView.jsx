@@ -80,6 +80,9 @@ export default function InvoicesRaisedView({ onChanged }) {
   }, [isSuper]);
 
   const filtered = invoices.filter(inv => {
+    if (inv.partnerId === 'ticket2loan' || (inv.partnerName && inv.partnerName.toLowerCase().includes('ticket'))) {
+      return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       if (!inv.invoiceNo.toLowerCase().includes(q) && !inv.partnerName.toLowerCase().includes(q)) {

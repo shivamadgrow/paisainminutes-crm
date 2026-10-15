@@ -57,6 +57,9 @@ export default function SettlementsView({ onChanged }) {
   }, []);
 
   const filtered = settlements.filter(s => {
+    if (s.partnerId === 'ticket2loan' || (s.partnerName && s.partnerName.toLowerCase().includes('ticket'))) {
+      return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       if (!s.partnerName.toLowerCase().includes(q) && !s.id.toLowerCase().includes(q) && !(s.bankRef || '').toLowerCase().includes(q)) {

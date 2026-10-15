@@ -12,18 +12,18 @@ if ($uri === '/' || $uri === '') {
     return;
 }
 
+// 1.0 Discontinued Partner Ticket 2 Loan: safe fallback to active loan offers
+if (preg_match('#(?:ticket2loan|ticket-2-loan)#i', $uri)) {
+    header("Location: /loan-offers", true, 301);
+    exit;
+}
+
 // 1.1 Partner postback conversion webhook
 if (preg_match('#^/(api/public/)?postback(/([a-zA-Z0-9_\-]+))?#i', $uri, $matches)) {
     if (!empty($matches[3])) {
         $_GET['partner'] = $matches[3];
     }
     require __DIR__ . '/postback.php';
-    return;
-}
-
-// 1.2 Meta Conversions API (CAPI) Lead endpoint
-if (preg_match('#^/(api/)?meta-capi(\.php)?$#i', $uri)) {
-    require __DIR__ . '/api/meta-capi.php';
     return;
 }
 

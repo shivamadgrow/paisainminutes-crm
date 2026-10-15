@@ -52,7 +52,7 @@ export default function CommissionRateCardsView() {
   }, []);
 
   const rateCards = [
-    ...serverCards,
+    ...serverCards.filter(c => c.partnerId !== 'ticket2loan' && !c.partnerName?.toLowerCase().includes('ticket')),
     ...AFFILIATE_PARTNERS
       .filter(p => p.serverId && !serverCards.some(c => c.partnerId === p.id))
       .map(p => ({

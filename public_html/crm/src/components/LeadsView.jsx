@@ -177,8 +177,8 @@ const getCompanyBadge = (company) => {
   }
   if (clean.includes('ticket') || clean.includes('ticket2loan')) {
     return {
-      name: 'Ticket 2 Loan (Inactive)',
-      classes: 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200',
+      name: 'Ticket 2 Loan (Archived)',
+      classes: 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200',
       dot: 'bg-slate-400'
     };
   }

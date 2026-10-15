@@ -55,6 +55,9 @@ export default function PayoutRequestsView({ onChanged }) {
   }, []);
 
   const filtered = requests.filter(r => {
+    if (r.partnerId === 'ticket2loan' || (r.partnerName && r.partnerName.toLowerCase().includes('ticket'))) {
+      return false;
+    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       if (!r.partnerName.toLowerCase().includes(q) && !r.id.toLowerCase().includes(q) && !(r.invoiceNo || '').toLowerCase().includes(q)) {
