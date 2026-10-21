@@ -1,0 +1,40 @@
+name: Deploy to Hostinger
+
+on:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: hostinger-production
+    cancel-in-progress: false
+
+jobs:
+    deploy:
+        name: Deploy website
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+
+            - name: Deploy to Hostinger using FTPS
+              uses: SamKirkland/FTP-Deploy-Action@v4.3.6
+              with:
+                  server: ${{ secrets.FTP_SERVER }}
+                  username: ${{ secrets.FTP_USERNAME }}
+                  password: ${{ secrets.FTP_PASSWORD }}
+                  protocol: ftps
+                  port: 21
+                  server-dir: public_html/
+                  dangerous-clean-slate: false
+                  exclude: |
+                      **/.git*
+                      **/.github/**
+                      **/.env
+                      **/.env.*
+                      **/node_modules/**
