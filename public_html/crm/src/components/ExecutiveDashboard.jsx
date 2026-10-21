@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { 
-  Building2, 
-  IndianRupee, 
-  Users, 
-  TrendingUp, 
+import {
+  Building2,
+  IndianRupee,
+  Users,
+  TrendingUp,
   TrendingDown,
-  Layers, 
-  ShieldCheck, 
+  Layers,
+  ShieldCheck,
   ArrowUpRight,
   Clock,
   ArrowRight,
@@ -19,20 +19,20 @@ import {
   FileCheck,
   Check
 } from 'lucide-react';
-import { 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  LineChart, 
-  Line, 
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  LineChart,
+  Line,
   CartesianGrid,
-  Legend 
+  Legend
 } from 'recharts';
 import { AFFILIATE_PARTNERS, getServerPartnerId } from '../data/affiliatePartners';
 import { getExecutiveOverview } from '../utils/crmApi';
@@ -212,12 +212,11 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
     }
     const isPositive = value > 0;
     return (
-      <span 
-        className={`inline-flex items-center gap-0.5 text-[11px] font-bold px-1.5 py-0.5 rounded-md ${
-          isPositive 
-            ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/80' 
+      <span
+        className={`inline-flex items-center gap-0.5 text-[11px] font-bold px-1.5 py-0.5 rounded-md ${isPositive
+            ? 'text-emerald-700 bg-emerald-50 border border-emerald-200/80'
             : 'text-rose-600 bg-rose-50 border border-rose-200/80'
-        }`}
+          }`}
         title={`${isPositive ? '+' : ''}${value}% vs ${label}`}
       >
         {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
@@ -236,7 +235,7 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
           <button onClick={handleManualRefresh} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">Retry</button>
         </div>
       )}
-      
+
       {/* Dashboard Title & Overview Header with Period Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-2xs">
         <div>
@@ -255,7 +254,7 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
 
         {/* Action Controls: Period Dropdown & Open Partner Hub */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          
+
           {/* Period Filter Dropdown */}
           <div className="relative inline-flex items-center">
             <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 transition shadow-2xs">
@@ -281,14 +280,14 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
           {/* Custom Date Pickers if Custom Range is Selected */}
           {showCustomRangeInputs && (
             <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-200 text-xs">
-              <input 
+              <input
                 type="date"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
                 className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-slate-700 text-xs font-semibold outline-none"
               />
               <span className="text-slate-400 font-bold">to</span>
-              <input 
+              <input
                 type="date"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
@@ -311,7 +310,7 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
 
       {/* Top 6 KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5">
-        
+
         {/* Card 1: TOTAL WEBSITE LEADS (Existing) */}
         <div className="crm-card p-4 bg-white rounded-2xl shadow-2xs border border-slate-200/90 flex flex-col justify-between">
           <div>
@@ -375,10 +374,10 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
             </div>
             <div className="flex items-baseline gap-2">
               <div className="text-2xl font-black text-slate-900 truncate">
-                ₹{Number(appliedVolume || 0) >= 10000000 
-                  ? `${(Number(appliedVolume || 0) / 10000000).toFixed(2)} Cr` 
-                  : (Number(appliedVolume || 0) >= 100000 
-                    ? `${(Number(appliedVolume || 0) / 100000).toFixed(2)} L` 
+                ₹{Number(appliedVolume || 0) >= 10000000
+                  ? `${(Number(appliedVolume || 0) / 10000000).toFixed(2)} Cr`
+                  : (Number(appliedVolume || 0) >= 100000
+                    ? `${(Number(appliedVolume || 0) / 100000).toFixed(2)} L`
                     : Number(appliedVolume || 0).toLocaleString('en-IN'))}
               </div>
               <TrendBadge value={trends.appliedVolume} />
@@ -520,11 +519,10 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowApprovedLine(!showApprovedLine)}
-              className={`px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-2 border transition cursor-pointer ${
-                showApprovedLine 
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+              className={`px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-2 border transition cursor-pointer ${showApprovedLine
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                   : 'bg-slate-50 text-slate-400 border-slate-200'
-              }`}
+                }`}
               title="Toggle Approved leads line"
             >
               <span className={`w-2.5 h-2.5 rounded-full ${showApprovedLine ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
@@ -539,17 +537,17 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
               <CartesianGrid strokeDasharray="3 3" stroke="#F1F5F9" vertical={false} />
               <XAxis dataKey="date" stroke="#94A3B8" fontSize={11} tickLine={false} />
               <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} allowDecimals={false} />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#0F172A', 
-                  borderRadius: '10px', 
-                  border: 'none', 
-                  color: '#FFF', 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#0F172A',
+                  borderRadius: '10px',
+                  border: 'none',
+                  color: '#FFF',
                   fontSize: '11px',
                   boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                }} 
+                }}
               />
-              <Legend 
+              <Legend
                 onClick={(e) => {
                   if (e.dataKey === 'approved') {
                     setShowApprovedLine(!showApprovedLine);
@@ -557,25 +555,25 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
                 }}
                 wrapperStyle={{ cursor: 'pointer', fontSize: '11px', paddingTop: '8px' }}
               />
-              <Line 
-                type="monotone" 
-                dataKey="totalLeads" 
-                name="Total Leads" 
-                stroke="#0A3977" 
-                strokeWidth={2.5} 
-                dot={{ r: 3, fill: '#0A3977' }} 
-                activeDot={{ r: 5 }} 
+              <Line
+                type="monotone"
+                dataKey="totalLeads"
+                name="Total Leads"
+                stroke="#0A3977"
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: '#0A3977' }}
+                activeDot={{ r: 5 }}
               />
               {showApprovedLine && (
-                <Line 
-                  type="monotone" 
-                  dataKey="approved" 
-                  name="Approved" 
-                  stroke="#10B981" 
-                  strokeWidth={2.5} 
-                  strokeDasharray="4 4" 
-                  dot={{ r: 3, fill: '#10B981' }} 
-                  activeDot={{ r: 5 }} 
+                <Line
+                  type="monotone"
+                  dataKey="approved"
+                  name="Approved"
+                  stroke="#10B981"
+                  strokeWidth={2.5}
+                  strokeDasharray="4 4"
+                  dot={{ r: 3, fill: '#10B981' }}
+                  activeDot={{ r: 5 }}
                 />
               )}
             </LineChart>
@@ -585,7 +583,7 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
 
       {/* Analytics Charts Grid: Partner Distribution Bar + Share Split Donut */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Lead Allocation Chart (Bar) */}
         <div className="lg:col-span-2 crm-card bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
           <div className="flex items-center justify-between mb-4">
@@ -602,7 +600,7 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
               <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <XAxis dataKey="name" stroke="#94A3B8" fontSize={11} tickLine={false} />
                 <YAxis stroke="#94A3B8" fontSize={11} tickLine={false} allowDecimals={false} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ backgroundColor: '#1E293B', borderRadius: '8px', color: '#FFF', fontSize: '11px' }}
                 />
                 <Bar dataKey="leads" radius={[6, 6, 0, 0]}>
@@ -622,7 +620,7 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
               Affiliate Share Split
             </h3>
             <p className="text-xs text-slate-400 mb-2">Traffic allocation percentage</p>
-            
+
             <div className="h-44 flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>

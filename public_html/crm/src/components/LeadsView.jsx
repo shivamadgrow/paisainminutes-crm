@@ -46,7 +46,8 @@ import {
   getEligibilityMatrix,
   getPartnerTrackingUrl,
   trackPartnerClick,
-  getSalaryMatchedOffers
+  getSalaryMatchedOffers,
+  isRupay91Eligible
 } from '../data/affiliatePartners';
 import { downloadFile, api as crmApi } from '../utils/apiClient';
 import {
@@ -70,7 +71,8 @@ import {
   formatStatusLabel,
   CRM_STATUS_MAP,
   CRM_STATUS_STAGES,
-  getLeadsFromBackend, isMobileOnlyLead } from '../utils/apiConfig';
+  getLeadsFromBackend, isMobileOnlyLead
+} from '../utils/apiConfig';
 import { listPartnerEvents, pushLeadToPartnerApi } from '../utils/crmApi';
 import { getServerPartnerId } from '../data/affiliatePartners';
 import { hasPermission } from '../utils/permissions';
@@ -454,8 +456,15 @@ export default function LeadsView({
       showToast('Assign this lead to a partner before pushing it to the partner API.', true);
       return;
     }
+    const rupayServerId = getServerPartnerId('rupay91');
+    const partnerSlug = lead.assignedPartnerSlug || (lead.assignedPartnerId === rupayServerId ? 'rupay91' : '');
+    const isRupay = partnerSlug === 'rupay91' || lead.assignedCompany === 'Rupay91' || lead.assignedPartnerId === rupayServerId;
+    if (isRupay && !isRupay91Eligible(lead)) {
+      showToast('Delivery blocked: Rupay91 requires CIBIL score >= 700 and monthly salary >= ₹1,00,000.', true);
+      return;
+    }
     setIsPushingApi(true);
-    const res = await pushLeadToPartnerApi({ applicationId: lead.id, partnerId: lead.assignedPartnerId });
+    const res = await pushLeadToPartnerApi({ applicationId: lead.id, partnerId: lead.assignedPartnerId }, lead);
     setIsPushingApi(false);
     if (res.success) {
       showToast(`Lead successfully pushed to ${lead.assignedCompany} API!`);
@@ -722,10 +731,10 @@ export default function LeadsView({
           if (!isDup) return false;
         } else if (filterKey === 'organization') {
           const matchesOrg = Boolean(
-            item.organization || 
-            item.company || 
-            item.companyName || 
-            item.employer || 
+            item.organization ||
+            item.company ||
+            item.companyName ||
+            item.employer ||
             (item.channel && (item.channel.toLowerCase() === 'organization' || item.channel.toLowerCase() === 'organic search')) ||
             (item.utm_source && item.utm_source.toLowerCase().includes('org'))
           );
@@ -866,6 +875,11 @@ export default function LeadsView({
     const isUnassigning = !newCompany || newCompany === 'Pending Selection';
     let serverPartnerId = null;
     if (!isUnassigning) {
+      const isRupay = (newCompany === 'Rupay91' || newCompany === 'rupay91' || newCompany === 'Rupay 91');
+      if (isRupay && !isRupay91Eligible(targetLead)) {
+        showToast('Cannot assign: Rupay91 requires CIBIL score >= 700 and monthly salary >= ₹1,00,000.', true);
+        return;
+      }
       const meta = AFFILIATE_PARTNERS.find(p => p.name === newCompany || p.id === newCompany);
       serverPartnerId = meta ? getServerPartnerId(meta.id) : null;
       if (!serverPartnerId) {
@@ -873,7 +887,7 @@ export default function LeadsView({
         return;
       }
     }
-    const patchRes = await updateLoanApplication(targetLead.id, { assignedPartnerId: serverPartnerId });
+    const patchRes = await updateLoanApplication(targetLead.id, { assignedPartnerId: serverPartnerId }, { lead: targetLead });
     if (patchRes.success && patchRes.lead) {
       applyUpdatedLead(targetLead.id, patchRes.lead);
       showToast(isUnassigning ? 'Partner assignment removed.' : `Lead assigned to ${newCompany}.`);
@@ -1077,11 +1091,16 @@ export default function LeadsView({
         let createdLead = result.lead;
         // Optional partner choice from the form: applied through the real assignment field
         if (newCompany && newCompany !== 'AUTO') {
-          const chosen = AFFILIATE_PARTNERS.find(p => p.name === newCompany || p.id === newCompany);
-          const chosenServerId = chosen ? getServerPartnerId(chosen.id) : null;
-          if (chosenServerId && canEditLeads) {
-            const assignRes = await updateLoanApplication(createdLead.id, { assignedPartnerId: chosenServerId });
-            if (assignRes.success && assignRes.lead) createdLead = assignRes.lead;
+          const isRupay = (newCompany === 'Rupay91' || newCompany === 'rupay91');
+          if (isRupay && !isRupay91Eligible(createdLead)) {
+            showToast('Rupay91 requires CIBIL >= 700 and monthly salary >= ₹1,00,000. Lead left as Pending Selection.', true);
+          } else {
+            const chosen = AFFILIATE_PARTNERS.find(p => p.name === newCompany || p.id === newCompany);
+            const chosenServerId = chosen ? getServerPartnerId(chosen.id) : null;
+            if (chosenServerId && canEditLeads) {
+              const assignRes = await updateLoanApplication(createdLead.id, { assignedPartnerId: chosenServerId }, { lead: createdLead });
+              if (assignRes.success && assignRes.lead) createdLead = assignRes.lead;
+            }
           }
         }
         if (setLeads) {
@@ -1159,26 +1178,26 @@ export default function LeadsView({
           </button>
 
           {canExportLeads && (
-          <button
-            onClick={handleExportExcel}
-            disabled={isExporting}
-            className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
-            title="Download CSV report"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-            <span>{isExporting ? 'Exporting…' : 'Export CSV'}</span>
-          </button>
+            <button
+              onClick={handleExportExcel}
+              disabled={isExporting}
+              className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
+              title="Download CSV report"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{isExporting ? 'Exporting…' : 'Export CSV'}</span>
+            </button>
           )}
 
           {canDeleteLeads && (
-          <button
-            onClick={handleClearAllLeads}
-            className="px-3.5 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/30 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
-            title="Permanently delete all leads"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
-            <span>Clear All</span>
-          </button>
+            <button
+              onClick={handleClearAllLeads}
+              className="px-3.5 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 border border-rose-400/30 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+              title="Permanently delete all leads"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+              <span>Clear All</span>
+            </button>
           )}
 
           <button
@@ -1281,13 +1300,13 @@ export default function LeadsView({
 
           <div className="flex items-center gap-2.5">
             {canDeleteLeads && (
-            <button
-              onClick={handleDeleteSelected}
-              className="px-4 py-1.5 bg-white text-rose-700 hover:bg-rose-50 text-xs font-extrabold rounded-xl shadow transition flex items-center gap-2 cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4 text-rose-600" />
-              <span>Delete Selected ({selectedLeadIds.length})</span>
-            </button>
+              <button
+                onClick={handleDeleteSelected}
+                className="px-4 py-1.5 bg-white text-rose-700 hover:bg-rose-50 text-xs font-extrabold rounded-xl shadow transition flex items-center gap-2 cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4 text-rose-600" />
+                <span>Delete Selected ({selectedLeadIds.length})</span>
+              </button>
             )}
             <button
               onClick={() => setSelectedLeadIds([])}
@@ -1945,13 +1964,13 @@ export default function LeadsView({
                           </a>
                         )}
                         {canDeleteLeads && (
-                        <button
-                          onClick={() => handleDeleteSingle(item, idx)}
-                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
-                          title="Delete Lead"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                          <button
+                            onClick={() => handleDeleteSingle(item, idx)}
+                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                            title="Delete Lead"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         )}
                       </div>
                     </td>
@@ -2427,7 +2446,7 @@ export default function LeadsView({
                   className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#0A3977] focus:outline-none bg-white font-bold"
                 >
                   <option value="AUTO">✨ Auto-Match by Eligibility</option>
-                  {AFFILIATE_PARTNERS.map(p => (
+                  {AFFILIATE_PARTNERS.filter(p => p.id !== 'rupay91' || Number(newSalary) >= 100000).map(p => (
                     <option key={p.id} value={p.name}>{p.name}</option>
                   ))}
                 </select>
@@ -2789,11 +2808,10 @@ export default function LeadsView({
                     {(activeOverviewLead.whatsappOptIn !== undefined || activeOverviewLead.marketingConsent !== undefined) && (
                       <div className="flex items-center justify-between">
                         <span className="text-slate-400 font-medium">WhatsApp Opt-in:</span>
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${
-                          (activeOverviewLead.whatsappOptIn || activeOverviewLead.marketingConsent)
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold ${(activeOverviewLead.whatsappOptIn || activeOverviewLead.marketingConsent)
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : 'bg-slate-100 text-slate-600 border border-slate-200'
-                        }`}>
+                          }`}>
                           {(activeOverviewLead.whatsappOptIn || activeOverviewLead.marketingConsent) ? 'Opted In' : 'Not Opted In'}
                         </span>
                       </div>
@@ -2824,9 +2842,7 @@ export default function LeadsView({
 
               {/* Salary-Based Matched Loan Offers Section */}
               {(() => {
-                const salaryOffers = getSalaryMatchedOffers(
-                  activeOverviewLead.salary || activeOverviewLead.monthlySalary || activeOverviewLead.monthly_salary || activeOverviewLead.sal_val
-                );
+                const salaryOffers = getSalaryMatchedOffers(activeOverviewLead);
                 return (
                   <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
@@ -2927,6 +2943,8 @@ export default function LeadsView({
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                           {salaryOffers.ineligible.map(p => {
+                            const isRupay = p.id === 'rupay91';
+                            const cibilShortfall = isRupay && (salaryOffers.cibil === null || salaryOffers.cibil < 700);
                             const shortfall = Math.max(0, p.minSalary - (salaryOffers.salary || 0));
                             return (
                               <div
@@ -2937,11 +2955,15 @@ export default function LeadsView({
                                   <div className="flex items-center justify-between gap-1 mb-1.5">
                                     <span className="font-bold text-xs text-slate-700">{p.name}</span>
                                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200">
-                                      Min ₹{(p.minSalary / 1000).toFixed(0)}k Req.
+                                      {isRupay ? 'Min ₹100k & CIBIL 700+' : `Min ₹${(p.minSalary / 1000).toFixed(0)}k Req.`}
                                     </span>
                                   </div>
                                   <div className="text-[10.5px] text-slate-500 space-y-0.5 mb-2">
-                                    <div className="text-rose-600 font-semibold">Shortfall: -₹{shortfall.toLocaleString('en-IN')}/mo</div>
+                                    {isRupay && cibilShortfall ? (
+                                      <div className="text-rose-600 font-semibold">CIBIL: {salaryOffers.cibil || 'Unverified'} (700+ Req.)</div>
+                                    ) : (
+                                      <div className="text-rose-600 font-semibold">Shortfall: -₹{shortfall.toLocaleString('en-IN')}/mo</div>
+                                    )}
                                     <div>Rate: {p.interestRate || 'Up to 1% per day'} • {p.tenure || '30 - 45 Days'}</div>
                                   </div>
                                 </div>
@@ -2949,7 +2971,7 @@ export default function LeadsView({
                                 <div className="pt-2 border-t border-slate-200 text-center">
                                   <span className="text-[10.5px] font-bold text-slate-400 flex items-center justify-center gap-1">
                                     <Lock className="w-3 h-3" />
-                                    <span>Income criteria not met</span>
+                                    <span>{isRupay && cibilShortfall ? 'CIBIL / Income criteria not met' : 'Income criteria not met'}</span>
                                   </span>
                                 </div>
                               </div>
@@ -3092,11 +3114,10 @@ export default function LeadsView({
                 <div className="relative pl-6 space-y-4 border-l-2 border-slate-200 ml-2 pt-1 pb-1">
                   {/* Node 1: Lead Assigned */}
                   <div className="relative">
-                    <span className={`w-3.5 h-3.5 rounded-full border-2 border-white absolute -left-[31px] top-0.5 shadow-xs ${
-                      activeOverviewLead.assignedCompany && activeOverviewLead.assignedCompany !== 'Pending Selection'
+                    <span className={`w-3.5 h-3.5 rounded-full border-2 border-white absolute -left-[31px] top-0.5 shadow-xs ${activeOverviewLead.assignedCompany && activeOverviewLead.assignedCompany !== 'Pending Selection'
                         ? 'bg-blue-600'
                         : 'bg-amber-500'
-                    }`}></span>
+                      }`}></span>
                     <div className="flex items-center justify-between">
                       <div className="font-bold text-slate-800 text-xs">
                         {activeOverviewLead.assignedCompany && activeOverviewLead.assignedCompany !== 'Pending Selection'
@@ -3246,6 +3267,7 @@ export default function LeadsView({
 
           const q = (partnerFilterQuery || '').toLowerCase().trim();
           const filteredPartners = AFFILIATE_PARTNERS.filter(p => {
+            if (p.id === 'rupay91' && !isRupay91Eligible(currentLead)) return false;
             if (!q) return true;
             return (p.name || '').toLowerCase().includes(q) ||
               (p.tagline || '').toLowerCase().includes(q) ||
@@ -3275,7 +3297,7 @@ export default function LeadsView({
                   <span className="text-slate-700 font-extrabold">Assign Lending Partner</span>
                 </div>
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                  {AFFILIATE_PARTNERS.length + 1} Options
+                  {filteredPartners.length + (showPendingSelection ? 1 : 0)} Options
                 </span>
               </div>
 

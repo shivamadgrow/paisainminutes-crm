@@ -8,18 +8,18 @@ export const AFFILIATE_PARTNERS = [
     partnerName: 'Rupay 91',
     displayName: 'Rupay 91',
     code: 'RUPAY91',
-    tagline: 'Instant Digital Credit (CIBIL 750+)',
+    tagline: 'Instant Digital Credit (CIBIL 700+ & Salary ₹1,00,000+)',
     badgeClass: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
     pillClass: 'bg-indigo-600 text-white',
     accentColor: '#4F46E5',
     accentBg: 'bg-indigo-50',
     gradient: 'from-indigo-600 to-violet-700',
-    minCibil: 750,
-    minSalary: 50000,
+    minCibil: 700,
+    minSalary: 100000,
     maxLoan: 100000,
     interestRate: 'Up to 1% per day',
     tenure: '30 - 45 Days',
-    description: 'Fast digital approvals for prime applicants with salary >= ₹50,000.',
+    description: 'Fast digital approvals for prime applicants with salary >= ₹1,00,000 and CIBIL >= 700.',
     website: 'https://rupay91.com',
     applyUrl: 'https://loans.rupay91.com/login',
     commissionRate: '6.0%',
@@ -274,6 +274,143 @@ export function getPartnerMeta(partnerNameOrId) {
   };
 }
 
+/**
+ * Extracts and validates a numerical CIBIL score from a lead or input.
+ * Returns null if CIBIL is unavailable, null, unverified, or out of range [300, 900].
+ */
+export function extractCibilScore(lead) {
+  if (!lead) return null;
+  if (typeof lead === 'number') {
+    return lead >= 300 && lead <= 900 ? lead : null;
+  }
+  if (typeof lead === 'string') {
+    const s = lead.trim();
+    if (!s || s === '—' || /not\s*available|fetching|pending|none|no\s*record/i.test(s)) return null;
+    const m = s.match(/\b([3-8]\d{2}|900)\b/);
+    if (m) {
+      const v = parseInt(m[1], 10);
+      return v >= 300 && v <= 900 ? v : null;
+    }
+    if (/^700\s*[-–—to]\s*749/i.test(s)) return 725;
+    if (/^750\s*[-–—to]\s*799/i.test(s)) return 775;
+    if (/^800\s*[-–—to]\s*849/i.test(s)) return 825;
+    if (/^850\s*[-–—to]\s*900/i.test(s)) return 875;
+    if (/^650\s*[-–—to]\s*699/i.test(s)) return 675;
+    if (/^600\s*[-–—to]\s*649/i.test(s)) return 625;
+    if (/^550\s*[-–—to]\s*599/i.test(s)) return 575;
+    if (/^500\s*[-–—to]\s*549/i.test(s)) return 525;
+    return null;
+  }
+
+  // Object lead
+  const rawNum = lead.cibilScore !== undefined && lead.cibilScore !== null
+    ? Number(lead.cibilScore)
+    : (lead.cibil_score !== undefined && lead.cibil_score !== null ? Number(lead.cibil_score) : null);
+  if (typeof rawNum === 'number' && !isNaN(rawNum) && rawNum >= 300 && rawNum <= 900) {
+    return rawNum;
+  }
+
+  const rawCibil = lead.cibil ?? lead.cibilDisplay ?? lead.cibil_range ?? '';
+  if (typeof rawCibil === 'number' && rawCibil >= 300 && rawCibil <= 900) {
+    return rawCibil;
+  }
+
+  const str = String(rawCibil).trim();
+  if (!str || str === '—' || /not\s*available|fetching|pending|none|no\s*record/i.test(str)) {
+    return null;
+  }
+  const match = str.match(/\b([3-8]\d{2}|900)\b/);
+  if (match) {
+    const val = parseInt(match[1], 10);
+    return val >= 300 && val <= 900 ? val : null;
+  }
+
+  if (/^700\s*[-–—to]\s*749/i.test(str)) return 725;
+  if (/^750\s*[-–—to]\s*799/i.test(str)) return 775;
+  if (/^800\s*[-–—to]\s*849/i.test(str)) return 825;
+  if (/^850\s*[-–—to]\s*900/i.test(str)) return 875;
+  if (/^650\s*[-–—to]\s*699/i.test(str)) return 675;
+  if (/^600\s*[-–—to]\s*649/i.test(str)) return 625;
+  if (/^550\s*[-–—to]\s*599/i.test(str)) return 575;
+  if (/^500\s*[-–—to]\s*549/i.test(str)) return 525;
+
+  return null;
+}
+
+/**
+ * Extracts and validates monthly salary in rupees.
+ * Rejects values > 500,000 as annual income or erroneous data.
+ */
+export function extractMonthlySalary(lead) {
+  if (!lead) return 0;
+  if (typeof lead === 'number') {
+    return Number.isFinite(lead) && lead > 0 && lead <= 500000 ? lead : 0;
+  }
+  if (typeof lead === 'string') {
+    return cleanSalary(lead);
+  }
+  const salNum = typeof lead.salary === 'number' && lead.salary > 0
+    ? lead.salary
+    : (typeof lead.monthlySalary === 'number' && lead.monthlySalary > 0
+      ? lead.monthlySalary
+      : cleanSalary(lead.salary || lead.monthlySalary || lead.monthly_salary || lead.monthlyIncome, lead.sal_val, lead.salary_range));
+
+  return Number.isFinite(salNum) && salNum > 0 && salNum <= 500000 ? salNum : 0;
+}
+
+/**
+ * Strictly verifies Rupay91 eligibility for a lead:
+ * Rupay91 is ONLY eligible when BOTH conditions are satisfied:
+ * 1. CIBIL score >= 700 (must be verified, valid, non-null)
+ * 2. Monthly salary >= ₹1,00,000 (must represent monthly salary, not annual income)
+ * Both conditions are mandatory.
+ */
+export function isRupay91Eligible(lead) {
+  if (!lead) return false;
+
+  // Unverified, pending or failed CIBIL statuses are strictly ineligible
+  const cibilStatus = String(lead.cibilStatus || lead.cibil_status || '').toLowerCase().trim();
+  if (cibilStatus && /timed\s*out|no\s*credit|no\s*record|failed|not\s*found|none|pending|fetching/i.test(cibilStatus)) {
+    return false;
+  }
+
+  const cibil = extractCibilScore(lead);
+  if (cibil === null || typeof cibil !== 'number' || cibil < 700) {
+    return false;
+  }
+
+  const salary = extractMonthlySalary(lead);
+  if (!salary || salary < 100000 || salary > 500000) {
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Checks partner eligibility for a given lead.
+ * Strictly applies the CIBIL >= 700 & Salary >= ₹1,00,000 rule for Rupay91.
+ * All other partners follow their existing rules.
+ */
+export function isPartnerEligible(partnerOrSlug, lead) {
+  const meta = getPartnerMeta(partnerOrSlug);
+  if (!meta || meta.disabled || meta.status === 'INACTIVE') return false;
+  const slug = meta.id;
+  if (slug === 'rupay91') {
+    return isRupay91Eligible(lead);
+  }
+
+  const sal = extractMonthlySalary(lead);
+  const minSal = Number(meta.minSalary || 0);
+  if (sal < minSal) return false;
+
+  const cibil = extractCibilScore(lead);
+  const minCibil = Number(meta.minCibil || 0);
+  if (cibil !== null && cibil < minCibil) return false;
+
+  return true;
+}
+
 // Exact 8-Slab Matrix & Partner Rule engine
 export function getEligibilityMatrix(lead) {
   if (!lead) {
@@ -286,26 +423,9 @@ export function getEligibilityMatrix(lead) {
     };
   }
 
-  const cibilStr = String(lead.cibil || lead.cibilScore || lead.cibil_score || lead.cibil_range || '').trim();
-  let cibilVal = 0;
-  if (cibilStr && cibilStr !== '—') {
-    if (/\b(850|8[5-9]\d|900)\b/.test(cibilStr)) cibilVal = 875;
-    else if (/\b(800|8[0-4]\d)\b/.test(cibilStr)) cibilVal = 825;
-    else if (/\b(750|7[5-9]\d)\b/.test(cibilStr)) cibilVal = 775;
-    else if (/\b(700|7[0-4]\d)\b/.test(cibilStr)) cibilVal = 725;
-    else if (/\b(650|6[5-9]\d)\b/.test(cibilStr)) cibilVal = 675;
-    else if (/\b(600|6[0-4]\d)\b/.test(cibilStr)) cibilVal = 625;
-    else if (/\b(550|5[5-9]\d)\b/.test(cibilStr)) cibilVal = 575;
-    else if (/\b(500|5[0-4]\d)\b/.test(cibilStr)) cibilVal = 525;
-    else {
-      const match = cibilStr.match(/\d{3}/);
-      if (match) cibilVal = parseInt(match[0], 10);
-    }
-  }
-
-  const salNum = typeof lead.salary === 'number' && lead.salary > 0 
-    ? lead.salary 
-    : cleanSalary(lead.salary || lead.monthlySalary || lead.monthly_salary, lead.sal_val, lead.salary_range);
+  const cibilVal = extractCibilScore(lead) || 0;
+  const salNum = extractMonthlySalary(lead);
+  const rupayOk = isRupay91Eligible(lead);
 
   let slab = 0;
   let cibilRange = cibilVal > 0 ? String(cibilVal) : 'Not Available';
@@ -313,21 +433,26 @@ export function getEligibilityMatrix(lead) {
   let eligibilityStatus = 'Eligible';
   let partner = 'Jhatpat Loans';
 
-  if (salNum >= 90000 || cibilVal >= 850) {
+  if (rupayOk) {
+    slab = 8;
+    salaryRange = '₹1,00,000+';
+    eligibilityStatus = 'Eligible – Premium';
+    partner = 'Rupay91';
+  } else if (salNum >= 90000 || cibilVal >= 850) {
     slab = 8;
     salaryRange = '₹90,000+';
     eligibilityStatus = 'Eligible – Premium';
-    partner = 'Rupay91';
+    partner = 'Jhatpat Loans';
   } else if (salNum >= 80000 || cibilVal >= 800) {
     slab = 7;
     salaryRange = '₹80,000–₹89,999';
     eligibilityStatus = 'Eligible – Premium';
-    partner = 'Rupay91';
+    partner = 'Jhatpat Loans';
   } else if (salNum >= 70000 || cibilVal >= 750) {
     slab = 6;
     salaryRange = '₹70,000–₹79,999';
     eligibilityStatus = 'Eligible – Preferred';
-    partner = 'Rupay91';
+    partner = 'Jhatpat Loans';
   } else if (salNum >= 60000 || cibilVal >= 700) {
     slab = 5;
     salaryRange = '₹60,000–₹69,999';
@@ -360,10 +485,17 @@ export function getEligibilityMatrix(lead) {
     partner = (cibilVal === 0 && salNum === 0) ? 'Pending Details' : 'Jhatpat Loans';
   }
 
-  // Resolve assigned partner: prioritize lead's assignedCompany if set, else Pending Selection
+  // Resolve assigned partner: prioritize lead's assignedCompany if set and eligible, else Pending Selection
   const existingAssigned = lead.assignedCompany || lead.partner_name || lead.partner || '';
   if (existingAssigned && !['auto', '—', '', 'null', 'pending details'].includes(existingAssigned.toLowerCase())) {
-    partner = existingAssigned;
+    const isAssignedRupay = existingAssigned.toLowerCase().replace(/[\s\-_]/g, '').includes('rupay91') ||
+      existingAssigned.toLowerCase().replace(/[\s\-_]/g, '') === 'rupay';
+    if (isAssignedRupay && !rupayOk) {
+      // Ineligible leads cannot remain assigned to Rupay91 for future delivery
+      partner = 'Pending Selection';
+    } else {
+      partner = existingAssigned;
+    }
   } else {
     partner = (cibilVal === 0 && salNum === 0) ? 'Pending Details' : 'Pending Selection';
   }
@@ -386,24 +518,27 @@ export function recommendPartner(lead) {
 }
 
 /**
- * Categorizes all lending partners into Eligible and Ineligible offers
- * strictly based on the applicant's monthly salary.
+ * Categorizes lending partners into Eligible and Ineligible offers.
+ * Strictly checks CIBIL >= 700 AND Monthly Salary >= ₹1,00,000 for Rupay91.
+ * All other partners continue using their existing criteria.
+ * Accepts either lead object or (salary, cibilOrLead).
  */
-export function getSalaryMatchedOffers(salaryInput) {
+export function getSalaryMatchedOffers(salaryOrLead, cibilOrLead) {
+  let leadObj = null;
   let salNum = 0;
-  if (typeof salaryInput === 'number' && salaryInput > 0) {
-    salNum = salaryInput;
-  } else if (salaryInput) {
-    const str = String(salaryInput).trim();
-    if (/(\d+(?:\.\d+)?)\s*k/i.test(str)) {
-      const m = str.match(/(\d+(?:\.\d+)?)\s*k/i);
-      salNum = Math.round(parseFloat(m[1]) * 1000);
-    } else if (/(\d+(?:\.\d+)?)\s*lakh/i.test(str)) {
-      const m = str.match(/(\d+(?:\.\d+)?)\s*lakh/i);
-      salNum = Math.round(parseFloat(m[1]) * 100000);
-    } else {
-      const clean = parseInt(str.replace(/\D/g, ''), 10);
-      salNum = !isNaN(clean) && clean > 0 ? clean : 0;
+  let cibilVal = null;
+
+  if (salaryOrLead && typeof salaryOrLead === 'object') {
+    leadObj = salaryOrLead;
+    salNum = extractMonthlySalary(leadObj);
+    cibilVal = extractCibilScore(leadObj);
+  } else {
+    salNum = extractMonthlySalary(salaryOrLead);
+    if (cibilOrLead && typeof cibilOrLead === 'object') {
+      leadObj = cibilOrLead;
+      cibilVal = extractCibilScore(cibilOrLead);
+    } else if (cibilOrLead !== undefined && cibilOrLead !== null) {
+      cibilVal = extractCibilScore(cibilOrLead);
     }
   }
 
@@ -411,16 +546,29 @@ export function getSalaryMatchedOffers(salaryInput) {
   const ineligible = [];
 
   AFFILIATE_PARTNERS.forEach(partner => {
-    const minSal = Number(partner.minSalary || 25000);
-    if (salNum >= minSal) {
-      eligible.push(partner);
+    if (partner.id === 'rupay91') {
+      const isEligible = leadObj
+        ? isRupay91Eligible(leadObj)
+        : (cibilVal !== null && cibilVal >= 700 && salNum >= 100000 && salNum <= 500000);
+
+      if (isEligible) {
+        eligible.push(partner);
+      } else {
+        ineligible.push(partner);
+      }
     } else {
-      ineligible.push(partner);
+      const minSal = Number(partner.minSalary || 25000);
+      if (salNum >= minSal) {
+        eligible.push(partner);
+      } else {
+        ineligible.push(partner);
+      }
     }
   });
 
   return {
     salary: salNum,
+    cibil: cibilVal,
     eligible,
     ineligible
   };

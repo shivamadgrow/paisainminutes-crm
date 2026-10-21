@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  DollarSign, 
-  Search, 
-  Plus, 
-  History, 
-  Clock, 
-  CheckCircle2, 
-  Building2, 
-  Layers, 
+import {
+  DollarSign,
+  Search,
+  Plus,
+  History,
+  Clock,
+  CheckCircle2,
+  Building2,
+  Layers,
   Calendar,
   Sparkles,
   Edit2,
@@ -169,9 +169,9 @@ export default function CommissionRateCardsView() {
       {/* Search Bar */}
       <div className="relative w-full sm:w-80 bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
         <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-        <input 
-          type="text" 
-          placeholder="Search partner rate cards..." 
+        <input
+          type="text"
+          placeholder="Search partner rate cards..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-8 pr-3 py-1.5 text-xs border-none focus:outline-none"
@@ -257,8 +257,8 @@ export default function CommissionRateCardsView() {
             {/* Footer */}
             <div className="px-4 py-2.5 bg-slate-50/80 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
               <span>Status: <strong className="text-emerald-600">Active & Applied</strong></span>
-              <button 
-                onClick={() => handleOpenEdit(rc)} 
+              <button
+                onClick={() => handleOpenEdit(rc)}
                 className="text-indigo-600 hover:text-indigo-800 font-bold text-[11px]"
               >
                 Configure Slabs →
@@ -296,7 +296,7 @@ export default function CommissionRateCardsView() {
               {editForm.model !== 'per_lead' ? (
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Base Commission Rate (%)</label>
-                  <input 
+                  <input
                     type="number"
                     step="0.01"
                     min="0"
@@ -310,7 +310,7 @@ export default function CommissionRateCardsView() {
               ) : (
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Fee per Lead (₹)</label>
-                  <input 
+                  <input
                     type="number"
                     value={editForm.perLeadFee}
                     onChange={(e) => setEditForm(p => ({ ...p, perLeadFee: Number(e.target.value) }))}
@@ -321,7 +321,7 @@ export default function CommissionRateCardsView() {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">Effective Date (Start Date)</label>
-                <input 
+                <input
                   type="date"
                   value={editForm.effectiveFrom}
                   onChange={(e) => setEditForm(p => ({ ...p, effectiveFrom: e.target.value }))}

@@ -92,7 +92,7 @@ it('loan-offers.php renders Rupay 91 apply link with lead_id, ref, sub_id, and e
   const phpScript = `
     $_GET['lead_id'] = '${testLead}';
     $_GET['cibil'] = '780';
-    $_GET['salary'] = '60000';
+    $_GET['salary'] = '120000';
     $_GET['utm_source'] = 'test_source';
     $_GET['utm_campaign'] = 'test_campaign';
     $_SERVER['REQUEST_METHOD'] = 'GET';

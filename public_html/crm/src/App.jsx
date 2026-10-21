@@ -315,7 +315,7 @@ export default function App() {
   // 🔒 IF NOT LOGGED IN: SHOW FULL-SCREEN LOGIN LOCK SCREEN
   if (!currentUser) {
     return (
-      <LoginModal 
+      <LoginModal
         isFullScreen={true}
         isOpen={true}
         onLogin={handleLoginSuccess}
@@ -333,10 +333,10 @@ export default function App() {
         return <MyProfileView currentUser={currentUser} onPasswordChanged={handlePasswordChanged} />;
       }
       return (
-        <PartnerPortalView 
-          currentUser={currentUser} 
-          leads={leads} 
-          setLeads={setLeads} 
+        <PartnerPortalView
+          currentUser={currentUser}
+          leads={leads}
+          setLeads={setLeads}
           onRefresh={refreshLeads}
         />
       );
@@ -379,10 +379,10 @@ export default function App() {
 
       case 'partner-leads':
         return (
-          <PartnerPortalView 
-            currentUser={currentUser} 
-            leads={leads} 
-            setLeads={setLeads} 
+          <PartnerPortalView
+            currentUser={currentUser}
+            leads={leads}
+            setLeads={setLeads}
             onRefresh={refreshLeads}
             readOnly
           />
@@ -395,8 +395,8 @@ export default function App() {
 
       case 'executive':
         return (
-          <ExecutiveDashboard 
-            stats={stats} 
+          <ExecutiveDashboard
+            stats={stats}
             leads={leads}
             onSelectCompany={(companyId) => setActiveTab(`company-${companyId}`)}
             onOpenPartnerHub={() => setActiveTab('partner-hub')}
@@ -405,8 +405,8 @@ export default function App() {
 
       case 'partner-hub':
         return (
-          <PartnerHubView 
-            leads={leads} 
+          <PartnerHubView
+            leads={leads}
             onSelectCompany={(companyId) => setActiveTab(`company-${companyId}`)}
             onOpenTestModal={() => setActiveTab('all-leads')}
           />
@@ -414,11 +414,11 @@ export default function App() {
 
       case 'company-rupay91':
         return (
-          <CompanyLeadsView 
-            companyId="rupay91" 
-            leads={leads} 
-            setLeads={setLeads} 
-            onBackToHub={() => setActiveTab('partner-hub')} 
+          <CompanyLeadsView
+            companyId="rupay91"
+            leads={leads}
+            setLeads={setLeads}
+            onBackToHub={() => setActiveTab('partner-hub')}
           />
         );
 
@@ -436,9 +436,9 @@ export default function App() {
       // Commissions & Payouts routes
       case 'commission-summary':
         return (
-          <CommissionSummaryView 
-            leads={leads} 
-            onSelectCompany={(companyId) => setActiveTab(`company-${companyId}`)} 
+          <CommissionSummaryView
+            leads={leads}
+            onSelectCompany={(companyId) => setActiveTab(`company-${companyId}`)}
           />
         );
 
@@ -497,21 +497,21 @@ export default function App() {
       case 'duplicate-leads':
       case 'organization':
         return (
-          <LeadsView 
-            leads={leads} 
-            setLeads={setLeads} 
-            activeFilterTab={activeTab} 
-            setActiveFilterTab={setActiveTab} 
-            searchQuery={searchQuery} 
-            setSearchQuery={setSearchQuery} 
+          <LeadsView
+            leads={leads}
+            setLeads={setLeads}
+            activeFilterTab={activeTab}
+            setActiveFilterTab={setActiveTab}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
             currentUser={currentUser}
           />
         );
 
       case 'tracker':
         return (
-          <ApplicationTracker 
-            leads={leads} 
+          <ApplicationTracker
+            leads={leads}
           />
         );
 
@@ -522,21 +522,21 @@ export default function App() {
 
       case 'kpi':
         return (
-          <PartnerAnalyticsKPISummary 
-            leads={leads} 
+          <PartnerAnalyticsKPISummary
+            leads={leads}
             onSelectCompany={(companyId) => setActiveTab(`company-${companyId}`)}
           />
         );
 
       case 'admin-staff':
         return (
-          <StaffView 
-            onSwitchUser={handleSwitchUser} 
+          <StaffView
+            onSwitchUser={handleSwitchUser}
             onPreviewPartner={(account) => {
               setPartnerPreview({ partnerId: account.partnerId, partnerName: account.partnerName });
               setActiveTab('partner-preview');
             }}
-            currentUser={currentUser} 
+            currentUser={currentUser}
           />
         );
 
@@ -572,8 +572,8 @@ export default function App() {
 
       case 'profile':
         return (
-          <MyProfileView 
-            currentUser={currentUser} 
+          <MyProfileView
+            currentUser={currentUser}
             onPasswordChanged={handlePasswordChanged}
           />
         );
@@ -582,17 +582,17 @@ export default function App() {
         if (activeTab && activeTab.startsWith('company-')) {
           const companyId = activeTab.replace('company-', '');
           return (
-            <CompanyLeadsView 
-              companyId={companyId} 
-              leads={leads} 
-              setLeads={setLeads} 
-              onBackToHub={() => setActiveTab('partner-hub')} 
+            <CompanyLeadsView
+              companyId={companyId}
+              leads={leads}
+              setLeads={setLeads}
+              onBackToHub={() => setActiveTab('partner-hub')}
             />
           );
         }
         return (
-          <ExecutiveDashboard 
-            stats={stats} 
+          <ExecutiveDashboard
+            stats={stats}
             leads={leads}
             onSelectCompany={(companyId) => setActiveTab(`company-${companyId}`)}
             onOpenPartnerHub={() => setActiveTab('partner-hub')}
@@ -603,31 +603,31 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-[#F4F7FC] overflow-hidden text-slate-800">
-      
+
       {/* Sidebar Navigation */}
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        leadCounts={leadCounts} 
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        leadCounts={leadCounts}
         partnerCounts={partnerCounts}
         commissionCounts={commissionCounts}
         onOpenOnboarding={() => setIsOnboardingOpen(true)}
-        isMobileOpen={isMobileOpen} 
-        setIsMobileOpen={setIsMobileOpen} 
+        isMobileOpen={isMobileOpen}
+        setIsMobileOpen={setIsMobileOpen}
         currentUser={currentUser}
       />
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        
+
         {/* Top Header Navbar */}
-        <Navbar 
-          searchQuery={searchQuery} 
+        <Navbar
+          searchQuery={searchQuery}
           setSearchQuery={(q) => {
             setSearchQuery(q);
             if (q && activeTab !== 'all-leads') setActiveTab('all-leads');
-          }} 
-          setIsMobileOpen={setIsMobileOpen} 
+          }}
+          setIsMobileOpen={setIsMobileOpen}
           setActiveTab={setActiveTab}
           currentUser={currentUser}
           onOpenLogin={() => setIsLoginModalOpen(true)}
@@ -651,10 +651,10 @@ export default function App() {
       </div>
 
       {/* Switch User Modal (when opened from dropdown) */}
-      <LoginModal 
+      <LoginModal
         isFullScreen={false}
-        isOpen={isLoginModalOpen} 
-        onClose={() => setIsLoginModalOpen(false)} 
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
         onLogin={handleLoginSuccess}
         currentUser={currentUser}
       />

@@ -54,7 +54,18 @@ export function cleanSalary(raw, salVal, salRange) {
   }
 
   // 2. Check range string (e.g. "₹80,000–₹89,999", "₹70,000 - ₹79,999", "₹90,000+")
-  const textToCheck = String(salRange || raw || '');
+  const textToCheck = String(salRange || raw || '').trim();
+  if (/(\d+(?:\.\d+)?)\s*k\b/i.test(textToCheck)) {
+    const m = textToCheck.match(/(\d+(?:\.\d+)?)\s*k\b/i);
+    const kVal = Math.round(parseFloat(m[1]) * 1000);
+    if (kVal >= 5000 && kVal <= 500000) return kVal;
+  }
+  if (/(\d+(?:\.\d+)?)\s*lakh/i.test(textToCheck)) {
+    const m = textToCheck.match(/(\d+(?:\.\d+)?)\s*lakh/i);
+    const lVal = Math.round(parseFloat(m[1]) * 100000);
+    if (lVal >= 5000 && lVal <= 500000) return lVal;
+  }
+
   if (
     textToCheck.includes('-') ||
     textToCheck.includes('–') ||

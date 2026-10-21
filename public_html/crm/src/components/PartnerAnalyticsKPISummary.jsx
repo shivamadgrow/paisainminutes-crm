@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  RefreshCw, 
-  ChevronDown, 
-  ChevronUp, 
-  Building2, 
-  ArrowUpRight, 
-  ArrowUpDown, 
-  TrendingUp, 
-  CheckCircle2, 
-  Clock, 
+import {
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Building2,
+  ArrowUpRight,
+  ArrowUpDown,
+  TrendingUp,
+  CheckCircle2,
+  Clock,
   AlertCircle,
   ExternalLink,
   Sparkles,
@@ -247,7 +247,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
           <button onClick={() => fetchKPIData()} className="px-3 py-1.5 rounded-lg bg-white border border-rose-300 font-bold cursor-pointer">Retry</button>
         </div>
       )}
-      
+
       {/* 1. Title & Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -291,7 +291,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
 
       {/* 2. Row 1 — Primary KPI Cards (4 Large Cards, Equal Width) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
+
         {/* CARD 1: TOTAL LEADS SENT */}
         <div className="crm-card bg-white overflow-hidden rounded-2xl border border-slate-200/80 shadow-xs border-l-4 border-l-blue-600 flex flex-col justify-between">
           <div className="p-5">
@@ -480,7 +480,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
 
       {/* 3. Row 2 — Secondary KPI Cards (5 Cards Grid) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        
+
         {/* CARD 1: CONVERSION RATE % */}
         <div className="crm-card bg-white overflow-hidden rounded-2xl border border-slate-200/80 shadow-xs border-t-4 border-t-emerald-500 flex flex-col justify-between">
           <div className="p-4">
@@ -685,7 +685,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
 
       {/* 4. Row 3 — Partner-wise Breakdown Table */}
       <div className="crm-card bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        
+
         {/* Table Header Controls */}
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -708,7 +708,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
           <table className="w-full text-left border-collapse text-xs">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/75 text-[11px] font-bold text-slate-500 uppercase tracking-wider select-none">
-                <th 
+                <th
                   onClick={() => handleSort('name')}
                   className="p-3.5 cursor-pointer hover:text-slate-800 transition"
                 >
@@ -717,7 +717,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
-                <th 
+                <th
                   onClick={() => handleSort('leadsSent')}
                   className="p-3.5 text-right cursor-pointer hover:text-slate-800 transition"
                 >
@@ -726,7 +726,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
-                <th 
+                <th
                   onClick={() => handleSort('approved')}
                   className="p-3.5 text-right cursor-pointer hover:text-slate-800 transition"
                 >
@@ -735,7 +735,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
-                <th 
+                <th
                   onClick={() => handleSort('disbursed')}
                   className="p-3.5 text-right cursor-pointer hover:text-slate-800 transition"
                 >
@@ -744,7 +744,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
-                <th 
+                <th
                   onClick={() => handleSort('conversionRate')}
                   className="p-3.5 text-right cursor-pointer hover:text-slate-800 transition"
                 >
@@ -753,7 +753,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
-                <th 
+                <th
                   onClick={() => handleSort('disbursal')}
                   className="p-3.5 text-right cursor-pointer hover:text-slate-800 transition"
                 >
@@ -762,7 +762,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
-                <th 
+                <th
                   onClick={() => handleSort('commissionEarned')}
                   className="p-3.5 text-right cursor-pointer hover:text-slate-800 transition"
                 >
@@ -771,7 +771,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
-                <th 
+                <th
                   onClick={() => handleSort('commissionRate')}
                   className="p-3.5 text-center cursor-pointer hover:text-slate-800 transition"
                 >
@@ -804,7 +804,7 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
                 ))
               ) : (
                 sortedPartners.map((partner) => (
-                  <tr 
+                  <tr
                     key={partner.id}
                     onClick={() => onSelectCompany && onSelectCompany(partner.id)}
                     className="hover:bg-blue-50/40 transition cursor-pointer group"
@@ -813,8 +813,8 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
                     {/* Partner Name & Branding */}
                     <td className="p-3.5">
                       <div className="flex items-center gap-2.5">
-                        <span 
-                          className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs" 
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs"
                           style={{ backgroundColor: partner.accentColor }}
                         ></span>
                         <div>
@@ -846,13 +846,12 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
 
                     {/* Conversion % */}
                     <td className="p-3.5 text-right font-mono">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        partner.conversionRate >= 20 
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                          : partner.conversionRate > 0 
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${partner.conversionRate >= 20
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : partner.conversionRate > 0
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
                             : 'bg-slate-50 text-slate-500 border border-slate-200'
-                      }`}>
+                        }`}>
                         {partner.conversionRate > 0 ? `${partner.conversionRate}%` : '0%'}
                       </span>
                     </td>

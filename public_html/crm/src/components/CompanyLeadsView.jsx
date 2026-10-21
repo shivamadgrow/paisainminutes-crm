@@ -28,7 +28,8 @@ import {
   getPartnerTrackingUrl,
   trackPartnerClick,
   getPartnerDirectUtmUrl,
-  getServerPartnerId
+  getServerPartnerId,
+  isRupay91Eligible
 } from '../data/affiliatePartners';
 import { exportToCsv } from '../utils/exportCsv';
 import { cleanLoanAmount, cleanSalary, formatToIST, isDateInRange, DATE_RANGE_PRESETS } from '../utils/amountHelpers';
@@ -215,6 +216,10 @@ export default function CompanyLeadsView({
       return;
     }
     const lead = leads.find(l => l.id === leadId || l.loanNo === leadId);
+    if ((target.id === 'rupay91' || target.name === 'Rupay 91' || serverPartnerId === 'RUPAY91') && !isRupay91Eligible(lead)) {
+      setActionError('Assignment blocked: Lead does not meet Rupay91 eligibility criteria (CIBIL ≥ 700 & Monthly Salary ≥ ₹1,00,000 required).');
+      return;
+    }
     const res = await updateLoanApplication(lead ? lead.id : leadId, { assignedPartnerId: serverPartnerId });
     if (res.success && res.lead) {
       replaceLead(lead ? lead.id : leadId, res.lead);
@@ -359,8 +364,8 @@ export default function CompanyLeadsView({
                 key={preset.id}
                 onClick={() => setSelectedDatePreset(preset.id)}
                 className={`px-2.5 py-1 text-[11px] font-bold rounded-xl transition cursor-pointer shrink-0 ${isSel
-                    ? 'bg-[#0A3977] text-white shadow-2xs'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-[#0A3977] text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
               >
                 {preset.label}
@@ -401,8 +406,8 @@ export default function CompanyLeadsView({
               key={btn.id}
               onClick={() => setStatusFilter(btn.id)}
               className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition cursor-pointer shrink-0 ${statusFilter === btn.id
-                  ? 'bg-[#0A3977] text-white shadow-2xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? 'bg-[#0A3977] text-white shadow-2xs'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
             >
               {btn.label}
@@ -677,6 +682,7 @@ export default function CompanyLeadsView({
 
           const q = (reassignFilterQuery || '').toLowerCase().trim();
           const filteredPartners = AFFILIATE_PARTNERS.filter(p => {
+            if (p.id === 'rupay91' && !isRupay91Eligible(currentLead)) return false;
             if (!q) return true;
             return (p.name || '').toLowerCase().includes(q) ||
               (p.tagline || '').toLowerCase().includes(q) ||
@@ -705,7 +711,7 @@ export default function CompanyLeadsView({
                   <span className="text-slate-700 font-extrabold">Re-assign Lending Partner</span>
                 </div>
                 <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
-                  {AFFILIATE_PARTNERS.length} Partners
+                  {filteredPartners.length} Partners
                 </span>
               </div>
 
@@ -763,8 +769,8 @@ export default function CompanyLeadsView({
                         setReassignFilterQuery('');
                       }}
                       className={`w-full px-2.5 py-2 rounded-xl text-left flex items-center justify-between text-xs transition-all cursor-pointer group ${isCurrent
-                          ? 'bg-blue-50/90 text-[#0A3977] font-black ring-1 ring-blue-300 shadow-2xs'
-                          : 'hover:bg-slate-50 text-slate-700 font-bold'
+                        ? 'bg-blue-50/90 text-[#0A3977] font-black ring-1 ring-blue-300 shadow-2xs'
+                        : 'hover:bg-slate-50 text-slate-700 font-bold'
                         }`}
                     >
                       <div className="flex items-center gap-2.5 truncate">

@@ -1,21 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Send, 
-  CheckCircle2, 
-  XCircle, 
-  RotateCw, 
-  Search, 
-  Filter, 
-  ExternalLink, 
-  Code, 
-  Clock, 
-  Building2, 
+import {
+  Send,
+  CheckCircle2,
+  XCircle,
+  RotateCw,
+  Search,
+  Filter,
+  ExternalLink,
+  Code,
+  Clock,
+  Building2,
   AlertCircle,
   RefreshCw,
   Eye,
   X
 } from 'lucide-react';
 import { listDeliveryLogs, retryDeliveryLog } from '../utils/crmApi';
+import { isRupay91Eligible } from '../data/affiliatePartners';
 
 // Server delivery log (camelCase) -> the field names this screen renders
 const mapLog = (l) => ({
@@ -30,7 +31,8 @@ const mapLog = (l) => ({
   response_code: l.httpStatus,
   created_at: l.createdAt ? new Date(l.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : '',
   request_payload: { applicationId: l.applicationId, partnerId: l.partnerId },
-  response_body: [l.errorCode, l.errorMessage].filter(Boolean).join(': ')
+  response_body: [l.errorCode, l.errorMessage].filter(Boolean).join(': '),
+  raw: l
 });
 
 export default function DeliveryLogView() {
@@ -68,6 +70,15 @@ export default function DeliveryLogView() {
   };
 
   const handleRetryPush = async (log) => {
+    const isRupay = log.partner_id === 'rupay91' || log.partner_id === 'RUPAY91' || (log.partner_name && log.partner_name.toLowerCase().includes('rupay'));
+    if (isRupay) {
+      const candidate = log.raw?.lead || log.raw?.application || log.raw;
+      if (candidate && (candidate.cibil !== undefined || candidate.salary !== undefined) && !isRupay91Eligible(candidate)) {
+        showToast('Retry blocked: Lead does not meet Rupay91 eligibility criteria (CIBIL ≥ 700 & Monthly Salary ≥ ₹1,00,000 required).', true);
+        return;
+      }
+    }
+
     const logId = log.id;
     setRetryingIds(prev => new Set(prev).add(logId));
 
@@ -102,11 +113,10 @@ export default function DeliveryLogView() {
     <div className="space-y-6">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-top-2 ${
-          toastMessage.isError 
-            ? 'bg-rose-50 text-rose-800 border-rose-200' 
+        <div className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg border text-sm font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-top-2 ${toastMessage.isError
+            ? 'bg-rose-50 text-rose-800 border-rose-200'
             : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-        }`}>
+          }`}>
           {toastMessage.isError ? <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
           <span>{toastMessage.text}</span>
         </div>
@@ -189,25 +199,22 @@ export default function DeliveryLogView() {
           <div className="inline-flex rounded-xl bg-slate-100 p-0.5 border border-slate-200 text-xs font-bold">
             <button
               onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                statusFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${statusFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               All
             </button>
             <button
               onClick={() => setStatusFilter('delivered')}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                statusFilter === 'delivered' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${statusFilter === 'delivered' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Delivered
             </button>
             <button
               onClick={() => setStatusFilter('failed')}
-              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${
-                statusFilter === 'failed' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1.5 rounded-lg transition cursor-pointer ${statusFilter === 'failed' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               Failed
             </button>
@@ -287,11 +294,10 @@ export default function DeliveryLogView() {
 
                       {/* HTTP Code */}
                       <td className="py-3 px-4 text-center">
-                        <span className={`font-mono font-bold px-2 py-0.5 rounded text-[11px] ${
-                          log.response_code >= 200 && log.response_code < 300
+                        <span className={`font-mono font-bold px-2 py-0.5 rounded text-[11px] ${log.response_code >= 200 && log.response_code < 300
                             ? 'bg-emerald-50 text-emerald-700'
                             : 'bg-rose-50 text-rose-700'
-                        }`}>
+                          }`}>
                           {log.response_code || 0}
                         </span>
                       </td>
@@ -377,11 +383,10 @@ export default function DeliveryLogView() {
               <div>
                 <div className="font-bold text-slate-700 mb-1 flex items-center justify-between">
                   <span>Partner Response:</span>
-                  <span className={`font-mono font-bold px-2 py-0.5 rounded text-[10px] ${
-                    inspectModalLog.response_code >= 200 && inspectModalLog.response_code < 300
+                  <span className={`font-mono font-bold px-2 py-0.5 rounded text-[10px] ${inspectModalLog.response_code >= 200 && inspectModalLog.response_code < 300
                       ? 'bg-emerald-100 text-emerald-800'
                       : 'bg-rose-100 text-rose-800'
-                  }`}>
+                    }`}>
                     HTTP {inspectModalLog.response_code}
                   </span>
                 </div>

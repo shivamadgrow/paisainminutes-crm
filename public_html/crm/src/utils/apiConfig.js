@@ -6,7 +6,7 @@
 
 import { formatToIST } from './amountHelpers.js';
 import { api, BACKEND_BASE } from './apiClient.js';
-import { AFFILIATE_PARTNERS, getServerPartnerId, getPartnerSlugByServerId } from '../data/affiliatePartners.js';
+import { AFFILIATE_PARTNERS, getServerPartnerId, getPartnerSlugByServerId, isRupay91Eligible } from '../data/affiliatePartners.js';
 
 export { BACKEND_BASE };
 
@@ -722,8 +722,23 @@ const PARTNER_UPDATE_FIELDS = ['partnerStatus', 'partnerRemarks', 'disbursedAmou
  * PATCH /api/loan-applications/{id}. Only fields on the shared allowlist are sent; the server decides
  * the actor, role and time from the token. `role` selects which allowlist applies ('partner' | 'staff').
  */
-export async function updateLoanApplication(id, updates = {}, { role = 'staff' } = {}) {
+export async function updateLoanApplication(id, updates = {}, { role = 'staff', lead = null } = {}) {
   if (!id) return { success: false, error: 'Application ID is required' };
+
+  // Guard: Rupay91 partner assignment eligibility enforcement
+  if (updates.assignedPartnerId) {
+    const rupayServerId = getServerPartnerId('rupay91');
+    const slug = getPartnerSlugByServerId(updates.assignedPartnerId);
+    if ((slug === 'rupay91' || updates.assignedPartnerId === rupayServerId || updates.assignedPartnerId === 'rupay91') && lead) {
+      if (!isRupay91Eligible(lead)) {
+        return {
+          success: false,
+          error: 'Cannot assign to Rupay91: applicant must have CIBIL >= 700 and monthly salary >= ₹1,00,000.'
+        };
+      }
+    }
+  }
+
   const allowed = role === 'partner' ? PARTNER_UPDATE_FIELDS : STAFF_UPDATE_FIELDS;
   const payload = {};
   allowed.forEach((key) => {

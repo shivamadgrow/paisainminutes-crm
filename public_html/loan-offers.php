@@ -316,9 +316,39 @@ if ($userCibilVal >= 850 || ($userCibilVal === 0 && $userSalVal >= 90000)) {
 }
 
 // User Rule for RuPay 91:
-// RuPay 91 ONLY for Minimum 750 CIBIL score.
-// For all others (CIBIL < 750), show other companies (Jhatpat Loans, etc.).
-$isRupay91Eligible = ($userCibilVal >= 750);
+// Rupay91 displayed/assigned ONLY when BOTH conditions are satisfied:
+// 1. CIBIL score >= 700 (verified, valid)
+// 2. Monthly salary >= ₹1,00,000
+// Missing or unverified CIBIL / salary renders ineligible.
+if (!function_exists('parseMonthlySalaryStrict')) {
+    function parseMonthlySalaryStrict($salaryStr) {
+        if ($salaryStr === null || $salaryStr === '') return null;
+        $str = trim((string)$salaryStr);
+        if ($str === '' || $str === '0') return null;
+        if (preg_match('/(\d+(?:\.\d+)?)\s*k/i', $str, $m)) {
+            $val = (int)((float)$m[1] * 1000);
+            return ($val > 0) ? $val : null;
+        }
+        if (preg_match('/(\d+(?:\.\d+)?)\s*lakh/i', $str, $m)) {
+            $val = (int)((float)$m[1] * 100000);
+            return ($val > 0) ? $val : null;
+        }
+        $digits = preg_replace('/[^0-9]/', '', $str);
+        if ($digits === '') return null;
+        $num = (int)$digits;
+        if ($num <= 0) return null;
+        // Annual income safeguard (> 500,000 is typically annual CTC)
+        if ($num > 500000) {
+            $monthly = (int)round($num / 12);
+            return $monthly;
+        }
+        return $num;
+    }
+}
+
+$monthlySalaryStrict = parseMonthlySalaryStrict($userSalaryStr);
+$isRupay91Eligible = ($actualCibilScore !== null && $actualCibilScore >= 700 && $actualCibilScore <= 900 && $monthlySalaryStrict !== null && $monthlySalaryStrict >= 100000);
+
 
 if (!function_exists('getSvgIcon')) {
     function getSvgIcon($name, $class = '', $width = 16, $height = 16) {
@@ -687,6 +717,20 @@ include 'includes/header.php';
         gap: 0.4rem !important;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1.38fr) minmax(0, 1fr) !important;
     }
+    /* Locked card 2-row layout at <= 480px ensures zero overlap and high legibility */
+    .partner-metrics-locked {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 0.65rem 0.85rem !important;
+        padding: 0.75rem 0.8rem !important;
+    }
+    .partner-metrics-locked .metric-item-elig {
+        grid-column: 1 / -1 !important;
+        padding-bottom: 0.5rem !important;
+        border-bottom: 1px dashed #E2E8F0 !important;
+    }
+    .partner-metrics-locked .metric-val-elig {
+        font-size: 1.05rem !important;
+    }
     .metric-item .metric-label {
         font-size: 0.6rem !important;
         letter-spacing: 0.25px !important;
@@ -721,6 +765,21 @@ include 'includes/header.php';
     }
 }
 
+@media (max-width: 380px) {
+    .card-header-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 0.5rem !important;
+    }
+    .card-header-badges {
+        align-items: flex-start !important;
+        width: 100% !important;
+    }
+    .card-badge-locked {
+        text-align: left !important;
+    }
+}
+
 @media (max-width: 360px) {
     .partner-card {
         padding: 0.95rem 0.65rem !important;
@@ -730,8 +789,21 @@ include 'includes/header.php';
         padding: 0.55rem 0.45rem !important;
         gap: 0.3rem !important;
     }
+    .partner-metrics-locked {
+        padding: 0.6rem 0.55rem !important;
+        gap: 0.5rem 0.55rem !important;
+    }
+    .partner-metrics-locked .metric-item-elig {
+        padding-bottom: 0.4rem !important;
+    }
+    .partner-metrics-locked .metric-val-elig {
+        font-size: 0.95rem !important;
+    }
     .metric-item .metric-label {
         font-size: 0.56rem !important;
+    }
+    .partner-metrics-locked .metric-label {
+        font-size: 0.6rem !important;
     }
     .metric-item-amount .metric-val {
         font-size: 0.88rem !important;
@@ -749,6 +821,10 @@ include 'includes/header.php';
     }
     .metric-item-tenure .metric-val .val-main {
         font-size: 0.78rem !important;
+    }
+    .btn-partner-locked {
+        padding: 0.7rem 0.6rem !important;
+        font-size: 0.8125rem !important;
     }
     .partner-brand-header {
         gap: 0.35rem;
@@ -818,9 +894,10 @@ include 'includes/header.php';
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.65rem;
     margin-bottom: 1rem;
-    min-height: 52px;
+    min-height: 48px;
 }
 
 .partner-brand-header {
@@ -984,6 +1061,50 @@ include 'includes/header.php';
     color: #475569;
 }
 
+.card-badge-locked {
+    background: #FEF2F2 !important;
+    color: #DC2626 !important;
+    border: 1px solid #FECACA !important;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.28rem 0.65rem;
+    border-radius: 50px;
+    letter-spacing: 0.02em;
+    text-transform: none;
+    line-height: 1.25;
+}
+
+.elig-pill-locked {
+    background: #FEF2F2;
+    border: 1px solid #FECACA;
+    color: #991B1B;
+    padding: 0.55rem 0.85rem;
+    border-radius: 10px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    line-height: 1.45;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.elig-pill-locked .elig-status-icon {
+    font-weight: 800;
+    font-size: 0.85rem;
+    color: #DC2626;
+    flex-shrink: 0;
+    line-height: 1.35;
+}
+
+.elig-pill-locked .elig-status-text {
+    min-width: 0;
+    overflow-wrap: break-word;
+    word-break: normal;
+    color: #991B1B;
+}
+
 /* Perfect Align Metrics Box - Robust 3-Column Proportional Grid */
 .partner-metrics,
 .loan-details {
@@ -1000,6 +1121,21 @@ include 'includes/header.php';
     width: 100%;
 }
 
+/* Rebuilt Locked Card Metrics Box - Non-overlapping Independent Grid */
+.partner-metrics-locked {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.15fr) minmax(0, 0.95fr);
+    gap: 0.75rem;
+    background: #ffffff;
+    border: 1px solid #E2E8F0;
+    padding: 0.85rem 0.95rem;
+    border-radius: 14px;
+    margin-bottom: 1.15rem;
+    align-items: start;
+    box-sizing: border-box;
+    width: 100%;
+}
+
 .metric-item,
 .loan-detail {
     display: flex;
@@ -1011,6 +1147,14 @@ include 'includes/header.php';
     box-sizing: border-box;
 }
 
+.partner-metrics-locked .metric-item {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
 .metric-item .metric-label {
     font-size: 0.68rem;
     color: #64748b;
@@ -1018,9 +1162,100 @@ include 'includes/header.php';
     letter-spacing: 0.5px;
     font-weight: 700;
     margin-bottom: 0.25rem;
+    white-space: normal;
+    line-height: 1.25;
+}
+
+.partner-metrics-locked .metric-label {
+    font-size: 0.68rem;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+    white-space: normal;
+    line-height: 1.25;
+}
+
+.partner-metrics-locked .metric-item-elig .metric-label {
+    color: #DC2626 !important;
+}
+
+.partner-metrics-locked .metric-val-elig {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #DC2626 !important;
+    line-height: 1.25;
+    white-space: normal;
+}
+
+.partner-metrics-locked .elig-val-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.15rem 0.3rem;
+}
+
+.partner-metrics-locked .elig-val-sal {
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+}
+
+.partner-metrics-locked .elig-val-sep {
+    color: #94A3B8;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.partner-metrics-locked .elig-val-cibil {
+    white-space: nowrap;
+}
+
+/* Locked Card Features Checklist */
+.partner-card-locked .feature-list li {
+    font-size: 0.85rem;
+    color: #334155;
+    font-weight: 500;
+}
+
+.partner-card-locked .feature-list .check-icon {
+    background: #F1F5F9;
+    color: #475569;
+}
+
+/* Locked Card CTA Container & Button */
+.card-cta-locked-wrap {
+    padding-top: 1rem;
+    border-top: 1px solid #E2E8F0;
+    margin-top: auto;
+}
+
+.btn-partner-locked {
+    width: 100%;
+    padding: 0.8rem 0.95rem;
+    border-radius: 12px;
+    background: #F1F5F9;
+    color: #475569;
+    font-weight: 700;
+    font-size: 0.875rem;
+    line-height: 1.35;
+    border: 1px solid #CBD5E1;
+    cursor: not-allowed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.btn-partner-locked svg {
+    color: #64748B;
+    flex-shrink: 0;
+}
+
+.btn-partner-locked .btn-locked-text {
+    min-width: 0;
+    overflow-wrap: break-word;
 }
 
 .metric-item .metric-val,
@@ -1215,7 +1450,7 @@ include 'includes/header.php';
         </div>
 
         <?php
-        // Separate partners into Eligible and Ineligible based on customer monthly salary
+        // Separate partners into Eligible and Ineligible based on partner eligibility rules
         $eligiblePartners = [];
         $ineligiblePartners = [];
 
@@ -1223,11 +1458,19 @@ include 'includes/header.php';
             if (isset($partner['enabled']) && $partner['enabled'] === false) {
                 continue;
             }
-            $minSalVal = (int)($partner['min_salary_val'] ?? 25000);
-            if ($userSalVal >= $minSalVal) {
-                $eligiblePartners[$slug] = $partner;
+            if ($slug === 'rupay91') {
+                if ($isRupay91Eligible) {
+                    $eligiblePartners[$slug] = $partner;
+                } else {
+                    $ineligiblePartners[$slug] = $partner;
+                }
             } else {
-                $ineligiblePartners[$slug] = $partner;
+                $minSalVal = (int)($partner['min_salary_val'] ?? 25000);
+                if ($userSalVal >= $minSalVal) {
+                    $eligiblePartners[$slug] = $partner;
+                } else {
+                    $ineligiblePartners[$slug] = $partner;
+                }
             }
         }
         ?>
@@ -1373,7 +1616,7 @@ include 'includes/header.php';
                             <div class="metric-item loan-detail metric-item-tenure">
                                 <div class="metric-label">TENURE</div>
                                 <div class="metric-val">
-                                    <span class="val-main"><?php echo htmlspecialchars($partner['tenure'] ?? '30 - 45 Days'); ?></span>
+                                    <span class="val-main"><?php echo ($slug === 'rupay91') ? '30–90 Days' : htmlspecialchars($partner['tenure'] ?? '30 - 45 Days'); ?></span>
                                 </div>
                             </div>
                         </div>
@@ -1535,25 +1778,42 @@ include 'includes/header.php';
                                         <?php endif; ?>
                                     </div>
                                     <div class="card-header-badges">
-                                        <div class="card-badge" style="background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA;">
+                                        <div class="card-badge card-badge-locked">
                                             <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block; vertical-align:-1px;"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-                                            <span>Min. ₹<?php echo number_format($minSalVal); ?> Salary</span>
+                                            <span><?php echo ($slug === 'rupay91') ? 'Min. ₹1,00,000 & 700+ CIBIL' : ('Min. ₹' . number_format($minSalVal) . ' Salary'); ?></span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Ineligibility Notice Pill -->
                                 <div class="elig-match-pill-wrap">
-                                    <div class="elig-match-pill" style="background: #FFF1F2; border: 1px solid #FECDD3; color: #9F1239; font-size: 0.8rem;">
-                                        <span>✕ Not Eligible (Short by ₹<?php echo number_format($shortfall); ?>/mo)</span>
+                                    <div class="elig-match-pill elig-pill-locked">
+                                        <span class="elig-status-icon" aria-hidden="true">✕</span>
+                                        <span class="elig-status-text">
+                                            <?php if ($slug === 'rupay91'): ?>
+                                                Not Eligible — Requires CIBIL ≥ 700 and Monthly Salary ≥ ₹1,00,000
+                                            <?php else: ?>
+                                                Not Eligible (Short by ₹<?php echo number_format($shortfall); ?>/mo)
+                                            <?php endif; ?>
+                                        </span>
                                     </div>
                                 </div>
 
                                 <!-- Key Metrics Box -->
-                                <div class="partner-metrics loan-details" style="background: #ffffff; border-color: #E2E8F0;">
-                                    <div class="metric-item loan-detail metric-item-amount">
-                                        <div class="metric-label" style="color: #DC2626; font-weight: 700;">REQ. SALARY</div>
-                                        <div class="metric-val" style="color: #DC2626; font-size: 0.95rem;">₹<?php echo number_format($minSalVal); ?>+</div>
+                                <div class="partner-metrics loan-details partner-metrics-locked">
+                                    <div class="metric-item loan-detail metric-item-elig">
+                                        <div class="metric-label"><?php echo ($slug === 'rupay91') ? 'MIN. SALARY / CIBIL' : 'MIN. SALARY'; ?></div>
+                                        <div class="metric-val metric-val-elig">
+                                            <?php if ($slug === 'rupay91'): ?>
+                                                <span class="elig-val-group">
+                                                    <span class="elig-val-sal">₹1,00,000+</span>
+                                                    <span class="elig-val-sep">/</span>
+                                                    <span class="elig-val-cibil">700+</span>
+                                                </span>
+                                            <?php else: ?>
+                                                <span>₹<?php echo number_format($minSalVal); ?>+</span>
+                                            <?php endif; ?>
+                                        </div>
                                     </div>
                                     <div class="metric-item loan-detail metric-item-rate">
                                         <div class="metric-label">INTEREST RATE</div>
@@ -1572,29 +1832,30 @@ include 'includes/header.php';
                                     <div class="metric-item loan-detail metric-item-tenure">
                                         <div class="metric-label">TENURE</div>
                                         <div class="metric-val">
-                                            <span class="val-main"><?php echo htmlspecialchars($partner['tenure'] ?? '30 - 45 Days'); ?></span>
+                                            <span class="val-main"><?php echo ($slug === 'rupay91') ? '30–90 Days' : htmlspecialchars($partner['tenure'] ?? '30 - 45 Days'); ?></span>
                                         </div>
                                     </div>
                                 </div>
 
                                 <!-- Features Checklist -->
-                                <ul class="feature-list" style="opacity: 0.8;">
+                                <ul class="feature-list" style="opacity: 0.9;">
                                     <?php foreach ($partner['features'] as $feature): ?>
                                         <li>
-                                            <span class="check-icon" style="background: #F1F5F9; color: #64748B;">✓</span>
-                                            <span><?php echo htmlspecialchars($feature); ?></span>
+                                            <span class="check-icon" style="background: #F1F5F9; color: #475569;">✓</span>
+                                            <span style="color: #334155;"><?php echo htmlspecialchars($feature); ?></span>
                                         </li>
                                     <?php endforeach; ?>
                                 </ul>
                             </div>
 
                             <!-- Disabled Locked Button -->
-                            <div style="padding-top: 1rem; border-top: 1px solid #E2E8F0;">
+                            <div class="card-cta-locked-wrap">
                                 <button type="button" 
+                                        class="btn-partner-locked"
                                         disabled 
-                                        style="width: 100%; padding: 0.8rem 1rem; border-radius: 12px; background: #E2E8F0; color: #64748B; font-weight: 700; font-size: 0.92rem; border: 1px solid #CBD5E1; cursor: not-allowed; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-                                    <span>Locked • Requires Min. ₹<?php echo number_format($minSalVal); ?> Salary</span>
+                                        aria-disabled="true">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                                    <span class="btn-locked-text">Locked • <?php echo ($slug === 'rupay91') ? 'Requires CIBIL 700+ & Min. ₹1,00,000 Salary' : ('Requires Min. ₹' . number_format($minSalVal) . ' Salary'); ?></span>
                                 </button>
                             </div>
                         </div>

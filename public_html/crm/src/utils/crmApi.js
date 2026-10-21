@@ -3,6 +3,7 @@
  * (never throws) so screens can show the server's message and only update their state after success.
  */
 import { api, apiGet, apiPost, apiPatch, apiPut, apiDelete, downloadFile, isSuperAdminSession, canDeleteInvoiceSession } from './apiClient.js';
+import { isRupay91Eligible, getServerPartnerId } from '../data/affiliatePartners.js';
 
 const wrap = (res, pick) => {
   if (!res.ok) return { success: false, status: res.status, error: res.error };
@@ -109,7 +110,19 @@ export const listPartnerEvents = (query) => apiGet('/api/crm/partner-events', { 
 export const createPartnerEvent = (body) => apiPost('/api/crm/partner-events', body).then((r) => wrap(r));
 export const listDeliveryLogs = (query) => apiGet('/api/crm/delivery-logs', { limit: 150, ...query }).then((r) => wrap(r));
 export const retryDeliveryLog = (id) => apiPost(`/api/crm/delivery-logs/${encodeURIComponent(id)}/retry`).then((r) => wrap(r));
-export const pushLeadToPartnerApi = (body) => apiPost('/api/crm/delivery-logs/push', body).then((r) => wrap(r));
+export const pushLeadToPartnerApi = (body, lead = null) => {
+  const rupayServerId = getServerPartnerId('rupay91');
+  const isRupay = (body?.partnerId && (body.partnerId === rupayServerId || body.partnerId === 'rupay91')) ||
+    (body?.partnerSlug && body.partnerSlug === 'rupay91');
+  if (isRupay && lead && !isRupay91Eligible(lead)) {
+    return Promise.resolve({
+      success: false,
+      status: 422,
+      error: 'Delivery blocked: Rupay91 requires CIBIL >= 700 and monthly salary >= ₹1,00,000. Lead is not eligible.'
+    });
+  }
+  return apiPost('/api/crm/delivery-logs/push', body).then((r) => wrap(r));
+};
 export const exportPartnerLeadsCsv = (partnerId) => {
   if (!isSuperAdminSession()) {
     return Promise.resolve({
