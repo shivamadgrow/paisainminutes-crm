@@ -640,6 +640,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const phoneInput = document.getElementById('phone');
+            if (phoneInput && !phoneInput.dataset.analyticsAttached) {
+                phoneInput.dataset.analyticsAttached = 'true';
+                phoneInput.addEventListener('focus', function() {
+                    if (window.PIMAnalytics) window.PIMAnalytics.trackFormStart('quick_apply_modal', 'modal');
+                }, { once: true });
+            }
             const rawVal = phoneInput ? phoneInput.value.trim() : '';
             const phoneVal = rawVal.replace(/\D/g, '');
 
@@ -659,14 +665,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 formStatus.textContent = 'Connecting with partner NBFCs...';
             }
 
-            // 1. Detect UTM Source
+            // 1. Detect UTM Source & Click IDs
             const urlParams = new URLSearchParams(window.location.search);
             const isInstantCashLoan = typeof window !== 'undefined' && window.location && window.location.pathname.indexOf('instant-cash-loan') !== -1;
+            const clickId = urlParams.get('gclid') || urlParams.get('gbraid') || urlParams.get('wbraid') || urlParams.get('fbclid');
             let activeUtm = (urlParams.get('utm_source') || 
                                sessionStorage.getItem('pim_utm_source') || 
                                localStorage.getItem('pim_utm_source') || '').trim();
 
-            if (isInstantCashLoan && (!urlParams.get('utm_source') || activeUtm.toLowerCase().includes('whatsapp'))) {
+            if (!activeUtm && clickId) {
+                activeUtm = (urlParams.get('gclid') || urlParams.get('gbraid') || urlParams.get('wbraid')) ? 'google' : 'facebook';
+            }
+
+            if (isInstantCashLoan && !activeUtm && !clickId) {
                 activeUtm = 'landingpage';
             }
 
@@ -676,8 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const finalSource = isInstantCashLoan ? 'landingpage' : (hasUtm ? activeUtm : "Modal Quick Apply");
             const finalLeadSource = isInstantCashLoan ? 'landingpage' : (hasUtm ? (isWhatsApp ? 'WhatsApp' : 'Campaign') : 'Direct Website');
 
-            // Phone-only first step: only what the visitor actually entered (the Node intake route upserts the
-            // same lead later when the full form arrives). No invented amount / salary / CIBIL / partner.
+            // Phone-only first step: only what the visitor actually entered
             const modalPayload = {
                 phone: phoneVal,
                 utm_source: finalUtmSource,
@@ -702,7 +712,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const modalTimer = setTimeout(navigateToEligibility, 1200);
 
-            // One call to the Node server (replaces three separate posts to PHP endpoints and the old CRM host)
+            // One call to the Node server
             fetch((window.backend_server_url || '') + '/api/public/leads', {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Accept": "application/json" },
@@ -710,6 +720,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 keepalive: true
             }).then(r => r.json()).then(data => {
                 const leadId = data?.lead_id || data?.data?.lead_id || ('PIM-MODAL-' + phoneVal);
+                if (window.PIMAnalytics && typeof window.PIMAnalytics.trackLeadGenerated === 'function') {
+                    window.PIMAnalytics.trackLeadGenerated(leadId, {
+                        lead_source: modalPayload.lead_source || 'website',
+                        value: 50000
+                    });
+                }
                 if (typeof window.pimTrackMeta === 'function') {
                     window.pimTrackMeta('Lead', {
                         content_name: 'Website Quick Lead',

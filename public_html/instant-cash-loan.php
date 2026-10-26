@@ -20,6 +20,7 @@ if (!headers_sent()) {
 
 require_once __DIR__ . '/includes/affiliate_tracker.php';
 require_once __DIR__ . '/config/env.php';
+require_once __DIR__ . '/config/analytics.php';
 $partners = require __DIR__ . '/config/partners.php';
 
 $pimNodeApi = rtrim((string) getEnvVal('BACKEND_API_URL', 'https://api.paisainminutes.tech'), '/');
@@ -107,6 +108,17 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
     </noscript>
 
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','<?php echo htmlspecialchars($pim_gtm_container_id); ?>');</script>
+    <!-- End Google Tag Manager -->
+
+    <!-- Centralized PIM Analytics & GA4 dataLayer Pipeline -->
+    <script src="/js/pim-analytics.js?v=<?php echo @filemtime(__DIR__ . '/js/pim-analytics.js') ?: 1; ?>"></script>
+
     <!-- Global App & API Environment -->
     <script>
         window.site_base_path = "/";
@@ -189,6 +201,9 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 var dlItem = Object.assign({ event: 'meta_' + eventName }, cleanParams);
                 if (resolvedEventId) dlItem.event_id = String(resolvedEventId);
                 window.dataLayer.push(dlItem);
+            }
+            if (eventName === 'Lead' && resolvedEventId && window.PIMAnalytics && typeof window.PIMAnalytics.trackLeadGenerated === 'function') {
+                window.PIMAnalytics.trackLeadGenerated(resolvedEventId, cleanParams);
             }
         } catch(e) {}
     };
@@ -2050,6 +2065,11 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
     </style>
 </head>
 <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=<?php echo htmlspecialchars($pim_gtm_container_id); ?>"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+
     <!-- Meta Pixel (noscript) -->
     <noscript><img height="1" width="1" style="display:none"
     src="https://www.facebook.com/tr?id=1113720467814583&ev=PageView&noscript=1"
@@ -2958,6 +2978,9 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 if (!appStartedTracked) {
                     appStartedTracked = true;
                     trackMetaEvent('ApplicationStarted', { source: 'instant_cash_loan' });
+                    if (window.PIMAnalytics) {
+                        window.PIMAnalytics.trackFormStart('instant_cash_loan_form', 'hero_form');
+                    }
                 }
             };
             phoneInput.addEventListener('focus', onPhoneStart, { once: true });
@@ -2980,6 +3003,11 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 utmMedium: 'website',
                 utm_campaign: 'instant_cash_loan',
                 utmCampaign: 'instant_cash_loan',
+                utm_term: '',
+                utm_content: '',
+                gclid: '',
+                gbraid: '',
+                wbraid: '',
                 landing_page: '/instant-cash-loan',
                 landingPage: '/instant-cash-loan'
             };
@@ -2988,7 +3016,7 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             try {
                 if (window.PIMAttribution && typeof window.PIMAttribution.payload === 'function') {
                     const pimPayload = window.PIMAttribution.payload();
-                    if (pimPayload && (pimPayload.utm_source || pimPayload.source)) {
+                    if (pimPayload && (pimPayload.utm_source || pimPayload.source || pimPayload.gclid || pimPayload.gbraid || pimPayload.wbraid)) {
                         if (pimPayload.utm_source) {
                             attr.utm_source = pimPayload.utm_source;
                             attr.utmSource = pimPayload.utm_source;
@@ -3001,6 +3029,11 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                             attr.utm_campaign = pimPayload.utm_campaign;
                             attr.utmCampaign = pimPayload.utm_campaign;
                         }
+                        if (pimPayload.utm_term) attr.utm_term = pimPayload.utm_term;
+                        if (pimPayload.utm_content) attr.utm_content = pimPayload.utm_content;
+                        if (pimPayload.gclid) attr.gclid = pimPayload.gclid;
+                        if (pimPayload.gbraid) attr.gbraid = pimPayload.gbraid;
+                        if (pimPayload.wbraid) attr.wbraid = pimPayload.wbraid;
                         if (pimPayload.landing_page) {
                             attr.landing_page = pimPayload.landing_page;
                             attr.landingPage = pimPayload.landing_page;
@@ -3033,6 +3066,16 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                     attr.utm_campaign = uCamp.trim();
                     attr.utmCampaign = uCamp.trim();
                 }
+                const uTerm = urlParams.get('utm_term');
+                if (uTerm) attr.utm_term = uTerm.trim();
+                const uContent = urlParams.get('utm_content');
+                if (uContent) attr.utm_content = uContent.trim();
+                const gclid = urlParams.get('gclid');
+                if (gclid) attr.gclid = gclid.trim();
+                const gbraid = urlParams.get('gbraid');
+                if (gbraid) attr.gbraid = gbraid.trim();
+                const wbraid = urlParams.get('wbraid');
+                if (wbraid) attr.wbraid = wbraid.trim();
             } catch (e) {}
 
             // 3. Read localStorage pim_attr_v2
@@ -3041,18 +3084,22 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 if (rawAttr) {
                     const parsed = JSON.parse(rawAttr);
                     const last = parsed && parsed.last;
-                    if (last && last.utm_source && (!attr.utm_source || attr.utm_source === 'landingpage')) {
-                        // Stale WhatsApp referer values must NEVER overwrite the landing page
-                        if (!last.utm_source.toLowerCase().includes('whatsapp')) {
-                            attr.utm_source = last.utm_source;
-                            attr.utmSource = last.utm_source;
+                    if (last && (last.utm_source || last.gclid || last.gbraid || last.wbraid) && (!attr.utm_source || attr.utm_source === 'landingpage')) {
+                        if (!last.utm_source || !last.utm_source.toLowerCase().includes('whatsapp')) {
+                            attr.utm_source = last.utm_source || (last.gclid || last.gbraid || last.wbraid ? 'google' : 'landingpage');
+                            attr.utmSource = attr.utm_source;
                             attr.utm_medium = last.utm_medium || attr.utm_medium;
-                            attr.utmMedium = last.utm_medium || attr.utm_medium;
+                            attr.utmMedium = attr.utm_medium;
                             attr.utm_campaign = last.utm_campaign || attr.utm_campaign;
-                            attr.utmCampaign = last.utm_campaign || attr.utm_campaign;
+                            attr.utmCampaign = attr.utm_campaign;
+                            attr.utm_term = last.utm_term || attr.utm_term;
+                            attr.utm_content = last.utm_content || attr.utm_content;
+                            attr.gclid = last.gclid || attr.gclid;
+                            attr.gbraid = last.gbraid || attr.gbraid;
+                            attr.wbraid = last.wbraid || attr.wbraid;
                             attr.landing_page = last.landing_page || attr.landing_page;
                             attr.landingPage = attr.landing_page;
-                            attr.source = last.source || last.utm_source || 'landingpage';
+                            attr.source = last.source || attr.utm_source || 'landingpage';
                             attr.lead_source = attr.source;
                             attr.leadSource = attr.source;
                         }
@@ -3061,20 +3108,17 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             } catch (e) {}
 
             // Attribution Rules:
-            // Case A: ?utm_source=landingpage&utm_medium=website&utm_campaign=instant_cash_loan -> source = landingpage
-            // Case B: Direct visit to /instant-cash-loan without UTM -> source = landingpage
-            // Case C: Tracked marketing campaign (e.g. ?utm_source=google) -> preserve that campaign
+            // Case A: Arrives with direct or landingpage default -> source = landingpage
+            // Case B: Tracked paid marketing campaign (Google Ads, Meta, UTM) -> strictly preserve campaign
             const urlParams = new URLSearchParams(window.location.search);
             const explicitUtm = (urlParams.get('utm_source') || '').trim().toLowerCase();
+            const clickId = (urlParams.get('gclid') || urlParams.get('gbraid') || urlParams.get('wbraid') || urlParams.get('fbclid') || '').trim();
             const hasExternalPaidCampaign = Boolean(
-                explicitUtm &&
-                explicitUtm !== 'landingpage' &&
-                explicitUtm !== 'website' &&
-                explicitUtm !== 'direct' &&
-                !explicitUtm.includes('whatsapp')
+                (explicitUtm && explicitUtm !== 'landingpage' && explicitUtm !== 'website' && explicitUtm !== 'direct' && !explicitUtm.includes('whatsapp')) ||
+                clickId
             );
 
-            if (!hasExternalPaidCampaign) {
+            if (!hasExternalPaidCampaign && (!attr.utm_source || attr.utm_source === 'landingpage' || attr.utm_source.toLowerCase().includes('whatsapp'))) {
                 attr.source = 'landingpage';
                 attr.lead_source = 'landingpage';
                 attr.leadSource = 'landingpage';
@@ -3088,6 +3132,17 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 attr.landingPage = '/instant-cash-loan';
                 attr.entry_point = 'instant-cash-loan';
                 attr.entryPoint = 'instant-cash-loan';
+            } else if (clickId && (!attr.utm_source || attr.utm_source === 'landingpage')) {
+                // Auto-tagging support for Google Ads / Meta click IDs
+                attr.source = (urlParams.get('gclid') || urlParams.get('gbraid') || urlParams.get('wbraid')) ? 'google' : 'facebook';
+                attr.lead_source = attr.source;
+                attr.leadSource = attr.source;
+                attr.utm_source = attr.source;
+                attr.utmSource = attr.source;
+                attr.utm_medium = 'cpc';
+                attr.utmMedium = 'cpc';
+                attr.utm_campaign = attr.source === 'google' ? 'google_ads' : 'meta_ads';
+                attr.utmCampaign = attr.utm_campaign;
             }
 
             // Sync with sessionStorage for persistence across refresh or step transitions
@@ -3096,6 +3151,11 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 sessionStorage.setItem('pim_utm_source', attr.utm_source);
                 sessionStorage.setItem('pim_utm_medium', attr.utm_medium);
                 sessionStorage.setItem('pim_utm_campaign', attr.utm_campaign);
+                if (attr.utm_term) sessionStorage.setItem('pim_utm_term', attr.utm_term);
+                if (attr.utm_content) sessionStorage.setItem('pim_utm_content', attr.utm_content);
+                if (attr.gclid) sessionStorage.setItem('pim_gclid', attr.gclid);
+                if (attr.gbraid) sessionStorage.setItem('pim_gbraid', attr.gbraid);
+                if (attr.wbraid) sessionStorage.setItem('pim_wbraid', attr.wbraid);
                 sessionStorage.setItem('pim_landing_page', attr.landing_page);
                 sessionStorage.setItem('pim_entry_point', 'instant-cash-loan');
             } catch (e) {}
@@ -3262,6 +3322,9 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         // --- Handle Successful OTP Verification -> Open Customer Details Modal (Step 3 & 4) ---
         async function handleOtpSuccess(authResult) {
             trackMetaEvent('OTPVerified');
+            if (window.PIMAnalytics && typeof window.PIMAnalytics.trackOtpSuccess === 'function') {
+                window.PIMAnalytics.trackOtpSuccess('otp');
+            }
             if (typeof window.pimTrackMeta === 'function') {
                 window.pimTrackMeta('CompleteRegistration', { status: 'verified', content_name: 'Instant Cash OTP Verified' }, 'otp_reg_' + (authResult && authResult.phone ? authResult.phone : verifiedPhone));
             } else if (typeof window.fbq === 'function') {
@@ -3583,6 +3646,13 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
 
             // Trigger Deduplicated Meta Pixel & Server-Side Meta CAPI Lead Event
             if (activeLeadId) {
+                if (window.PIMAnalytics && typeof window.PIMAnalytics.trackLeadGenerated === 'function') {
+                    window.PIMAnalytics.trackLeadGenerated(activeLeadId, {
+                        lead_source: lpAttr.source || 'landingpage',
+                        value: 50000
+                    });
+                }
+
                 if (typeof window.pimTrackMeta === 'function') {
                     window.pimTrackMeta('Lead', {
                         content_name: 'Instant Cash Loan Lead',
@@ -3633,6 +3703,12 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             if (offersSection) {
                 offersSection.style.display = 'block';
                 offersRevealed = true;
+
+                if (window.PIMAnalytics && typeof window.PIMAnalytics.trackApplicationStart === 'function') {
+                    window.PIMAnalytics.trackApplicationStart('offers_revealed', {
+                        lead_reference: activeLeadId || ''
+                    });
+                }
                 
                 // Hide mobile sticky CTA so it never obstructs lender offers
                 if (stickyBar) stickyBar.style.display = 'none';
@@ -3756,11 +3832,15 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         };
 
         // --- Track Offer Click to Node Keepalive & Meta ---
-        window.croTrackOfferClick = function(partnerSlug) {
+        window.croTrackOfferClick = function(partnerSlug, linkHref) {
             trackMetaEvent('LoanOfferClicked', {
                 partner: partnerSlug,
                 lead_id: activeLeadId
             });
+
+            if (window.PIMAnalytics && typeof window.PIMAnalytics.trackPartnerRedirect === 'function') {
+                window.PIMAnalytics.trackPartnerRedirect(partnerSlug, linkHref || '', activeLeadId);
+            }
 
             try {
                 fetch(window.backend_server_url + '/api/public/partner-click', {
@@ -3779,10 +3859,10 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
 
         // --- Handle Offer CTA Click with Android Intent / Fallback ---
         window.handleCroPartnerClick = function(e, linkEl, partnerSlug, appPackage) {
-            window.croTrackOfferClick(partnerSlug);
+            var fallbackUrl = linkEl ? linkEl.href : '';
+            window.croTrackOfferClick(partnerSlug, fallbackUrl);
             if (appPackage && /Android/i.test(navigator.userAgent)) {
                 e.preventDefault();
-                var fallbackUrl = linkEl.href;
                 var intentUrl = 'intent:#Intent;package=' + encodeURIComponent(appPackage) + ';S.browser_fallback_url=' + encodeURIComponent(fallbackUrl) + ';end';
                 window.location.href = intentUrl;
             }

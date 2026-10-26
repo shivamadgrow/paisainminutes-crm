@@ -12,6 +12,7 @@ if (!headers_sent()) {
 require_once __DIR__ . '/affiliate_tracker.php';
 require_once __DIR__ . '/../config/financials.php';
 require_once __DIR__ . '/../config/env.php';
+require_once __DIR__ . '/../config/analytics.php';
 // Node server base URL (single backend). Pages call it directly from the browser or server-side with a short timeout.
 $pim_node_api_url = rtrim((string) getEnvVal('BACKEND_API_URL', 'https://api.paisainminutes.tech'), '/');
 
@@ -181,38 +182,16 @@ if (!isset($page_og_image) || empty($page_og_image)) {
     <!-- Stylesheets (Minified Production Bundle with cache busting) -->
     <link rel="stylesheet" href="<?php echo file_exists(__DIR__ . '/../css/style.min.css') ? '/css/style.min.css?v=' . filemtime(__DIR__ . '/../css/style.min.css') : '/css/style.css?v=' . (file_exists(__DIR__ . '/../css/style.css') ? filemtime(__DIR__ . '/../css/style.css') : '1'); ?>">
     
-    <!-- Google Tag Manager (Optimized User-Interaction Execution) -->
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    (function(){
-        var gtmLoaded = false;
-        var events = ['scroll', 'mousemove', 'touchstart', 'click', 'keydown'];
-        function loadGTM(){
-            if (gtmLoaded) return;
-            gtmLoaded = true;
-            events.forEach(function(e){
-                window.removeEventListener(e, loadGTM, { passive: true });
-            });
-            dataLayer.push({'gtm.start': new Date().getTime(), event:'gtm.js'});
-            var f = document.getElementsByTagName('script')[0];
-            var j = document.createElement('script');
-            j.async = true;
-            j.src = 'https://www.googletagmanager.com/gtm.js?id=GTM-P8QSMXHR';
-            f.parentNode.insertBefore(j, f);
-        }
-        events.forEach(function(e){
-            window.addEventListener(e, loadGTM, { once: true, passive: true });
-        });
-        // 10s fallback for users who remain completely idle without interacting
-        if ('requestIdleCallback' in window) {
-            requestIdleCallback(function(){ setTimeout(loadGTM, 8000); });
-        } else {
-            setTimeout(loadGTM, 10000);
-        }
-    })();
-    </script>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','<?php echo htmlspecialchars($pim_gtm_container_id); ?>');</script>
     <!-- End Google Tag Manager -->
+
+    <!-- Centralized PIM Analytics & GA4 dataLayer Pipeline -->
+    <script src="/js/pim-analytics.js?v=<?php echo @filemtime(__DIR__ . '/../js/pim-analytics.js') ?: 1; ?>"></script>
 
     <!-- Meta Pixel Code -->
     <script>
@@ -285,6 +264,9 @@ if (!isset($page_og_image) || empty($page_og_image)) {
                 var dlItem = Object.assign({ event: 'meta_' + eventName }, cleanParams);
                 if (resolvedEventId) dlItem.event_id = String(resolvedEventId);
                 window.dataLayer.push(dlItem);
+            }
+            if (eventName === 'Lead' && resolvedEventId && window.PIMAnalytics && typeof window.PIMAnalytics.trackLeadGenerated === 'function') {
+                window.PIMAnalytics.trackLeadGenerated(resolvedEventId, cleanParams);
             }
         } catch(e) {}
     };
@@ -564,7 +546,7 @@ if (!isset($page_og_image) || empty($page_og_image)) {
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-P8QSMXHR"
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=<?php echo htmlspecialchars($pim_gtm_container_id); ?>"
     height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- End Google Tag Manager (noscript) -->
 

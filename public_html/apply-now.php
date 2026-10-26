@@ -1073,8 +1073,9 @@ document.addEventListener('DOMContentLoaded', function() {
         applyPhoneInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') { e.preventDefault(); btnSendOtp && btnSendOtp.click(); }
         });
-        // Focus ring
+        // Focus ring & Analytics form_start
         applyPhoneInput.addEventListener('focus', function() {
+            if (window.PIMAnalytics) window.PIMAnalytics.trackFormStart('apply_now_form', 'step1');
             var wrap = document.getElementById('applyPhoneInputWrap');
             if (wrap) wrap.style.borderColor = '#2563EB';
         });
@@ -1490,6 +1491,12 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(res => res.json())
             .then(data => {
                 const savedLeadId = data?.lead_id || data?.data?.lead_id || ('PIM-APPLY-' + phoneVal);
+                if (window.PIMAnalytics && typeof window.PIMAnalytics.trackLeadGenerated === 'function') {
+                    window.PIMAnalytics.trackLeadGenerated(savedLeadId, {
+                        lead_source: payload.source || 'website',
+                        value: payload.loanAmount || 50000
+                    });
+                }
                 if (typeof window.pimTrackMeta === 'function') {
                     window.pimTrackMeta('Lead', {
                         content_name: 'Apply Now Loan Lead',

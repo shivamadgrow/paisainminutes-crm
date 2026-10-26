@@ -11,7 +11,7 @@
 
     var KEY = 'pim_attr_v2';
     var TTL_MS = 30 * 24 * 60 * 60 * 1000;
-    var FIELDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid', 'source'];
+    var FIELDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'gbraid', 'wbraid', 'fbclid', 'source'];
 
     function read() {
         var raw = null;
@@ -58,15 +58,31 @@
         var params = new URLSearchParams(location.search);
         var touch = {};
         FIELDS.forEach(function (name) { var v = clean(params.get(name)); if (v) touch[name] = v; });
-        if (!touch.gclid) { var g = clean(params.get('gbraid') || params.get('wbraid')); if (g) touch.gclid = g; }
+        
+        // Auto-tagging support for Google Ads (gclid, gbraid, wbraid)
+        if (!touch.gclid) {
+            var g = clean(params.get('gbraid') || params.get('wbraid'));
+            if (g) touch.gclid = g;
+        }
+        if ((touch.gclid || touch.gbraid || touch.wbraid) && !touch.utm_source) {
+            touch.utm_source = 'google';
+            touch.utm_medium = touch.utm_medium || 'cpc';
+            touch.utm_campaign = touch.utm_campaign || 'google_ads';
+        }
+        if (touch.fbclid && !touch.utm_source) {
+            touch.utm_source = 'facebook';
+            touch.utm_medium = touch.utm_medium || 'cpc';
+            touch.utm_campaign = touch.utm_campaign || 'meta_ads';
+        }
 
         var isInstantCashLoan = typeof location !== 'undefined' && location.pathname && location.pathname.indexOf('instant-cash-loan') !== -1;
-        var hasExplicitCampaign = params.has('utm_source') && !['whatsapp-agm', 'whatsapp', 'landingpage', 'website', 'direct'].includes((params.get('utm_source') || '').toLowerCase());
+        var hasPaidClickId = Boolean(params.get('gclid') || params.get('gbraid') || params.get('wbraid') || params.get('fbclid'));
+        var hasExplicitCampaign = (params.has('utm_source') && !['whatsapp-agm', 'whatsapp', 'landingpage', 'website', 'direct'].includes((params.get('utm_source') || '').toLowerCase())) || hasPaidClickId;
         var hasCampaign = Object.keys(touch).length > 0;
         var referrer = externalReferrer();
 
         if (isInstantCashLoan && !hasExplicitCampaign) {
-            // Landing page leads must always be attributed to landingpage
+            // Landing page leads without paid/external campaign are attributed to landingpage
             var lpTouch = {
                 utm_source: 'landingpage',
                 utm_medium: 'website',
@@ -80,21 +96,20 @@
             stored.ts = Date.now();
             write(stored);
         } else if (hasCampaign) {
-            // Case A / C: Arrives with UTM or ad-click parameters
-            if (touch.utm_source === 'landingpage' || isInstantCashLoan) {
+            // Arrives with UTM or ad-click parameters - NEVER overwrite genuine campaign
+            if (!hasExplicitCampaign && (touch.utm_source === 'landingpage' || isInstantCashLoan)) {
                 touch.utm_source = 'landingpage';
                 touch.utm_medium = touch.utm_medium || 'website';
                 touch.utm_campaign = touch.utm_campaign || 'instant_cash_loan';
                 touch.source = 'landingpage';
-                touch.landing_page = '/instant-cash-loan';
             }
+            touch.landing_page = isInstantCashLoan ? '/instant-cash-loan' : location.pathname;
+
             // The same source copied onto an internal link (?utm_source=x) must not wipe medium / campaign.
             if (stored.last && stored.last.utm_source && touch.utm_source === stored.last.utm_source) {
                 for (var k in stored.last) { if (!touch[k] && FIELDS.indexOf(k) > -1) touch[k] = stored.last[k]; }
             }
-            var sameSource = stored.last && stored.last.utm_source && touch.utm_source === stored.last.utm_source;
             touch.referrer = referrer || (stored.last && stored.last.referrer) || '';
-            touch.landing_page = sameSource && stored.last.landing_page ? stored.last.landing_page : (isInstantCashLoan ? '/instant-cash-loan' : location.pathname);
             stored.last = touch;
             if (!stored.first) stored.first = touch;
             stored.ts = Date.now();
@@ -125,6 +140,11 @@
             }
             if (stored.last && stored.last.utm_medium) sessionStorage.setItem('pim_utm_medium', stored.last.utm_medium);
             if (stored.last && stored.last.utm_campaign) sessionStorage.setItem('pim_utm_campaign', stored.last.utm_campaign);
+            if (stored.last && stored.last.utm_term) sessionStorage.setItem('pim_utm_term', stored.last.utm_term);
+            if (stored.last && stored.last.utm_content) sessionStorage.setItem('pim_utm_content', stored.last.utm_content);
+            if (stored.last && stored.last.gclid) sessionStorage.setItem('pim_gclid', stored.last.gclid);
+            if (stored.last && stored.last.gbraid) sessionStorage.setItem('pim_gbraid', stored.last.gbraid);
+            if (stored.last && stored.last.wbraid) sessionStorage.setItem('pim_wbraid', stored.last.wbraid);
             if (stored.last && stored.last.landing_page) sessionStorage.setItem('pim_landing_page', stored.last.landing_page);
         } catch (e) {}
         return stored;
@@ -140,12 +160,21 @@
         if (last.referrer) out.referrer = last.referrer;
         if (last.landing_page) out.landing_page = last.landing_page;
         if (last.source) out.source = last.source;
-        ['utm_source', 'utm_medium', 'utm_campaign', 'gclid', 'fbclid', 'referrer', 'source'].forEach(function (name) {
+        ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'gbraid', 'wbraid', 'fbclid', 'referrer', 'source'].forEach(function (name) {
             if (first[name]) out['first_' + name] = first[name];
         });
 
         var isInstantCashLoan = typeof location !== 'undefined' && location.pathname && location.pathname.indexOf('instant-cash-loan') !== -1;
-        var hasExplicitCampaign = typeof location !== 'undefined' && location.search && new URLSearchParams(location.search).has('utm_source') && !['whatsapp-agm', 'whatsapp', 'landingpage', 'website', 'direct'].includes((new URLSearchParams(location.search).get('utm_source') || '').toLowerCase());
+        var urlSearch = typeof location !== 'undefined' && location.search ? new URLSearchParams(location.search) : null;
+        var hasSearchCampaign = Boolean(urlSearch && (
+            (urlSearch.has('utm_source') && !['whatsapp-agm', 'whatsapp', 'landingpage', 'website', 'direct'].includes((urlSearch.get('utm_source') || '').toLowerCase())) ||
+            urlSearch.get('gclid') || urlSearch.get('gbraid') || urlSearch.get('wbraid') || urlSearch.get('fbclid')
+        ));
+        var hasStoredCampaign = Boolean(
+            (last.utm_source && !['whatsapp-agm', 'whatsapp', 'landingpage', 'website', 'direct'].includes(last.utm_source.toLowerCase())) ||
+            last.gclid || last.gbraid || last.wbraid || last.fbclid
+        );
+        var hasExplicitCampaign = hasSearchCampaign || hasStoredCampaign;
 
         if (isInstantCashLoan && !hasExplicitCampaign) {
             out.source = 'landingpage';
@@ -208,9 +237,11 @@
                             (body.landingPage && body.landingPage.indexOf('instant-cash-loan') !== -1) ||
                             (body.utm_campaign === 'instant_cash_loan' || body.utmCampaign === 'instant_cash_loan' || body.utm_campaign === 'instant-cash-loan');
 
-                        var hasExplicitExternalUtm = typeof location !== 'undefined' && location.search &&
-                            new URLSearchParams(location.search).has('utm_source') &&
-                            !['whatsapp-agm', 'whatsapp', 'landingpage', 'website', 'direct'].includes((new URLSearchParams(location.search).get('utm_source') || '').toLowerCase());
+                        var urlParams = typeof location !== 'undefined' && location.search ? new URLSearchParams(location.search) : null;
+                        var hasExplicitExternalUtm = Boolean(urlParams && (
+                            (urlParams.has('utm_source') && !['whatsapp-agm', 'whatsapp', 'landingpage', 'website', 'direct'].includes((urlParams.get('utm_source') || '').toLowerCase())) ||
+                            urlParams.get('gclid') || urlParams.get('gbraid') || urlParams.get('wbraid') || urlParams.get('fbclid')
+                        ));
 
                         if (isLandingPageLead && !hasExplicitExternalUtm) {
                             // Enforce exact landingpage tracking requirements - NEVER let WhatsApp overwrite

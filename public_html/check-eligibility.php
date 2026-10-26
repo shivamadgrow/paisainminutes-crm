@@ -661,7 +661,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (phoneInput) {
+        phoneInput.addEventListener('focus', function() {
+            if (window.PIMAnalytics) window.PIMAnalytics.trackFormStart('check_eligibility_form', 'main_form');
+        }, { once: true });
         phoneInput.addEventListener('input', function() {
+            if (window.PIMAnalytics) window.PIMAnalytics.trackFormStart('check_eligibility_form', 'main_form');
             this.value = this.value.replace(/\D/g, '').slice(0, 10);
             clearTimeout(cibilLookupTimeout);
             if (this.value.length === 10 && /^[6-9]/.test(this.value)) {
@@ -938,6 +942,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 keepalive: true
             })).then(r => r.json()).then(data => {
                 const savedLeadId = data?.lead_id || data?.data?.lead_id || ('PIM-ELIG-' + phoneVal);
+                if (window.PIMAnalytics && typeof window.PIMAnalytics.trackLeadGenerated === 'function') {
+                    window.PIMAnalytics.trackLeadGenerated(savedLeadId, {
+                        lead_source: leadPayload.source || 'website',
+                        value: leadPayload.loanAmount || 50000
+                    });
+                }
                 if (typeof window.pimTrackMeta === 'function') {
                     window.pimTrackMeta('Lead', {
                         content_name: 'Eligibility Check Loan Lead',
