@@ -147,7 +147,9 @@ export default function ExecutiveDashboard({ onSelectCompany, onOpenPartnerHub, 
         ? pLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied || 0), 0)
         : (p.volumeRupees || 0);
       const disbursalAmt = hasLeadRecords
-        ? pLeads.filter(l => normalizeStatus(l.status) === 'DISBURSED').reduce((sum, l) => sum + cleanLoanAmount(l.disbursedAmountRupees || l.loanAmount || l.applied || 0), 0)
+        ? pLeads
+            .filter(l => normalizeStatus(l.status) === 'DISBURSED' && l.disbursedAmountRupees !== null && l.disbursedAmountRupees !== undefined && !isNaN(Number(l.disbursedAmountRupees)))
+            .reduce((sum, l) => sum + cleanLoanAmount(l.disbursedAmountRupees), 0)
         : (p.disbursalRupees || 0);
       const commissionPct = meta.commissionPct || 0.06;
       const commissionAmt = disbursalAmt > 0

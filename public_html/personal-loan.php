@@ -837,6 +837,15 @@ include 'includes/header.php';
                 <p class="step-desc">Review your sanction letter, e-sign the loan contract digitally, and receive funds deposited directly into your bank account.</p>
             </div>
         </div>
+
+        <div style="margin-top: 2.5rem; background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border: 1.5px solid #93C5FD; border-radius: 16px; padding: 1.75rem 2rem; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 260px;">
+                <span style="display: inline-block; background: #2563EB; color: #FFFFFF; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; padding: 0.2rem 0.6rem; border-radius: 4px; margin-bottom: 0.4rem;">In-Depth Editorial Guide</span>
+                <h4 style="margin: 0 0 0.35rem 0; font-size: 1.2rem; color: #1E3A8A;">Looking for a Detailed Step-by-Step Application Roadmap?</h4>
+                <p style="margin: 0; font-size: 0.92rem; color: #1E40AF;">Read our comprehensive guide covering eligibility rules, KFS breakdown, document verification, reducing-balance interest calculations, and safety precautions.</p>
+            </div>
+            <a href="/how-to-apply-for-a-personal-loan-online" style="background: #1B2A6B; color: #FFFFFF; font-weight: 700; font-size: 0.92rem; padding: 0.75rem 1.6rem; border-radius: 50px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; box-shadow: 0 4px 12px rgba(27,42,107,0.25);">Read Full Step-by-Step Guide &rarr;</a>
+        </div>
     </div>
 </section>
 

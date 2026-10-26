@@ -72,7 +72,8 @@ export default function PartnerPortalView({ currentUser, leads = [], setLeads, o
     const approvedCount = scopedLeads.filter(l => l.partnerStatus === 'APPROVED').length;
     const disbursedLeads = scopedLeads.filter(l => l.partnerStatus === 'DISBURSED');
     const disbursedCount = disbursedLeads.length;
-    const totalDisbursedAmount = disbursedLeads.reduce((acc, l) => acc + (Number(l.disbursedAmountRupees) || cleanLoanAmount(l.loanAmount || l.applied || 0)), 0);
+    const verifiedDisbursed = disbursedLeads.filter(l => l.disbursedAmountRupees !== null && l.disbursedAmountRupees !== undefined && !isNaN(Number(l.disbursedAmountRupees)));
+    const totalDisbursedAmount = verifiedDisbursed.reduce((acc, l) => acc + cleanLoanAmount(l.disbursedAmountRupees), 0);
     const conversionRate = total > 0 ? ((disbursedCount / total) * 100).toFixed(1) : 0;
     return { total, clickedCount, contactedCount, approvedCount, disbursedCount, totalDisbursedAmount, conversionRate };
   }, [scopedLeads]);
@@ -99,7 +100,7 @@ export default function PartnerPortalView({ currentUser, leads = [], setLeads, o
   const handleOpenStatusModal = (lead) => {
     setSelectedLeadForUpdate(lead);
     setNewStatus(PARTNER_STATUS_TO_FORM[lead.partnerStatus] || 'Contacted');
-    setDisbursedAmount(lead.disbursedAmountRupees || lead.loanAmount || '');
+    setDisbursedAmount(lead.disbursedAmountRupees !== null && lead.disbursedAmountRupees !== undefined ? lead.disbursedAmountRupees : '');
     setRemarks(lead.partnerRemarks || '');
   };
 

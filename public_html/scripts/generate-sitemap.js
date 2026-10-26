@@ -4,7 +4,7 @@ const path = require('path');
 const publicDir = path.resolve(__dirname, '..');
 const sitemapPath = path.join(publicDir, 'sitemap.xml');
 
-// List of all non-public or legacy files to exclude
+// Exclude backend endpoints, form handlers, and internal routing scripts
 const excludedFiles = new Set([
     'admin-dashboard.php',
     'crm.php',
@@ -13,86 +13,7 @@ const excludedFiles = new Set([
     'redirect.php',
     'router.php',
     'submit-contact.php',
-    'submit-lead.php',
-    // Legacy Silver Leaf NDIS template files
-    'about.php',
-    'contact.php',
-    'blog.php',
-    'careers.php',
-    'resources.php',
-    'services.php',
-    // Retired high-ticket personal loan amount pages (capped at ₹1 Lakh)
-    '5-lakh-personal-loan.php',
-    '10-lakh-personal-loan.php',
-    '20-lakh-personal-loan.php',
-    '30-lakh-personal-loan.php',
-    '40-lakh-personal-loan.php',
-    '50-lakh-personal-loan.php',
-    // Retired unsupported loan categories and calculators
-    'business-loan.php',
-    'business-loan-emi-calculator.php',
-    'business-loan-interest-rates.php',
-    'business-loan-low-cibil-score.php',
-    'home-loan.php',
-    'home-loan-balance-transfer.php',
-    'home-loan-eligibility-calculator.php',
-    'home-loan-emi-calculator.php',
-    'home-loan-for-self-employed.php',
-    'home-loan-for-women.php',
-    'home-loan-interest-rates.php',
-    'home-loan-low-cibil-score.php',
-    'home-loan-prepayment-calculator.php',
-    'home-construction-loan.php',
-    'home-extension-loan.php',
-    'home-renovation-loan.php',
-    'top-up-home-loan.php',
-    '10-lakh-home-loan.php',
-    '15-lakh-home-loan.php',
-    '20-lakh-home-loan.php',
-    '30-lakh-home-loan.php',
-    '40-lakh-home-loan.php',
-    '60-lakh-home-loan.php',
-    'car-loan.php',
-    'loan-against-car.php',
-    'two-wheeler-loan.php',
-    'tractor-loan-emi-calculator.php',
-    'gold-loan.php',
-    'gold-loan-emi-calculator.php',
-    'loan-against-property.php',
-    'loan-against-fixed-deposit.php',
-    'plot-loan.php',
-    'small-business-loan.php',
-    'startups-loan.php',
-    'msme-loan.php',
-    'mudra-loan.php',
-    'mudra-loan-emi-calculator.php',
-    'pmegp-loan.php',
-    'working-capital-loan.php',
-    'letter-of-credit.php',
-    'dairy-farming-loan.php',
-    'goat-farming-loan.php',
-    'poultry-farm-loan.php',
-    'education-loan.php',
-    'term-loan-emi-calculator.php',
-    // Retired credit card and forex card pages
-    'credit-card.php',
-    'best-credit-cards.php',
-    'best-forex-cards.php',
-    'compare-credit-cards.php',
-    'credit-card-eligibility.php',
-    'credit-card-lounge-access.php',
-    'rupay-credit-cards.php',
-    'secured-credit-cards.php',
-    'lifetime-free-credit-cards.php',
-    'rewards-credit-cards.php',
-    'cashback-credit-cards.php',
-    'virtual-credit-cards.php',
-    'fuel-credit-cards.php',
-    'travel-credit-cards.php',
-    'international-credit-cards.php',
-    'zero-forex-markup-credit-cards.php',
-    'cibil-score-for-credit-card.php',
-    'loan-on-credit-card.php'
+    'submit-lead.php'
 ]);
 
 // Define priority and changefreq rules based on URL slug
@@ -108,6 +29,17 @@ function getSeoMeta(slug) {
         'apply-now',
         'check-eligibility',
         'loan-offers',
+        'how-to-apply-for-a-personal-loan-online',
+        'how-can-you-get-a-personal-loan-without-visiting-a-bank',
+        'personal-loan-for-salaried-employees-eligibility-application-guide',
+        'how-to-compare-personal-loan-offers',
+        'how-to-plan-monthly-budget-before-personal-loan',
+        'how-to-compare-personal-loan-offers-online',
+        '5-things-to-check-before-choosing-a-personal-loan',
+        'how-to-manage-personal-loan-repayments-without-stress',
+        'difference-between-pre-approved-and-regular-personal-loan',
+        'common-mistakes-to-avoid-when-applying-for-a-personal-loan',
+        'what-happens-after-you-submit-an-online-personal-loan-application',
         'credit-score-free',
         'free-cibil-score',
         'mutual-funds',
@@ -167,12 +99,34 @@ function generateSitemap() {
         
         // Priority & changefreq
         const { priority, changefreq } = getSeoMeta(slug);
+        let lastmod = today;
+        if (slug === 'how-can-you-get-a-personal-loan-without-visiting-a-bank') {
+            lastmod = '2026-10-23';
+        } else if (slug === 'personal-loan-for-salaried-employees-eligibility-application-guide') {
+            lastmod = '2026-10-24';
+        } else if (slug === 'how-to-compare-personal-loan-offers') {
+            lastmod = '2026-10-25';
+        } else if (slug === 'how-to-plan-monthly-budget-before-personal-loan') {
+            lastmod = '2026-10-27';
+        } else if (slug === 'how-to-compare-personal-loan-offers-online') {
+            lastmod = '2026-10-28';
+        } else if (slug === '5-things-to-check-before-choosing-a-personal-loan') {
+            lastmod = '2026-10-29';
+        } else if (slug === 'how-to-manage-personal-loan-repayments-without-stress') {
+            lastmod = '2026-10-30';
+        } else if (slug === 'difference-between-pre-approved-and-regular-personal-loan') {
+            lastmod = '2026-10-31';
+        } else if (slug === 'common-mistakes-to-avoid-when-applying-for-a-personal-loan') {
+            lastmod = '2026-11-02';
+        } else if (slug === 'what-happens-after-you-submit-an-online-personal-loan-application') {
+            lastmod = '2026-11-03';
+        }
 
         pages.push({
             file,
             slug,
             loc,
-            lastmod: today,
+            lastmod,
             changefreq,
             priority: parseFloat(priority)
         });

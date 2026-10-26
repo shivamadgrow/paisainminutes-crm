@@ -88,14 +88,33 @@ export default function ReportsView({ leads = [] }) {
     const disbursedLeads = filteredData.filter(l => normalizeStatus(l.status) === 'DISBURSED');
     const approvedCount = approvedLeads.length;
     const disbursedCount = disbursedLeads.length;
-    const disbursedVolume = disbursedLeads.reduce((s, l) => s + cleanLoanAmount(l.disbursedAmountRupees || l.loanAmount || l.applied || 0), 0);
-    // Commission earned on disbursed loans only
-    const estimatedCommission = Math.round(disbursedLeads.reduce((s, l) => {
+
+    // Strict disbursal volume: only sum verified actual disbursed amounts; exclude unrecorded leads
+    const verifiedDisbursedLeads = disbursedLeads.filter(l => 
+      l.disbursedAmountRupees !== null && 
+      l.disbursedAmountRupees !== undefined && 
+      !isNaN(Number(l.disbursedAmountRupees))
+    );
+    const verifiedDisbursedCount = verifiedDisbursedLeads.length;
+    const unrecordedDisbursedCount = disbursedCount - verifiedDisbursedCount;
+    const disbursedVolume = verifiedDisbursedLeads.reduce((s, l) => s + cleanLoanAmount(l.disbursedAmountRupees), 0);
+
+    // Commission earned on verified disbursed loans only
+    const estimatedCommission = Math.round(verifiedDisbursedLeads.reduce((s, l) => {
       const partner = AFFILIATE_PARTNERS.find(p => p.id === l.assignedPartnerSlug);
-      return s + cleanLoanAmount(l.disbursedAmountRupees || l.loanAmount || l.applied || 0) * ((partner && partner.commissionPct) || 0.06);
+      return s + cleanLoanAmount(l.disbursedAmountRupees) * ((partner && partner.commissionPct) || 0.06);
     }, 0));
 
-    return { totalCount, totalApplied, approvedCount, disbursedCount, disbursedVolume, estimatedCommission };
+    return { 
+      totalCount, 
+      totalApplied, 
+      approvedCount, 
+      disbursedCount, 
+      verifiedDisbursedCount, 
+      unrecordedDisbursedCount, 
+      disbursedVolume, 
+      estimatedCommission 
+    };
   }, [filteredData]);
 
   const handleExportCsv = () => {
@@ -110,25 +129,35 @@ export default function ReportsView({ leads = [] }) {
       'Mobile Phone',
       'Assigned Partner',
       'Lead Stage',
-      'Loan Amount (INR)',
+      'Original Applied Amount (INR)',
+      'Actual Disbursal Amount (INR)',
       'Monthly Salary (INR)',
       'CIBIL Score',
       'Partner Payment Status',
       'City'
     ];
 
-    const rows = filteredData.map(l => [
-      l.leadCode || l.id || l.loanNo || '—',
-      l.name || 'Applicant',
-      l.mobile || l.phone || '—',
-      l.assignedCompany || 'Unassigned',
-      l.statusLabel || l.status || 'Fresh',
-      cleanLoanAmount(l.loanAmount || l.applied || 0),
-      cleanSalary(l.salary || l.monthlySalary || 0),
-      l.cibil || l.cibilScore || '—',
-      paymentStatusOf(l),
-      l.city || '—'
-    ]);
+    const rows = filteredData.map(l => {
+      const isDisbursed = normalizeStatus(l.status) === 'DISBURSED';
+      const hasActual = l.disbursedAmountRupees !== null && l.disbursedAmountRupees !== undefined && !isNaN(Number(l.disbursedAmountRupees));
+      const actualDisbursalText = isDisbursed
+        ? (hasActual ? cleanLoanAmount(l.disbursedAmountRupees) : 'Not recorded')
+        : 'N/A';
+
+      return [
+        l.leadCode || l.id || l.loanNo || '—',
+        l.name || 'Applicant',
+        l.mobile || l.phone || '—',
+        l.assignedCompany || 'Unassigned',
+        l.statusLabel || l.status || 'Fresh',
+        cleanLoanAmount(l.loanAmount || l.applied || 0),
+        actualDisbursalText,
+        cleanSalary(l.salary || l.monthlySalary || 0),
+        l.cibil || l.cibilScore || '—',
+        paymentStatusOf(l),
+        l.city || '—'
+      ];
+    });
 
     exportToCsv(`paisa-affiliate-custom-report-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   };
@@ -262,18 +291,27 @@ export default function ReportsView({ leads = [] }) {
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Disbursed</div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Disbursed Leads</div>
           <div className="text-2xl font-black text-emerald-600 mt-1">{metrics.disbursedCount}</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">
+            {metrics.verifiedDisbursedCount} verified · {metrics.unrecordedDisbursedCount} unrecorded
+          </div>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Funded Loan Volume</div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Actual Disbursal Volume</div>
           <div className="text-2xl font-black text-slate-900 mt-1">₹{(Number(metrics.disbursedVolume || 0) / 100000).toFixed(2)} L</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">
+            Excludes unrecorded actuals
+          </div>
         </div>
 
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
           <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Accrued Commission</div>
           <div className="text-2xl font-black text-emerald-600 mt-1">₹{Number(metrics.estimatedCommission || 0).toLocaleString('en-IN')}</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">
+            Calculated on actual disbursals
+          </div>
         </div>
       </div>
 
@@ -287,7 +325,8 @@ export default function ReportsView({ leads = [] }) {
                 <th className="py-3 px-4">Applicant</th>
                 <th className="py-3 px-4">Assigned Partner</th>
                 <th className="py-3 px-4">Stage</th>
-                <th className="py-3 px-4">Loan Amount</th>
+                <th className="py-3 px-4">Applied Amount</th>
+                <th className="py-3 px-4 min-w-[140px]">Actual Disbursal</th>
                 <th className="py-3 px-4">Salary</th>
                 <th className="py-3 px-4">CIBIL</th>
                 <th className="py-3 px-4">City</th>
@@ -296,7 +335,7 @@ export default function ReportsView({ leads = [] }) {
             <tbody className="divide-y divide-slate-100 text-slate-700 font-mono">
               {filteredData.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-slate-400 font-sans">
+                  <td colSpan={9} className="py-8 text-center text-slate-400 font-sans">
                     No leads match your selected report filter criteria.
                   </td>
                 </tr>
@@ -320,6 +359,21 @@ export default function ReportsView({ leads = [] }) {
                     </td>
                     <td className="py-3 px-4 font-mono font-bold text-slate-800">
                       ₹{Number(cleanLoanAmount(l.loanAmount || l.applied || 0) || 0).toLocaleString('en-IN')}
+                    </td>
+                    <td className="py-3 px-4">
+                      {normalizeStatus(l.status) === 'DISBURSED' ? (
+                        l.disbursedAmountRupees !== null && l.disbursedAmountRupees !== undefined && !isNaN(Number(l.disbursedAmountRupees)) ? (
+                          <span className="font-mono font-bold text-emerald-700">
+                            ₹{Number(l.disbursedAmountRupees).toLocaleString('en-IN')}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            Not recorded
+                          </span>
+                        )
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
                     </td>
                     <td className="py-3 px-4 font-mono text-slate-600">
                       ₹{Number(cleanSalary(l.salary || l.monthlySalary || 0) || 0).toLocaleString('en-IN')}

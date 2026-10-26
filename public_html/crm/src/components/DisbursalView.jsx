@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileSpreadsheet, RefreshCw, Landmark, Search, Calendar, Inbox } from 'lucide-react';
 import { exportToCsv } from '../utils/exportCsv';
+import { cleanLoanAmount } from '../utils/amountHelpers';
 import { getCurrentUser } from '../utils/authService';
 import { isSuperAdmin } from '../utils/permissions';
 
@@ -14,6 +15,12 @@ export default function DisbursalView({ leads, type }) {
   const list = isDisbursed 
     ? leads.filter(l => l.status === 'Disbursed')
     : leads.filter(l => l.status === 'DisbursedQueue');
+
+  const verifiedList = list.filter(l => l.disbursedAmountRupees !== null && l.disbursedAmountRupees !== undefined && !isNaN(Number(l.disbursedAmountRupees)));
+  const totalPaidOut = verifiedList.reduce((sum, l) => sum + cleanLoanAmount(l.disbursedAmountRupees), 0);
+  const totalSanctioned = list.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied || 0), 0);
+  const verifiedCount = verifiedList.length;
+  const unrecordedCount = list.length - verifiedCount;
 
   if (isDisbursed) {
     return (
@@ -34,8 +41,17 @@ export default function DisbursalView({ leads, type }) {
             {canExportData && (
               <button 
                 onClick={() => {
-                  const headers = ['Loan No', 'Applicant', 'Mobile', 'Amount', 'Disbursed On', 'Bank Name', 'Status'];
-                  const rows = (list || []).map(l => [l.loanNo || l.id, l.name, l.mobile, l.loanAmount || l.applied || 0, l.created || l.date || '', 'HDFC Bank', l.status]);
+                  const headers = ['Loan No', 'Applicant', 'Mobile', 'Applied Principal', 'Actual Disbursal Amount', 'Disbursed On', 'Bank Name', 'Status'];
+                  const rows = (list || []).map(l => [
+                    l.loanNo || l.id, 
+                    l.name, 
+                    l.mobile, 
+                    cleanLoanAmount(l.loanAmount || l.applied || 0), 
+                    (l.disbursedAmountRupees !== null && l.disbursedAmountRupees !== undefined && !isNaN(Number(l.disbursedAmountRupees)) ? cleanLoanAmount(l.disbursedAmountRupees) : 'Not recorded'), 
+                    l.created || l.date || '', 
+                    'HDFC Bank', 
+                    l.status
+                  ]);
                   exportToCsv(`paisa-crm-disbursed-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
                 }}
                 className="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition cursor-pointer active:scale-95"
@@ -63,9 +79,9 @@ export default function DisbursalView({ leads, type }) {
             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
               LOANS DISBURSED
             </span>
-            <div className="text-xl font-bold text-slate-900">0</div>
+            <div className="text-xl font-bold text-slate-900">{list.length}</div>
             <p className="text-[11px] text-slate-400">
-              of 0 all time · {selectedMonth}
+              {verifiedCount} verified · {unrecordedCount} unrecorded
             </p>
           </div>
 
@@ -74,20 +90,20 @@ export default function DisbursalView({ leads, type }) {
             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
               NET PAID OUT
             </span>
-            <div className="text-xl font-bold text-slate-900">₹0</div>
+            <div className="text-xl font-bold text-emerald-700">₹{totalPaidOut.toLocaleString('en-IN')}</div>
             <p className="text-[11px] text-slate-400">
-              reached borrower accounts
+              reached borrower accounts (actuals)
             </p>
           </div>
 
           {/* Card 3: FEES & GST */}
           <div className="crm-card p-4 bg-white space-y-1">
             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-              FEES & GST
+              SANCTIONED TOTAL
             </span>
-            <div className="text-xl font-bold text-slate-900">₹0</div>
+            <div className="text-xl font-bold text-slate-900">₹{totalSanctioned.toLocaleString('en-IN')}</div>
             <p className="text-[11px] text-slate-400">
-              withheld from ₹0 sanctioned
+              applied loan principal volume
             </p>
           </div>
 
@@ -161,9 +177,17 @@ export default function DisbursalView({ leads, type }) {
                   list.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50/80 transition">
                       <td className="p-3.5 font-bold text-slate-900">{item.name}</td>
-                      <td className="p-3.5 font-mono text-[#0A3977] font-semibold">{item.loanNo}</td>
-                      <td className="p-3.5 font-bold text-slate-900">₹{Number(item.applied || 0).toLocaleString('en-IN')}</td>
-                      <td className="p-3.5 font-bold text-slate-900">₹{Number(item.applied || 0).toLocaleString('en-IN')}</td>
+                      <td className="p-3.5 font-mono text-[#0A3977] font-semibold">{item.loanNo || item.id}</td>
+                      <td className="p-3.5 font-bold text-slate-900">₹{Number(cleanLoanAmount(item.loanAmount || item.applied || 0)).toLocaleString('en-IN')}</td>
+                      <td className="p-3.5">
+                        {item.disbursedAmountRupees !== null && item.disbursedAmountRupees !== undefined && !isNaN(Number(item.disbursedAmountRupees)) ? (
+                          <span className="font-bold text-emerald-700">₹{Number(item.disbursedAmountRupees).toLocaleString('en-IN')}</span>
+                        ) : (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                            Not recorded
+                          </span>
+                        )}
+                      </td>
                       <td className="p-3.5 font-mono text-slate-500">UTR129847192</td>
                       <td className="p-3.5 text-slate-500">{item.created}</td>
                       <td className="p-3.5 text-slate-600">SBI · 8492</td>

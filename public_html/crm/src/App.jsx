@@ -290,9 +290,14 @@ export default function App() {
     const freshList = leads.filter(l => normalizeStatus(l.status) === 'FRESH');
     const callbackList = leads.filter(l => normalizeStatus(l.status) === 'CALLBACK');
 
+    // Applied loan volume uses the original applied amount
     const totalApplied = leads.reduce((sum, item) => sum + (Number(item.loanAmount || item.applied) || 0), 0);
     const approvedAmount = approvedList.reduce((sum, item) => sum + (Number(item.loanAmount || item.applied) || 0), 0);
-    const disbursedAmount = disbursedList.reduce((sum, item) => sum + (Number(item.disbursedAmountRupees || item.disbursedAmount || item.loanAmount || item.applied) || 0), 0);
+
+    // Actual disbursal volume uses verified actual_disbursal_amount only (missing amounts excluded)
+    const verifiedDisbursed = disbursedList.filter(l => l.disbursedAmountRupees !== null && l.disbursedAmountRupees !== undefined && !isNaN(Number(l.disbursedAmountRupees)));
+    const unrecordedDisbursedCount = disbursedList.length - verifiedDisbursed.length;
+    const disbursedAmount = verifiedDisbursed.reduce((sum, item) => sum + (Number(item.disbursedAmountRupees) || 0), 0);
 
     return {
       totalLeads: leads.length,
@@ -300,6 +305,8 @@ export default function App() {
       callbackCount: callbackList.length,
       approvedCount: approvedList.length,
       disbursedCount: disbursedList.length,
+      verifiedDisbursedCount: verifiedDisbursed.length,
+      unrecordedDisbursedCount,
       disbursedAmount,
       approvedAmount,
       totalVolume: totalApplied,

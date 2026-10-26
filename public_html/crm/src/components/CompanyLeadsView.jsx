@@ -146,10 +146,13 @@ export default function CompanyLeadsView({
     const disbursed = companyLeads.filter(l => normalizeStatus(l.status) === 'DISBURSED').length;
     const interested = companyLeads.filter(l => normalizeStatus(l.status) === 'INTERESTED').length;
     const rejected = companyLeads.filter(l => normalizeStatus(l.status) === 'REJECTED').length;
-    const volume = companyLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied || l.amount), 0);
-    const avgTicket = total > 0 ? Math.round(volume / total) : 0;
+    const appliedVolume = companyLeads.reduce((sum, l) => sum + cleanLoanAmount(l.loanAmount || l.applied || l.amount), 0);
+    const verifiedDisbursed = companyLeads.filter(l => normalizeStatus(l.status) === 'DISBURSED' && l.disbursedAmountRupees !== null && l.disbursedAmountRupees !== undefined && !isNaN(Number(l.disbursedAmountRupees)));
+    const disbursedVolume = verifiedDisbursed.reduce((sum, l) => sum + cleanLoanAmount(l.disbursedAmountRupees), 0);
+    const unrecordedDisbursed = disbursed - verifiedDisbursed.length;
+    const avgTicket = total > 0 ? Math.round(appliedVolume / total) : 0;
 
-    return { total, fresh, callback, interested, approved, disbursed, rejected, volume, avgTicket };
+    return { total, fresh, callback, interested, approved, disbursed, rejected, volume: appliedVolume, appliedVolume, disbursedVolume, unrecordedDisbursed, avgTicket };
   }, [companyLeads]);
 
   // Export CSV
@@ -169,7 +172,8 @@ export default function CompanyLeadsView({
       'Customer Name',
       'Mobile Number',
       'Email',
-      'Loan Amount (₹)',
+      'Applied Loan Amount (₹)',
+      'Actual Disbursal Amount (₹)',
       'Monthly Salary (₹)',
       'CIBIL Score',
       'Employment Type',
@@ -180,24 +184,31 @@ export default function CompanyLeadsView({
       'Status',
       'Created Date'
     ];
-    const rows = filteredLeads.map(l => [
-      l.id || l.loanNo || '',
-      l.assignedCompany || partner.name,
-      l.eligibilityStatus || 'Eligible',
-      l.name || 'Applicant',
-      l.mobile || '',
-      l.email || '',
-      cleanLoanAmount(l.loanAmount || l.applied),
-      cleanSalary(l.salary, l.sal_val, l.salary_range),
-      l.cibil || '—',
-      l.employmentType || 'Salaried',
-      l.city || '',
-      l.state || 'India',
-      l.pincode || '',
-      l.source || 'Website',
-      l.status || 'Fresh',
-      l.created || l.date || ''
-    ]);
+    const rows = filteredLeads.map(l => {
+      const isDisbursed = normalizeStatus(l.status) === 'DISBURSED';
+      const hasActual = l.disbursedAmountRupees !== null && l.disbursedAmountRupees !== undefined && !isNaN(Number(l.disbursedAmountRupees));
+      const actualDisbursalText = isDisbursed ? (hasActual ? cleanLoanAmount(l.disbursedAmountRupees) : 'Not recorded') : '—';
+
+      return [
+        l.id || l.loanNo || '',
+        l.assignedCompany || partner.name,
+        l.eligibilityStatus || 'Eligible',
+        l.name || 'Applicant',
+        l.mobile || '',
+        l.email || '',
+        cleanLoanAmount(l.loanAmount || l.applied),
+        actualDisbursalText,
+        cleanSalary(l.salary, l.sal_val, l.salary_range),
+        l.cibil || '—',
+        l.employmentType || 'Salaried',
+        l.city || '',
+        l.state || 'India',
+        l.pincode || '',
+        l.source || 'Website',
+        l.status || 'Fresh',
+        l.created || l.date || ''
+      ];
+    });
     const dateStr = new Date().toISOString().slice(0, 10);
     exportToCsv(`${partner.name.toLowerCase()}-assigned-leads-${dateStr}.csv`, headers, rows);
   };
@@ -426,6 +437,7 @@ export default function CompanyLeadsView({
                 <th className="p-3.5 min-w-[220px]">APPLICANT DETAILS</th>
                 <th className="p-3.5">ELIGIBILITY & CIBIL</th>
                 <th className="p-3.5">APPLIED AMOUNT</th>
+                <th className="p-3.5 min-w-[140px]">ACTUAL DISBURSAL</th>
                 <th className="p-3.5">SALARY / CITY</th>
                 <th className="p-3.5">SOURCE</th>
                 <th className="p-3.5">ASSIGNED PARTNER</th>
@@ -477,8 +489,25 @@ export default function CompanyLeadsView({
                       </td>
 
                       {/* Applied Amount */}
-                      <td className="p-3.5 font-bold text-slate-900">
+                      <td className="p-3.5 font-bold text-slate-900 font-mono">
                         ₹{Number(cleanLoanAmount(item.applied || item.loanAmount || item.amount) || 0).toLocaleString('en-IN')}
+                      </td>
+
+                      {/* Actual Disbursal */}
+                      <td className="p-3.5">
+                        {normalizeStatus(item.status) === 'DISBURSED' ? (
+                          item.disbursedAmountRupees !== null && item.disbursedAmountRupees !== undefined && !isNaN(Number(item.disbursedAmountRupees)) ? (
+                            <span className="font-bold font-mono text-emerald-700">
+                              ₹{Number(item.disbursedAmountRupees).toLocaleString('en-IN')}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                              Not recorded
+                            </span>
+                          )
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </td>
 
                       {/* Salary / City */}
@@ -651,7 +680,7 @@ export default function CompanyLeadsView({
                 })
               ) : (
                 <tr>
-                  <td colSpan={9} className="p-10 text-center">
+                  <td colSpan={10} className="p-10 text-center">
                     <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                     <p className="text-xs font-bold text-slate-600">
                       No leads currently found for {partner.name}

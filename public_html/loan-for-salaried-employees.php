@@ -221,6 +221,16 @@
                 </div>
             </div>
         </div>
+
+        <!-- Editorial In-Depth Guide Feature Box -->
+        <div style="margin-top: 3rem; background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border: 1.5px solid #93C5FD; border-radius: 16px; padding: 1.75rem 2rem; display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 260px;">
+                <span style="display: inline-block; background: #2563EB; color: #FFFFFF; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; padding: 0.2rem 0.6rem; border-radius: 4px; margin-bottom: 0.4rem;">In-Depth Salaried Guide</span>
+                <h3 style="margin: 0 0 0.35rem 0; font-size: 1.25rem; color: #1E3A8A;">Personal Loan for Salaried Employees: Eligibility &amp; Application Guide</h3>
+                <p style="margin: 0; font-size: 0.92rem; color: #1E40AF;">Read our comprehensive guide covering monthly budget affordability, salary slip checklist, 6-step paperless application, and RBI safety guidelines.</p>
+            </div>
+            <a href="/personal-loan-for-salaried-employees-eligibility-application-guide" style="background: #1B2A6B; color: #FFFFFF; font-weight: 700; font-size: 0.92rem; padding: 0.75rem 1.6rem; border-radius: 50px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.4rem; box-shadow: 0 4px 12px rgba(27,42,107,0.25);">Read Full Salaried Guide &rarr;</a>
+        </div>
     </div>
 </section>
 

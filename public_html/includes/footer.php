@@ -34,18 +34,52 @@
     .footer-grid {
         display: grid;
         grid-template-columns: 1.35fr 1fr 1.15fr 1.05fr;
-        gap: 2.5rem;
-        margin-bottom: 2.5rem;
+        gap: 2.25rem;
+        margin-bottom: 2rem;
         align-items: start;
     }
     .footer-col h4,
     .footer h4 {
         margin-top: 0;
-        margin-bottom: 1.25rem;
-        font-size: 1.1rem;
-        font-weight: 600;
+        margin-bottom: 1rem;
+        font-size: 1.05rem;
+        font-weight: 700;
         color: var(--white, #FFFFFF);
         letter-spacing: -0.01em;
+    }
+    .footer-links {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .footer-links li {
+        margin-bottom: 0.6rem;
+    }
+    .footer-links a {
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 0.88rem;
+        line-height: 1.45;
+        text-decoration: none;
+        transition: color 0.2s ease, padding-left 0.2s ease;
+        display: inline-block;
+    }
+    .footer-links a:hover {
+        color: #FFFFFF;
+        padding-left: 4px;
+    }
+    .footer-tagline {
+        color: rgba(255, 255, 255, 0.75);
+        font-size: 0.88rem;
+        line-height: 1.55;
+        margin-bottom: 1.25rem;
+    }
+    .footer-contact-item {
+        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.88rem;
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        margin-bottom: 0.75rem;
     }
     .footer-contact-item a {
         color: inherit;
@@ -175,26 +209,24 @@
                     <ul class="footer-links">
                         <li><a href="/about-us">About Us</a></li>
                         <li><a href="/our-partners">Our Partners</a></li>
-                        <li><a href="/partner-terms">Partner Terms &amp; Conditions</a></li>
-                        <li><a href="/check-eligibility">Check Eligibility</a></li>
+                        <li><a href="/check-eligibility">Check Loan Eligibility</a></li>
                         <li><a href="/#how-it-works">How It Works</a></li>
                         <li><a href="/#faqs">FAQs</a></li>
+                        <li><a href="/blogs">Blogs &amp; Guides</a></li>
                         <li><a href="/contact-us">Contact Us</a></li>
                     </ul>
                 </div>
 
-                <!-- Col 3: Personal Loan Hub -->
+                <!-- Col 3: Personal Loan Hub (Streamlined Important Pages) -->
                 <div class="footer-col">
-                    <h4>Personal Loan Hub</h4>
+                    <h4>Personal Loans</h4>
                     <ul class="footer-links">
                         <li><a href="/personal-loan">Instant Personal Loan</a></li>
-                        <li><a href="/10-thousand-personal-loan">₹10,000 Personal Loan</a></li>
-                        <li><a href="/25-thousand-personal-loan">₹25,000 Personal Loan</a></li>
-                        <li><a href="/50-thousand-personal-loan">₹50,000 Personal Loan</a></li>
-                        <li><a href="/75-thousand-personal-loan">₹75,000 Personal Loan</a></li>
                         <li><a href="/1-lakh-personal-loan">₹1 Lakh Personal Loan</a></li>
                         <li><a href="/personal-loan-low-cibil-score">Low CIBIL Personal Loan</a></li>
+                        <li><a href="/loan-for-salaried-employees">Salaried Personal Loan</a></li>
                         <li><a href="/personal-loan-emi-calculator">Personal Loan EMI Calculator</a></li>
+                        <li><a href="/blogs" style="color: #60A5FA; font-weight: 600;">All Loan Guides &amp; Blogs &rarr;</a></li>
                     </ul>
                 </div>
 
@@ -216,92 +248,75 @@
                         <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                         <a href="mailto:info@paisainminutes.com">info@paisainminutes.com</a>
                     </div>
+                    <div class="footer-contact-item" style="color: rgba(255, 255, 255, 0.7); font-size: 0.82rem; margin-top: 0.35rem;">
+                        <!-- Clock Icon -->
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        <span>Mon &ndash; Sat: 9:30 AM &ndash; 6:30 PM</span>
+                    </div>
                 </div>
             </div>
 
-            <!-- SEO Contextual Quick Links Matrix -->
-            <div class="footer-quick-hub">
-                <div class="footer-quick-hub-header">
+            <!-- SEO Contextual Quick Discovery (Compact Pill Format) -->
+            <div class="footer-quick-hub" style="padding: 1.25rem 1.75rem; margin-bottom: 2rem;">
+                <div class="footer-quick-hub-header" style="margin-bottom: 0.85rem; padding-bottom: 0.65rem;">
                     <div class="footer-quick-hub-title">
-                        <svg class="footer-quick-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                        <svg class="footer-quick-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                         </svg>
-                        <span>Popular Personal Loan Amounts &amp; Calculators</span>
+                        <span>Popular Loan Amounts &amp; Planning Tools</span>
                     </div>
-                    <span class="footer-quick-badge">Quick Discovery</span>
+                    <a href="/blogs" class="footer-quick-badge" style="text-decoration: none;">Explore All Guides 📚</a>
                 </div>
 
-                <div class="footer-quick-grid">
+                <div class="footer-quick-grid" style="gap: 0.85rem;">
                     <!-- Category 1: Loan Amounts by Ticket Size -->
                     <div class="footer-quick-category">
-                        <div class="footer-quick-category-title">
+                        <div class="footer-quick-category-title" style="min-width: 120px;">
                             <span class="category-indicator"></span>
-                            <span>Loan Amounts</span>
+                            <span>Amounts</span>
                         </div>
                         <div class="footer-quick-chips">
                             <a href="/10-thousand-personal-loan" class="footer-chip">
                                 <span class="footer-chip-symbol">₹</span>
-                                <span class="footer-chip-text">₹10,000 Personal Loan</span>
+                                <span class="footer-chip-text">₹10,000 Loan</span>
                             </a>
                             <a href="/25-thousand-personal-loan" class="footer-chip">
                                 <span class="footer-chip-symbol">₹</span>
-                                <span class="footer-chip-text">₹25,000 Personal Loan</span>
+                                <span class="footer-chip-text">₹25,000 Loan</span>
                             </a>
                             <a href="/50-thousand-personal-loan" class="footer-chip">
                                 <span class="footer-chip-symbol">₹</span>
-                                <span class="footer-chip-text">₹50,000 Personal Loan</span>
+                                <span class="footer-chip-text">₹50,000 Loan</span>
                             </a>
                             <a href="/75-thousand-personal-loan" class="footer-chip">
                                 <span class="footer-chip-symbol">₹</span>
-                                <span class="footer-chip-text">₹75,000 Personal Loan</span>
+                                <span class="footer-chip-text">₹75,000 Loan</span>
                             </a>
                             <a href="/1-lakh-personal-loan" class="footer-chip">
                                 <span class="footer-chip-symbol">₹</span>
-                                <span class="footer-chip-text">₹1 Lakh Personal Loan</span>
+                                <span class="footer-chip-text">₹1 Lakh Loan</span>
                             </a>
                         </div>
                     </div>
 
                     <!-- Category 2: Financial Calculators -->
                     <div class="footer-quick-category">
-                        <div class="footer-quick-category-title">
+                        <div class="footer-quick-category-title" style="min-width: 120px;">
                             <span class="category-indicator"></span>
-                            <span>Calculators &amp; Tools</span>
+                            <span>Calculators</span>
                         </div>
                         <div class="footer-quick-chips">
                             <a href="/personal-loan-emi-calculator" class="footer-chip footer-chip-highlight">
-                                <svg class="footer-chip-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
+                                <svg class="footer-chip-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="16" y2="18"/></svg>
                                 <span class="footer-chip-text">Personal Loan EMI Calculator</span>
                             </a>
                             <a href="/loan-against-property-emi-calculator" class="footer-chip footer-chip-highlight">
-                                <svg class="footer-chip-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                                <span class="footer-chip-text">Loan Against Property EMI</span>
+                                <svg class="footer-chip-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                                <span class="footer-chip-text">LAP EMI Calculator</span>
                             </a>
                             <a href="/personal-loan-eligibility-calculator" class="footer-chip footer-chip-highlight">
-                                <svg class="footer-chip-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <svg class="footer-chip-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 <span class="footer-chip-text">Loan Eligibility Calculator</span>
-                            </a>
-                        </div>
-                    </div>
-
-                    <!-- Category 3: Key Loan Solutions -->
-                    <div class="footer-quick-category">
-                        <div class="footer-quick-category-title">
-                            <span class="category-indicator"></span>
-                            <span>Loan Solutions</span>
-                        </div>
-                        <div class="footer-quick-chips">
-                            <a href="/personal-loan" class="footer-chip">
-                                <span class="footer-chip-text">Personal Loan Online</span>
-                            </a>
-                            <a href="/personal-loan-low-cibil-score" class="footer-chip">
-                                <span class="footer-chip-text">Low CIBIL Personal Loan</span>
-                            </a>
-                            <a href="/personal-loan-interest-rates" class="footer-chip">
-                                <span class="footer-chip-text">Personal Loan Interest Rates</span>
-                            </a>
-                            <a href="/personal-loan-balance-transfer" class="footer-chip">
-                                <span class="footer-chip-text">Personal Loan Balance Transfer</span>
                             </a>
                         </div>
                     </div>

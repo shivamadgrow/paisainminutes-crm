@@ -62,7 +62,18 @@
     RewriteRule ^services/?$ /personal-loan [R=301,L]
     RewriteRule ^resources/?$ /personal-loan-emi-calculator [R=301,L]
     RewriteRule ^careers/?$ /about-us [R=301,L]
-    RewriteRule ^blog/?$ /personal-loan [R=301,L]
+    RewriteRule ^blog/?$ /blogs [R=301,L]
+    RewriteRule ^how-to-apply-personal-loan-online(\.php)?$ /how-to-apply-for-a-personal-loan-online [R=301,L]
+    RewriteRule ^(how-to-get-personal-loan-without-visiting-bank|personal-loan-without-visiting-bank|personal-loan-without-visiting-a-bank)(\.php)?$ /how-can-you-get-a-personal-loan-without-visiting-a-bank [R=301,L]
+    RewriteRule ^(personal-loan-for-salaried-employees-guide|personal-loan-salaried-employees-guide|personal-loan-for-salaried-employees-eligibility-and-application-guide)(\.php)?$ /personal-loan-for-salaried-employees-eligibility-application-guide [R=301,L]
+    RewriteRule ^(how-to-compare-personal-loan-offers-before-making-a-decision|compare-personal-loan-offers-guide|compare-personal-loan-offers)(\.php)?$ /how-to-compare-personal-loan-offers [R=301,L]
+    RewriteRule ^(how-to-plan-your-monthly-budget-before-taking-a-personal-loan-up-to-1-lakh|plan-monthly-budget-personal-loan|monthly-budget-personal-loan-guide|how-to-plan-monthly-budget-before-personal-loan-up-to-1-lakh)(\.php)?$ /how-to-plan-monthly-budget-before-personal-loan [R=301,L]
+    RewriteRule ^(compare-personal-loan-offers-online|compare-personal-loan-offers-before-decision|how-to-compare-instant-loan-apps)(\.php)?$ /how-to-compare-personal-loan-offers-online [R=301,L]
+    RewriteRule ^(things-to-check-before-choosing-a-personal-loan|5-things-to-check-before-taking-a-personal-loan|checklist-before-choosing-personal-loan)(\.php)?$ /5-things-to-check-before-choosing-a-personal-loan [R=301,L]
+    RewriteRule ^(manage-personal-loan-repayments-without-stress|how-to-manage-loan-repayments|personal-loan-repayment-guide|manage-personal-loan-repayments)(\.php)?$ /how-to-manage-personal-loan-repayments-without-stress [R=301,L]
+    RewriteRule ^(pre-approved-vs-regular-personal-loan|pre-approved-loan-vs-regular-personal-loan|difference-between-pre-approved-loan-and-personal-loan|pre-approved-loan-vs-personal-loan)(\.php)?$ /difference-between-pre-approved-and-regular-personal-loan [R=301,L]
+    RewriteRule ^(mistakes-to-avoid-when-applying-for-personal-loan|common-personal-loan-mistakes|personal-loan-mistakes-to-avoid|mistakes-when-applying-for-personal-loan)(\.php)?$ /common-mistakes-to-avoid-when-applying-for-a-personal-loan [R=301,L]
+    RewriteRule ^(what-happens-after-submitting-personal-loan-application|what-happens-after-you-apply-for-a-personal-loan|after-submitting-online-personal-loan-application|what-happens-after-applying-for-personal-loan)(\.php)?$ /what-happens-after-you-submit-an-online-personal-loan-application [R=301,L]
 
     # ==================================================================
     # 301 PERMANENT REDIRECTS FOR RETIRED UNSUPPORTED LOAN PRODUCTS

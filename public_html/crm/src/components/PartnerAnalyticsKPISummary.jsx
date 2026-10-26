@@ -112,8 +112,8 @@ export default function PartnerAnalyticsKPISummary({ onSelectCompany, leads = []
         : (sp?.disbursalPaise > 0 ? 1 : 0);
 
       const disbursalFromLeads = pLeads
-        .filter(l => normalizeStatus(l.status) === 'DISBURSED')
-        .reduce((sum, l) => sum + cleanLoanAmount(l.disbursedAmountRupees || l.disbursedAmount || l.loanAmount || l.applied || 0), 0);
+        .filter(l => normalizeStatus(l.status) === 'DISBURSED' && l.disbursedAmountRupees !== null && l.disbursedAmountRupees !== undefined && !isNaN(Number(l.disbursedAmountRupees)))
+        .reduce((sum, l) => sum + cleanLoanAmount(l.disbursedAmountRupees), 0);
 
       const disbursal = hasLeadRecords
         ? disbursalFromLeads

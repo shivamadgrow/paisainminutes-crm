@@ -122,7 +122,7 @@ if (!isset($page_og_image) || empty($page_og_image)) {
     <title><?php echo htmlspecialchars($page_title); ?></title>
     
     <!-- SEO & Indexing Directives -->
-    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="robots" content="<?php echo htmlspecialchars($page_robots ?? 'index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1'); ?>">
     <meta name="description" content="<?php echo htmlspecialchars($page_description); ?>">
     <meta name="keywords" content="<?php echo htmlspecialchars($page_keywords); ?>">
     <meta name="author" content="Paisa in Minutes">
@@ -635,6 +635,7 @@ if (!isset($page_og_image) || empty($page_og_image)) {
                                 <a href="/personal-loan-low-cibil-score" class="dropdown-grid-link">Personal Loan Low CIBIL Score</a>
                                 <a href="/personal-loan-balance-transfer" class="dropdown-grid-link">Personal Loan Balance Transfer</a>
                                 <a href="/instant-cash-loan" class="dropdown-grid-link">Instant Cash Loan</a>
+                                <a href="/blogs" class="dropdown-grid-link" style="color: #4A8DFF !important; font-weight: 600;">Personal Loan Guides &amp; Blogs 📖</a>
                             </div>
 
                             <!-- Col 2: By Amount (Up to ₹1 Lakh) -->
@@ -657,6 +658,7 @@ if (!isset($page_og_image) || empty($page_og_image)) {
                                     By Type &amp; Need
                                 </div>
                                 <a href="/loan-for-salaried-employees" class="dropdown-grid-link">Loan for Salaried Employees</a>
+                                <a href="/personal-loan-for-salaried-employees-eligibility-application-guide" class="dropdown-grid-link" style="color: #4A8DFF !important; font-weight: 600;">Salaried Loan Guide 💼</a>
                                 <a href="/loan-for-self-employed" class="dropdown-grid-link">Loan for Self Employed</a>
                                 <a href="/loan-for-senior-citizens" class="dropdown-grid-link">Loan For Senior Citizens</a>
                                 <a href="/loan-for-students" class="dropdown-grid-link">Loan for Students</a>
@@ -693,6 +695,25 @@ if (!isset($page_og_image) || empty($page_og_image)) {
                                 <a href="/nps-calculator" class="dropdown-grid-link">NPS Calculator</a>
                                 <a href="/gst-calculator" class="dropdown-grid-link">GST Calculator</a>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Blogs Section Dropdown -->
+                    <div class="nav-item dropdown">
+                        <a href="javascript:void(0)" class="nav-link" role="button" aria-haspopup="true" aria-expanded="false" tabindex="0">Blogs <span class="arrow-down" aria-hidden="true"></span></a>
+                        <div class="dropdown-menu" style="min-width: 270px;">
+                            <div class="dropdown-menu-header">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+                                Guides &amp; Insights
+                            </div>
+                            <a href="/blogs" style="font-weight: 700; color: #4A8DFF !important;">All Blogs &amp; Guides 📚</a>
+                            <a href="/how-to-apply-for-a-personal-loan-online">How to Apply Online Guide</a>
+                            <a href="/how-can-you-get-a-personal-loan-without-visiting-a-bank">Apply Without Bank Visit</a>
+                            <a href="/personal-loan-for-salaried-employees-eligibility-application-guide">Salaried Loan Guide</a>
+                            <a href="/how-to-compare-personal-loan-offers">Compare Loan Offers Guide</a>
+                            <a href="/5-things-to-check-before-choosing-a-personal-loan">5 Things to Check Checklist</a>
+                            <a href="/common-mistakes-to-avoid-when-applying-for-a-personal-loan">Loan Mistakes to Avoid</a>
+                            <a href="/what-happens-after-you-submit-an-online-personal-loan-application">After Application Guide</a>
                         </div>
                     </div>
 

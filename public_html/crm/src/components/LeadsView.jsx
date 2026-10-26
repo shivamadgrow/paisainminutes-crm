@@ -38,7 +38,8 @@ import {
   Lock,
   Send,
   Activity,
-  RotateCw
+  RotateCw,
+  Edit3
 } from 'lucide-react';
 import {
   AFFILIATE_PARTNERS,
@@ -62,6 +63,7 @@ import {
 import {
   deleteLeadsApi,
   updateLoanApplication,
+  updateDisbursalAmount,
   refreshLeadScore,
   submitLoanApplication,
   buildLeadPayload,
@@ -359,6 +361,15 @@ export default function LeadsView({
   const canExportLeads = hasPermission(currentUser, 'leads.export');
   const [toastMessage, setToastMessage] = useState(null);
   const statusFilterRef = useRef(null);
+
+  // Actual Disbursal Amount modal state
+  const [disbursalModalLead, setDisbursalModalLead] = useState(null);
+  const [disbursalAmountInput, setDisbursalAmountInput] = useState('');
+  const [disbursalDateInput, setDisbursalDateInput] = useState('');
+  const [disbursalRemarksInput, setDisbursalRemarksInput] = useState('');
+  const [disbursalExceedsConfirmed, setDisbursalExceedsConfirmed] = useState(false);
+  const [isSavingDisbursal, setIsSavingDisbursal] = useState(false);
+  const [disbursalError, setDisbursalError] = useState('');
 
   // Smooth mouse wheel / trackpad horizontal scrolling support for Lead Status Filter row
   useEffect(() => {
@@ -955,6 +966,90 @@ export default function LeadsView({
       showToast(`Status changed to ${formatStatusLabel(canonicalStatus)}.`);
     } else {
       showToast(patchRes.error || 'Could not update the status.', true);
+    }
+  };
+
+  // Open Disbursal Amount edit modal (strictly only for leads whose status is Disbursed)
+  const handleOpenDisbursalModal = (lead) => {
+    if (!lead) return;
+    if (normalizeStatus(lead.status) !== 'DISBURSED') {
+      showToast('Actual disbursal amount can only be edited for leads whose status is Disbursed.', true);
+      return;
+    }
+    setDisbursalModalLead(lead);
+    const existing = (lead.disbursedAmountRupees !== null && lead.disbursedAmountRupees !== undefined && !isNaN(Number(lead.disbursedAmountRupees)))
+      ? String(lead.disbursedAmountRupees)
+      : '';
+    setDisbursalAmountInput(existing);
+    const dDate = lead.disbursalDate
+      ? String(lead.disbursalDate).split('T')[0]
+      : (lead.updatedAt ? String(lead.updatedAt).split('T')[0] : new Date().toISOString().split('T')[0]);
+    setDisbursalDateInput(dDate);
+    setDisbursalRemarksInput(lead.disbursalRemarks || '');
+    setDisbursalExceedsConfirmed(false);
+    setDisbursalError('');
+  };
+
+  // Save Disbursal Amount with server persistence and comprehensive validation
+  const handleSaveDisbursalModal = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!disbursalModalLead || isSavingDisbursal) return;
+
+    if (normalizeStatus(disbursalModalLead.status) !== 'DISBURSED') {
+      setDisbursalError('Disbursal amount can only be edited for leads whose status is Disbursed.');
+      return;
+    }
+
+    const trimmed = String(disbursalAmountInput).trim();
+    if (!trimmed) {
+      setDisbursalError('Disbursal amount is required and cannot be blank.');
+      return;
+    }
+
+    const num = Number(trimmed);
+    if (isNaN(num) || !isFinite(num) || num < 0) {
+      setDisbursalError('Please enter a valid non-negative INR amount (rejects negative numbers, NaN, and infinite values).');
+      return;
+    }
+
+    const cleanAmount = Math.round(num);
+    const applied = cleanLoanAmount(disbursalModalLead.loanAmount || disbursalModalLead.applied || disbursalModalLead.amount || 0);
+
+    if (applied > 0 && cleanAmount > applied && !disbursalExceedsConfirmed) {
+      setDisbursalError(`Warning: Actual disbursal amount (₹${cleanAmount.toLocaleString('en-IN')}) exceeds original applied amount (₹${applied.toLocaleString('en-IN')}). Please check the confirmation box below.`);
+      return;
+    }
+
+    setIsSavingDisbursal(true);
+    setDisbursalError('');
+
+    const res = await updateDisbursalAmount(
+      disbursalModalLead.id,
+      {
+        actualDisbursalAmount: cleanAmount,
+        disbursalDate: disbursalDateInput || undefined,
+        disbursalRemarks: disbursalRemarksInput.trim() || undefined,
+        confirmExceedsApplied: true
+      },
+      { role: 'staff', lead: disbursalModalLead }
+    );
+
+    setIsSavingDisbursal(false);
+
+    if (res.success && res.lead) {
+      const updatedLead = {
+        ...res.lead,
+        disbursedAmountRupees: cleanAmount,
+        actualDisbursalAmount: cleanAmount,
+        actual_disbursal_amount: cleanAmount,
+        disbursalDate: disbursalDateInput || null,
+        disbursalRemarks: disbursalRemarksInput.trim() || ''
+      };
+      applyUpdatedLead(disbursalModalLead.id, updatedLead);
+      showToast(`Actual disbursal amount saved: ₹${cleanAmount.toLocaleString('en-IN')}.`);
+      setDisbursalModalLead(null);
+    } else {
+      setDisbursalError(res.error || 'Failed to save actual disbursal amount.');
     }
   };
 
@@ -1670,6 +1765,7 @@ export default function LeadsView({
               <th className="py-4 px-4 min-w-[170px]">APPLIED TO</th>
               <th className="py-4 px-4 min-w-[170px]">ELIGIBILITY & CIBIL</th>
               <th className="py-4 px-4 min-w-[140px]">APPLIED AMOUNT</th>
+              <th className="py-4 px-4 min-w-[160px]">ACTUAL DISBURSAL</th>
               <th className="py-4 px-4 min-w-[170px]">SALARY / LOCATION</th>
               <th className="py-4 px-4 min-w-[150px]">SOURCE</th>
               <th className="py-4 px-4 min-w-[160px]">STATUS</th>
@@ -1862,6 +1958,33 @@ export default function LeadsView({
                       )}
                     </td>
 
+                    {/* ACTUAL DISBURSAL AMOUNT */}
+                    <td className="py-4 px-4">
+                      {normalizeStatus(item.status) === 'DISBURSED' ? (
+                        (item.disbursedAmountRupees !== null && item.disbursedAmountRupees !== undefined && !isNaN(Number(item.disbursedAmountRupees))) ? (
+                          <div>
+                            <span className="text-sm font-black text-emerald-700 tracking-tight flex items-center">
+                              <IndianRupee className="w-3.5 h-3.5 text-emerald-600 inline" />
+                              {Number(item.disbursedAmountRupees).toLocaleString('en-IN')}
+                            </span>
+                            <span className="text-[10px] text-emerald-600/90 block font-bold uppercase tracking-wider mt-0.5">
+                              Actual Disbursed
+                            </span>
+                          </div>
+                        ) : (
+                          <div>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200/80">
+                              <AlertCircle className="w-2.5 h-2.5 text-amber-500 shrink-0" />
+                              Not recorded
+                            </span>
+                            <span className="text-[10px] text-slate-400 block mt-0.5 font-medium">Pending verification</span>
+                          </div>
+                        )
+                      ) : (
+                        <span className="text-slate-300 font-bold text-xs">—</span>
+                      )}
+                    </td>
+
                     {/* SALARY / LOCATION */}
                     <td className="py-4 px-4">
                       {cleanSalary(item.salary, item.sal_val, item.salary_range) > 0 ? (
@@ -1943,6 +2066,17 @@ export default function LeadsView({
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
+                        {/* Edit Actual Disbursal Amount (Only for leads whose status is Disbursed) */}
+                        {normalizeStatus(item.status) === 'DISBURSED' && canEditLeads && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDisbursalModal(item)}
+                            className="p-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-xl transition-all shadow-2xs hover:shadow cursor-pointer"
+                            title="Edit Actual Disbursal Amount"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                         {item.mobile && (
                           <a
                             href={`tel:${item.mobile.replace(/\D/g, '')}`}
@@ -1980,7 +2114,7 @@ export default function LeadsView({
               })
             ) : (
               <tr>
-                <td colSpan={10} className="p-16 text-center">
+                <td colSpan={11} className="p-16 text-center">
                   <div className="max-w-sm mx-auto flex flex-col items-center">
                     <div className="w-14 h-14 rounded-3xl bg-blue-50 flex items-center justify-center text-blue-600 mb-3 shadow-xs">
                       <Search className="w-6 h-6" />
@@ -2548,8 +2682,8 @@ export default function LeadsView({
             {/* Modal Body (Scrollable) */}
             <div className="p-6 space-y-6 overflow-y-auto grow text-slate-800">
 
-              {/* Metric Highlights (4 Cards) */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {/* Metric Highlights */}
+              <div className={`grid grid-cols-2 ${normalizeStatus(activeOverviewLead.status) === 'DISBURSED' ? 'sm:grid-cols-5' : 'sm:grid-cols-4'} gap-3`}>
                 <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl">
                   <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
                     <IndianRupee className="w-3.5 h-3.5 text-indigo-600" />
@@ -2561,6 +2695,39 @@ export default function LeadsView({
                       : '—'}
                   </div>
                 </div>
+
+                {normalizeStatus(activeOverviewLead.status) === 'DISBURSED' && (
+                  <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-2xl flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <div className="flex items-center gap-1.5 text-emerald-700 text-[11px] font-bold uppercase tracking-wider">
+                          <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Actual Disbursal</span>
+                        </div>
+                        {canEditLeads && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenDisbursalModal(activeOverviewLead)}
+                            className="text-[10px] font-bold text-emerald-700 hover:text-emerald-900 underline flex items-center gap-0.5 cursor-pointer"
+                          >
+                            <Edit3 className="w-2.5 h-2.5" />
+                            Edit
+                          </button>
+                        )}
+                      </div>
+                      <div className="text-base sm:text-lg font-black text-emerald-800">
+                        {(activeOverviewLead.disbursedAmountRupees !== null && activeOverviewLead.disbursedAmountRupees !== undefined && !isNaN(Number(activeOverviewLead.disbursedAmountRupees)))
+                          ? `₹${Number(activeOverviewLead.disbursedAmountRupees).toLocaleString('en-IN')}`
+                          : <span className="text-amber-700 text-xs font-bold bg-amber-100/80 px-2 py-0.5 rounded border border-amber-200">Not recorded</span>}
+                      </div>
+                    </div>
+                    {activeOverviewLead.disbursalDate && (
+                      <div className="text-[10px] text-emerald-600 font-medium mt-1">
+                        Date: {new Date(activeOverviewLead.disbursalDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="bg-slate-50 border border-slate-200/80 p-3.5 rounded-2xl">
                   <div className="flex items-center gap-1.5 text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-1">
@@ -3028,6 +3195,17 @@ export default function LeadsView({
                       <option value="DISBURSED">Disbursed</option>
                       <option value="REJECTED">Rejected</option>
                     </select>
+                    {normalizeStatus(activeOverviewLead.status) === 'DISBURSED' && canEditLeads && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDisbursalModal(activeOverviewLead)}
+                        className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition cursor-pointer"
+                        title="Edit Actual Disbursal Amount"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit Actual Disbursal</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Lender Application ID */}
@@ -3509,6 +3687,208 @@ export default function LeadsView({
             </div>
           );
         })(),
+        document.body
+      )}
+
+      {/* Floating Portal: Edit Actual Disbursal Amount Modal */}
+      {disbursalModalLead && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
+          <div
+            className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 w-full max-w-lg overflow-hidden animate-scale-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-5 bg-gradient-to-r from-emerald-50 via-teal-50 to-blue-50 border-b border-emerald-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-sm">
+                  <IndianRupee className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">
+                    Edit Actual Disbursal Amount
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Record confirmed disbursement amount from lender
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDisbursalModalLead(null)}
+                className="p-2 text-slate-400 hover:text-slate-700 hover:bg-white/80 rounded-xl transition cursor-pointer"
+                title="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveDisbursalModal} className="p-6 space-y-4">
+              {/* Lead Summary Info */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 font-medium">Applicant Name:</span>
+                  <span className="font-extrabold text-slate-900">
+                    {disbursalModalLead.name || disbursalModalLead.applicantName || 'Applicant'}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 font-medium">Lead Reference ID:</span>
+                  <span className="font-mono font-bold text-[#0A3977]">
+                    {disbursalModalLead.displayId || disbursalModalLead.leadCode || disbursalModalLead.id}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-400 font-medium">Workflow Status:</span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Disbursed
+                  </span>
+                </div>
+              </div>
+
+              {/* Original Applied Amount (Read-Only) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                  Original Applied Amount (Read-Only)
+                </label>
+                <div className="w-full px-4 py-2.5 rounded-xl bg-slate-100/90 border border-slate-200 text-slate-700 font-black text-sm flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <IndianRupee className="w-4 h-4 text-slate-400" />
+                    <span>{Number(cleanLoanAmount(disbursalModalLead.loanAmount || disbursalModalLead.applied || disbursalModalLead.amount || 0)).toLocaleString('en-IN')}</span>
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                    <Lock className="w-3 h-3 text-slate-400" />
+                    Original application
+                  </span>
+                </div>
+              </div>
+
+              {/* Actual Disbursal Amount (Editable INR) */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                  Actual Disbursal Amount (₹ INR) <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <IndianRupee className="w-4 h-4 text-slate-400" />
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    required
+                    placeholder="e.g. 20000"
+                    value={disbursalAmountInput}
+                    onChange={(e) => {
+                      setDisbursalAmountInput(e.target.value);
+                      setDisbursalError('');
+                    }}
+                    className="w-full pl-9 pr-4 py-2.5 text-sm font-black text-slate-900 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white shadow-2xs placeholder-slate-400"
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Supports partial disbursals. Amount must be a positive number.
+                </p>
+              </div>
+
+              {/* Warning if amount exceeds original applied amount */}
+              {(() => {
+                const applied = cleanLoanAmount(disbursalModalLead.loanAmount || disbursalModalLead.applied || disbursalModalLead.amount || 0);
+                const currentVal = Number(disbursalAmountInput);
+                if (applied > 0 && !isNaN(currentVal) && currentVal > applied) {
+                  return (
+                    <div className="p-3.5 bg-amber-50 border border-amber-300 rounded-2xl space-y-2 text-xs">
+                      <div className="flex items-start gap-2 text-amber-900 font-bold">
+                        <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                        <span>
+                          Warning: Actual disbursal amount (₹{currentVal.toLocaleString('en-IN')}) exceeds original applied loan amount (₹{applied.toLocaleString('en-IN')}).
+                        </span>
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer pt-1 text-amber-800 font-bold">
+                        <input
+                          type="checkbox"
+                          checked={disbursalExceedsConfirmed}
+                          onChange={(e) => setDisbursalExceedsConfirmed(e.target.checked)}
+                          className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-amber-300 cursor-pointer"
+                        />
+                        <span>I confirm this higher disbursal amount is verified and intentional.</span>
+                      </label>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
+              {/* Optional Disbursal Date */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                  Disbursal Date (Optional)
+                </label>
+                <div className="relative">
+                  <input
+                    type="date"
+                    value={disbursalDateInput}
+                    onChange={(e) => setDisbursalDateInput(e.target.value)}
+                    className="w-full px-3.5 py-2 text-xs font-bold text-slate-800 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white shadow-2xs"
+                  />
+                </div>
+              </div>
+
+              {/* Optional Remarks */}
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                  Disbursal Remarks / Notes (Optional)
+                </label>
+                <textarea
+                  rows="2"
+                  placeholder="e.g. Disbursed via Bank Transfer, UTR: 129849204, approved partial disbursal..."
+                  value={disbursalRemarksInput}
+                  onChange={(e) => setDisbursalRemarksInput(e.target.value)}
+                  className="w-full px-3.5 py-2 text-xs font-medium text-slate-800 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white shadow-2xs placeholder-slate-400"
+                ></textarea>
+              </div>
+
+              {/* Error message banner */}
+              {disbursalError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{disbursalError}</span>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  disabled={isSavingDisbursal}
+                  onClick={() => setDisbursalModalLead(null)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingDisbursal || (
+                    cleanLoanAmount(disbursalModalLead.loanAmount || disbursalModalLead.applied || 0) > 0 &&
+                    Number(disbursalAmountInput) > cleanLoanAmount(disbursalModalLead.loanAmount || disbursalModalLead.applied || 0) &&
+                    !disbursalExceedsConfirmed
+                  )}
+                  className="px-5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isSavingDisbursal ? (
+                    <>
+                      <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving Changes...</span>
+                    </>
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
         document.body
       )}
 

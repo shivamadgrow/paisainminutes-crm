@@ -4,7 +4,7 @@
  * localStorage fallbacks: when the server cannot be reached the caller gets `{ success:false, error }`.
  */
 
-import { formatToIST } from './amountHelpers.js';
+import { formatToIST, cleanLoanAmount } from './amountHelpers.js';
 import { api, BACKEND_BASE } from './apiClient.js';
 import { AFFILIATE_PARTNERS, getServerPartnerId, getPartnerSlugByServerId, isRupay91Eligible } from '../data/affiliatePartners.js';
 
@@ -593,8 +593,40 @@ export function mapBackendLead(item, index = 0) {
     applied: cleanLoan,
     amount: cleanLoan,
     loanAmount: cleanLoan,
-    disbursedAmount: Number(item.disbursedAmountRupees) || 0,
-    disbursedAmountRupees: item.disbursedAmountRupees ?? null,
+    applied_amount: cleanLoan,
+    appliedAmount: cleanLoan,
+    disbursedAmount: (item.disbursedAmountRupees !== null && item.disbursedAmountRupees !== undefined && item.disbursedAmountRupees !== '' && !isNaN(Number(item.disbursedAmountRupees)))
+      ? Math.round(Number(item.disbursedAmountRupees))
+      : ((item.actualDisbursalAmount !== null && item.actualDisbursalAmount !== undefined && item.actualDisbursalAmount !== '' && !isNaN(Number(item.actualDisbursalAmount)))
+          ? Math.round(Number(item.actualDisbursalAmount))
+          : ((item.actual_disbursal_amount !== null && item.actual_disbursal_amount !== undefined && item.actual_disbursal_amount !== '' && !isNaN(Number(item.actual_disbursal_amount)))
+              ? Math.round(Number(item.actual_disbursal_amount))
+              : null)),
+    disbursedAmountRupees: (item.disbursedAmountRupees !== null && item.disbursedAmountRupees !== undefined && item.disbursedAmountRupees !== '' && !isNaN(Number(item.disbursedAmountRupees)))
+      ? Math.round(Number(item.disbursedAmountRupees))
+      : ((item.actualDisbursalAmount !== null && item.actualDisbursalAmount !== undefined && item.actualDisbursalAmount !== '' && !isNaN(Number(item.actualDisbursalAmount)))
+          ? Math.round(Number(item.actualDisbursalAmount))
+          : ((item.actual_disbursal_amount !== null && item.actual_disbursal_amount !== undefined && item.actual_disbursal_amount !== '' && !isNaN(Number(item.actual_disbursal_amount)))
+              ? Math.round(Number(item.actual_disbursal_amount))
+              : null)),
+    actualDisbursalAmount: (item.disbursedAmountRupees !== null && item.disbursedAmountRupees !== undefined && item.disbursedAmountRupees !== '' && !isNaN(Number(item.disbursedAmountRupees)))
+      ? Math.round(Number(item.disbursedAmountRupees))
+      : ((item.actualDisbursalAmount !== null && item.actualDisbursalAmount !== undefined && item.actualDisbursalAmount !== '' && !isNaN(Number(item.actualDisbursalAmount)))
+          ? Math.round(Number(item.actualDisbursalAmount))
+          : ((item.actual_disbursal_amount !== null && item.actual_disbursal_amount !== undefined && item.actual_disbursal_amount !== '' && !isNaN(Number(item.actual_disbursal_amount)))
+              ? Math.round(Number(item.actual_disbursal_amount))
+              : null)),
+    actual_disbursal_amount: (item.disbursedAmountRupees !== null && item.disbursedAmountRupees !== undefined && item.disbursedAmountRupees !== '' && !isNaN(Number(item.disbursedAmountRupees)))
+      ? Math.round(Number(item.disbursedAmountRupees))
+      : ((item.actualDisbursalAmount !== null && item.actualDisbursalAmount !== undefined && item.actualDisbursalAmount !== '' && !isNaN(Number(item.actualDisbursalAmount)))
+          ? Math.round(Number(item.actualDisbursalAmount))
+          : ((item.actual_disbursal_amount !== null && item.actual_disbursal_amount !== undefined && item.actual_disbursal_amount !== '' && !isNaN(Number(item.actual_disbursal_amount)))
+              ? Math.round(Number(item.actual_disbursal_amount))
+              : null)),
+    disbursalDate: item.disbursalDate || item.disbursal_date || null,
+    disbursal_date: item.disbursalDate || item.disbursal_date || null,
+    disbursalRemarks: item.disbursalRemarks || item.disbursal_remarks || '',
+    disbursal_remarks: item.disbursalRemarks || item.disbursal_remarks || '',
     tenureMonths: Number(item.tenureMonths) || 12,
     purpose: item.purpose || 'Personal Loan',
     employmentType: item.employmentType || '—',
@@ -715,8 +747,32 @@ export async function getLeadsFromBackend(options = {}) {
   return { success: true, count: leads.length, total: total ?? leads.length, leads };
 }
 
-const STAFF_UPDATE_FIELDS = ['status', 'selectedLenderId', 'lenderApplicationId', 'assignedPartnerId', 'remarks', 'loanAmountRupees', 'disbursedAmountRupees'];
-const PARTNER_UPDATE_FIELDS = ['partnerStatus', 'partnerRemarks', 'disbursedAmountRupees'];
+const STAFF_UPDATE_FIELDS = [
+  'status',
+  'selectedLenderId',
+  'lenderApplicationId',
+  'assignedPartnerId',
+  'remarks',
+  'loanAmountRupees',
+  'disbursedAmountRupees',
+  'actualDisbursalAmount',
+  'actual_disbursal_amount',
+  'disbursalDate',
+  'disbursal_date',
+  'disbursalRemarks',
+  'disbursal_remarks'
+];
+const PARTNER_UPDATE_FIELDS = [
+  'partnerStatus',
+  'partnerRemarks',
+  'disbursedAmountRupees',
+  'actualDisbursalAmount',
+  'actual_disbursal_amount',
+  'disbursalDate',
+  'disbursal_date',
+  'disbursalRemarks',
+  'disbursal_remarks'
+];
 
 /**
  * PATCH /api/loan-applications/{id}. Only fields on the shared allowlist are sent; the server decides
@@ -754,6 +810,86 @@ export async function updateLoanApplication(id, updates = {}, { role = 'staff', 
     return { success: true, status: res.status, data: res.data?.application, lead };
   }
   return { success: false, status: res.status, error: res.error || 'Failed to update application', data: res.data };
+}
+
+/**
+ * Update the confirmed actual loan disbursal amount for a lead.
+ * Rules enforced:
+ *  - Lead status MUST be DISBURSED (rejects edits for any non-disbursed status).
+ *  - Amount must be a valid non-negative number (rejects blank, negative, NaN, and infinite values).
+ *  - Supports partial disbursal amounts.
+ *  - If actual disbursal amount exceeds original applied amount, requires explicit confirmation.
+ *  - Preserves original applied amount untouched.
+ *  - Enforces audit trail with who/when/amount changes.
+ *  - Automatically maps persistent fields (disbursedAmountRupees, actualDisbursalAmount, disbursalDate, disbursalRemarks).
+ */
+export async function updateDisbursalAmount(id, {
+  actualDisbursalAmount,
+  disbursalDate,
+  disbursalRemarks,
+  confirmExceedsApplied = false,
+  isExceedsConfirmed = false,
+  status,
+  appliedAmount
+} = {}, { role = 'staff', lead = null } = {}) {
+  if (!id || (typeof id === 'string' && !id.trim())) {
+    return { success: false, error: 'Missing lead ID: Application ID is required' };
+  }
+
+  const effectiveStatus = (lead && lead.status) || status;
+  if (!effectiveStatus || normalizeStatus(effectiveStatus) !== 'DISBURSED') {
+    return {
+      success: false,
+      error: 'Actual disbursal amount can only be edited for leads whose current status is Disbursed.'
+    };
+  }
+
+  if (actualDisbursalAmount === undefined || actualDisbursalAmount === null || String(actualDisbursalAmount).trim() === '') {
+    return { success: false, error: 'Disbursal amount is required: Please enter a valid non-negative number.' };
+  }
+
+  const num = typeof actualDisbursalAmount === 'number' ? actualDisbursalAmount : Number(actualDisbursalAmount);
+  if (isNaN(num) || !isFinite(num) || num < 0) {
+    return { success: false, error: 'Please enter a valid non-negative number (rejects blank, negative, NaN, and infinite values).' };
+  }
+
+  const cleanAmount = Math.round(num);
+  const effectiveApplied = appliedAmount !== undefined 
+    ? cleanLoanAmount(appliedAmount) 
+    : (lead ? cleanLoanAmount(lead.loanAmount || lead.applied || lead.amount || 0) : 0);
+  const confirmed = Boolean(confirmExceedsApplied || isExceedsConfirmed);
+
+  if (effectiveApplied > 0 && cleanAmount > effectiveApplied && !confirmed) {
+    return {
+      success: false,
+      requiresConfirmation: true,
+      error: `Warning: Actual disbursal amount (₹${cleanAmount.toLocaleString('en-IN')}) exceeds the original applied amount (₹${effectiveApplied.toLocaleString('en-IN')}). Explicit confirmation is required before saving.`,
+      appliedAmount: effectiveApplied,
+      enteredAmount: cleanAmount
+    };
+  }
+
+  const updates = {
+    disbursedAmountRupees: cleanAmount,
+    actualDisbursalAmount: cleanAmount,
+    actual_disbursal_amount: cleanAmount
+  };
+
+  if (disbursalDate) {
+    updates.disbursalDate = disbursalDate;
+    updates.disbursal_date = disbursalDate;
+  }
+
+  const auditNote = `[Disbursal Amount Updated] Actual Disbursal Amount set to ₹${cleanAmount.toLocaleString('en-IN')}${cleanAmount > effectiveApplied && effectiveApplied > 0 ? ' (exceeds applied amount confirmed)' : ''}${disbursalRemarks ? ` - Remarks: ${String(disbursalRemarks).trim()}` : ''}`;
+  updates.remarks = auditNote;
+  updates.disbursalRemarks = disbursalRemarks ? String(disbursalRemarks).trim() : auditNote;
+  updates.disbursal_remarks = updates.disbursalRemarks;
+
+  if (role === 'partner') {
+    updates.partnerRemarks = disbursalRemarks ? String(disbursalRemarks).trim() : auditNote;
+  }
+
+  return updateLoanApplication(id, updates, { role, lead });
 }
 
 /**
