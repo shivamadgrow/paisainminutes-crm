@@ -1889,7 +1889,7 @@ function filterOffers(filterType, btnEl) {
         let show = true;
 
         if (filterType === 'instant') {
-            show = ['rupay91', 'jhatpatloans', 'borrowera', 'instarupees', 'easyfincare', 'moneydot'].includes(slug);
+            show = ['rupay91', 'jhatpatloans', 'borrowera', 'instarupees'].includes(slug);
         }
 
         card.style.display = show ? 'flex' : 'none';

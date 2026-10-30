@@ -31,26 +31,10 @@ $partnerTerms = [
         'consent' => 'I hereby give consent to Borrowera and its regulated lending partners to access my credit profile from authorized Credit Bureaus, authenticate my identity and KYC records, and share necessary information with financial partners for loan disbursal purposes. I have reviewed and accepted Borrowera\'s Terms and Conditions and agree to receive transactional and operational messages over SMS, Email, and WhatsApp.'
     ],
     [
-        'name' => 'Easy Finca₹e',
-        'partnerName' => 'Easy Finca₹e',
-        'displayName' => 'Easy Finca₹e',
-        'logo' => '/assets/easyfincare.png',
-        'url' => 'https://www.easyfincare.com/terms-and-conditions',
-        'consent' => 'I hereby authorize Easy Finca₹e and its lending partners to verify my credit information, evaluate my eligibility, and process my loan request in accordance with RBI digital lending guidelines. I agree to Easy Finca₹e\'s Terms & Conditions and Privacy Policy, and provide consent to receive communications, offers, and loan status notifications via SMS, WhatsApp, Email, and telephone calls.'
-    ],
-    [
         'name' => 'Rupay 91',
         'logo' => '/assets/rupay91.png',
         'url' => 'https://www.rupay91.com/terms-conditions.php',
         'consent' => 'I hereby give my consent to Rupay91 and its partnered NBFCs as lenders to collect, store, and verify my credit score and KYC credentials for processing and underwriting my personal loan request. I confirm having read and agreed to Rupay91\'s Terms & Conditions and Privacy Policy, and consent to receive loan updates, servicing alerts, and promotional messages through SMS, WhatsApp, and Call.'
-    ],
-    [
-        'name' => 'MoneyDot',
-        'partnerName' => 'MoneyDot',
-        'displayName' => 'MoneyDot',
-        'logo' => '/assets/moneydot.png?v=4k',
-        'url' => 'https://www.moneydot.in/privacy-policy.html',
-        'consent' => 'I hereby give my explicit consent to MoneyDot and its partner lending institutions to collect, verify, and assess my KYC and credit details for personal loan facilitation through the MoneyDot App. I confirm having read MoneyDot\'s Privacy Policy and agree to receive communications and updates regarding my loan application.'
     ]
 ];
 ?>

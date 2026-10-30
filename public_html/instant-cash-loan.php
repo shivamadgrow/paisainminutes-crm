@@ -57,7 +57,7 @@ foreach ($partners as $slug => $p) {
     }
     // Only include partners offering loans up to ₹1 Lakh or short-term tenures
     $maxAmt = (int) preg_replace('/[^\d]/', '', $p['max_amount'] ?? '100000');
-    if ($maxAmt <= 100000 || in_array($slug, ['rupay91', 'jhatpatloans', 'instarupees', 'borrowera', 'easyfincare', 'moneydot'])) {
+    if ($maxAmt <= 100000 || in_array($slug, ['rupay91', 'jhatpatloans', 'instarupees', 'borrowera'])) {
         $campaignPartners[$slug] = $p;
     }
 }
@@ -2165,8 +2165,6 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                             <span class="cro-hero-chip">Jhatpat Loans</span>
                             <span class="cro-hero-chip">Insta Rupees</span>
                             <span class="cro-hero-chip">Borrowera</span>
-                            <span class="cro-hero-chip">Easy Finca₹e</span>
-                            <span class="cro-hero-chip">MoneyDot</span>
                         </div>
                     </div>
                 </div>
