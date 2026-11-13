@@ -1066,246 +1066,6 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             font-weight: 600;
         }
 
-        .cro-cibil-score-badge {
-            background: #ECFDF5;
-            color: #065F46;
-            border: 1.5px solid #A7F3D0;
-            font-weight: 800;
-            padding: 0.25rem 0.75rem;
-            border-radius: var(--pim-radius-pill);
-            font-size: 0.85rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-        }
-
-        /* --- DEDICATED CIBIL SCORE CARD (Hero Right Column Status Card) --- */
-        .cro-cibil-card-container {
-            width: 100%;
-            max-width: 480px;
-            margin: 0 auto;
-            padding: 0;
-            position: relative;
-        }
-
-        .cro-cibil-card-container.cro-revealed {
-            display: block !important;
-            animation: croFadeInCard 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-
-        @keyframes croFadeInCard {
-            from {
-                opacity: 0;
-                transform: translateY(12px) scale(0.985);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0) scale(1);
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .cro-cibil-card-container.cro-revealed {
-                animation: none;
-            }
-        }
-
-        .cro-cibil-card {
-            background: #FFFFFF;
-            border: 2px solid #E2E8F0;
-            border-radius: 18px;
-            box-shadow: 0 12px 36px rgba(15, 23, 42, 0.09), 0 2px 6px rgba(15, 23, 42, 0.04);
-            overflow: hidden;
-            transition: all 0.25s ease;
-            width: 100%;
-        }
-
-        .cro-cibil-card-top {
-            background: linear-gradient(135deg, #1B2A6B 0%, #111A44 100%);
-            color: #FFFFFF;
-            padding: 0.85rem 1.35rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 0.84rem;
-            font-weight: 600;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-
-        .cro-cibil-card-top .cro-cibil-applicant {
-            display: flex;
-            align-items: center;
-            gap: 0.45rem;
-            white-space: nowrap;
-        }
-
-        .cro-cibil-card-top .cro-cibil-appid {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 0.22rem 0.75rem;
-            border-radius: var(--pim-radius-pill);
-            font-size: 0.76rem;
-            font-weight: 700;
-            letter-spacing: 0.02em;
-            white-space: nowrap;
-        }
-
-        .cro-cibil-card-body {
-            padding: 1.85rem 1.5rem;
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.65rem;
-            background: radial-gradient(circle at 50% 25%, rgba(240, 253, 244, 0.65) 0%, #FFFFFF 72%);
-        }
-
-        .cro-cibil-badge-title {
-            font-size: 0.8rem;
-            font-weight: 800;
-            letter-spacing: 0.1em;
-            color: var(--pim-text-muted);
-            text-transform: uppercase;
-        }
-
-        .cro-cibil-score-val {
-            font-family: var(--pim-font-heading);
-            font-size: clamp(2.5rem, 6vw, 3.5rem);
-            font-weight: 800;
-            color: #059669;
-            line-height: 1;
-            letter-spacing: -0.02em;
-        }
-
-        .cro-cibil-score-val.unavailable {
-            font-size: clamp(1.2rem, 3.5vw, 1.55rem);
-            color: #475569;
-            font-weight: 700;
-            letter-spacing: 0;
-            margin: 0.5rem 0;
-        }
-
-        .cro-cibil-score-val.loading {
-            font-size: clamp(1.05rem, 3vw, 1.35rem);
-            color: #2563EB;
-            font-weight: 700;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            margin: 0.5rem 0;
-            animation: croCibilPulse 1.6s ease-in-out infinite;
-        }
-
-        @keyframes croCibilPulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.55; transform: scale(0.98); }
-        }
-
-        .cro-cibil-status-tag {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            background: #ECFDF5;
-            color: #065F46;
-            border: 1.5px solid #A7F3D0;
-            padding: 0.35rem 0.95rem;
-            border-radius: var(--pim-radius-pill);
-            font-size: 0.86rem;
-            font-weight: 700;
-            transition: all 0.2s ease;
-        }
-
-        .cro-cibil-status-tag.neutral {
-            background: #EFF6FF;
-            color: #1D4ED8;
-            border-color: #BFDBFE;
-        }
-
-        .cro-cibil-status-tag.warning {
-            background: #FFFBEB;
-            color: #B45309;
-            border-color: #FDE68A;
-        }
-
-        .cro-cibil-status-tag.loading {
-            background: #EFF6FF;
-            color: #1D4ED8;
-            border-color: #BFDBFE;
-        }
-
-        .cro-cibil-bureau-note {
-            margin-top: 0.4rem;
-            padding-top: 0.85rem;
-            border-top: 1px dashed #CBD5E1;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.45rem;
-            font-size: 0.82rem;
-            flex-wrap: wrap;
-        }
-
-        .cro-cibil-bureau-label {
-            color: var(--pim-text-muted);
-            font-weight: 600;
-        }
-
-        .cro-cibil-bureau-val {
-            color: var(--pim-primary);
-            font-weight: 700;
-        }
-
-        .cro-cibil-offers-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.45rem;
-            width: 100%;
-            padding: 0.75rem 1rem;
-            margin-top: 0.4rem;
-            background: linear-gradient(135deg, #1B2A6B 0%, #2563EB 100%);
-            color: #FFFFFF;
-            font-weight: 700;
-            font-size: 0.88rem;
-            border-radius: 10px;
-            text-decoration: none;
-            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        .cro-cibil-offers-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
-            color: #FFFFFF;
-        }
-
-        @media (max-width: 576px) {
-            .cro-cibil-card-container {
-                max-width: 100%;
-                padding: 0;
-            }
-            .cro-cibil-card {
-                border-radius: 14px;
-            }
-            .cro-cibil-card-top {
-                padding: 0.75rem 1rem;
-                font-size: 0.8rem;
-            }
-            .cro-cibil-card-body {
-                padding: 1.35rem 1.15rem;
-                gap: 0.55rem;
-            }
-            .cro-cibil-score-val {
-                font-size: 2.6rem;
-            }
-            .cro-cibil-offers-btn {
-                padding: 0.7rem 0.9rem;
-                font-size: 0.84rem;
-            }
-        }
-
         /* --- LOAN OFFERS CONTAINER --- */
         .cro-offers-section {
             display: none;
@@ -2241,35 +2001,6 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                             <p style="color: var(--pim-text-muted); font-size: 0.9rem;" id="loadingStatusText">Securely querying authorized credit bureaus and matching active lending partners.</p>
                         </div>
 
-                        <!-- Post-Submission Step: CIBIL Score & Application Status Card (Dynamically displayed in hero right column) -->
-                        <div class="cro-cibil-card-container" id="cibilCardContainer" style="display: none;">
-                            <div class="cro-cibil-card">
-                                <div class="cro-cibil-card-top">
-                                    <div class="cro-cibil-applicant">
-                                        <span style="color: #10B981; font-size: 1rem;">●</span>
-                                        <span id="cibilCardPhone">+91 ******••••</span>
-                                    </div>
-                                    <span class="cro-cibil-appid" id="cibilCardAppId">Application ID: PIM-••••••</span>
-                                </div>
-                                <div class="cro-cibil-card-body">
-                                    <div class="cro-cibil-badge-title">YOUR CIBIL SCORE</div>
-                                    <div class="cro-cibil-score-val" id="cibilScoreNumber">—</div>
-                                    <div class="cro-cibil-status-tag" id="cibilStatusTag">
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                                        <span id="cibilStatusText">Credit Score Checked ✓</span>
-                                    </div>
-                                    <div class="cro-cibil-bureau-note">
-                                        <span class="cro-cibil-bureau-label">Bureau Status:</span>
-                                        <span class="cro-cibil-bureau-val" id="cibilBureauStatus">Eligible for Income-Based Disbursal</span>
-                                    </div>
-                                    <a href="#offersSection" class="cro-cibil-offers-btn" onclick="croScrollToOffers(event)">
-                                        <span>View Matched Loan Offers</span>
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-
                     </div>
                 </div>
 
@@ -2934,7 +2665,6 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
         
         let verifiedPhone = '';
         let activeLeadId = 'PIM-' + Math.floor(100000 + Math.random() * 900000);
-        let bureauScoreValue = null;
         let offersRevealed = false;
         let appStartedTracked = false;
 
@@ -3254,69 +2984,6 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             statusEl.style.display = 'block';
         }
 
-        // --- Multi-Field Bureau Score Extractor (Trace all existing backend field namings) ---
-        function extractBureauScore(...responses) {
-            for (const res of responses) {
-                if (!res || typeof res !== 'object') continue;
-                const candidates = [
-                    res.score,
-                    res.cibilScore,
-                    res.cibil_score,
-                    res.bureau_score,
-                    res.bureauScore,
-                    res.credit_score,
-                    res.cibil,
-                    // Primitive creditScore
-                    (typeof res.creditScore === 'number' || typeof res.creditScore === 'string') ? res.creditScore : null,
-                    // Nested under res.creditScore object (Swagger /api/credit-score/latest & /check)
-                    res.creditScore?.score,
-                    res.creditScore?.cibilScore,
-                    res.creditScore?.cibil_score,
-                    res.creditScore?.bureau_score,
-                    res.creditScore?.credit_score,
-                    res.creditScore?.cibil,
-                    // Nested under res.data
-                    res.data?.score,
-                    res.data?.bureau_score,
-                    res.data?.bureauScore,
-                    res.data?.cibilScore,
-                    res.data?.cibil_score,
-                    res.data?.credit_score,
-                    res.data?.cibil,
-                    (typeof res.data?.creditScore === 'number' || typeof res.data?.creditScore === 'string') ? res.data?.creditScore : null,
-                    res.data?.creditScore?.score,
-                    res.data?.creditScore?.cibilScore,
-                    res.data?.creditScore?.bureau_score,
-                    // Nested under res.lead (Node lead model /api/public/leads)
-                    res.lead?.bureau_score,
-                    res.lead?.bureauScore,
-                    res.lead?.cibilScore,
-                    res.lead?.cibil_score,
-                    res.lead?.score,
-                    res.lead?.cibil,
-                    res.lead?.creditScore,
-                    // Nested under res.report
-                    res.report?.score,
-                    res.report?.cibilScore,
-                    res.report?.creditScore,
-                    res.report?.bureau_score,
-                    // Nested under res.application
-                    res.application?.creditScore,
-                    res.application?.bureauScore,
-                    res.application?.score
-                ];
-                for (const val of candidates) {
-                    if (val !== null && val !== undefined && val !== '' && typeof val !== 'object') {
-                        const num = Number(val);
-                        if (!isNaN(num) && num >= 300 && num <= 900) {
-                            return Math.round(num);
-                        }
-                    }
-                }
-            }
-            return null;
-        }
-
         // --- Handle Successful OTP Verification -> Open Customer Details Modal (Step 3 & 4) ---
         async function handleOtpSuccess(authResult) {
             trackMetaEvent('OTPVerified');
@@ -3369,27 +3036,13 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             if (panelInitial) panelInitial.style.display = 'none';
             if (panelLoading) panelLoading.style.display = 'block';
 
-            if (loadingHeading) loadingHeading.textContent = 'Verifying Bureau Records...';
-            if (loadingText) loadingText.textContent = 'Querying authorized credit bureaus for +91 ' + verifiedPhone + '...';
+            if (loadingHeading) loadingHeading.textContent = 'Checking your eligibility...';
+            if (loadingText) loadingText.textContent = 'Matching active lending partners for +91 ' + verifiedPhone + '...';
 
             const authToken = detailsResult?.authToken || '';
             if (detailsResult?.activeLeadId) {
                 activeLeadId = detailsResult.activeLeadId;
             }
-
-            // Check if device already holds a verified bureau score in session for this phone (Requirement 10 & 21)
-            let sessionScore = null;
-            try {
-                const sPhone = sessionStorage.getItem('pim_cibil_phone') || localStorage.getItem('pim_phone');
-                const sScore = sessionStorage.getItem('pim_cibil');
-                if (sPhone === verifiedPhone && sScore) {
-                    const parsed = Number(sScore);
-                    if (!isNaN(parsed) && parsed >= 300 && parsed <= 900) {
-                        sessionScore = parsed;
-                        bureauScoreValue = parsed;
-                    }
-                }
-            } catch(e) {}
 
             // Gather Marketing Attribution data
             const lpAttr = getLandingPageAttribution();
@@ -3481,62 +3134,9 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 apiHeaders['Authorization'] = 'Bearer ' + authToken;
             }
 
-            // Diagnostic logging (Requirement 19 & 20)
             const reqStartTs = Date.now();
-            window.PIM_CIBIL_DIAGNOSTICS = {
-                applicationId: activeLeadId,
-                requestStatus: 'STARTED',
-                startedAt: new Date().toISOString(),
-                hasAuthToken: !!authToken,
-                scoreAvailable: !!bureauScoreValue
-            };
-            if (window.console && typeof window.console.info === 'function') {
-                window.console.info('[CIBIL_REQUEST_STARTED]', {
-                    appId: activeLeadId,
-                    phone: '+91 ******' + verifiedPhone.slice(-4),
-                    ts: new Date().toISOString()
-                });
-            }
 
-            // Step 1: Explicit Consent Recording on Backend (Requirement 9 & Swagger /api/credit-score/consent)
-            if (authToken) {
-                try {
-                    await fetch(window.backend_server_url + '/api/credit-score/consent', {
-                        method: 'POST',
-                        headers: apiHeaders,
-                        body: JSON.stringify({
-                            consent: true,
-                            consentTimestamp: consentTimestamp,
-                            noticeVersion: noticeVersion
-                        })
-                    }).catch(() => {});
-                } catch(e) {}
-            }
-
-            // Step 2: Trigger Bureau Credit Check & Lead Intake
-            const bureauPayload = {
-                phone: verifiedPhone,
-                mobile: verifiedPhone,
-                name: customerName,
-                pan: customerPan,
-                consent: true
-            };
-
-            // Public Credit Check route
-            const creditCheckPromise = fetch(window.backend_server_url + '/api/public/credit-check', {
-                method: 'POST',
-                headers: apiHeaders,
-                body: JSON.stringify(bureauPayload)
-            }).then(r => r.json().then(j => ({ ok: r.ok, status: r.status, data: j }))).catch(err => ({ ok: false, error: err }));
-
-            // Authenticated Customer Credit Score Check route
-            const customerCheckPromise = authToken ? fetch(window.backend_server_url + '/api/credit-score/check', {
-                method: 'POST',
-                headers: apiHeaders,
-                body: JSON.stringify(bureauPayload)
-            }).then(r => r.json().then(j => ({ ok: r.ok, status: r.status, data: j }))).catch(err => ({ ok: false, error: err })) : Promise.resolve({ ok: false });
-
-            // Lead Intake API (creates lead record in MongoDB)
+            // Lead Intake API (creates lead record in MongoDB); eligibility is salary-based on the backend
             const leadPromise = fetch(window.backend_server_url + '/api/public/leads', {
                 method: 'POST',
                 headers: apiHeaders,
@@ -3544,100 +3144,26 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                 keepalive: true
             }).then(r => r.json().then(j => ({ ok: r.ok, status: r.status, data: j }))).catch(err => ({ ok: false, error: err }));
 
-            // Step 3: Handle results and gracefully coordinate
-            Promise.all([creditCheckPromise, customerCheckPromise, leadPromise])
-                .then(async ([creditCheckRes, customerCheckRes, leadRes]) => {
+            leadPromise
+                .then((leadRes) => {
                     const durationMs = Date.now() - reqStartTs;
-
-                    const creditData = creditCheckRes?.data || {};
-                    const customerData = customerCheckRes?.data || {};
                     const leadData = leadRes?.data || {};
 
                     // Resolve active lead ID from backend response
-                    const resolvedId = leadData.lead_id || leadData.data?.lead_id || leadData.lead?.id || leadData.id || creditData.lead_id;
+                    const resolvedId = leadData.lead_id || leadData.data?.lead_id || leadData.lead?.id || leadData.id;
                     if (resolvedId) {
                         activeLeadId = resolvedId;
                     }
 
-                    // Extract bureau score dynamically from actual backend response
-                    const extracted = extractBureauScore(creditData, customerData, leadData);
-                    if (extracted) {
-                        bureauScoreValue = extracted;
-                    }
-
-                    // If score is not immediately returned (asynchronous bureau check), poll briefly (Requirement 15 & 16)
-                    if (!bureauScoreValue && authToken) {
-                        revealOffers('loading');
-
-                        for (let attempt = 1; attempt <= 3 && !bureauScoreValue; attempt++) {
-                            await new Promise(r => setTimeout(r, attempt === 1 ? 1200 : 1800));
-
-                            try {
-                                const [latestPoll, lookupPoll] = await Promise.all([
-                                    fetch(window.backend_server_url + '/api/credit-score/latest', { method: 'GET', headers: apiHeaders }).then(r => r.json()).catch(() => ({})),
-                                    fetch(window.backend_server_url + '/api/public/leads/lookup?phone=' + encodeURIComponent(verifiedPhone) + '&leadCode=' + encodeURIComponent(activeLeadId), { method: 'GET', headers: apiHeaders }).then(r => r.json()).catch(() => ({}))
-                                ]);
-                                const polledScore = extractBureauScore(latestPoll, lookupPoll);
-                                if (polledScore) {
-                                    bureauScoreValue = polledScore;
-                                    break;
-                                }
-                            } catch(e) {}
-                        }
-                    }
-
-                    finalizeCibilCardAndOffers(durationMs);
+                    finalizeAndRevealOffers(durationMs);
                 })
                 .catch((err) => {
-                    finalizeCibilCardAndOffers(Date.now() - reqStartTs, err);
+                    finalizeAndRevealOffers(Date.now() - reqStartTs, err);
                 });
         }
 
-        // --- Finalize CIBIL Card & Disclose Offers ---
-        function finalizeCibilCardAndOffers(durationMs, err) {
-            if (bureauScoreValue && typeof bureauScoreValue === 'number' && bureauScoreValue >= 300 && bureauScoreValue <= 900) {
-                try {
-                    sessionStorage.setItem('pim_cibil', String(bureauScoreValue));
-                    sessionStorage.setItem('pim_cibil_phone', verifiedPhone);
-                } catch(e) {}
-
-                window.PIM_CIBIL_DIAGNOSTICS = {
-                    applicationId: activeLeadId,
-                    requestStatus: 'SUCCESS',
-                    scoreAvailable: true,
-                    scoreRange: '300-900',
-                    durationMs: durationMs,
-                    completedAt: new Date().toISOString()
-                };
-
-                if (window.console && typeof window.console.info === 'function') {
-                    window.console.info('[CIBIL_REQUEST_SUCCESS]', {
-                        appId: activeLeadId,
-                        durationMs: durationMs,
-                        ts: new Date().toISOString()
-                    });
-                }
-            } else {
-                window.PIM_CIBIL_DIAGNOSTICS = {
-                    applicationId: activeLeadId,
-                    requestStatus: err ? 'ERROR' : 'NO_SCORE',
-                    scoreAvailable: false,
-                    durationMs: durationMs,
-                    completedAt: new Date().toISOString()
-                };
-
-                if (window.console && typeof window.console.warn === 'function') {
-                    window.console.warn(err ? '[CIBIL_REQUEST_FAILED]' : '[CIBIL_NO_SCORE]', {
-                        appId: activeLeadId,
-                        durationMs: durationMs
-                    });
-                }
-            }
-
-            // Non-sensitive Meta tracking: never send the score itself
-            trackMetaEvent('CreditCheckCompleted', {
-                bureau_status: bureauScoreValue ? 'available' : 'unavailable'
-            });
+        // --- Finalize Lead Intake & Disclose Offers ---
+        function finalizeAndRevealOffers(durationMs, err) {
             trackMetaEvent('ApplicationCompleted', {
                 lead_id: activeLeadId
             });
@@ -3683,20 +3209,14 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
             if (loadingText) loadingText.textContent = 'Unlocking curated lender options for your profile...';
 
             setTimeout(() => {
-                revealOffers(bureauScoreValue ? 'success' : (err ? 'error' : 'no_score'));
+                revealOffers(err ? 'error' : 'success');
             }, 600);
         }
 
-        // --- Reveal Matched Offers UI & CIBIL Card in Hero ---
+        // --- Reveal Matched Offers UI ---
         function revealOffers(state) {
             if (panelLoading) panelLoading.style.display = 'none';
             if (panelInitial) panelInitial.style.display = 'none';
-
-            const cibilContainer = document.getElementById('cibilCardContainer');
-            if (cibilContainer) {
-                cibilContainer.style.display = 'block';
-                cibilContainer.classList.add('cro-revealed');
-            }
 
             if (offersSection) {
                 offersSection.style.display = 'block';
@@ -3707,79 +3227,17 @@ $pageDescription = 'Need cash for an urgent expense? Check loan offers up to ₹
                         lead_reference: activeLeadId || ''
                     });
                 }
-                
+
                 // Hide mobile sticky CTA so it never obstructs lender offers
                 if (stickyBar) stickyBar.style.display = 'none';
 
-                // On mobile devices, smoothly scroll to the CIBIL card in the hero
+                // On mobile devices, smoothly scroll to the matched offers
                 setTimeout(() => {
-                    if (window.innerWidth <= 768 && cibilContainer) {
-                        const targetY = cibilContainer.getBoundingClientRect().top + window.pageYOffset - 16;
+                    if (window.innerWidth <= 768) {
+                        const targetY = offersSection.getBoundingClientRect().top + window.pageYOffset - 16;
                         window.scrollTo({ top: Math.max(0, targetY), behavior: 'smooth' });
                     }
                 }, 80);
-            }
-
-            // Global scroll helper from CIBIL card to matched offers
-            window.croScrollToOffers = function(e) {
-                if (e && e.preventDefault) e.preventDefault();
-                const offers = document.getElementById('offersSection');
-                if (offers) {
-                    offers.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            };
-
-            // Populate CIBIL Score Card
-            const cardPhone = document.getElementById('cibilCardPhone');
-            if (cardPhone) {
-                const last4 = verifiedPhone ? verifiedPhone.slice(-4) : '••••';
-                cardPhone.textContent = '+91 ******' + last4;
-            }
-
-            const cardAppId = document.getElementById('cibilCardAppId');
-            if (cardAppId) cardAppId.textContent = 'Application ID: ' + activeLeadId;
-
-            const scoreNumberEl = document.getElementById('cibilScoreNumber');
-            const statusTagEl = document.getElementById('cibilStatusTag');
-            const statusTextEl = document.getElementById('cibilStatusText');
-            const bureauStatusEl = document.getElementById('cibilBureauStatus');
-
-            if (state === 'loading' && !bureauScoreValue) {
-                // Professional Loading State (Requirement 16)
-                if (scoreNumberEl) {
-                    scoreNumberEl.textContent = 'Checking your credit profile...';
-                    scoreNumberEl.className = 'cro-cibil-score-val loading';
-                }
-                if (statusTagEl) statusTagEl.className = 'cro-cibil-status-tag loading';
-                if (statusTextEl) statusTextEl.textContent = 'Querying Credit Bureau...';
-                if (bureauStatusEl) bureauStatusEl.textContent = 'Evaluating Bureau Records';
-            } else if (bureauScoreValue && typeof bureauScoreValue === 'number' && bureauScoreValue >= 300 && bureauScoreValue <= 900) {
-                // Success: Actual CIBIL score verified from backend (Requirement 1 & 13)
-                if (scoreNumberEl) {
-                    scoreNumberEl.textContent = bureauScoreValue;
-                    scoreNumberEl.className = 'cro-cibil-score-val';
-                }
-                if (statusTagEl) statusTagEl.className = 'cro-cibil-status-tag';
-                if (statusTextEl) statusTextEl.textContent = 'Credit Score Checked ✓';
-                if (bureauStatusEl) bureauStatusEl.textContent = 'Eligible for Income-Based Disbursal';
-            } else if (state === 'no_score') {
-                // Legitimate No Score / New to Credit (Requirement 18)
-                if (scoreNumberEl) {
-                    scoreNumberEl.textContent = 'CIBIL Score Unavailable';
-                    scoreNumberEl.className = 'cro-cibil-score-val unavailable';
-                }
-                if (statusTagEl) statusTagEl.className = 'cro-cibil-status-tag neutral';
-                if (statusTextEl) statusTextEl.textContent = 'Profile Evaluated ✓';
-                if (bureauStatusEl) bureauStatusEl.textContent = 'Eligible for Income-Based Disbursal';
-            } else {
-                // Unavailability fallback: never show 0/null/fake score (Requirement 1 & 17)
-                if (scoreNumberEl) {
-                    scoreNumberEl.textContent = 'CIBIL Score Unavailable';
-                    scoreNumberEl.className = 'cro-cibil-score-val unavailable';
-                }
-                if (statusTagEl) statusTagEl.className = 'cro-cibil-status-tag neutral';
-                if (statusTextEl) statusTextEl.textContent = 'Profile Evaluated ✓';
-                if (bureauStatusEl) bureauStatusEl.textContent = 'Eligible for Income-Based Disbursal';
             }
 
             // Update CTA Links with live Lead ID and ensure Rupay91 has sub_id and next parameters

@@ -17,7 +17,7 @@ const checks = [
     ['Bureau consent unchecked by default', code.includes('id="consentBureau" class="cro-checkbox"') && !code.includes('id="consentBureau" class="cro-checkbox" checked')],
     ['Terms consent present', code.includes('id="consentTerms"')],
     ['PimOtpService integration present', code.includes('window.PimOtpService')],
-    ['Real Credit Check API call', code.includes('/api/public/credit-check')],
+    ['Live bureau credit-check call removed', !code.includes('/api/public/credit-check')],
     ['Real Leads API call', code.includes('/api/public/leads')],
     ['Meta Pixel dispatcher present', code.includes('trackMetaEvent')],
     ['No hardcoded CIBIL score', !code.includes('cibilScore: 724') && !code.includes('"score": 724')],

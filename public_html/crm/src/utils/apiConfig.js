@@ -893,19 +893,6 @@ export async function updateDisbursalAmount(id, {
 }
 
 /**
- * POST /api/loan-applications/{id}/refresh-score: one new (paid) credit bureau call for this lead.
- * A phone is normally checked once and reused for 30 days; this is the manual override.
- */
-export async function refreshLeadScore(id) {
-  if (!id) return { success: false, error: 'Application ID is required' };
-  const res = await api(`/api/loan-applications/${encodeURIComponent(String(id).trim())}/refresh-score`, { method: 'POST', body: {} });
-  if (res.ok) {
-    return { success: true, lead: mapBackendLead(res.data?.application), bureau: res.data?.bureau };
-  }
-  return { success: false, status: res.status, error: res.error || 'Could not refresh the score', data: res.data };
-}
-
-/**
  * GET /api/loan-applications/phone/{phone}: all applications for a number, newest first.
  * `data` is the newest one for convenience; `applications` has all of them.
  */

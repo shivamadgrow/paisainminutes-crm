@@ -64,7 +64,6 @@ import {
   deleteLeadsApi,
   updateLoanApplication,
   updateDisbursalAmount,
-  refreshLeadScore,
   submitLoanApplication,
   buildLeadPayload,
   getLendersFromBackend,
@@ -937,22 +936,6 @@ export default function LeadsView({
     const res = await crmApi(`/api/loan-applications/${encodeURIComponent(lead.id)}/sign-out-customer`, { method: 'POST', body: {} });
     if (res.ok) showToast(`Customer signed out (${res.data?.devicesEnded ?? 0} device login(s) ended).`);
     else showToast(res.error || 'Could not sign the customer out.', true);
-  };
-
-  // Manual override of the stored bureau result: one new paid call (a phone is normally checked once, reused 30 days).
-  const [refreshingScoreId, setRefreshingScoreId] = useState(null);
-  const handleRefreshScore = async (lead) => {
-    if (!lead || refreshingScoreId) return;
-    if (!window.confirm('Fetch a new credit score from the bureau? This is a paid call. The stored score is normally reused for 30 days.')) return;
-    setRefreshingScoreId(lead.id);
-    const res = await refreshLeadScore(lead.id);
-    setRefreshingScoreId(null);
-    if (res.success && res.lead) {
-      applyUpdatedLead(lead.id, res.lead);
-      showToast(res.bureau?.found ? `Score refreshed: ${res.bureau.score}.` : 'Bureau has no credit record for this number.');
-    } else {
-      showToast(res.error || 'Could not refresh the score.', true);
-    }
   };
 
   // Quick status change (the seven canonical CRM statuses only)
@@ -2753,21 +2736,6 @@ export default function LeadsView({
                     <div className="text-[10px] text-slate-400 font-medium mt-0.5">
                       Checked {new Date(activeOverviewLead.bureauCheckedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </div>
-                  )}
-                  {canEditLeads && (
-                    <button
-                      type="button"
-                      onClick={() => handleRefreshScore(activeOverviewLead)}
-                      disabled={refreshingScoreId === activeOverviewLead.id}
-                      className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-bold text-blue-700 hover:text-blue-900 disabled:opacity-50 cursor-pointer"
-                      title="Fetch a new score from the bureau (paid call)"
-                    >
-                      <RotateCw className={`w-3 h-3 ${refreshingScoreId === activeOverviewLead.id ? 'animate-spin' : ''}`} />
-                      {refreshingScoreId === activeOverviewLead.id ? 'Refreshing…' : 'Refresh score'}
-                    </button>
-                  )}
-                  {/after 3 attempts|in progress/i.test(activeOverviewLead.cibilStatus || '') && (
-                    <div className="text-[10px] text-amber-700 font-medium mt-0.5">{/after 3 attempts/i.test(activeOverviewLead.cibilStatus) ? 'Score pending: the bureau could not be reached 3 times. Use Refresh score.' : 'Score is being fetched…'}</div>
                   )}
                   {canEditLeads && (
                     <button
