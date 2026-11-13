@@ -260,7 +260,6 @@ include 'includes/header.php';
                 <div class="form-field-group">
                     <label for="eligPhone" class="form-field-label">Mobile <span class="required-star">*</span></label>
                     <input type="tel" id="eligPhone" name="phone" class="form-text-input" placeholder="Enter 10-digit mobile number" maxlength="10" pattern="[6-9][0-9]{9}" value="<?php echo $prefill_phone; ?>" required>
-                    <div id="eligCibilBadge" style="display:none; margin-top: 6px; font-size: 0.82rem; border-radius: 6px; padding: 5px 10px; transition: all 0.3s ease;"></div>
                 </div>
 
                 <div class="form-field-group">
@@ -561,21 +560,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const phoneInput = document.getElementById('eligPhone');
-    const cibilBadge = document.getElementById('eligCibilBadge');
-    let cibilLookupTimeout = null;
 
-    // Node server base URL (credit check + lead intake)
+    // Node server base URL (lead intake)
     const NODE_API = <?php echo json_encode($pim_node_api_url); ?>;
 
-    // The bureau is queried only after the applicant has ticked the agreement checkboxes
-    function hasBureauConsent() {
-        const a1 = document.getElementById('eligAgreeTerms1');
-        const a2 = document.getElementById('eligAgreeTerms2');
-        return Boolean(a1 && a1.checked && a2 && a2.checked);
-    }
-
-    // Sends this device's OTP login with the request (F-29): without it the server treats the caller as unverified,
-    // refuses the credit check and never calls the bureau for the lead.
+    // Sends this device's OTP login with the request (F-29): without it the server treats the caller as unverified
+    // when creating the lead.
     function pimJsonHeaders() {
         const base = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
         if (!(window.PIMAuth && typeof window.PIMAuth.accessToken === 'function')) return Promise.resolve(base);
@@ -585,95 +575,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function autoCheckCibil(phoneNum) {
-        const nameVal = ((document.getElementById('eligName') || {}).value || '').trim();
-        if (!phoneNum || phoneNum.length !== 10 || !/^[6-9]/.test(phoneNum) || !hasBureauConsent() || nameVal.length < 3 || !(window.PIMAuth && window.PIMAuth.isVerifiedFor(phoneNum))) {
-            if (cibilBadge) cibilBadge.style.display = 'none';
-            return;
-        }
-        if (cibilBadge) {
-            cibilBadge.style.display = 'inline-flex';
-            cibilBadge.style.alignItems = 'center';
-            cibilBadge.style.gap = '6px';
-            cibilBadge.style.background = '#EFF6FF';
-            cibilBadge.style.color = '#2563EB';
-            cibilBadge.style.border = '1px solid #BFDBFE';
-            cibilBadge.innerHTML = '<span>⚡</span> <span>Checking bureau credit score...</span>';
-        }
-        pimJsonHeaders().then(headers => fetch(NODE_API + '/api/public/credit-check', {
-            method: 'POST',
-            headers: headers,
-            body: JSON.stringify({ phone: phoneNum, name: nameVal, consent: true })
-        }))
-            .then(r => r.json())
-            .then(res => {
-                if (res && res.success && res.score) {
-                    if (cibilBadge) {
-                        cibilBadge.style.display = 'inline-flex';
-                        cibilBadge.style.background = '#ECFDF5';
-                        cibilBadge.style.color = '#065F46';
-                        cibilBadge.style.border = '1px solid #A7F3D0';
-                        cibilBadge.innerHTML = '<span>✓</span> <strong>Verified CIBIL Score: ' + res.score + ' (' + (res.band || 'Good') + ')</strong>';
-                    }
-                    try { 
-                        sessionStorage.setItem('pim_cibil', res.score); 
-                        sessionStorage.setItem('pim_cibil_phone', phoneNum);
-                    } catch(e){}
-                } else if (res && (res.status === 'no_record' || res.status === 'name_mismatch') && cibilBadge) {
-                    // The bureau finds a person by phone AND name: say what to do instead of hiding the badge.
-                    cibilBadge.style.display = 'inline-flex';
-                    cibilBadge.style.background = '#FFFBEB';
-                    cibilBadge.style.color = '#92400E';
-                    cibilBadge.style.border = '1px solid #FDE68A';
-                    cibilBadge.innerHTML = res.status === 'name_mismatch'
-                        ? '<span>!</span> <span>This name does not match our record for this number. Please enter your name exactly as on your PAN card.</span>'
-                        : '<span>!</span> <span>No credit history found. You may be new to credit. If you have loans or cards, enter your name exactly as on your PAN card.</span>';
-                } else {
-                    if (cibilBadge) cibilBadge.style.display = 'none';
-                }
-            })
-            .catch(() => {
-                if (cibilBadge) cibilBadge.style.display = 'none';
-            });
-    }
-
-    // Name corrected after a "no record" / "name does not match": check again with the new name.
-    (function () {
-        const nameField = document.getElementById('eligName');
-        if (!nameField) return;
-        let lastCheckedName = nameField.value.trim();
-        nameField.addEventListener('change', function () {
-            const now = nameField.value.trim();
-            if (now === lastCheckedName || now.length < 3) return;
-            lastCheckedName = now;
-            const ph = phoneInput ? phoneInput.value.replace(/\D/g, '') : '';
-            if (ph.length === 10) autoCheckCibil(ph);
-        });
-    })();
-
-    ['eligAgreeTerms1', 'eligAgreeTerms2'].forEach(function(id) {
-        const box = document.getElementById(id);
-        if (box) {
-            box.addEventListener('change', function() {
-                if (phoneInput && phoneInput.value.length === 10) autoCheckCibil(phoneInput.value);
-            });
-        }
-    });
-
     if (phoneInput) {
         phoneInput.addEventListener('input', function() {
             this.value = this.value.replace(/\D/g, '').slice(0, 10);
-            clearTimeout(cibilLookupTimeout);
-            if (this.value.length === 10 && /^[6-9]/.test(this.value)) {
-                cibilLookupTimeout = setTimeout(() => autoCheckCibil(this.value), 400);
-            } else if (cibilBadge) {
-                cibilBadge.style.display = 'none';
-            }
         });
-
-        if (phoneInput.value.length === 10 && /^[6-9]/.test(phoneInput.value)) {
-            autoCheckCibil(phoneInput.value);
-        }
     }
 
 
